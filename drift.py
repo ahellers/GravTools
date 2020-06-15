@@ -2,11 +2,12 @@
 Programm zur Schätzung der Gerätedrift bei Relativgravimetern
 Autor: Andreas Hellerschmied
 Date: 2020-05-08
-Benützung:
-
+Benützung: python3 drift.py <Beobachungsdatei (Feldbuch) in Sub-Odner ./data>
 """
 
 # Imports:
+
+import sys
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,10 +25,21 @@ dict_gravimeter_id_obs_file = {
     '3': 'CG3',
     '5': 'CG5',
 }
+# Instrumenten-IDs in der Messdatei einem Instrumenten-KZ zuweisen:
+dict_gravimeter_KZ_obs_file = {
+    '3': 'C',
+    '5': 'C',
+    '9': 'D',
+    '90': 'D',
+    '900': 'D',
+    '51': 'D',
+    '510': 'D',
+    '500': 'W',
+}
 
 vg_default = 308.6  # muGal/m
-
 verbous = True
+flag_save_drift_plot_pdf = True
 
 
 # #####################
@@ -186,10 +198,10 @@ def corr_ref_heights_instrument(obs_df):
 
     # ### Je nach Gerätetyp (CG5, CG3) die Bezugs-Höhen (dhb, dhf) anpassen ###:
     for grav_typ, corr_m in dic_gravimeter_hoehenbezug_korrektur_m.items():
-        obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhb_m'] = obs_df.loc[obs_df[
-                                                                                   'gravimeter_typ'] == grav_typ, 'dhb_m'] + corr_m
-        obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhf_m'] = obs_df.loc[obs_df[
-                                                                                   'gravimeter_typ'] == grav_typ, 'dhf_m'] + corr_m
+        obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhb_m'] = \
+            obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhb_m'] + corr_m
+        obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhf_m'] = \
+            obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhf_m'] + corr_m
     return obs_df
 
 
@@ -220,13 +232,24 @@ def get_station_df(obs_df, df_oesgn):
     stat_df['is_drift_point'] = stat_df.num_of_obs > 1  # More than 1 obs => Drif point!
     stat_df['g_est_mugal'] = np.nan
     stat_df['sig_g_est_mugal'] = np.nan
-    # stat_df['dhb_m'] = np.nan  # Depends on the setup of each measurement => May not be const. for a station!
-    # stat_df['dhf_m'] = np.nan  # Depends on the setup of each measurement => May not be const. for a station!
+    stat_df['dhb_m'] = np.nan  # Depends on the setup of each measurement => Only the difference (dhb-dhf) is const.!
+    stat_df['dhf_m'] = np.nan  # Depends on the setup of each measurement => Only the difference (dhb-dhf) is const.!
+    stat_df['g_abs_mugal'] = np.nan
+    stat_df['sig_g_abs_mugal'] = np.nan
     stat_df['verb_mugal'] = np.nan
+    stat_df['g_abs_full_mugal'] = np.nan  # absolute value in µGal incl. 9.8e8
 
     # Add ÖSGN data:
     stat_df = stat_df.merge(df_oesgn.drop(columns=['anmerkungen', 'identitaet', 'date']), on='punktnummer', how='left')
     stat_df['is_oesgn'] = ~stat_df.g_oesgn_mugal.isna()
+    stat_df['date'] = obs_df.index[0].date()  # date for observation
+
+    # Assign dhb and dhf:
+    for stat in stat_df.punktnummer:
+        stat_df.loc[stat_df['punktnummer'] == stat, 'dhb_m'] = \
+            obs_df[obs_df['punktnummer'] == stat].dhb_m[-1]  # Assign dhb of the last obervation
+        stat_df.loc[stat_df['punktnummer'] == stat, 'dhf_m'] = \
+            obs_df[obs_df['punktnummer'] == stat].dhf_m[-1]  # Assign dhb of the last obervation
 
     return stat_df
 
@@ -295,13 +318,13 @@ def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):
             num_of_obs = obs_df.loc[obs_df['punktnummer'] == stat].shape[0]
             # Warum "+4"? Eher willkürlich in DRIFT2011 gesetzt, oder? 4 = 2*2.
             stat_df.loc[stat_df['punktnummer'] == stat, 'sig_g_est_mugal'] = \
-                np.sqrt((sum(obs_df.loc[obs_df['punktnummer'] == stat, 'abw_mugal']**2) / (num_of_obs-1)) + 4)
+                np.sqrt((sum(obs_df.loc[obs_df['punktnummer'] == stat, 'abw_mugal'] ** 2) / (num_of_obs - 1)) + 4)
 
     pol_coef_sig_mugal = np.sqrt(
         sum(obs_df.abw_mugal ** 2) / (obs_df.shape[0] - 1 - sum(stat_df.is_drift_point == False)))
 
     # Sigma for all estimats with only one observation:
-    stat_df.loc[~stat_df['is_drift_point'], 'sig_g_est_mugal'] = np.sqrt(pol_coef_sig_mugal**2 + 25)
+    stat_df.loc[~stat_df['is_drift_point'], 'sig_g_est_mugal'] = np.sqrt(pol_coef_sig_mugal ** 2 + 25)
 
     results_dict = dict()
     results_dict['pol_coef'] = pol_coef_dict
@@ -312,28 +335,135 @@ def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):
     return results_dict
 
 
+def calc_abs_g(stat_df):
+    """
+    Berechnung absluter Schwerewerte bezogen auf das ÖSGN, ausgehend von Drift-korrigierten Lesungen eines
+    Relativgravimeters. Für die Auswertung einzelner Tagesmessungen.
+    Berechnung analog zu Fortran Code SCHWAUS2016.FOR von D. Ruess ()
+    :param stat_df:
+    :return: stat_df (mit Ergebnissen)
+    """
+
+    # ### Parameters: ###
+    # Lesungsabhängiger Fehler (als konstant angenommen, unabhängig vom Betrag der Ablesung und vom Gravimeter-Typ):
+    sig_reading = 2  # [µGal]
+
+    # df, only containingÖSGN stations:
+    df_stat_oesgn = stat_df[stat_df['is_oesgn'] == True]
+
+    # Differences between drift-corrected readings and OESGN g-values:
+    df_stat_oesgn['go_mugal'] = df_stat_oesgn['g_oesgn_mugal'] - df_stat_oesgn['g_est_mugal']
+    df_stat_oesgn['sig_go_mugal'] = np.sqrt(df_stat_oesgn['sig_g_est_mugal'] ** 2
+                                            + df_stat_oesgn['g_sig_oesgn_mugal'] ** 2
+                                            + sig_reading ** 2)
+
+    # Calculation of the weighted mean of all go:
+    df_stat_oesgn['go_p'] = 1 / (df_stat_oesgn['sig_go_mugal'] ** 2)
+    xm_mugal = sum(df_stat_oesgn['go_p'] * df_stat_oesgn['go_mugal']) / sum(
+        df_stat_oesgn['go_p'])  # Weighted mean of g0 values (weights: go_p)
+    if df_stat_oesgn.shape[0] == 1:  # Only one OEGSN stations measured
+        sig_xm_mugal = df_stat_oesgn['g_sig_oesgn_mugal']
+    else:
+        n = df_stat_oesgn.shape[0]  # Number of observed ÖSGN stations
+        sig_xm_mugal = np.sqrt(((sum(df_stat_oesgn['go_mugal'] ** 2) - ((sum(df_stat_oesgn['go_mugal'])) ** 2 / n)) /
+                                (n * (n - 1))) + (1 / (sum(df_stat_oesgn['go_p']))))
+
+    # Calculation of the absolute g values at all observed stations:
+    stat_df['g_abs_mugal'] = stat_df['g_est_mugal'] + xm_mugal
+    stat_df['sig_g_abs_mugal'] = np.sqrt(sig_xm_mugal ** 2 + stat_df['sig_g_est_mugal'] ** 2)
+    stat_df['verb_mugal'] = stat_df['g_abs_mugal'] - stat_df['g_oesgn_mugal']
+    stat_df['g_abs_full_mugal'] = stat_df['g_abs_mugal'] + 9.8e8  # Get absolute gravity value at station [µGal]
+
+    return stat_df
+
+
+def write_nsb_file(stat_df, instrument_id, path_name_nsb_file):
+    """
+    Schreiben der Input Datei für die NSDB (<session_name>.nsb).
+    :return:
+    """
+    fobj_out = open(path_name_nsb_file, 'w')
+
+    # Loop over stations:
+    for i, values in stat_df.iterrows():
+        out_str = '{:10s} {:8s}  {:9.0f}{:4.0f} {:1s} {:4s}{:5.0f}{:5.0f}\n'\
+            .format(values.punktnummer,
+                    values.date.strftime('%Y%m%d'),
+                    values.g_abs_full_mugal,
+                    values.sig_g_abs_mugal,
+                    dict_gravimeter_KZ_obs_file[instrument_id],
+                    instrument_id,
+                    values.dhb_m * 100,
+                    values.dhf_m * 100,
+                    )
+        fobj_out.write(out_str)
+    fobj_out.close()
+
+
+def create_drift_plot(obs_df, stat_df, poly_coef_dict, save_pdf=True, path_name_save_file=''):
+    """
+    Erstellen eines Drift-Plots.
+    :param obs_df: observation dataframe
+    :param stat_df: station dataframe
+    :param poly_coef_dict: dict with coefficients of drift polanomial
+    :param save_pdf: flag, save plot as PDF?
+    :param path_name_save_file: path and filename for saved plot (e.g. 'data/n1234')
+    :return:
+    """
+    # Check input arguments
+    if save_pdf and (len(path_name_save_file) == 0):
+        print('ERROR: Name for output PDF file (drift plot) is not defined!')
+        exit()
+
+    # Evaluate drift polynomial:
+    pol_degree = len(poly_coef_dict)
+    poly_coef = prep_polyval_coef(poly_coef_dict)
+    dt_h = np.linspace(obs_df.dt_h.min(), obs_df.dt_h.max(), 100)
+    yy_mugal = np.polyval(poly_coef, dt_h)
+
+    fig, ax = plt.subplots()
+    ax.plot(dt_h, yy_mugal, '--', label='Polynom (n={})'.format(pol_degree))
+    for pkt_num in stat_df.punktnummer:
+        # print(pkt_num)
+        df_tmp = obs_df.loc[obs_df['punktnummer'] == pkt_num]
+        g_est = stat_df.loc[stat_df['punktnummer'] == pkt_num].g_est_mugal.values[0]
+        if stat_df.loc[stat_df['punktnummer'] == pkt_num].is_drift_point.bool():
+            label_str = pkt_num + '*'
+        else:
+            label_str = pkt_num
+        ax.plot(df_tmp.dt_h, df_tmp.g_red_mugal - g_est, 'o', label=label_str)
+
+    # - Legend and labels:
+    plt.legend(loc='best')
+    # ax.legend(loc='upper left', bbox_to_anchor=(1, 0.5))
+    ax.grid()
+    plt.title('Drift-Auswertung: {}'.format(name_obs_file))
+    plt.xlabel('Zeit [h]')
+    plt.ylabel('Lesung [µGal]')
+
+    # Save as PDF file:
+    if save_pdf:
+        plt.savefig(path_name_save_file + '_drift.pdf')
+
+    plt.show()
+
+
 # #########################
 # ##### Main function #####
 # #########################
-def main():
-    # Options:
-    path_oesgn_table = './data/'
-    path_obs_file = './data/'
-    name_oesgn_table = 'OESGN.TAB'
-    # name_obs_file = '20200527'
-    name_obs_file = 'n191021_2'
+def main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_path):
 
     # ##### Load data #####
     # ÖSGN Tabelle laden:
     if verbous:
-        print('Read file: {}'.format(path_oesgn_table + name_oesgn_table))
+        print('Datei einlesen: {}'.format(path_oesgn_table + name_oesgn_table))
     df_oesgn = read_oesgn_table(path_oesgn_table + name_oesgn_table)
     if verbous:
         print(' - {} OESGN Stationen geladen.'.format(df_oesgn.shape[0]))
         # print(df_oesgn.info())
     # Messdatei laden:
     if verbous:
-        print('Read file: {}'.format(path_obs_file + name_obs_file))
+        print('Datei einlesen: {}'.format(path_obs_file + name_obs_file))
     obs_dict = read_obs_file(path_obs_file + name_obs_file)
     if verbous:
         print(' - {} Beobachtungen geladen.'.format(obs_dict['obs_df'].shape[0]))
@@ -365,6 +495,7 @@ def main():
         print('Gravimeter-Lesungen mittels VG auf Festpunkt-Niveau reduziert.')
 
     # ### Drift-Korrektur ###
+    # Analog zu Fortran Code DRIFT2011.FOR
     # Berechnungen mittels multipler linearer Regression
     # - 1.) Polynom vom Grad n=1,2,3 an die Lesungen anpassen
     # - 2.) Drift-korrigierte Lesungen bestimmen
@@ -379,45 +510,65 @@ def main():
         print(' - Polynom Koeffizeinten (sig = {:5.2f} µGal):'.format(results_dict['pol_coef_sig_mugal']))
         for degree, value in results_dict['pol_coef'].items():
             print('    b{deg} = {value:9.5f} µGal/h^{deg}'.format(deg=degree + 1, value=value))
-        print(' - Korrigierte Gravimeter-Lesungen:')
-        tmp_df = results_dict['stat_df']
+        print(' - Korrigierte Gravimeter-Lesungen je Station:')
         for i, values in stat_df.iterrows():
             print('    {}: {:12.2f} µGal (sig = {:5.2f} µGal)'.format(values['punktnummer'], values['g_est_mugal'],
-                                                            values['sig_g_est_mugal']))
+                                                                      values['sig_g_est_mugal']))
+
+    # ### Schwere bezogen auf das ÖSGN brechnen ###
+    # - Analog zu Fortan Code SCHWAUS2016.FOR
+    # - Berechnete absolute Schwere an den beobachteten Stationen bezogen auf das Höheniveau des Festpunktes!
+    if verbous:
+        print('Berechnung absoluter Schwere-Werte:')
+        print(' - Lagerung der Drift-korrigierten Lesungen auf {} ÖSGN Stationen'.format(stat_df[stat_df['is_oesgn']
+                                                                                                 == True].shape[0]))
+    stat_df = calc_abs_g(stat_df)
+    if verbous:
+        # Print results:
+        print(' - Ergebnisse:')
+        for i, values in stat_df.iterrows():
+            print('    {}: g = {:12.2f} µGal (sig = {:5.2f} µGal), verb. = {:7.2f} µGal'.format(values['punktnummer'],
+                                        values['g_abs_full_mugal'], values['sig_g_abs_mugal'], values['verb_mugal']))
+
+    # ### Write file for NSDB input ###
+    path_name_nsb_file = out_path + name_obs_file + '.nsb'
+    if verbous:
+        print('NSDB Input Datei schreiben ({})'.format(path_name_nsb_file))
+    write_nsb_file(stat_df, obs_dict['instrument_id'], path_name_nsb_file)
 
     # ### Create Plot ###
+    path_name_drift_plot = out_path + name_obs_file
+    if verbous:
+        print('Drift-Plot erstellen')
+        if flag_save_drift_plot_pdf:
+            print(' - Speichern unter: {}_drift.py'.format(path_name_drift_plot))
 
-    # Evaluate drift polynomial:
-    poly_coef = prep_polyval_coef(results_dict['pol_coef'])
-    dt_h = np.linspace(obs_df.dt_h.min(), obs_df.dt_h.max(), 100)
-    yy_mugal = np.polyval(poly_coef, dt_h)
+    create_drift_plot(obs_df, stat_df, results_dict['pol_coef'],
+                      save_pdf=flag_save_drift_plot_pdf, path_name_save_file=path_name_drift_plot)
 
-    fig, ax = plt.subplots()
-    ax.plot(dt_h, yy_mugal, '--', label='Polynom (n={})'.format(obs_dict['polynomial_degree']))
-    for pkt_num in stat_df.punktnummer:
-        # print(pkt_num)
-        df_tmp = obs_df.loc[obs_df['punktnummer'] == pkt_num]
-        # print(df_tmp)
-        g_est = stat_df.loc[stat_df['punktnummer'] == pkt_num].g_est_mugal.values[0]
-        ax.plot(df_tmp.dt_h, df_tmp.g_red_mugal - g_est, 'o', label=pkt_num)
-
-    # - Legend and labels:
-    plt.legend(loc='best')
-    # ax.legend(loc='upper left', bbox_to_anchor=(1, 0.5))
-    ax.grid()
-    plt.title('Drift-Auswertung: {}'.format(name_obs_file))
-    plt.xlabel('Zeit [h]')
-    plt.ylabel('Lesung [µGal]')
-    plt.show()
-
-    print('...finished!')
+    print('...fertig!')
 
 
 # Start main()
 if __name__ == "__main__":
-    main()
 
-    # Test:
+    path_oesgn_table = './data/'
+    path_obs_file = './data/'
+    name_oesgn_table = 'OESGN.TAB'
+    name_obs_file = '20200527'
+    out_path = ''
+    # name_obs_file = 'n191021_2'
+
+    if len(sys.argv) == 1:
+        print('Eingangsparameter aus dem Python-File bezogen.')
+    elif len(sys.argv) == 2:  # Name of obervation file as input argument
+        name_obs_file = sys.argv[1]
+    else:
+        print('Error: Invalid number of input arguments!')
+        exit()
+
+    # Start Calculations:
+    main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_path)
 
 else:
     # not run as standalone program, but as module
