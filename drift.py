@@ -672,21 +672,6 @@ def adjust_reilly1970(obs_df, stat_df):
     for i in range(num_stations, len(x)):
         print(' - a{}: {:15.3f}'.format(i-num_stations+1, x[i].item()))
 
-    # Test: 20200527
-    # - Datum nur auf 0-059-21
-    # - kein beta geschätzt
-    # => Ergebnis exakt jenes der alten Programme!
-    # array([[8.46105681e+05],
-    #        [8.50529757e+05],
-    #        [8.40866038e+05],
-    #        [8.50385000e+05],
-    #        [-5.35896801e+06],
-    #        [5.26377451e+00]])
-
-    # Alternative:
-
-    pass
-
 
 def adjust_gauss_markoff(obs_df, stat_df, pol_degree=1):
     """
@@ -699,8 +684,8 @@ def adjust_gauss_markoff(obs_df, stat_df, pol_degree=1):
     """
 
     # Options:
-    datum_stations_list = ['0-059-21']
-    # datum_stations_list = []
+    # datum_stations_list = ['0-059-21']
+    datum_stations_list = []
 
     sig0_mugal = 1  # a priori standard deviaiton of unit wheigt of observations [µGal]
     sd_cond_scaling_factor = 1e-1  # Scaling factor for condition "observation2"
@@ -708,8 +693,6 @@ def adjust_gauss_markoff(obs_df, stat_df, pol_degree=1):
 
     # If Sd id not provided in the observation file, use the default value:
     obs_df.loc[obs_df.g_sd_mugal.isna(), 'g_sd_mugal'] = g_sd_defaut_mugal
-
-
 
     stat_df['is_datum'] = False
     obs_df['is_datum'] = False
@@ -836,10 +819,8 @@ def adjust_gauss_markoff(obs_df, stat_df, pol_degree=1):
     if not u.round(10) == num_estimates:
         print('WARNING: Gewichtsreziproke nach Ansermet nicht erfüllt (u = {})!'.format(u))
 
-
-
     # Hauptprobe:
-    # Funktionalr Zusammenhang zwischen den ausgeglichenen Beobachteungen und den ausgeglichenen Unbekannten genau
+    # Funktionaler Zusammenhang zwischen den ausgeglichenen Beobachteungen und den ausgeglichenen Unbekannten genau
     # genug erfüllt?
     w_probe = A.dot(xd) - Ld
     print('Hauptprobe: Max. Widerspuch (Absolutwert) = {}'.format(abs(w_probe).max()))
@@ -876,7 +857,7 @@ def adjust_gauss_markoff(obs_df, stat_df, pol_degree=1):
 def adjust_gauss_markoff_modelled_obs(obs_df, stat_df, pol_degree=1):
     """
     Adjustment of gravity meter observations using a Gauss-Markoff model.
-    WITH A RRIORI Vales fopr the estimates
+    WITH A RRIORI Vales for the estimates
     Estimated parameters:
      - offset and linear drift per instrument
      - gravity at observed stations
@@ -884,17 +865,15 @@ def adjust_gauss_markoff_modelled_obs(obs_df, stat_df, pol_degree=1):
     """
 
     # Options:
-    datum_stations_list = ['0-059-21']
-    # datum_stations_list = []
+    # datum_stations_list = ['0-059-21']
+    datum_stations_list = []
 
     sig0_mugal = 1  # a priori standard deviaiton of unit wheigt of observations [µGal]
-    sd_cond_scaling_factor = 1e-1  # Scaling factor for condition "observation2"
-    g_sd_defaut_mugal = 10  # Default value for the SD of obsrvations
+    sd_cond_scaling_factor = 1e-0  # Scaling factor for conditions ("fictional observations")
+    g_sd_defaut_mugal = 10  # Default value for the SD of observations
 
     # If Sd id not provided in the observation file, use the default value:
     obs_df.loc[obs_df.g_sd_mugal.isna(), 'g_sd_mugal'] = g_sd_defaut_mugal
-
-
 
     stat_df['is_datum'] = False
     obs_df['is_datum'] = False
@@ -971,11 +950,6 @@ def adjust_gauss_markoff_modelled_obs(obs_df, stat_df, pol_degree=1):
     # Vector of a priori parameters X0:
     X0 = np.concatenate((g0, a0, c0), axis=0)  # vertical
 
-
-
-
-
-
     # Weight matrix:
     P = np.diag((sig0_mugal / obs_df['g_sd_mugal'])**2)
 
@@ -999,29 +973,24 @@ def adjust_gauss_markoff_modelled_obs(obs_df, stat_df, pol_degree=1):
     for i_stat, values in stat_df.iterrows():
         if values['is_datum']:
             H[i_col, stat_num_dict[values['punktnummer']]] = 1
-            # h[i_col, 0] = values['g_oesgn_mugal']
-            h[i_col, 0] = 0
+            h[i_col, 0] = values['g_oesgn_mugal']
+            # h[i_col, 0] = 0
             h_sig_mugal[i_col, 0] = sd_obs_min_mugal * sd_cond_scaling_factor
             i_col = i_col + 1
 
     HP = np.diagflat((sig0_mugal / h_sig_mugal)**2)
     P = block_diag(P, HP)
-    # L = np.concatenate((L, h), axis=0)  # vertical
-
-    A1 = np.concatenate((G, -D), axis=1)  # horizontal
-
-    # O-C vector (AG1 (2.31)):
-    L0 = A1.dot(X0)
-    l = L - L0  # AG2: (2.12)
-    l = np.concatenate((l, h), axis=0)  # vertical
     L = np.concatenate((L, h), axis=0)  # vertical
-    L0 = np.concatenate((L0, h), axis=0)  # vertical
-# Noch ein Problem mit den L,L0,l und mir der Bedingung in der letzten Zeile!
 
-
-# #------------------
+    # Modell-Matrix inkl. Bedingungen (fiktive Beobachtungen) in A2
+    A1 = np.concatenate((G, -D), axis=1)  # horizontal
     A2 = np.concatenate((H, Z), axis=1)  # horizontal
     A = np.concatenate((A1, A2), axis=0)  # vertical
+
+    # O-C vector (AG1 (2.31)):
+    L0 = A.dot(X0)
+    l = L - L0  # AG2: (2.12)
+
     ATP = A.transpose().dot(P)
     N = ATP.dot(A)
 
@@ -1060,8 +1029,6 @@ def adjust_gauss_markoff_modelled_obs(obs_df, stat_df, pol_degree=1):
     u = np.trace(P.dot(QLdLd))  # Muss Anzahl der Unbekannten ergeben!
     if not u.round(10) == num_estimates:
         print('WARNING: Gewichtsreziproke nach Ansermet nicht erfüllt (u = {})!'.format(u))
-
-
 
     # Hauptprobe:
     # Funktionalr Zusammenhang zwischen den ausgeglichenen Beobachteungen und den ausgeglichenen Unbekannten genau
@@ -1112,8 +1079,8 @@ def adjust_vermittelnde_beob_mit_bedingungen(obs_df, stat_df, pol_degree=1):
 # ### Anmerkung ###
 # - Ld (ausgeglichene Beobachtungen), mit Drift-Parameter auf Epoche T=0 gerechnet, entspricht genau den
 #   Drift-Ergebnissen der MLR mit Pgm DRIFT2011!!! EXAKT (wenn SD der Beob. als ident angenommen!)!
-#    - D.h.: Unteschiede in der berechneten absoluten ergeben sich durch die Lagrungs-Bedingung!
-#  - Wenn nur ein Punkt zur Lagerung und SD der Beob ident (gleiches Gewicht) => Drift gleich wie bei DRIFT2011!
+#    - D.h.: Unteschiede in der berechneten absoluten ergeben sich durch die Lagerungs-Bedingung (und deren Gewichtung)!
+#  - Wenn nur ein Punkt zur Lagerung und SD der Beob. ident (gleiches Gewicht) => Drift gleich wie bei DRIFT2011!
 
 # ### To Do: ###
 #  - Vermittelnder Ausgleich mit Bedingungsgleichungen
@@ -1128,16 +1095,6 @@ def adjust_vermittelnde_beob_mit_bedingungen(obs_df, stat_df, pol_degree=1):
 #  - Drift-Plot erzeugen
 #  - Korrelationen visualisieren (Plots erstellen) und analysieren!
 #  - Recherche: Kondition einer Matrix, etc. ...
-
-# 0    846105.0
-# 1    850501.0
-# 3    840862.0
-# 2    850385.0
-
-# 0    2-059-32
-# 1    2-059-23
-# 3    2-059-38
-# 2    0-059-21
 
 
 # #########################
@@ -1171,7 +1128,7 @@ def main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_p
     if verbous:
         print('Station info:')
         print(' - Drift Stationen:   {}'.format(stat_df[stat_df['is_drift_point'] == True].shape[0]))
-        print(' - ÖSGN Stationen:    {}'.format(stat_df[stat_df['is_drift_point'] == True].shape[0]))
+        print(' - ÖSGN Stationen:    {}'.format(stat_df[stat_df['is_oesgn'] == True].shape[0]))
         print(' - Stationen gesamt:  {}'.format(stat_df.shape[0]))
         print(' - Mittlere Breite:   {:6.3f}°'.format(stat_df.breite_deg.mean()))
         print(' - Mittlere Länge:    {:6.3f}°'.format(stat_df.laenge_deg.mean()))
@@ -1201,11 +1158,6 @@ def main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_p
     # Vermittelnde Beobachtungen mit Bedgingungsgleichungen:
     # adjust_vermittelnde_beob_mit_bedingungen(obs_df, stat_df, 1)
 
-
-
-
-
-
     print('...fertig!')
 
 
@@ -1218,7 +1170,8 @@ if __name__ == "__main__":
     # name_obs_file = '20200527_tideCorr'
     # name_obs_file = '20200527_sd'
     # name_obs_file = '20200527_2'
-    name_obs_file = '20200527'
+    # name_obs_file = '20200527'
+    name_obs_file = 'n20200701_1'
     out_path = ''
     # name_obs_file = 'n191021_2'
 
