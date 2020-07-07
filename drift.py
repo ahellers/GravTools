@@ -949,7 +949,7 @@ def adjust_gauss_markoff_modelled_obs(obs_df, stat_df, pol_degree=1):
 
     # Vector of a priori parameters X0:
     X0 = np.concatenate((g0, a0, c0), axis=0)  # vertical
-
+''
     # Weight matrix:
     P = np.diag((sig0_mugal / obs_df['g_sd_mugal'])**2)
 
