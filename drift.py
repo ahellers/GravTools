@@ -10,6 +10,7 @@ Benützung: python3 drift.py <Beobachungsdatei (Feldbuch) in Sub-Odner ./data>
 import sys
 import pandas as pd
 import numpy as np
+from scipy.linalg import block_diag
 import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
@@ -99,6 +100,17 @@ def read_obs_file(filename, filepath=''):
 
     obs_data = dict()
 
+    # Check, if the input file contains an additional columns with the tidal correction:
+    flag_tide_corr = False
+    if filename.split('_')[-1] == 'tideCorr':
+        flag_tide_corr = True
+
+    # Check, if the input file contains an additional columns with the tidal correction:
+    flag_sd = False
+    if filename.split('_')[-1] == 'sd':
+        flag_sd = True
+
+
     # Read 5 header lines
     num_of_header_lines = 5
     with open(filepath + filename) as myfile:
@@ -124,11 +136,29 @@ def read_obs_file(filename, filepath=''):
         'dhb_m',
         'dhf_m',
     ]
+
+    if flag_tide_corr:
+        widths.append(8)
+        column_names.append('tide_mugal')
+
+    if flag_sd:
+        widths.append(6)
+        column_names.append('g_sd_mugal')
+
+
+
     df = pd.read_fwf(filepath + filename, widths=widths, header=None, names=column_names, skiprows=5, skipfooter=1,
                      dtype={'zeit': object})
+    if not flag_sd:
+        df['g_sd_mugal'] = np.nan
+    if not flag_tide_corr:
+        df['tide_mugal'] = np.nan
+
     df['zeit'] = pd.to_datetime(date_str + ' ' + df['zeit'] + ' ' + timezone_str, format='%Y %m %d %H.%M %Z')
     df = df.set_index('zeit')  # set 'zeit' as index
     df['g_mugal'] = df['g_mugal'] * 1e3  # Conversion from mGal to muGal
+    df['tide_mugal'] = df['tide_mugal'] * 1e3  # Conversion from mGal to muGal
+    df['g_sd_mugal'] = df['g_sd_mugal'] * 1e3  # Conversion from mGal to muGal
     df['dhb_m'] = df['dhb_m'] * 1e-2  # Conversion from cm to m
     df['dhf_m'] = df['dhf_m'] * 1e-2  # Conversion from cm to m
 
@@ -448,6 +478,668 @@ def create_drift_plot(obs_df, stat_df, poly_coef_dict, save_pdf=True, path_name_
     plt.show()
 
 
+def drift_schwaus(obs_dict, obs_df, stat_df):
+    """
+    Nachbau alelr Brechnungen auf DRIFT2011.FOR und SCHWAUS2016.FOR.
+    :param obs_dict:
+    :param obs_df:
+    :param stat_df:
+    :return:
+    """
+
+    # ### Drift-Korrektur ###
+    # Analog zu Fortran Code DRIFT2011.FOR
+    # Berechnungen mittels multipler linearer Regression
+    # - 1.) Polynom vom Grad n=1,2,3 an die Lesungen anpassen
+    # - 2.) Drift-korrigierte Lesungen bestimmen
+
+    # ### Polynom zur Korrektur der Instrumentendrift vom Grad n anpassen  ###
+    if verbous:
+        print('Schätzung der Drift mit Polynom vom Grad {}:'.format(obs_dict['polynomial_degree']))
+    results_dict = calc_drift_corr_mlr(obs_df, stat_df, obs_dict['polynomial_degree'])
+    stat_df = results_dict['stat_df']
+    if verbous:
+        # Print results:
+        print(' - Polynom Koeffizeinten (sig = {:5.2f} µGal):'.format(results_dict['pol_coef_sig_mugal']))
+        for degree, value in results_dict['pol_coef'].items():
+            print('    b{deg} = {value:9.5f} µGal/h^{deg}'.format(deg=degree + 1, value=value))
+        print(' - Korrigierte Gravimeter-Lesungen je Station:')
+        for i, values in stat_df.iterrows():
+            print('    {}: {:12.2f} µGal (sig = {:5.2f} µGal)'.format(values['punktnummer'], values['g_est_mugal'],
+                                                                      values['sig_g_est_mugal']))
+
+    # ### Schwere bezogen auf das ÖSGN brechnen ###
+    # - Analog zu Fortan Code SCHWAUS2016.FOR
+    # - Berechnete absolute Schwere an den beobachteten Stationen bezogen auf das Höheniveau des Festpunktes!
+    if verbous:
+        print('Berechnung absoluter Schwere-Werte:')
+        print(' - Lagerung der Drift-korrigierten Lesungen auf {} ÖSGN Stationen'.format(stat_df[stat_df['is_oesgn']
+                                                                                                 == True].shape[0]))
+    stat_df = calc_abs_g(stat_df)
+    if verbous:
+        # Print results:
+        print(' - Ergebnisse:')
+        for i, values in stat_df.iterrows():
+            print('    {}: g = {:12.2f} µGal (sig = {:5.2f} µGal), verb. = {:7.2f} µGal'.format(values['punktnummer'],
+                                                                                                values[
+                                                                                                    'g_abs_full_mugal'],
+                                                                                                values[
+                                                                                                    'sig_g_abs_mugal'],
+                                                                                                values['verb_mugal']))
+
+    # ### Write file for NSDB input ###
+    path_name_nsb_file = out_path + name_obs_file + '.nsb'
+    if verbous:
+        print('NSDB Input Datei schreiben ({})'.format(path_name_nsb_file))
+    write_nsb_file(stat_df, obs_dict['instrument_id'], path_name_nsb_file)
+
+    # ### Create Plot ###
+    path_name_drift_plot = out_path + name_obs_file
+    if verbous:
+        print('Drift-Plot erstellen')
+        if flag_save_drift_plot_pdf:
+            print(' - Speichern unter: {}_drift.py'.format(path_name_drift_plot))
+
+    create_drift_plot(obs_df, stat_df, results_dict['pol_coef'],
+                      save_pdf=flag_save_drift_plot_pdf, path_name_save_file=path_name_drift_plot)
+
+
+def adjust_reilly1970(obs_df, stat_df):
+    """
+    Adjustment of gravity meter observations according to Reilly 1970.
+    Estimated parameters:
+     - offset and linear drift per instrument
+     - correction of the calibration constant of each instrument
+     - gravity at observed stations
+    :return:
+    """
+
+    # datum_stations_list = ['0-059-21']
+    datum_stations_list = []
+    stat_df['is_datum'] = False
+    obs_df['is_datum'] = False
+    if not datum_stations_list:  # is not empty
+    # flag_test = False
+    # if flag_test:
+        # All ÖSGN stations are datum stations
+        stat_df['is_datum'] = stat_df.is_oesgn
+        obs_df.loc[~obs_df.g_oesgn_mugal.isna(), 'is_datum'] = True
+    else:
+        # Use datum stations from list:
+        for stat in datum_stations_list:
+            stat_df.loc[stat_df['punktnummer'] == stat, 'is_datum'] = True
+            obs_df.loc[obs_df['punktnummer'] == stat, 'is_datum'] = True
+            # Check, if all datum stationsade ÖSGN stations:
+            if not stat_df[stat_df['punktnummer'] == stat].is_oesgn.bool():
+                print('ERROR: the datum station {} is no ÖSGN station!'.format(stat))
+
+    obs_df = obs_df.sort_values('is_datum')  # Sort: [obs of new stations; obs of datum stations]
+    obs_df = obs_df.reset_index()  # enumeration as index instead of time-tag
+    stat_df = stat_df.sort_values('is_datum')  # Sort: [obs of new stations; obs of datum stations]
+
+    # Lookup-table for station numbers:
+    # - e.g. indicating the position of station-related matrix entries
+    stat_num_dict = stat_df['punktnummer'].to_dict()
+    stat_num_dict = dict((v, k) for k, v in stat_num_dict.items())  # Exchange keys and values
+
+    # Lookup-table for gravimeters:
+    gravimeter_type_dict = {}
+    gravimeter_type = obs_df.gravimeter_typ.unique()
+    for num, grav_type in enumerate(gravimeter_type):
+        gravimeter_type_dict[grav_type] = num
+
+    # Get parameters:
+    num_gravimeter = obs_df.gravimeter_typ.unique().shape[0]
+    num_est_para_per_instr = 2  # number of estimated parameters per gravimeter
+    num_est_instr_para = num_est_para_per_instr * num_gravimeter  # total number of estimated instrument parameters
+    num_obs = obs_df.shape[0]
+    num_stations = stat_df.shape[0]
+    num_datum_stations = stat_df[stat_df['is_datum'] == True].shape[0]  # all ÖSGN stations
+    num_new_stations = num_stations - num_datum_stations
+
+    # Preallocate matices and vectors:
+    P = np.zeros([num_obs, num_stations])
+    Q = np.zeros([num_datum_stations, num_stations])
+    T = np.zeros([num_obs, num_est_instr_para])
+    Z = np.zeros([num_datum_stations, num_est_instr_para])
+    y = np.empty(num_obs)
+    y = y.reshape(-1, 1)
+    y[:] = np.nan
+
+    # Set up vectors:
+    h = stat_df[stat_df.is_datum].g_oesgn_mugal.to_numpy()
+    h = h.reshape(-1, 1)
+
+    # Set up individual matrices:
+    for i_obs, values in obs_df.iterrows():
+        if not values['is_datum']:  # Observed station is not a datum station
+            # print(values['punktnummer'])
+            idx_stat = stat_num_dict[values['punktnummer']]  # Get index of observed station
+            P[i_obs, idx_stat] = 1
+            y[i_obs] = values['g_red_mugal']
+        else:  # Observed station is a datum station
+            y[i_obs] = values['g_red_mugal'] - values['g_oesgn_mugal']
+        for grav_type, idx_start in gravimeter_type_dict.items():
+            T[i_obs, idx_start*num_est_para_per_instr] = 1  # a_k
+            T[i_obs, idx_start * num_est_para_per_instr + 1] = values['dt_h']  # b_k
+            if num_est_para_per_instr == 3:
+                T[i_obs, idx_start * num_est_para_per_instr + 2] = values['g_mugal'] - values['tide_mugal']  # beta_k
+
+    i_col = 0
+    for i_stat, values in stat_df.iterrows():
+        if values['is_datum']:
+            Q[i_col, stat_num_dict[values['punktnummer']]] = 1
+            i_col = i_col + 1
+
+    # combine matrics and build equation system:
+    # - Formulation by Reilly 1970:
+    # N11 = P.transpose().dot(P) + Q.transpose().dot(Q)
+    # N12 = -P.transpose().dot(T)
+    # N21 = -T.transpose().dot(P)
+    # N22 = T.transpose().dot(T)
+    # N1 = np.concatenate((N11, N12), axis=1)
+    # N2 = np.concatenate((N21, N22), axis=1)
+    # N = np.concatenate((N1, N2), axis=0)
+    #
+    # B11 = P.transpose().dot(y) + Q.transpose().dot(h)
+    # B21 = -T.transpose().dot(y)
+    # B = np.concatenate((B11, B21), axis=0)
+    #
+    # # Solve equation system:
+    # N_inv = np.linalg.inv(N)
+    # x = N_inv.dot(B)
+
+    # - Standard formulation (same results as Reilly 1970)
+    A = np.concatenate((np.concatenate((P, -T), axis=1), np.concatenate((Q, Z), axis=1)), axis=0)
+    l = np.concatenate((y, h), axis=0)
+    N = A.transpose().dot(A)
+
+    print(' - Rank of N: {}'.format(np.linalg.matrix_rank(N)))
+    print(' - Rank of A: {}'.format(np.linalg.matrix_rank(A)))
+    print(' - Size of N: {} x {}'.format(N.shape[0], N.shape[0]))
+    print(' - Rangdefizit: {}'.format(N.shape[0] - np.linalg.matrix_rank(N)))
+
+
+    N_inv = np.linalg.inv(N)
+    x = N_inv.dot(A.transpose().dot(l))
+
+    # Retrive and print results:
+    #
+    print('Geschätzte Schwere an Stationen:')
+    for stat, num in stat_num_dict.items():
+        print(' - {}: {:10.3f} µGal'.format(stat, x[num].item()))
+    print('Sonstige Parameter:')
+    for i in range(num_stations, len(x)):
+        print(' - a{}: {:15.3f}'.format(i-num_stations+1, x[i].item()))
+
+    # Test: 20200527
+    # - Datum nur auf 0-059-21
+    # - kein beta geschätzt
+    # => Ergebnis exakt jenes der alten Programme!
+    # array([[8.46105681e+05],
+    #        [8.50529757e+05],
+    #        [8.40866038e+05],
+    #        [8.50385000e+05],
+    #        [-5.35896801e+06],
+    #        [5.26377451e+00]])
+
+    # Alternative:
+
+    pass
+
+
+def adjust_gauss_markoff(obs_df, stat_df, pol_degree=1):
+    """
+    Adjustment of gravity meter observations using a Gauss-Markoff model.
+    Linear problem => Without linearization - no a priori g values required at non-datum stations.
+    Estimated parameters:
+     - offset and linear drift per instrument
+     - gravity at observed stations
+    :return:
+    """
+
+    # Options:
+    datum_stations_list = ['0-059-21']
+    # datum_stations_list = []
+
+    sig0_mugal = 1  # a priori standard deviaiton of unit wheigt of observations [µGal]
+    sd_cond_scaling_factor = 1e-1  # Scaling factor for condition "observation2"
+    g_sd_defaut_mugal = 10  # Default value for the SD of obsrvations
+
+    # If Sd id not provided in the observation file, use the default value:
+    obs_df.loc[obs_df.g_sd_mugal.isna(), 'g_sd_mugal'] = g_sd_defaut_mugal
+
+
+
+    stat_df['is_datum'] = False
+    obs_df['is_datum'] = False
+    if not datum_stations_list:  # is not empty
+        # All ÖSGN stations are datum stations
+        stat_df['is_datum'] = stat_df.is_oesgn
+        obs_df.loc[~obs_df.g_oesgn_mugal.isna(), 'is_datum'] = True
+    else:
+        # Use datum stations from list:
+        for stat in datum_stations_list:
+            stat_df.loc[stat_df['punktnummer'] == stat, 'is_datum'] = True
+            obs_df.loc[obs_df['punktnummer'] == stat, 'is_datum'] = True
+            # Check, if all datum stationsade ÖSGN stations:
+            if not stat_df[stat_df['punktnummer'] == stat].is_oesgn.bool():
+                print('ERROR: the datum station {} is no ÖSGN station!'.format(stat))
+
+    # obs_df = obs_df.sort_values('is_datum')  # Sort: [obs of new stations; obs of datum stations]
+    obs_df = obs_df.reset_index()  # enumeration as index instead of time-tag
+    # stat_df = stat_df.sort_values('is_datum')  # Sort: [obs of new stations; obs of datum stations]
+
+    # Lookup-table for station numbers:
+    # - e.g. indicating the position of station-related matrix entries
+    stat_num_dict = stat_df['punktnummer'].to_dict()
+    stat_num_dict = dict((v, k) for k, v in stat_num_dict.items())  # Exchange keys and values
+
+    # Lookup-table for gravimeters:
+    gravimeter_type_dict = {}
+    gravimeter_type = obs_df.gravimeter_typ.unique()
+    for num, grav_type in enumerate(gravimeter_type):
+        gravimeter_type_dict[grav_type] = num
+
+    # Get parameters:
+    num_gravimeter = obs_df.gravimeter_typ.unique().shape[0]
+    num_est_para_per_instr = pol_degree+1  # number of estimated parameters per gravimeter
+    num_est_instr_para = num_est_para_per_instr * num_gravimeter  # total number of estimated instrument parameters
+    num_obs = obs_df.shape[0]
+    num_stations = stat_df.shape[0]
+    num_datum_stations = stat_df[stat_df['is_datum'] == True].shape[0]  # all ÖSGN stations
+    num_new_stations = num_stations - num_datum_stations
+    num_estimates = num_est_instr_para + num_stations
+    degree_of_freedom = num_obs + num_datum_stations - num_estimates  # num_datum_stations = num of conditions
+
+    # Preallocate matices and vectors:
+    G = np.zeros([num_obs, num_stations])
+    D = np.zeros([num_obs, num_est_instr_para])
+    Z = np.zeros([num_datum_stations, num_est_instr_para])
+    H = np.zeros([num_datum_stations, num_stations])
+    L = np.empty(num_obs)
+    L = L.reshape(-1, 1)
+    L[:] = np.nan
+    h = np.empty(num_datum_stations)
+    h = h.reshape(-1, 1)
+    h[:] = np.nan
+
+    # Weight matrix:
+    P = np.diag((sig0_mugal / obs_df['g_sd_mugal'])**2)
+
+    # Set up individual matrices:
+    for i_obs, values in obs_df.iterrows():
+        # print(values['punktnummer'])
+        idx_stat = stat_num_dict[values['punktnummer']]  # Get index of observed station
+        G[i_obs, idx_stat] = 1
+        L[i_obs] = values['g_red_mugal']
+        for grav_type, idx_start in gravimeter_type_dict.items():
+            for i_deg in range(0, pol_degree+1):
+                # print(i_deg)
+                D[i_obs, idx_start*num_est_para_per_instr + i_deg] = values['dt_h']**i_deg  # a_k
+
+    # Conditions:
+    i_col = 0
+    h_sig_mugal = np.empty(num_datum_stations)
+    h_sig_mugal = h_sig_mugal.reshape(-1, 1)
+    h_sig_mugal[:] = np.nan
+    sd_obs_min_mugal = obs_df['g_sd_mugal'].min()
+    for i_stat, values in stat_df.iterrows():
+        if values['is_datum']:
+            H[i_col, stat_num_dict[values['punktnummer']]] = 1
+            h[i_col, 0] = values['g_oesgn_mugal']
+            h_sig_mugal[i_col, 0] = sd_obs_min_mugal * sd_cond_scaling_factor
+            i_col = i_col + 1
+
+    HP = np.diagflat((sig0_mugal / h_sig_mugal)**2)
+    P = block_diag(P, HP)
+    L = np.concatenate((L, h), axis=0)  # vertical
+
+    A1 = np.concatenate((G, -D), axis=1)  # horizontal
+    A2 = np.concatenate((H, Z), axis=1)  # horizontal
+    A = np.concatenate((A1, A2), axis=0)  # vertical
+    ATP = A.transpose().dot(P)
+    N = ATP.dot(A)
+
+    print(' - Defree of Freedom {}'.format(degree_of_freedom))
+    print(' - Number of estimates: {}'.format(num_estimates))
+    print(' - Rank of N: {}'.format(np.linalg.matrix_rank(N)))
+    print(' - Condition of N: {}'.format(np.linalg.cond(N)))
+    print(' - Determinate of N: {}'.format(np.linalg.det(N)))
+    print(' - Rank of A: {}'.format(np.linalg.matrix_rank(A)))
+    print(' - Size of N: {} x {}'.format(N.shape[0], N.shape[0]))
+    print(' - Rangdefizit: {}'.format(N.shape[0] - np.linalg.matrix_rank(N)))
+
+    b = ATP.dot(L)
+    N_inv = np.linalg.inv(N)
+    xd = N_inv.dot(b)  # Ausgeglichene Unbekannte
+
+    v = A.dot(N_inv).dot(ATP).dot(L) - L  # Verbessungeruen, lt. AG1 Equ. (2.40)
+    Ld = L + v  # Ausgeglichenen Beobachtungen, lt. AG1 Equ. (2.6)
+
+    # Stochastisches Modell a posteriori:
+    Qxdxd = N_inv
+    QLdLd = A.dot(N_inv).dot(A.transpose())
+
+    # Empirische Varianz der Gewichtseinheit (a posteriori):
+    s02 = (v.transpose().dot(P).dot(v)) / degree_of_freedom  # AG1 (2.99)
+
+    # Kovarianz-Matritzen a posteriori:
+    Cxdxd = s02 * Qxdxd
+    CLdLd = s02 * QLdLd
+
+    sig_xd = np.sqrt(np.diag(Cxdxd))
+    sig_LD = np.sqrt(np.diag(CLdLd))
+
+    # Gewichtsreziproke nach Ansermet AG1 (2.74)
+    u = np.trace(P.dot(QLdLd))  # Muss Anzahl der Unbekannten ergeben!
+    if not u.round(10) == num_estimates:
+        print('WARNING: Gewichtsreziproke nach Ansermet nicht erfüllt (u = {})!'.format(u))
+
+
+
+    # Hauptprobe:
+    # Funktionalr Zusammenhang zwischen den ausgeglichenen Beobachteungen und den ausgeglichenen Unbekannten genau
+    # genug erfüllt?
+    w_probe = A.dot(xd) - Ld
+    print('Hauptprobe: Max. Widerspuch (Absolutwert) = {}'.format(abs(w_probe).max()))
+
+    print('Empirische Varianz der Gewichtseinheit (a posteriori) = {}'.format(s02.item()))
+
+    # Ausgeglichene Beobachtungen (inkl. Std.Abw. a posteriori):
+    print('Ausgeglichene Beobachtungen (Std.Abw.):')
+    for i_obs, values in obs_df.iterrows():
+        if values.is_datum:
+            print(' - {:5.2f}h @ {}: {:12.3f} ({:6.3f}) µGal; v = {:8.3f} µGal *'.format(values['dt_h'],
+                                                                                   values['punktnummer'],
+                                                                                   Ld[i_obs].item(),
+                                                                                   sig_LD[i_obs].item(),
+                                                                                   v[i_obs].item()))
+        else:
+            print(' - {:5.2f}h @ {}: {:12.3f} ({:6.3f}) µGal; v = {:8.3f} µGal'.format(values['dt_h'],
+                                                                                         values['punktnummer'],
+                                                                                         Ld[i_obs].item(),
+                                                                                         sig_LD[i_obs].item(),
+                                                                                         v[i_obs].item()))
+
+    # Retrive and print results:
+    print('Geschätzte Schwere an Stationen (Std.Abw.):')
+    for stat, num in stat_num_dict.items():
+        print(' - {}: {:10.3f} µGal ({:6.3f} µGal)'.format(stat, xd[num].item(), sig_xd[num].item()))
+    print('Sonstige Parameter (Std.Abw.):')
+    for i in range(num_stations, len(xd)):
+        print(' - a{}: {:15.3f} ({:6.3f})'.format(i-num_stations, xd[i].item(), sig_xd[i].item()))
+
+    pass
+
+
+def adjust_gauss_markoff_modelled_obs(obs_df, stat_df, pol_degree=1):
+    """
+    Adjustment of gravity meter observations using a Gauss-Markoff model.
+    WITH A RRIORI Vales fopr the estimates
+    Estimated parameters:
+     - offset and linear drift per instrument
+     - gravity at observed stations
+    :return:
+    """
+
+    # Options:
+    datum_stations_list = ['0-059-21']
+    # datum_stations_list = []
+
+    sig0_mugal = 1  # a priori standard deviaiton of unit wheigt of observations [µGal]
+    sd_cond_scaling_factor = 1e-1  # Scaling factor for condition "observation2"
+    g_sd_defaut_mugal = 10  # Default value for the SD of obsrvations
+
+    # If Sd id not provided in the observation file, use the default value:
+    obs_df.loc[obs_df.g_sd_mugal.isna(), 'g_sd_mugal'] = g_sd_defaut_mugal
+
+
+
+    stat_df['is_datum'] = False
+    obs_df['is_datum'] = False
+    if not datum_stations_list:  # is not empty
+        # All ÖSGN stations are datum stations
+        stat_df['is_datum'] = stat_df.is_oesgn
+        obs_df.loc[~obs_df.g_oesgn_mugal.isna(), 'is_datum'] = True
+    else:
+        # Use datum stations from list:
+        for stat in datum_stations_list:
+            stat_df.loc[stat_df['punktnummer'] == stat, 'is_datum'] = True
+            obs_df.loc[obs_df['punktnummer'] == stat, 'is_datum'] = True
+            # Check, if all datum stationsade ÖSGN stations:
+            if not stat_df[stat_df['punktnummer'] == stat].is_oesgn.bool():
+                print('ERROR: the datum station {} is no ÖSGN station!'.format(stat))
+
+    # obs_df = obs_df.sort_values('is_datum')  # Sort: [obs of new stations; obs of datum stations]
+    obs_df = obs_df.reset_index()  # enumeration as index instead of time-tag
+    # stat_df = stat_df.sort_values('is_datum')  # Sort: [obs of new stations; obs of datum stations]
+
+    # Lookup-table for station numbers:
+    # - e.g. indicating the position of station-related matrix entries
+    stat_num_dict = stat_df['punktnummer'].to_dict()
+    stat_num_dict = dict((v, k) for k, v in stat_num_dict.items())  # Exchange keys and values
+
+    # Lookup-table for gravimeters:
+    gravimeter_type_dict = {}
+    gravimeter_type = obs_df.gravimeter_typ.unique()
+    for num, grav_type in enumerate(gravimeter_type):
+        gravimeter_type_dict[grav_type] = num
+
+    # Get parameters:
+    num_gravimeter = obs_df.gravimeter_typ.unique().shape[0]
+    num_est_para_per_instr = pol_degree+1  # number of estimated parameters per gravimeter
+    num_est_instr_para = num_est_para_per_instr * num_gravimeter  # total number of estimated instrument parameters
+    num_obs = obs_df.shape[0]
+    num_stations = stat_df.shape[0]
+    num_datum_stations = stat_df[stat_df['is_datum'] == True].shape[0]  # all ÖSGN stations
+    num_new_stations = num_stations - num_datum_stations
+    num_estimates = num_est_instr_para + num_stations
+    degree_of_freedom = num_obs + num_datum_stations - num_estimates  # num_datum_stations = num of conditions
+
+    # Preallocate matices and vectors:
+    G = np.zeros([num_obs, num_stations])
+    D = np.zeros([num_obs, num_est_instr_para])
+    Z = np.zeros([num_datum_stations, num_est_instr_para])
+    H = np.zeros([num_datum_stations, num_stations])
+    L = np.empty(num_obs)
+    L = L.reshape(-1, 1)
+    L[:] = np.nan
+    h = np.empty(num_datum_stations)
+    h = h.reshape(-1, 1)
+    h[:] = np.nan
+
+    # ### Model computed observations: ###
+
+    # A priori gravity at observed stations:
+    stat_df['g_0_mugal'] = stat_df['g_oesgn_mugal']  # Auf ÖSGN Werte setzen, wenn möglich
+    # - Wenn kein apriori g-Wert vorhanden => Auf mittelwert der beobachteten ÖSGN-Punkte setzen
+    #   - Besser wäre: Interpoliren, g-Wert vom nächsten Punkt mit VG, etc.
+    stat_df.loc[stat_df['g_0_mugal'].isna(), 'g_0_mugal'] = stat_df['g_oesgn_mugal'].mean()
+    g0 = stat_df.g_0_mugal.to_numpy()
+    g0 = g0.reshape(-1, 1)  # vertical vector
+
+    # A priori coefficients of drit polynomial:
+    c0 = np.zeros([pol_degree, 1])
+
+    # a priori gravimeter reading offset a0:
+    # - Difference between gravimeter reading and a priori gravity at first observed Datum station
+    first_datum_obs = obs_df[obs_df['is_datum'] == True].iloc[0]
+    a0 = stat_df[stat_df['punktnummer'] == first_datum_obs.punktnummer].g_oesgn_mugal - first_datum_obs.g_red_mugal
+    a0 = a0.to_numpy().reshape(-1, 1)  # vertical vector
+
+    # Vector of a priori parameters X0:
+    X0 = np.concatenate((g0, a0, c0), axis=0)  # vertical
+
+
+
+
+
+
+    # Weight matrix:
+    P = np.diag((sig0_mugal / obs_df['g_sd_mugal'])**2)
+
+    # Set up individual matrices:
+    for i_obs, values in obs_df.iterrows():
+        # print(values['punktnummer'])
+        idx_stat = stat_num_dict[values['punktnummer']]  # Get index of observed station
+        G[i_obs, idx_stat] = 1
+        L[i_obs] = values['g_red_mugal']
+        for grav_type, idx_start in gravimeter_type_dict.items():
+            for i_deg in range(0, pol_degree+1):
+                # print(i_deg)
+                D[i_obs, idx_start*num_est_para_per_instr + i_deg] = values['dt_h']**i_deg  # a_k
+
+    # Conditions:
+    i_col = 0
+    h_sig_mugal = np.empty(num_datum_stations)
+    h_sig_mugal = h_sig_mugal.reshape(-1, 1)
+    h_sig_mugal[:] = np.nan
+    sd_obs_min_mugal = obs_df['g_sd_mugal'].min()
+    for i_stat, values in stat_df.iterrows():
+        if values['is_datum']:
+            H[i_col, stat_num_dict[values['punktnummer']]] = 1
+            # h[i_col, 0] = values['g_oesgn_mugal']
+            h[i_col, 0] = 0
+            h_sig_mugal[i_col, 0] = sd_obs_min_mugal * sd_cond_scaling_factor
+            i_col = i_col + 1
+
+    HP = np.diagflat((sig0_mugal / h_sig_mugal)**2)
+    P = block_diag(P, HP)
+    # L = np.concatenate((L, h), axis=0)  # vertical
+
+    A1 = np.concatenate((G, -D), axis=1)  # horizontal
+
+    # O-C vector (AG1 (2.31)):
+    L0 = A1.dot(X0)
+    l = L - L0  # AG2: (2.12)
+    l = np.concatenate((l, h), axis=0)  # vertical
+    L = np.concatenate((L, h), axis=0)  # vertical
+    L0 = np.concatenate((L0, h), axis=0)  # vertical
+# Noch ein Problem mit den L,L0,l und mir der Bedingung in der letzten Zeile!
+
+
+# #------------------
+    A2 = np.concatenate((H, Z), axis=1)  # horizontal
+    A = np.concatenate((A1, A2), axis=0)  # vertical
+    ATP = A.transpose().dot(P)
+    N = ATP.dot(A)
+
+    print(' - Defree of Freedom {}'.format(degree_of_freedom))
+    print(' - Number of estimates: {}'.format(num_estimates))
+    print(' - Rank of N: {}'.format(np.linalg.matrix_rank(N)))
+    print(' - Condition of N: {}'.format(np.linalg.cond(N)))
+    print(' - Determinate of N: {}'.format(np.linalg.det(N)))
+    print(' - Rank of A: {}'.format(np.linalg.matrix_rank(A)))
+    print(' - Size of N: {} x {}'.format(N.shape[0], N.shape[0]))
+    print(' - Rangdefizit: {}'.format(N.shape[0] - np.linalg.matrix_rank(N)))
+
+    b = ATP.dot(l)  # AG1 (2.37)
+    N_inv = np.linalg.inv(N)
+    xd = N_inv.dot(b)  # Ausgeglichene Unbekannte # AG1 (2.37)
+    Xd = X0 + xd  # AG1 (2.7)
+
+    v = A.dot(N_inv).dot(ATP).dot(l) - l  # Verbessungeruen, lt. AG1 Equ. (2.40)
+    Ld = L + v  # Ausgeglichenen Beobachtungen, lt. AG1 Equ. (2.6)
+
+    # Stochastisches Modell a posteriori:
+    Qxdxd = N_inv
+    QLdLd = A.dot(N_inv).dot(A.transpose())
+
+    # Empirische Varianz der Gewichtseinheit (a posteriori):
+    s02 = (v.transpose().dot(P).dot(v)) / degree_of_freedom  # AG1 (2.99)
+
+    # Kovarianz-Matritzen a posteriori:
+    Cxdxd = s02 * Qxdxd
+    CLdLd = s02 * QLdLd
+
+    sig_xd = np.sqrt(np.diag(Cxdxd))
+    sig_Ld = np.sqrt(np.diag(CLdLd))
+
+    # Gewichtsreziproke nach Ansermet AG1 (2.74)
+    u = np.trace(P.dot(QLdLd))  # Muss Anzahl der Unbekannten ergeben!
+    if not u.round(10) == num_estimates:
+        print('WARNING: Gewichtsreziproke nach Ansermet nicht erfüllt (u = {})!'.format(u))
+
+
+
+    # Hauptprobe:
+    # Funktionalr Zusammenhang zwischen den ausgeglichenen Beobachteungen und den ausgeglichenen Unbekannten genau
+    # genug erfüllt?
+    w_probe = A.dot(Xd) - Ld
+    print('Hauptprobe: Max. Widerspuch (Absolutwert) = {}'.format(abs(w_probe).max()))
+
+    print('Empirische Varianz der Gewichtseinheit (a posteriori) = {}'.format(s02.item()))
+
+    # Ausgeglichene Beobachtungen (inkl. Std.Abw. a posteriori):
+    print('Ausgeglichene Beobachtungen (Std.Abw.):')
+    for i_obs, values in obs_df.iterrows():
+        if values.is_datum:
+            print(' - {:5.2f}h @ {}: {:12.3f} ({:6.3f}) µGal; v = {:8.3f} µGal *'.format(values['dt_h'],
+                                                                                   values['punktnummer'],
+                                                                                   Ld[i_obs].item(),
+                                                                                   sig_Ld[i_obs].item(),
+                                                                                   v[i_obs].item()))
+        else:
+            print(' - {:5.2f}h @ {}: {:12.3f} ({:6.3f}) µGal; v = {:8.3f} µGal'.format(values['dt_h'],
+                                                                                         values['punktnummer'],
+                                                                                         Ld[i_obs].item(),
+                                                                                         sig_Ld[i_obs].item(),
+                                                                                         v[i_obs].item()))
+
+    # Retrive and print results:
+    print('Geschätzte Schwere an Stationen (Std.Abw.):')
+    for stat, num in stat_num_dict.items():
+        print(' - {}: {:10.3f} µGal ({:6.3f} µGal)'.format(stat, Xd[num].item(), sig_xd[num].item()))
+    print('Sonstige Parameter (Std.Abw.):')
+    for i in range(num_stations, len(xd)):
+        print(' - a{}: {:15.3f} ({:6.3f})'.format(i-num_stations, Xd[i].item(), sig_xd[i].item()))
+
+    pass
+
+def adjust_vermittelnde_beob_mit_bedingungen(obs_df, stat_df, pol_degree=1):
+    """
+    Adjustment of gravity meter observations using a vermittelnde Beobachtungen mit Bedingungsgleichungen
+    See: AG1, pp.16-17
+    Linear problem => Without linearization - no a priori g values required at non-datum stations.
+    Estimated parameters:
+     - offset and linear drift per instrument
+     - gravity at observed stations
+    :return:
+    """
+    pass
+
+# ### Anmerkung ###
+# - Ld (ausgeglichene Beobachtungen), mit Drift-Parameter auf Epoche T=0 gerechnet, entspricht genau den
+#   Drift-Ergebnissen der MLR mit Pgm DRIFT2011!!! EXAKT (wenn SD der Beob. als ident angenommen!)!
+#    - D.h.: Unteschiede in der berechneten absoluten ergeben sich durch die Lagrungs-Bedingung!
+#  - Wenn nur ein Punkt zur Lagerung und SD der Beob ident (gleiches Gewicht) => Drift gleich wie bei DRIFT2011!
+
+# ### To Do: ###
+#  - Vermittelnder Ausgleich mit Bedingungsgleichungen
+#    - Idente Erfebnisse wie mit fiktiven Beobachtungen?
+#  - "Datumsfestlgung" nach Thaller
+#    - Idente Ergebniss zu Vermittelnder Ausgeleich mit Bedingungsgleichungen?
+#  - Bedingungsgleichung definieren, um Ergebnis von SCHWAUS2016.FOR nachzubilden!
+#    - Zweck: Genauigkeitsinformation der Stationskooridnaten nutzen!
+#  - Wie a priori SD der Datumsstationen nutzen?
+#    - Gewichtung bei der Lagerung
+#    - Über "Fehlerfortpflanzung" Genauigkeit a posteriori bestimmen!
+#  - Drift-Plot erzeugen
+#  - Korrelationen visualisieren (Plots erstellen) und analysieren!
+#  - Recherche: Kondition einer Matrix, etc. ...
+
+# 0    846105.0
+# 1    850501.0
+# 3    840862.0
+# 2    850385.0
+
+# 0    2-059-32
+# 1    2-059-23
+# 3    2-059-38
+# 2    0-059-21
+
+
 # #########################
 # ##### Main function #####
 # #########################
@@ -494,57 +1186,25 @@ def main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_p
     if verbous:
         print('Gravimeter-Lesungen mittels VG auf Festpunkt-Niveau reduziert.')
 
-    # ### Drift-Korrektur ###
-    # Analog zu Fortran Code DRIFT2011.FOR
-    # Berechnungen mittels multipler linearer Regression
-    # - 1.) Polynom vom Grad n=1,2,3 an die Lesungen anpassen
-    # - 2.) Drift-korrigierte Lesungen bestimmen
+    # ### DRIFT2011 und SCHWAUS2016 ###
+    # drift_schwaus(obs_dict, obs_df, stat_df)
 
-    # ### Polynom zur Korrektur der Instrumentendrift vom Grad n anpassen  ###
-    if verbous:
-        print('Schätzung der Drift mit Polynom vom Grad {}:'.format(obs_dict['polynomial_degree']))
-    results_dict = calc_drift_corr_mlr(obs_df, stat_df, obs_dict['polynomial_degree'])
-    stat_df = results_dict['stat_df']
-    if verbous:
-        # Print results:
-        print(' - Polynom Koeffizeinten (sig = {:5.2f} µGal):'.format(results_dict['pol_coef_sig_mugal']))
-        for degree, value in results_dict['pol_coef'].items():
-            print('    b{deg} = {value:9.5f} µGal/h^{deg}'.format(deg=degree + 1, value=value))
-        print(' - Korrigierte Gravimeter-Lesungen je Station:')
-        for i, values in stat_df.iterrows():
-            print('    {}: {:12.2f} µGal (sig = {:5.2f} µGal)'.format(values['punktnummer'], values['g_est_mugal'],
-                                                                      values['sig_g_est_mugal']))
+    # Adjustment
+    # adjust_reilly1970(obs_df, stat_df)
 
-    # ### Schwere bezogen auf das ÖSGN brechnen ###
-    # - Analog zu Fortan Code SCHWAUS2016.FOR
-    # - Berechnete absolute Schwere an den beobachteten Stationen bezogen auf das Höheniveau des Festpunktes!
-    if verbous:
-        print('Berechnung absoluter Schwere-Werte:')
-        print(' - Lagerung der Drift-korrigierten Lesungen auf {} ÖSGN Stationen'.format(stat_df[stat_df['is_oesgn']
-                                                                                                 == True].shape[0]))
-    stat_df = calc_abs_g(stat_df)
-    if verbous:
-        # Print results:
-        print(' - Ergebnisse:')
-        for i, values in stat_df.iterrows():
-            print('    {}: g = {:12.2f} µGal (sig = {:5.2f} µGal), verb. = {:7.2f} µGal'.format(values['punktnummer'],
-                                        values['g_abs_full_mugal'], values['sig_g_abs_mugal'], values['verb_mugal']))
+    # Gauss-Markoff model
+    adjust_gauss_markoff(obs_df, stat_df, 1)
 
-    # ### Write file for NSDB input ###
-    path_name_nsb_file = out_path + name_obs_file + '.nsb'
-    if verbous:
-        print('NSDB Input Datei schreiben ({})'.format(path_name_nsb_file))
-    write_nsb_file(stat_df, obs_dict['instrument_id'], path_name_nsb_file)
+    # Gauss - Markoff model with computed observatons and linearization:
+    adjust_gauss_markoff_modelled_obs(obs_df, stat_df, 1)
 
-    # ### Create Plot ###
-    path_name_drift_plot = out_path + name_obs_file
-    if verbous:
-        print('Drift-Plot erstellen')
-        if flag_save_drift_plot_pdf:
-            print(' - Speichern unter: {}_drift.py'.format(path_name_drift_plot))
+    # Vermittelnde Beobachtungen mit Bedgingungsgleichungen:
+    # adjust_vermittelnde_beob_mit_bedingungen(obs_df, stat_df, 1)
 
-    create_drift_plot(obs_df, stat_df, results_dict['pol_coef'],
-                      save_pdf=flag_save_drift_plot_pdf, path_name_save_file=path_name_drift_plot)
+
+
+
+
 
     print('...fertig!')
 
@@ -555,6 +1215,9 @@ if __name__ == "__main__":
     path_oesgn_table = './data/'
     path_obs_file = './data/'
     name_oesgn_table = 'OESGN.TAB'
+    # name_obs_file = '20200527_tideCorr'
+    # name_obs_file = '20200527_sd'
+    # name_obs_file = '20200527_2'
     name_obs_file = '20200527'
     out_path = ''
     # name_obs_file = 'n191021_2'
