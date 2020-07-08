@@ -1164,8 +1164,8 @@ def main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_p
 # Start main()
 if __name__ == "__main__":
 
-    path_oesgn_table = './data/'
-    path_obs_file = './data/'
+    path_oesgn_table = '../data/'
+    path_obs_file = '../data/'
     name_oesgn_table = 'OESGN.TAB'
     # name_obs_file = '20200527_tideCorr'
     # name_obs_file = '20200527_sd'
