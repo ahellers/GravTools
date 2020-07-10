@@ -38,3 +38,14 @@ Replacement for the currently used fortran (77) program "drift2011". In the firs
 
 drift fits a polynomial of degree 1 to n (commonly 1 to 3) to gravity observations (tide corrected readings of the relative gravimeter CG5 (and others)) using multiple linear regression (L2 norm optimization).
 
+
+
+# Changelog
+
+
+# To Do
+
+
+# Guidlines
+
+The API reference is created with sphinx (https://www.sphinx-doc.org/).
