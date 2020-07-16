@@ -1,0 +1,19 @@
+# ### Anmerkung ###
+# - Ld (ausgeglichene Beobachtungen), mit Drift-Parameter auf Epoche T=0 gerechnet, entspricht genau den
+#   Drift-Ergebnissen der MLR mit Pgm DRIFT2011!!! EXAKT (wenn SD der Beob. als ident angenommen!)!
+#    - D.h.: Unteschiede in der berechneten absoluten ergeben sich durch die Lagerungs-Bedingung (und deren Gewichtung)!
+#  - Wenn nur ein Punkt zur Lagerung und SD der Beob. ident (gleiches Gewicht) => Drift gleich wie bei DRIFT2011!
+
+# ### To Do: ###
+#  - Vermittelnder Ausgleich mit Bedingungsgleichungen
+#    - Idente Erfebnisse wie mit fiktiven Beobachtungen?
+#  - "Datumsfestlgung" nach Thaller
+#    - Idente Ergebniss zu Vermittelnder Ausgeleich mit Bedingungsgleichungen?
+#  - Bedingungsgleichung definieren, um Ergebnis von SCHWAUS2016.FOR nachzubilden!
+#    - Zweck: Genauigkeitsinformation der Stationskooridnaten nutzen!
+#  - Wie a priori SD der Datumsstationen nutzen?
+#    - Gewichtung bei der Lagerung
+#    - Über "Fehlerfortpflanzung" Genauigkeit a posteriori bestimmen!
+#  - Drift-Plot erzeugen
+#  - Korrelationen visualisieren (Plots erstellen) und analysieren!
+#  - Recherche: Kondition einer Matrix, etc. ...
