@@ -62,9 +62,11 @@ def calc_abs_g(stat_df):
     return stat_df
 
 
-def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_file, out_path=''):
+def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_file, out_path='',
+                  skalierung=None, date_str='', timezone_str=''):
     """
     Nachbau alelr Brechnungen auf DRIFT2011.FOR und SCHWAUS2016.FOR.
+
     :param obs_dict:
     :param obs_df:
     :param stat_df:
@@ -129,6 +131,16 @@ def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_fi
                             session_name=name_obs_file,
                             path_save_file=out_path)
 
+    if options.flag_create_schwaus_protocol:
+        output.write_schwaus_protcol(obs_df=obs_df,
+                                     stat_df=stat_df,
+                                     pol_coef=results_dict['pol_coef'],
+                                     pol_coef_sig_mugal=results_dict['pol_coef_sig_mugal'],
+                                     session_name=name_obs_file,
+                                     path_save_file=out_path,
+                                     instrument_id=instrument_id,
+                                     skalierung=skalierung)
+
 
 def main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_path):
 
@@ -142,7 +154,10 @@ def main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_p
                   polynomial_degree=obs_info_dict['polynomial_degree'],
                   instrument_id=obs_info_dict['instrument_id'],
                   name_obs_file=obs_info_dict['filename'],
-                  out_path=out_path)
+                  out_path=out_path,
+                  skalierung=obs_info_dict['skalierung'],
+                  date_str=obs_info_dict['date_str'],
+                  timezone_str=obs_info_dict['timezone_str'])
 
     print('...fertig!')
 
@@ -158,7 +173,7 @@ if __name__ == "__main__":
         name_obs_file = options.name_obs_file
         out_path = options.out_path
 
-    elif len(sys.argv) == 2:  # Name of obervation file as input argument
+    elif len(sys.argv) == 2:  # Name of observation file as input argument
         name_obs_file = sys.argv[1]
         # Default-parameters from options-file:
         path_oesgn_table = options.path_oesgn_table

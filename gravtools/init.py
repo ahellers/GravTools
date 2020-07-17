@@ -239,7 +239,7 @@ def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_o
     # ### Dataframe mit Stationsliste erzeugen: ###
     stat_df = get_station_df(obs_df, df_oesgn)
     if options.verbous:
-        print('Station info:')
+        print('Stations info:')
         print(' - Drift Stationen:   {}'.format(stat_df[stat_df['is_drift_point'] == True].shape[0]))
         print(' - ÖSGN Stationen:    {}'.format(stat_df[stat_df['is_oesgn'] == True].shape[0]))
         print(' - Stationen gesamt:  {}'.format(stat_df.shape[0]))

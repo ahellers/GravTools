@@ -1,0 +1,19 @@
+### Protokoll zur Gravimetrie Auswertung (2020-07-17, 12:49) ###
+
+ - Messdatei:          n20200701_1
+   - Start der Messung:  2020-07-01, 07:25 [UTC]
+   - Ende der Messung:   2020-07-01, 14:13 [UTC]
+   - Messdauer:          0 Tage, 6 h, 48 min
+   - Anz. Beobachtungen: 13 (1.9/h)
+   - Skalierung:         N
+   - Annahme: Beobachtungen bereits Gezeiten-korrigiert!
+   - Beobachtungen mittels VG (und dhf, dhb) auf Festpunkt-Niveau reduziert. - Gravimeter:         CG5
+   - Bezugshöhen (dhf, dhf) korrigiert um: -21.1 cm
+ - Stationen gesamt:   5
+   - Drift Stationen:    5
+   - ÖSGN Stationen:     2
+   - Mittlere Breite:    48.244°
+   - Mittlere Länge:     16.350°
+
+### Drift-Korrektur ###
+ - Anpassung eines Drift-Polynoms (Grad 1) mittels multipler linearer Regression.

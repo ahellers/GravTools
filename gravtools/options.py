@@ -30,6 +30,7 @@ dict_gravimeter_KZ_obs_file = {
 vg_default = 308.6  # muGal/m
 verbous = True
 flag_save_drift_plot_pdf = True
+flag_create_schwaus_protocol = True
 
 # Default names and fielpaths of input files:
 path_oesgn_table = '/home/heller/pyProjects/gravtools/data/'
