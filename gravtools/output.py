@@ -80,14 +80,46 @@ def write_schwaus_protcol(obs_df, stat_df, pol_coef, pol_coef_sig_mugal, session
         f.write('   - Mittlere Breite:    {:6.3f}°\n'.format(stat_df.breite_deg.mean()))
         f.write('   - Mittlere Länge:     {:6.3f}°\n'.format(stat_df.laenge_deg.mean()))
         f.write('\n')
-        f.write('### Drift-Korrektur ###\n')
+        f.write('\n')
+        f.write('##### Drift-Korrektur #####\n')
         f.write(' - Anpassung eines Drift-Polynoms (Grad {}) mittels multipler linearer Regression.\n'.format(
             len(pol_coef)))
+        f.write('   - Polynomkoeffizienten:\n')
+        for degree, coef in pol_coef.items():
+            f.write('     - A{} = {:8.6f}\n'.format(degree, coef))
+        # Mittere quadratische Abweichung der Drift-korrigierten Lesungen vom Lesungs-Schätzwert an der Station
+        f.write('     - Mittlere quadr. Abweichung = {:8.6f} µGal\n'.format(pol_coef_sig_mugal))
+
 
         # Add here: Results Table and list of all obs with residuals, etc. (file: *.out)
+        f.write('\n')
+        f.write('### (Reduzierte) Lesungen und Schätzwerte an den Stationen ###\n')
+        f.write('Zeit   Lesung   dhf   VG       Red. Lesung   Abw.\n')
+        f.write('[{}]  [µGal]   [cm]  [µGal/m] [µGal]        [µGal]\n'.format(obs_df.index.tz.zone))
+        f.write('\n')
+        for i, stats in stat_df.iterrows():
+            stat_name = stats.punktnummer
+
+            for j, obs in obs_df.loc[obs_df['punktnummer'] == stat_name].iterrows():
+                f.write('{:2d}:{:2d}  {:7.0f}  {:4.1f}  {:5.1f}    {:9.1f}   {:5.1f}\n'.format(
+                    obs.name.hour,
+                    obs.name.minute,
+                    obs.g_mugal,
+                    obs.dhf_m * 100,
+                    obs.vg_mugal,
+                    obs.g_red_mugal,
+                    obs.abw_mugal))
+                pass
+
+            f.write(' => {:10s} : {:9.1f} µGal (+/- {:4.1f} µGal)\n'.format(stat_name,
+                                                                            stats.g_est_mugal,
+                                                                            stats.sig_g_est_mugal))
+            if stats.is_oesgn:
+                f.write('    Koordinaten ÖSGN: {:8.4f}°, {:8.4f}° \n'.format(stats.breite_deg, stats.laenge_deg))
+            f.write('\n')
 
         f.write('\n')
-        f.write('### Absolute Schwere mit Bezug zum ÖSGN ###\n')
+        f.write('##### Absolute Schwere mit Bezug zum ÖSGN #####\n')
 
         # Add here: Results Table and list of all obs with residuals, etc. (file: *.so)
 

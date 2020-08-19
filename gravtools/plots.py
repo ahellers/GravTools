@@ -67,4 +67,4 @@ def create_drift_plot(obs_df, stat_df, poly_coef_dict, save_pdf=True, session_na
     if save_pdf:
         plt.savefig(path_save_file + session_name + '_drift.pdf')
 
-    plt.show(block=True)  # Keep plot open
+    # plt.show(block=True)  # Keep plot open

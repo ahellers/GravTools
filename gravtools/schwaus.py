@@ -131,7 +131,10 @@ def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_fi
                             session_name=name_obs_file,
                             path_save_file=out_path)
 
+    # ### Write protocol file ###
     if options.flag_create_schwaus_protocol:
+        if options.verbous:
+            print('Berechnungsprotokoll erstellen ({})'.format(out_path + name_obs_file + '_prot.txt'))
         output.write_schwaus_protcol(obs_df=obs_df,
                                      stat_df=stat_df,
                                      pol_coef=results_dict['pol_coef'],
