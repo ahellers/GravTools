@@ -193,6 +193,8 @@ def get_station_df(obs_df, df_oesgn):
     stat_df['sig_g_abs_mugal'] = np.nan
     stat_df['verb_mugal'] = np.nan
     stat_df['g_abs_full_mugal'] = np.nan  # absolute value in µGal incl. 9.8e8
+    stat_df['g0_mugal'] = np.nan  # Difference between g_ÖSGN and estimated g_rel
+    stat_df['sig_g0_mugal'] = np.nan  # Std.Dev. of difference between g_ÖSGN and estimated g_rel
 
     # Add ÖSGN data:
     stat_df = stat_df.merge(df_oesgn.drop(columns=['anmerkungen', 'identitaet', 'date']), on='punktnummer', how='left')

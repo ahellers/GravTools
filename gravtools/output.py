@@ -37,7 +37,7 @@ def write_nsb_file(stat_df, instrument_id, path_name_nsb_file):
 
 
 def write_schwaus_protcol(obs_df, stat_df, pol_coef, pol_coef_sig_mugal, session_name, path_save_file,
-                          instrument_id, skalierung=None):
+                          instrument_id, skalierung=None, g0_mean_mugal=None, sig_g0_mean_mugal=None):
     """
     Create processing and results protocol for the analyzed gravity observations.
 
@@ -90,8 +90,6 @@ def write_schwaus_protcol(obs_df, stat_df, pol_coef, pol_coef_sig_mugal, session
         # Mittere quadratische Abweichung der Drift-korrigierten Lesungen vom Lesungs-Schätzwert an der Station
         f.write('     - Mittlere quadr. Abweichung = {:8.6f} µGal\n'.format(pol_coef_sig_mugal))
 
-
-        # Add here: Results Table and list of all obs with residuals, etc. (file: *.out)
         f.write('\n')
         f.write('### (Reduzierte) Lesungen und Schätzwerte an den Stationen ###\n')
         f.write('Zeit   Lesung   dhf   VG       Red. Lesung   Abw.\n')
@@ -111,7 +109,7 @@ def write_schwaus_protcol(obs_df, stat_df, pol_coef, pol_coef_sig_mugal, session
                     obs.abw_mugal))
                 pass
 
-            f.write(' => {:10s} : {:9.1f} µGal (+/- {:4.1f} µGal)\n'.format(stat_name,
+            f.write(' => {:10s} : {:9.1f} µGal (+/- {:5.1f} µGal)\n'.format(stat_name,
                                                                             stats.g_est_mugal,
                                                                             stats.sig_g_est_mugal))
             if stats.is_oesgn:
@@ -120,12 +118,32 @@ def write_schwaus_protcol(obs_df, stat_df, pol_coef, pol_coef_sig_mugal, session
 
         f.write('\n')
         f.write('##### Absolute Schwere mit Bezug zum ÖSGN #####\n')
-
-        # Add here: Results Table and list of all obs with residuals, etc. (file: *.so)
-
-
-
-
+        f.write(' - Mittelwert der Abweichungen an ÖSGN-Stationen:\n')
+        f.write('     go_mean = {:9.1f} +/- {:5.1f} µGal\n'.format(g0_mean_mugal, sig_g0_mean_mugal))
+        f.write('\n')
+        f.write('PunktNr.    g_ÖSGN       g_relativ         g0                 g_abs            Verb.\n'.format(obs_df.index.tz.zone))
+        f.write('            [µGal]       [µGal]            [µGal]             [µGal]           [µGal]\n')
+        # f.write('\n')
+        for i, stats in stat_df.iterrows():
+            if stats.is_oesgn:
+                f.write('{:10s}  {:6.0f}+-{:3.0f}  {:9.1f}+-{:5.1f}  {:9.1f}+-{:5.1f}  {:8.1f}+-{:5.1f}  ' \
+                        '{:5.1f}\n'.format(stats.punktnummer,
+                                              stats.g_oesgn_mugal,
+                                              stats.g_sig_oesgn_mugal,
+                                              stats.g_est_mugal,
+                                              stats.sig_g_est_mugal,
+                                              stats.g0_mugal,
+                                              stats.sig_g0_mugal,
+                                              stats.g_abs_mugal,
+                                              stats.sig_g_abs_mugal,
+                                              stats.verb_mugal))
+            else:
+                f.write('{:10s}               {:9.1f}+-{:5.1f}                     {:8.1f}+-{:5.1f}\n'.format(
+                                           stats.punktnummer,
+                                           stats.g_est_mugal,
+                                           stats.sig_g_est_mugal,
+                                           stats.g_abs_mugal,
+                                           stats.sig_g_abs_mugal,))
 
     pass
 

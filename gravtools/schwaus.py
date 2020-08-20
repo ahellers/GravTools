@@ -59,7 +59,10 @@ def calc_abs_g(stat_df):
     stat_df['verb_mugal'] = stat_df['g_abs_mugal'] - stat_df['g_oesgn_mugal']
     stat_df['g_abs_full_mugal'] = stat_df['g_abs_mugal'] + 9.8e8  # Get absolute gravity value at station [µGal]
 
-    return stat_df
+    # Add g0 and sig_go to stat_df:
+    stat_df.update(df_stat_oesgn[['g0_mugal', 'sig_g0_mugal']])
+
+    return stat_df, xm_mugal, sig_xm_mugal
 
 
 def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_file, out_path='',
@@ -101,7 +104,7 @@ def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_fi
         print('Berechnung absoluter Schwere-Werte:')
         print(' - Lagerung der Drift-korrigierten Lesungen auf {} ÖSGN Stationen'.format(stat_df[stat_df['is_oesgn']
                                                                                                  == True].shape[0]))
-    stat_df = calc_abs_g(stat_df)
+    stat_df, g0_mean_mugal, sig_g0_mean_mugal = calc_abs_g(stat_df)
     if options.verbous:
         # Print results:
         print(' - Ergebnisse:')
@@ -142,7 +145,9 @@ def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_fi
                                      session_name=name_obs_file,
                                      path_save_file=out_path,
                                      instrument_id=instrument_id,
-                                     skalierung=skalierung)
+                                     skalierung=skalierung,
+                                     g0_mean_mugal=g0_mean_mugal,
+                                     sig_g0_mean_mugal=sig_g0_mean_mugal)
 
 
 def main(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file, out_path):
