@@ -15,7 +15,7 @@ test_pack:
 
 # schwaus test (with actual dataset)
 schwaus_test:
-	schwaus --obs-file data/n20200701_1 --out-dir /tmp
+	schwaus --obs-file data/BEV/n20200701_1 --out-dir /tmp
 	cat /tmp/n20200701_1_prot.txt
 	cat /tmp/n20200701_1.nsb
 	pdfinfo /tmp/n20200701_1_drift.pdf

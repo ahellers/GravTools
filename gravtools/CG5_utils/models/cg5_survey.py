@@ -6,8 +6,8 @@ import datetime as dt
 import matplotlib.pyplot as plt
 from io import StringIO  # Python 3.x required
 
-
 from gravtools.models.exceptions import InvaliFileContentError
+from gravtools import settings
 
 
 class CG5SurveyParameters:
@@ -28,13 +28,17 @@ class CG5SurveyParameters:
         """ Create class instance by parsing a CG-5 observation file string."""
 
         # Parse observation file string:
-        expr = r"(\/\tCG-5 SURVEY\s*\n\/\s+CG5Survey name:\s*(?P<survey_name>\S+)\s*\n\/\tInstrument S/N:\s*(" \
-               r"?P<instrument_sn>\S+)\s*\n\/\tClient:\s*(?P<client>\S+)\s*\n\/\tOperator:\s*(" \
-               r"?P<operator>\S+)\s*\n\/\tDate:\s*(?P<date_year>\d{4})/\s*(?P<date_month>\d{1,2})/\s*(?P<date_day>\d{" \
-               r"1,2})\s*\n\/\tTime:\s*(?P<time_hour>\d{2}):(?P<time_minu>\d{2}):(?P<time_sec>\d{" \
-               r"2})\s*\n\/\tLONG:\s*(?P<long_num>\d*\.?\d*)\s+(?P<long_dir>[E|N|S|W])\s*\n\/\tLAT:\s*(" \
-               r"?P<lat_num>\d*\.?\d*)\s+(?P<lat_dir>[E|N|S|W])\s*\n\/\tZONE:\s*(?P<zone>\d*)\s*\n\/\tGMT DIFF.:\s*(" \
-               r"?P<gmt_diff>\d*\.?\d*))+\s*\n"
+        # expr = r'(\/\tCG-5 SURVEY\s*\n\/\s+Survey name:\s*(?P<survey_name>\S+)\s*\n\/\tInstrument S\/N:\s*(?P<instrument_sn>\S+)\s*\n\/\tClient:\s*(?P<client>\S+)\s*\n\/\tOperator:\s*(?P<operator>\S+)\s*\n\/\tDate:\s*(?P<date_year>\d{4})\/\s*(?P<date_month>\d{1,2})\/\s*(?P<date_day>\d{1,2})\s*\n\/\tTime:\s*(?P<time_hour>\d{2}):(?P<time_minu>\d{2}):(?P<time_sec>\d{2})\s*\n\/\tLONG:\s*(?P<long_num>\d*\.?\d*)\s+(?P<long_dir>[E|N|S|W])\s*\n\/\tLAT:\s*(?P<lat_num>\d*\.?\d*)\s+(?P<lat_dir>[E|N|S|W])\s*\n\/\tZONE:\s*(?P<zone>\d*)\s*\n\/\tGMT DIFF.:\s*(?P<gmt_diff>\d*\.?\d*))+\s*\n'
+        expr = r'(\/\tCG-5 SURVEY\s*\n\/\s+Survey name:\s*(?P<survey_name>\S+)\s*\n' \
+               r'\/\tInstrument S\/N:\s*(?P<instrument_sn>\S+)\s*\n' \
+               r'\/\tClient:\s*(?P<client>\S+)\s*\n' \
+               r'\/\tOperator:\s*(?P<operator>\S+)\s*\n' \
+               r'\/\tDate:\s*(?P<date_year>\d{4})\/\s*(?P<date_month>\d{1,2})\/\s*(?P<date_day>\d{1,2})\s*\n' \
+               r'\/\tTime:\s*(?P<time_hour>\d{2}):(?P<time_minu>\d{2}):(?P<time_sec>\d{2})\s*\n' \
+               r'\/\tLONG:\s*(?P<long_num>\d*\.?\d*)\s+(?P<long_dir>[E|N|S|W])\s*\n' \
+               r'\/\tLAT:\s*(?P<lat_num>\d*\.?\d*)\s+(?P<lat_dir>[E|N|S|W])\s*\n' \
+               r'\/\tZONE:\s*(?P<zone>\d*)\s*\n' \
+               r'\/\tGMT DIFF.:\s*(?P<gmt_diff>\d*\.?\d*))+\s*\n'
 
         # Read survey blocks from obs file string (only one block allowed!):
         survey_count = 0  # number of survey blocks in obs file string
@@ -363,16 +367,15 @@ class CG5Survey:
 # Run as standalone program:
 if __name__ == "__main__":
 
-    # path = '/home/heller/pyProjects/gravtools/data/160000_.TXT'
-    path = '/home/heller/pyProjects/gravtools/data/20200907_test.TXT'
+    # path = '/home/heller/pyProjects/gravtools/data/20200907_test.TXT'
+    path = settings.PATH_OBS_FILE_CG5 + settings.NAME_OBS_FILE_CG5
 
     s1 = CG5Survey()
     s1.read_obs_file(path)
 
-    s1.plot_g_values(['1-164-04', '1-164-12', '1-164-11'])
-    s1.plot_g_values(['TEST'])
-
-    pass
+    # s1.plot_g_values(['1-164-04', '1-164-12', '1-164-11'])
+    # s1.plot_g_values(['TEST'])
+    s1.plot_g_values()
 
 else:
     # not run as standalone program, but as module

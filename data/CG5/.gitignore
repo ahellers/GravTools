@@ -1,0 +1,6 @@
+*
+!.gitignore
+
+# Test data:
+!2020-06-18_DACH.TXT
+!20200907_test.TXT

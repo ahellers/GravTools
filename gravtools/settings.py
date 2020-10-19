@@ -27,18 +27,30 @@ GRAVIMETER_KZ_BEV = {
     '500': 'W',
 }
 
-VERBOSE = True
+# SCHWAUS and DRIFT settings:
 FLAG_SAVE_DRIFT_PLOT_PDF = True
 FLAG_CREATE_SCHWAUS_PROTOCOL = True
+VERBOSE = True
 
-# Default names and fielpaths of input files:
+# Output directory
+OUT_PATH = '/home/heller/pyProjects/gravtools/out'
+
+# Default names and paths of input files:
+
+# ÖSGN Table:
 PATH_OESGN_TABLE = '/home/heller/pyProjects/gravtools/data/'
-PATH_OBS_FILE_BEV = '/home/heller/pyProjects/gravtools/data/'
 NAME_OESGN_TABLE = 'OESGN.TAB'
+
+# BEV observation files:
+PATH_OBS_FILE_BEV = '/home/heller/pyProjects/gravtools/data/BEV/'
 # NAME_OBS_FILE_BEV = '20200527_tideCorr'
 # NAME_OBS_FILE_BEV = '20200527_sd'
 # NAME_OBS_FILE_BEV = '20200527_2'
 # NAME_OBS_FILE_BEV = '20200527'
 NAME_OBS_FILE_BEV = 'n20200701_1'
-NAME_OBS_FILE_BEV = 'e201001'
-OUT_PATH = '/home/heller/pyProjects/gravtools/out'
+# NAME_OBS_FILE_BEV = 'e201001'
+
+# CG-5 observation files (text)
+PATH_OBS_FILE_CG5 = '/home/heller/pyProjects/gravtools/data/CG5/'
+NAME_OBS_FILE_CG5 = '2020-06-18_DACH.TXT'
+#NAME_OBS_FILE_CG5 = '20200907_test.TXT'

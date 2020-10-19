@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 
 # Imports from other gravtools modules:
-import gravtools.const
+from gravtools import const
 from gravtools import settings
 from gravtools import utils
 
@@ -166,7 +166,7 @@ def prep_obs_df(obs_df, df_oesgn):
     # erster Messung i=0
 
     # Falls VG nicht über die ÖSGN Tabelle gegeben, default Wert verwenden:
-    obs_df.loc[obs_df.vg_mugal.isna(), 'vg_mugal'] = gravtools.const.VG_DEFAULT
+    obs_df.loc[obs_df.vg_mugal.isna(), 'vg_mugal'] = const.VG_DEFAULT
 
     return obs_df
 

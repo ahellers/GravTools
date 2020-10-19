@@ -1,5 +1,9 @@
 *
 !.gitignore
+
+# ÖSGN Tables:
 !OESGN.TAB
 !OESGN_Tab_erweitert.txt
-!n20200701_1
+
+!BEV
+!CG5
