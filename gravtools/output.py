@@ -86,7 +86,7 @@ def write_schwaus_protcol(obs_df, stat_df, pol_coef, pol_coef_sig_mugal, session
             len(pol_coef)))
         f.write('   - Polynomkoeffizienten:\n')
         for degree, coef in pol_coef.items():
-            f.write('     - A{} = {:8.6f}\n'.format(degree, coef))
+            f.write('     - A{} = {:8.6f} µGal/h ({:8.6f} mGal/Tag)\n'.format(degree, coef, coef*24/1e3))
         # Mittere quadratische Abweichung der Drift-korrigierten Lesungen vom Lesungs-Schätzwert an der Station
         f.write('     - Mittlere quadr. Abweichung = {:8.6f} µGal\n'.format(pol_coef_sig_mugal))
 

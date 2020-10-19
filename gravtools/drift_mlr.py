@@ -49,7 +49,7 @@ def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):
 
     pol_coef_dict = {i+1: mlr.coef_[i] for i in range(0, pol_degree)}  # Create dict with polynomila coefficients
 
-    # Store corrected reading:
+    # Store corrected reading (stat_df.g_est_mugal):
     tmp_list = mlr.coef_[-stat_df.shape[0]:]  #
     for i, value in enumerate(tmp_list):
         # print(i, value)

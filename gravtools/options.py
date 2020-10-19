@@ -28,7 +28,7 @@ dict_gravimeter_KZ_obs_file = {
 }
 
 vg_default = 308.6  # muGal/m
-verbous = True
+verbose = True
 flag_save_drift_plot_pdf = True
 flag_create_schwaus_protocol = True
 
@@ -41,4 +41,5 @@ name_oesgn_table = 'OESGN.TAB'
 # name_obs_file = '20200527_2'
 # name_obs_file = '20200527'
 name_obs_file = 'n20200701_1'
-out_path = '/home/heller/pyProjects/gravtools/out/'
+name_obs_file = 'e201001'
+out_path = '/home/heller/pyProjects/gravtools/out'

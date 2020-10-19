@@ -25,7 +25,7 @@ def read_oesgn_table(filename, filepath=''):
         8,  # Geograph. Breite [deg] 34
         8,  # Geograph. Länge [deg] 42
         8,  # Höhe [m] 50
-        7,  # g [??] 58
+        7,  # g [µGal] 58
         3,  # mittlerer Fehler von g [?] 65
         4,  # Vertikalgradient der Schwere [µGal/m] 68
         6,  # Datum 73
@@ -215,14 +215,14 @@ def get_station_df(obs_df, df_oesgn):
 def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file):
     # ##### Load data #####
     # ÖSGN Tabelle laden:
-    if options.verbous:
+    if options.verbose:
         print('Datei einlesen: {}'.format(path_oesgn_table + name_oesgn_table))
     df_oesgn = read_oesgn_table(path_oesgn_table + name_oesgn_table)
-    if options.verbous:
+    if options.verbose:
         print(' - {} OESGN Stationen geladen.'.format(df_oesgn.shape[0]))
         # print(df_oesgn.info())
     # Messdatei laden:
-    if options.verbous:
+    if options.verbose:
         print('Datei einlesen: {}'.format(path_obs_file + name_obs_file))
     obs_dict = read_obs_file(name_obs_file, path_obs_file)
     # dataframe für Berechnung erstellen:
@@ -231,7 +231,7 @@ def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_o
     obs_info_dict = obs_dict
     del obs_dict
 
-    if options.verbous:
+    if options.verbose:
         print(' - {} Beobachtungen geladen.'.format(obs_df.shape[0]))
         # print(obs_dict['obs_df'].info())
 
@@ -240,7 +240,7 @@ def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_o
 
     # ### Dataframe mit Stationsliste erzeugen: ###
     stat_df = get_station_df(obs_df, df_oesgn)
-    if options.verbous:
+    if options.verbose:
         print('Stations info:')
         print(' - Drift Stationen:   {}'.format(stat_df[stat_df['is_drift_point'] == True].shape[0]))
         print(' - ÖSGN Stationen:    {}'.format(stat_df[stat_df['is_oesgn'] == True].shape[0]))
@@ -253,7 +253,7 @@ def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_o
 
     # ### Messwert mittels Vertikalgadienten auf die Höhe des Festpunktes reduzieren (mittls dHF) ###
     obs_df = utils.red_g_obs_vg(obs_df)
-    if options.verbous:
+    if options.verbose:
         print('Gravimeter-Lesungen mittels VG auf Festpunkt-Niveau reduziert.')
 
     return obs_df, stat_df, df_oesgn, obs_info_dict

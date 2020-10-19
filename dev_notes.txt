@@ -17,3 +17,14 @@
 #  - Drift-Plot erzeugen
 #  - Korrelationen visualisieren (Plots erstellen) und analysieren!
 #  - Recherche: Kondition einer Matrix, etc. ...
+
+
+### packaging ###
+# Development package installation in current virtual env.:
+# >python3 setup.py develop
+#
+#
+
+
+### Command line scripts ###
+# https://python-packaging.readthedocs.io/en/latest/command-line-scripts.html
