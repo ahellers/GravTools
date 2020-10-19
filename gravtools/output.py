@@ -7,7 +7,7 @@ Author: Andreas Hellerschmied
 import datetime as dt
 
 # Imports from other gravtools modules:
-from gravtools import options
+from gravtools import settings
 
 
 def write_nsb_file(stat_df, instrument_id, path_name_nsb_file):
@@ -27,7 +27,7 @@ def write_nsb_file(stat_df, instrument_id, path_name_nsb_file):
             values.date.strftime('%Y%m%d'),
             values.g_abs_full_mugal,
             values.sig_g_abs_mugal,
-            options.dict_gravimeter_KZ_obs_file[instrument_id],
+            settings.GRAVIMETER_KZ_BEV[instrument_id],
             instrument_id,
             values.dhb_m * 100,
             values.dhf_m * 100,
@@ -54,8 +54,8 @@ def write_schwaus_protcol(obs_df, stat_df, pol_coef, pol_coef_sig_mugal, session
     file_path_name_str =  path_save_file + session_name + '_prot.txt'
     td = (obs_df.index.max() - obs_df.index.min())  # Session duration
     num_of_obs = obs_df.shape[0]
-    gravimeter_str = options.dict_gravimeter_id_obs_file[instrument_id]
-    grav_height_corr_cm = options.dic_gravimeter_hoehenbezug_korrektur_m[gravimeter_str] * 1e2  # in [cm]
+    gravimeter_str = settings.GRAVIMETER_ID_BEV[instrument_id]
+    grav_height_corr_cm = settings.GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_str] * 1e2  # in [cm]
 
     with open(file_path_name_str, 'w') as f:
         f.write('### Protokoll zur Gravimetrie Auswertung ({}) ###\n'.format(dt.datetime.now().strftime('%Y-%m-%d, '
@@ -72,7 +72,7 @@ def write_schwaus_protcol(obs_df, stat_df, pol_coef, pol_coef_sig_mugal, session
         f.write('   - Skalierung:         {}\n'.format(skalierung))
         f.write('   - Annahme: Beobachtungen bereits Gezeiten-korrigiert!\n')
         f.write('   - Beobachtungen mittels VG (und dhf, dhb) auf Festpunkt-Niveau reduziert.')
-        f.write(' - Gravimeter:         {}\n'.format(options.dict_gravimeter_id_obs_file[instrument_id]))
+        f.write(' - Gravimeter:         {}\n'.format(settings.GRAVIMETER_ID_BEV[instrument_id]))
         f.write('   - Bezugshöhen (dhf, dhf) korrigiert um: {:+5.1f} cm\n'.format(grav_height_corr_cm))
         f.write(' - Stationen gesamt:   {}\n'.format(stat_df.shape[0]))
         f.write('   - Drift Stationen:    {}\n'.format(stat_df[stat_df['is_drift_point'] == True].shape[0]))

@@ -5,7 +5,7 @@ Author: Andreas Hellerschmied
 from gravtools.schwaus import main as schwaus_main
 import argparse
 import os
-from gravtools.options import out_path, path_oesgn_table, name_oesgn_table
+from gravtools.settings import OUT_PATH, PATH_OESGN_TABLE, NAME_OESGN_TABLE
 
 
 def is_file(filename):
@@ -33,9 +33,9 @@ def schwaus():
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--obs-file", type=is_file, required=True, help="path and name of observation file")
     parser.add_argument("--oesgn-table", required=False, type=is_file, help="path and name of ÖSGN table",
-                        default=path_oesgn_table + name_oesgn_table)
+                        default=PATH_OESGN_TABLE + NAME_OESGN_TABLE)
     parser.add_argument("--out-dir", type=is_dir, required=False,
-                        help="path to output directory", default=out_path)
+                        help="path to output directory", default=OUT_PATH)
     args = parser.parse_args()
     # print(args)
 

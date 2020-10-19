@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
 # Imports from other gravtools modules:
-from gravtools import options
+from gravtools import settings
 from gravtools import init
 from gravtools import utils
 from gravtools import output
@@ -166,19 +166,19 @@ if __name__ == "__main__":
 
     if len(sys.argv) == 1:
         print('Eingangsparameter aus options.py bezogen (Default-Parameter).')
-        path_oesgn_table = options.path_oesgn_table
-        name_oesgn_table = options.name_oesgn_table
-        path_obs_file = options.path_obs_file
-        name_obs_file = options.name_obs_file
-        out_path = options.out_path
+        path_oesgn_table = settings.PATH_OESGN_TABLE
+        name_oesgn_table = settings.NAME_OESGN_TABLE
+        path_obs_file = settings.PATH_OBS_FILE_BEV
+        name_obs_file = settings.NAME_OBS_FILE_BEV
+        out_path = settings.OUT_PATH
 
     elif len(sys.argv) == 2:  # Name of obervation file as input argument
         name_obs_file = sys.argv[1]
         # Default-parameters from options-file:
-        path_oesgn_table = options.path_oesgn_table
-        name_oesgn_table = options.name_oesgn_table
-        path_obs_file = options.path_obs_file
-        out_path = options.out_path
+        path_oesgn_table = settings.PATH_OESGN_TABLE
+        name_oesgn_table = settings.NAME_OESGN_TABLE
+        path_obs_file = settings.PATH_OBS_FILE_BEV
+        out_path = settings.OUT_PATH
 
     else:
         print('Error: Invalid number of input arguments!')

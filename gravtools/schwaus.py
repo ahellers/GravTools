@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 
 # Imports from other gravtools modules:
-from gravtools import options
+from gravtools import settings
 from gravtools import init
 from gravtools import utils
 from gravtools import output
@@ -83,11 +83,11 @@ def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_fi
     # - 2.) Drift-korrigierte Lesungen bestimmen
 
     # ### Polynom zur Korrektur der Instrumentendrift vom Grad n anpassen  ###
-    if options.verbose:
+    if settings.VERBOSE:
         print('Schätzung der Drift mit Polynom vom Grad {}:'.format(polynomial_degree))
     results_dict = drift_mlr.calc_drift_corr_mlr(obs_df, stat_df, polynomial_degree)
     stat_df = results_dict['stat_df']
-    if options.verbose:
+    if settings.VERBOSE:
         # Print results:
         print(' - Polynom Koeffizeinten (sig = {:5.2f} µGal):'.format(results_dict['pol_coef_sig_mugal']))
         for degree, value in results_dict['pol_coef'].items():
@@ -100,12 +100,12 @@ def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_fi
     # ### Schwere bezogen auf das ÖSGN brechnen ###
     # - Analog zu Fortan Code SCHWAUS2016.FOR
     # - Berechnete absolute Schwere an den beobachteten Stationen bezogen auf das Höheniveau des Festpunktes!
-    if options.verbose:
+    if settings.VERBOSE:
         print('Berechnung absoluter Schwere-Werte:')
         print(' - Lagerung der Drift-korrigierten Lesungen auf {} ÖSGN Stationen'.format(stat_df[stat_df['is_oesgn']
                                                                                                  == True].shape[0]))
     stat_df, g0_mean_mugal, sig_g0_mean_mugal = calc_abs_g(stat_df)
-    if options.verbose:
+    if settings.VERBOSE:
         # Print results:
         print(' - Ergebnisse:')
         for i, values in stat_df.iterrows():
@@ -118,25 +118,25 @@ def drift_schwaus(obs_df, stat_df, polynomial_degree, instrument_id, name_obs_fi
 
     # ### Write file for NSDB input ###
     path_name_nsb_file = out_path + name_obs_file + '.nsb'
-    if options.verbose:
+    if settings.VERBOSE:
         print('NSDB Input Datei schreiben ({})'.format(path_name_nsb_file))
     output.write_nsb_file(stat_df, instrument_id, path_name_nsb_file)
 
     # ### Create Plot ###
     path_name_drift_plot = out_path + name_obs_file
-    if options.verbose:
+    if settings.VERBOSE:
         print('Drift-Plot erstellen')
-        if options.flag_save_drift_plot_pdf:
+        if settings.FLAG_SAVE_DRIFT_PLOT_PDF:
             print(' - Speichern unter: {}_drift.pdf'.format(path_name_drift_plot))
 
     plots.create_drift_plot(obs_df, stat_df, results_dict['pol_coef'],
-                            save_pdf=options.flag_save_drift_plot_pdf,
+                            save_pdf=settings.FLAG_SAVE_DRIFT_PLOT_PDF,
                             session_name=name_obs_file,
                             path_save_file=out_path)
 
     # ### Write protocol file ###
-    if options.flag_create_schwaus_protocol:
-        if options.verbose:
+    if settings.FLAG_CREATE_SCHWAUS_PROTOCOL:
+        if settings.VERBOSE:
             print('Berechnungsprotokoll erstellen ({})'.format(out_path + name_obs_file + '_prot.txt'))
         output.write_schwaus_protcol(obs_df=obs_df,
                                      stat_df=stat_df,
@@ -176,19 +176,19 @@ if __name__ == "__main__":
 
     if len(sys.argv) == 1:
         print('Eingangsparameter aus options.py bezogen (Default-Parameter).')
-        path_oesgn_table = options.path_oesgn_table
-        name_oesgn_table = options.name_oesgn_table
-        path_obs_file = options.path_obs_file
-        name_obs_file = options.name_obs_file
-        out_path = options.out_path
+        path_oesgn_table = settings.PATH_OESGN_TABLE
+        name_oesgn_table = settings.NAME_OESGN_TABLE
+        path_obs_file = settings.PATH_OBS_FILE_BEV
+        name_obs_file = settings.NAME_OBS_FILE_BEV
+        out_path = settings.OUT_PATH
 
     elif len(sys.argv) == 2:  # Name of observation file as input argument
         name_obs_file = sys.argv[1]
         # Default-parameters from options-file:
-        path_oesgn_table = options.path_oesgn_table
-        name_oesgn_table = options.name_oesgn_table
-        path_obs_file = options.path_obs_file
-        out_path = options.out_path
+        path_oesgn_table = settings.PATH_OESGN_TABLE
+        name_oesgn_table = settings.NAME_OESGN_TABLE
+        path_obs_file = settings.PATH_OBS_FILE_BEV
+        out_path = settings.OUT_PATH
 
     else:
         print('Error: Invalid number of input arguments!')
