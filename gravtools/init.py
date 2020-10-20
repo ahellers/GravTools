@@ -10,7 +10,8 @@ import pandas as pd
 import numpy as np
 
 # Imports from other gravtools modules:
-from gravtools import options
+from gravtools import const
+from gravtools import settings
 from gravtools import utils
 
 
@@ -25,7 +26,7 @@ def read_oesgn_table(filename, filepath=''):
         8,  # Geograph. Breite [deg] 34
         8,  # Geograph. Länge [deg] 42
         8,  # Höhe [m] 50
-        7,  # g [??] 58
+        7,  # g [µGal] 58
         3,  # mittlerer Fehler von g [?] 65
         4,  # Vertikalgradient der Schwere [µGal/m] 68
         6,  # Datum 73
@@ -127,7 +128,7 @@ def read_obs_file(filename, filepath=''):
     df['dhb_m'] = df['dhb_m'] * 1e-2  # Conversion from cm to m
     df['dhf_m'] = df['dhf_m'] * 1e-2  # Conversion from cm to m
 
-    df['gravimeter_typ'] = options.dict_gravimeter_id_obs_file[instrument_id]
+    df['gravimeter_typ'] = settings.GRAVIMETER_ID_BEV[instrument_id]
 
     # Store results in dict:
     obs_data['skalierung'] = skalierung
@@ -165,7 +166,7 @@ def prep_obs_df(obs_df, df_oesgn):
     # erster Messung i=0
 
     # Falls VG nicht über die ÖSGN Tabelle gegeben, default Wert verwenden:
-    obs_df.loc[obs_df.vg_mugal.isna(), 'vg_mugal'] = options.vg_default
+    obs_df.loc[obs_df.vg_mugal.isna(), 'vg_mugal'] = const.VG_DEFAULT
 
     return obs_df
 
@@ -193,6 +194,8 @@ def get_station_df(obs_df, df_oesgn):
     stat_df['sig_g_abs_mugal'] = np.nan
     stat_df['verb_mugal'] = np.nan
     stat_df['g_abs_full_mugal'] = np.nan  # absolute value in µGal incl. 9.8e8
+    stat_df['g0_mugal'] = np.nan  # Difference between g_ÖSGN and estimated g_rel
+    stat_df['sig_g0_mugal'] = np.nan  # Std.Dev. of difference between g_ÖSGN and estimated g_rel
 
     # Add ÖSGN data:
     stat_df = stat_df.merge(df_oesgn.drop(columns=['anmerkungen', 'identitaet', 'date']), on='punktnummer', how='left')
@@ -213,14 +216,14 @@ def get_station_df(obs_df, df_oesgn):
 def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_obs_file):
     # ##### Load data #####
     # ÖSGN Tabelle laden:
-    if options.verbous:
+    if settings.VERBOSE:
         print('Datei einlesen: {}'.format(path_oesgn_table + name_oesgn_table))
     df_oesgn = read_oesgn_table(path_oesgn_table + name_oesgn_table)
-    if options.verbous:
+    if settings.VERBOSE:
         print(' - {} OESGN Stationen geladen.'.format(df_oesgn.shape[0]))
         # print(df_oesgn.info())
     # Messdatei laden:
-    if options.verbous:
+    if settings.VERBOSE:
         print('Datei einlesen: {}'.format(path_obs_file + name_obs_file))
     obs_dict = read_obs_file(name_obs_file, path_obs_file)
     # dataframe für Berechnung erstellen:
@@ -229,7 +232,7 @@ def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_o
     obs_info_dict = obs_dict
     del obs_dict
 
-    if options.verbous:
+    if settings.VERBOSE:
         print(' - {} Beobachtungen geladen.'.format(obs_df.shape[0]))
         # print(obs_dict['obs_df'].info())
 
@@ -238,8 +241,8 @@ def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_o
 
     # ### Dataframe mit Stationsliste erzeugen: ###
     stat_df = get_station_df(obs_df, df_oesgn)
-    if options.verbous:
-        print('Station info:')
+    if settings.VERBOSE:
+        print('Stations info:')
         print(' - Drift Stationen:   {}'.format(stat_df[stat_df['is_drift_point'] == True].shape[0]))
         print(' - ÖSGN Stationen:    {}'.format(stat_df[stat_df['is_oesgn'] == True].shape[0]))
         print(' - Stationen gesamt:  {}'.format(stat_df.shape[0]))
@@ -251,7 +254,7 @@ def read_and_prep_data(path_oesgn_table, name_oesgn_table, path_obs_file, name_o
 
     # ### Messwert mittels Vertikalgadienten auf die Höhe des Festpunktes reduzieren (mittls dHF) ###
     obs_df = utils.red_g_obs_vg(obs_df)
-    if options.verbous:
+    if settings.VERBOSE:
         print('Gravimeter-Lesungen mittels VG auf Festpunkt-Niveau reduziert.')
 
     return obs_df, stat_df, df_oesgn, obs_info_dict
@@ -262,17 +265,17 @@ if __name__ == "__main__":
 
     if len(sys.argv) == 1:
         print('Eingangsparameter aus options.py bezogen (Default-Parameter).')
-        path_oesgn_table = options.path_oesgn_table
-        name_oesgn_table = options.name_oesgn_table
-        path_obs_file = options.path_obs_file
-        name_obs_file = options.name_obs_file
+        path_oesgn_table = settings.PATH_OESGN_TABLE
+        name_oesgn_table = settings.NAME_OESGN_TABLE
+        path_obs_file = settings.PATH_OBS_FILE_BEV
+        name_obs_file = settings.NAME_OBS_FILE_BEV
 
     elif len(sys.argv) == 2:  # Name of obervation file as input argument
         name_obs_file = sys.argv[1]
         # Default-parameters from options-file:
-        path_oesgn_table = options.path_oesgn_table
-        name_oesgn_table = options.name_oesgn_table
-        path_obs_file = options.path_obs_file
+        path_oesgn_table = settings.PATH_OESGN_TABLE
+        name_oesgn_table = settings.NAME_OESGN_TABLE
+        path_obs_file = settings.PATH_OBS_FILE_BEV
 
     else:
         print('Error: Invalid number of input arguments!')

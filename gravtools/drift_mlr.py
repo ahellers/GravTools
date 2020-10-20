@@ -47,9 +47,9 @@ def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):
     # mlr = LinearRegression()
     mlr.fit(df_dummy[selection_list], df_dummy['g_red_mugal'])
 
-    pol_coef_dict = {i: mlr.coef_[i] for i in range(0, pol_degree)}  # Create dict with polynomila coefficients
+    pol_coef_dict = {i+1: mlr.coef_[i] for i in range(0, pol_degree)}  # Create dict with polynomila coefficients
 
-    # Store corrected reading:
+    # Store corrected reading (stat_df.g_est_mugal):
     tmp_list = mlr.coef_[-stat_df.shape[0]:]  #
     for i, value in enumerate(tmp_list):
         # print(i, value)
@@ -66,7 +66,7 @@ def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):
         # Estimate for this station:
         g_est_mugal = stat_df.loc[stat_df['punktnummer'] == stat].g_est_mugal.values[0]  # Schätzwert an der Station
 
-        # Calculate difference between drift corrected reading and the estimates gravity raeding at this point (abw):
+        # Calculate difference between drift corrected reading and the estimates gravity reading at this point (abw):
         obs_df.loc[obs_df['punktnummer'] == stat, 'abw_mugal'] = \
             obs_df.loc[obs_df['punktnummer'] == stat, 'g_red_mugal'] - \
             obs_df.loc[obs_df['punktnummer'] == stat, 'corr_drift_mugal'] - g_est_mugal

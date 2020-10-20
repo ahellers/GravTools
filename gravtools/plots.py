@@ -33,6 +33,9 @@ def create_drift_plot(obs_df, stat_df, poly_coef_dict, save_pdf=True, session_na
     dt_h = np.linspace(obs_df.dt_h.min(), obs_df.dt_h.max(), 100)
     yy_mugal = np.polyval(poly_coef, dt_h)
 
+    g_plot_min = 0.0
+    g_plot_max = 0.0
+
     fig, ax = plt.subplots()
     ax.plot(dt_h, yy_mugal, '--', label='Polynom (n={})'.format(pol_degree))
     for pkt_num in stat_df.punktnummer:
@@ -43,13 +46,20 @@ def create_drift_plot(obs_df, stat_df, poly_coef_dict, save_pdf=True, session_na
             label_str = pkt_num + '*'
         else:
             label_str = pkt_num
-        ax.plot(df_tmp.dt_h, df_tmp.g_red_mugal - g_est, 'o', label=label_str)
+        y_tmp = df_tmp.g_red_mugal - g_est
+        ax.plot(df_tmp.dt_h, y_tmp, 'o', label=label_str)
+        if y_tmp.max() > g_plot_max:
+            g_plot_max = y_tmp.max()
+        if y_tmp.min() < g_plot_min:
+            g_plot_min = y_tmp.min()
+
+    gangbreite_mugal = g_plot_max - g_plot_min
 
     # - Legend and labels:
     plt.legend(loc='best')
     # ax.legend(loc='upper left', bbox_to_anchor=(1, 0.5))
     ax.grid()
-    plt.title('Drift-Auswertung: {}'.format(session_name))
+    plt.title('Drift-Polynom: {} (Gangbreite: {:4.1f} µGal)'.format(session_name, gangbreite_mugal))
     plt.xlabel('Zeit [h]')
     plt.ylabel('Lesung [µGal]')
 
@@ -57,4 +67,4 @@ def create_drift_plot(obs_df, stat_df, poly_coef_dict, save_pdf=True, session_na
     if save_pdf:
         plt.savefig(path_save_file + session_name + '_drift.pdf')
 
-    plt.show(block=True)  # Keep plot open
+    # plt.show(block=True)  # Keep plot open

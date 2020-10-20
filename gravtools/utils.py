@@ -5,7 +5,7 @@ Author: Andreas Hellerschmied
 """
 
 # Imports from other gravtools modules:
-from gravtools import options
+from gravtools import settings
 
 
 def corr_instrument_ref_heights(obs_df):
@@ -18,7 +18,7 @@ def corr_instrument_ref_heights(obs_df):
     """
 
     # ### Je nach Gerätetyp (CG5, CG3) die Bezugs-Höhen (dhb, dhf) anpassen ###:
-    for grav_typ, corr_m in options.dic_gravimeter_hoehenbezug_korrektur_m.items():
+    for grav_typ, corr_m in settings.GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m.items():
         obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhb_m'] = \
             obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhb_m'] + corr_m
         obs_df.loc[obs_df['gravimeter_typ'] == grav_typ, 'dhf_m'] = \

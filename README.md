@@ -29,6 +29,20 @@ Required packages can be found in requirements.txt.
 `pip install -r requirements.txt`
 
 
+# Console test installation with setuptools
+
+**1. Configure setup.py**
+* Define entry points (*console_scripts*)
+
+**2. Activate virtual environment**
+
+e.g. `source env/bin/activate`
+
+**3. Run setup.py**
+`python3 setup.py develop`
+
+
+
 
 
 # Components
