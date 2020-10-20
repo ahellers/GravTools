@@ -24,7 +24,7 @@ class CG5SurveyParameters:
         self.date_time = kwargs.get('date_time', None)  # datetime object (timezone aware)
 
     @classmethod
-    def create_from_obs_file_string(cls, str_obs_file):
+    def populate_from_obs_file_string(cls, str_obs_file):
         """ Create class instance by parsing a CG-5 observation file string."""
 
         # Parse observation file string:
@@ -92,8 +92,8 @@ class CG5SetupParameters:
         self.drift_date_time_start = kwargs.get('drift_date_time_start', None)  # datetime object (timezone aware)
 
     @classmethod
-    def create_from_obs_file_string(cls, str_obs_file):
-        """ Create class instance by parsing a CG-5 observation file string."""
+    def populate_from_obs_file_string(cls, str_obs_file):
+        """ Populates class instance by parsing a CG-5 observation file string."""
 
         # Parse observation file string:
         expr = r"\/\tCG-5 SETUP PARAMETERS\s*\n\/\s+Gref:\s*(?P<gref>\S+)\s*\n\/\s+Gcal1:\s*(" \
@@ -147,7 +147,7 @@ class CG5OptionsParameters:
         self.raw_data = kwargs.get('raw_data', False)  # bool
 
     @classmethod
-    def create_from_obs_file_string(cls, str_obs_file):
+    def populate_from_obs_file_string(cls, str_obs_file):
         """ Create class instance by parsing a CG-5 observation file string."""
 
         # Parse observation file string:
@@ -213,24 +213,34 @@ class CG5Survey:
     #         if param in self.PARAM_ATTRIBUTES:
     #             self.__setattr__("param_" + param, param_dict[param])
 
-    @staticmethod
-    def resolve_point_name(point_name_in):
-        """Convert point name from Scintrex observation file (as Note) to the naming convention used in the output
-        file."""
-        point_name_in = point_name_in.upper()
-        # Check first letter of name in order detect the point type:
-        if point_name_in[0] == 'S':
-            point_name_out = point_name_in
-        elif point_name_in[0] == 'P':
-            point_name_out = 'P  ' + point_name_in[1:]
-        elif point_name_in[0] == 'T' and '.' in point_name_in:
-            [str1_tmp, str2_tmp] = point_name_in.split('.')
-            point_name_out = 'T{0:>4} {1:>3}'.format(str1_tmp[1:], str2_tmp)
-        elif point_name_in[0] == 'N':
-            point_name_out = point_name_in
+    def __str__(self):
+        if self.obs_df is None:
+            return 'Empty CG-5 Survey.'
         else:
-            point_name_out = point_name_in.replace('.', '-')
-        return point_name_out.upper()
+            if not self.survey_parameters.survey_name:
+                return 'Unnamed CG-5 Survey with {} observations.'.format(len(self.obs_df))
+            else:
+                return 'CG-5 Survey "{}" with {} observations.'.format(self.survey_parameters.survey_name,
+                                                                       len(self.obs_df))
+
+    @staticmethod
+    def resolve_station_name(station_name_in):
+        """Convert station name from Scintrex observation file (as Note) to the naming convention used in the output
+        file."""
+        station_name_in = station_name_in.upper()
+        # Check first letter of name in order detect the station type:
+        if station_name_in[0] == 'S':
+            station_name_out = station_name_in
+        elif station_name_in[0] == 'P':
+            station_name_out = 'P  ' + station_name_in[1:]
+        elif station_name_in[0] == 'T' and '.' in station_name_in:
+            [str1_tmp, str2_tmp] = station_name_in.split('.')
+            station_name_out = 'T{0:>4} {1:>3}'.format(str1_tmp[1:], str2_tmp)
+        elif station_name_in[0] == 'N':
+            station_name_out = station_name_in
+        else:
+            station_name_out = station_name_in.replace('.', '-')
+        return station_name_out.upper()
 
     @staticmethod
     def get_dhb_dhf(dh_str):
@@ -240,7 +250,7 @@ class CG5Survey:
         return np.float(dh_str)
 
     def read_obs_file(self, file_path):
-        """Read CG5 observation file."""
+        """Read CG5 observation file an populate object."""
         self.file_path = file_path
         with open(self.file_path, 'r') as content_file:
             str_obs_file = content_file.read()
@@ -249,68 +259,84 @@ class CG5Survey:
 
         # ### Match blocks with regex ###
         # CG-5 SURVEY block:
-        self.survey_parameters = CG5SurveyParameters.create_from_obs_file_string(str_obs_file)
-        self.setup_parameters = CG5SetupParameters.create_from_obs_file_string(str_obs_file)
-        self.options = CG5OptionsParameters.create_from_obs_file_string(str_obs_file)
+        self.survey_parameters = CG5SurveyParameters.populate_from_obs_file_string(str_obs_file)
+        self.setup_parameters = CG5SetupParameters.populate_from_obs_file_string(str_obs_file)
+        self.options = CG5OptionsParameters.populate_from_obs_file_string(str_obs_file)
 
         # Get Observations
         # ### 3 possibilities: ###
-        # Initialize empty dataframe and append observation blocks at each point
+        # Initialize empty dataframe and append observation blocks at each station
         # Warning: Better performance, when preparing the data as list (appending) and then converting to df at once.
         #  See: https://stackoverflow.com/questions/13784192/creating-an-empty-pandas-dataframe-then-filling-it
 
         obs_list = []  # Collect all obs data in this list and then convert to pd dataframe.
         column_names = ['lat_deg', 'lon_deg', 'alt_m', 'g_mgal', 'sd_mgal', 'tiltx', 'tilty', 'temp',
                         'tide', 'duration_sec', 'rej', 'time_str', 'dec_time_date', 'terrain', 'date',
-                        'point_name', 'dhf_m', 'dhb_m']
-        non_numeric_columns = ['point_name', 'date', 'time_str']
+                        'station_name', 'dhf_m', 'dhb_m', 'setup_id']
+        non_numeric_columns = ['station_name', 'date', 'time_str']
 
-        # 1.) Only Point name
-        expr = "\/\s+Note:\s+(?P<point_name>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
+        # 1.) Only Station name
+        expr = "\/\s+Note:\s+(?P<station_name>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
         dhf_m = 0.0
         dhb_m = 0.0
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
-            point_name = self.resolve_point_name(obs_dict['point_name'])
+            station_name = self.resolve_station_name(obs_dict['station_name'])
             lines = obs_dict['obs_data'].splitlines()
+            # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
+            #  - To distinguish multiple setups (with multiple observations each) on multiple stations
+            time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
+            setup_id = dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"))
+
             for line in lines:
                 line_items = line.split()
-                line_items.append(point_name)
+                line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
+                line_items.append(setup_id)
                 obs_list.append(line_items)
 
-        # 2.) Point name & dbh=dhf
-        expr = "\/\s+Note:\s+(?P<point_name>\S+)\s+(?P<dh_cm>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
+        # 2.) Station name & dbh=dhf
+        expr = "\/\s+Note:\s+(?P<station_name>\S+)\s+(?P<dh_cm>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
-            point_name = self.resolve_point_name(obs_dict['point_name'])
+            station_name = self.resolve_station_name(obs_dict['station_name'])
             dhf_m = np.float(obs_dict['dh_cm'])
             dhb_m = np.float(obs_dict['dh_cm'])
             lines = obs_dict['obs_data'].splitlines()
+            # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
+            #  - To distinguish multiple setups (with multiple observations each) on multiple stations
+            time_str = lines[0].split()[-1]+' '+lines[0].split()[11]
+            setup_id = dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"))
+
             for line in lines:
                 line_items = line.split()
-                line_items.append(point_name)
+                line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
+                line_items.append(setup_id)
                 obs_list.append(line_items)
 
-        # 3.) Point name & dhb & dhf
-        expr = "\/\s+Note:\s+(?P<point_name>\S+)\s+(?P<dhb_cm>\S+)\s+(?P<dhf_cm>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
+        # 3.) Station name & dhb & dhf
+        expr = "\/\s+Note:\s+(?P<station_name>\S+)\s+(?P<dhb_cm>\S+)\s+(?P<dhf_cm>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
 
-            point_name = self.resolve_point_name(obs_dict['point_name'])
+            station_name = self.resolve_station_name(obs_dict['station_name'])
             dhf_m = np.float(obs_dict['dhf_cm'])
             dhb_m = np.float(obs_dict['dhb_cm'])
-
             lines = obs_dict['obs_data'].splitlines()
+            # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
+            #  - To distinguish multiple setups (with multiple observations each) on multiple stations
+            time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
+            setup_id = dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"))
 
             for line in lines:
                 line_items = line.split()
-                line_items.append(point_name)
+                line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
+                line_items.append(setup_id)
                 obs_list.append(line_items)
 
         # Create pandas dataframe of prepared list:
@@ -335,33 +361,28 @@ class CG5Survey:
         pass
         self.obs_df.drop(columns=['time_str', 'date'], inplace=True)  # Drop columns that are not required any more
 
-    def plot_g_values(self, point_names=None):
+    def plot_g_values(self, station_names=None):
         """Plot g-values of selected or all stations in the df.
 
         Attributes:
-            point_names - List of names of the points that should be plotted.
+            station_names - List of names of the stations that should be plotted.
         """
         # Check if obs data is available first:
         if self.obs_df is not None:
-            # Get list of point names and loop over them:
-            if point_names is None:
-                point_names = self.obs_df['point_name'].unique()
+            # Get list of station names and loop over them:
+            if station_names is None:
+                station_names = self.obs_df['station_name'].unique()
             fig, ax = plt.subplots()
-            for point_name in point_names:
-                x = self.obs_df[self.obs_df['point_name'] == point_name].obs_epoch
-                y = self.obs_df[self.obs_df['point_name'] == point_name].g_mgal * 1e3  # µGal
-                ax.scatter(x, y, label=point_name)
+            for station_name in station_names:
+                x = self.obs_df[self.obs_df['station_name'] == station_name].obs_epoch
+                y = self.obs_df[self.obs_df['station_name'] == station_name].g_mgal * 1e3  # µGal
+                ax.scatter(x, y, label=station_name)
             ax.legend()
             ax.grid(True)
             ax.set_xlabel('Time')
             ax.set_ylabel('g [µGal]')
             ax.set_title('survey: ' + self.survey_parameters.survey_name)
             plt.show()
-
-
-
-
-
 
 
 # Run as standalone program:
