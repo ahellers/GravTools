@@ -1,3 +1,5 @@
+"""Models for surveys with the Scintrex CG-5 gravity meter."""
+
 import pandas as pd
 import numpy as np
 import re
