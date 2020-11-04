@@ -1,22 +1,67 @@
-"""Models for surveys with the Scintrex CG-5 gravity meter."""
+"""Models for surveys with the Scintrex CG-5 gravity meters.
+
+This module contains all models that are specifically required to
+handle observation with the Scintrex CG-5 gravity meter.
+
+Example
+-------
+Running this module as standalone script will read in the default CG-5
+observation file specified by ``settings.PATH_OBS_FILE_CG5`` and
+``settings.NAME_OBS_FILE_CG5`` and create a plot showing the observed
+garvity meter readings over time::
+
+    $ python cg5_survey.py
+"""
 
 import pandas as pd
 import numpy as np
 import re
-import sys
+# import sys
 import datetime as dt
 import matplotlib.pyplot as plt
-from io import StringIO  # Python 3.x required
+# from io import StringIO  # Python 3.x required
 
 from gravtools.models.exceptions import InvaliFileContentError
 from gravtools import settings
 
 
 class CG5SurveyParameters:
-    """CG-5 CG5Survey parameters from the 'CG-5 SURVEY' block in the observation file."""
+    """CG-5 Survey parameters.
+
+    Scintrex CG-5 survey parameters from the 'CG-5 SURVEY' block in
+    the observation file (text format).
+    The class is initialized either by the :py:meth:`.__init__`,
+    method by passing the attributes as keyword arguments directly,
+    or by the class method :py:meth:`.populate_from_obs_file_string`
+    that parses the content of a CG-5 observation file (txt).
+
+    Attributes
+    ----------
+    survey_name : str
+        Name of gravity survey.
+    client : str
+        Client of survey.
+    operator : str
+        Name of the survey'S operator.
+    long_deg : np.float
+        Geographical longitude at begin of survey [°].
+    lat_deg : np.float
+        Geographical latitude at begin of survey [°].
+    zone : str
+        Timezone of all time records.
+    date_time : datetime object
+        Start epoch of the survey.
+     """
 
     def __init__(self, *args, **kwargs):
-        """Initialize object."""
+        """
+        Parameters
+        ----------
+        *args
+            Variable length argument list.
+        **kwargs : dict
+            Keyword arguments that are parsed to class attributes.
+        """
         self.survey_name = kwargs.get('survey_name', '')  # string
         self.client = kwargs.get('client', '')  # string
         self.operator = kwargs.get('operator', '')  # string
@@ -27,7 +72,19 @@ class CG5SurveyParameters:
 
     @classmethod
     def populate_from_obs_file_string(cls, str_obs_file):
-        """ Create class instance by parsing a CG-5 observation file string."""
+        """ Create instance of class :py:class:`.CG5SurveyParameters` by
+        parsing a CG-5 observation file string.
+
+        Parameters
+        ----------
+        str_obs_file : str
+            Content of the CG-5 observation file (.txt).
+
+        Returns
+        -------
+        Object: :py:class:`.CG5SurveyParameters`
+            Initialized class instance.
+        """
 
         # Parse observation file string:
         # expr = r'(\/\tCG-5 SURVEY\s*\n\/\s+Survey name:\s*(?P<survey_name>\S+)\s*\n\/\tInstrument S\/N:\s*(?P<instrument_sn>\S+)\s*\n\/\tClient:\s*(?P<client>\S+)\s*\n\/\tOperator:\s*(?P<operator>\S+)\s*\n\/\tDate:\s*(?P<date_year>\d{4})\/\s*(?P<date_month>\d{1,2})\/\s*(?P<date_day>\d{1,2})\s*\n\/\tTime:\s*(?P<time_hour>\d{2}):(?P<time_minu>\d{2}):(?P<time_sec>\d{2})\s*\n\/\tLONG:\s*(?P<long_num>\d*\.?\d*)\s+(?P<long_dir>[E|N|S|W])\s*\n\/\tLAT:\s*(?P<lat_num>\d*\.?\d*)\s+(?P<lat_dir>[E|N|S|W])\s*\n\/\tZONE:\s*(?P<zone>\d*)\s*\n\/\tGMT DIFF.:\s*(?P<gmt_diff>\d*\.?\d*))+\s*\n'
@@ -69,7 +126,8 @@ class CG5SurveyParameters:
                                              int(survey_dict['time_hour']),
                                              int(survey_dict['time_sec']),
                                              tzinfo=dt.timezone(dt.timedelta(hours=float(survey_dict['gmt_diff'])))
-                                             ))
+                                             )
+                       )
         elif survey_count == 0:  # Not available
             return cls()  # Initialize with default values
         else:  # More than 1 block found => Error!
@@ -80,10 +138,44 @@ class CG5SurveyParameters:
 
 
 class CG5SetupParameters:
-    """CG-5 Setup parameters from the 'CG-5 SETUP PARAMETERS' block in the observation file."""
+    """CG-5 Survey parameters.
+
+    Scintrex CG-5 Setup parameters from the 'CG-5 SETUP PARAMETERS'
+    block in the observation file (text format).
+    The class is initialized either by the :py:meth:`.__init__`,
+    method by passing the attributes as keyword arguments directly,
+    or by the class method :py:meth:`.populate_from_obs_file_string`
+    that parses the content of a CG-5 observation file (txt).
+
+    Attributes
+    ----------
+    gcal1 : np.float
+        Calibration factor GCAL1.
+    tiltxs : np.float
+        XXXXXXXX
+    tiltys : np.float
+       XXXXXXXX
+    tiltxo : np.float
+        XXXXXXXX
+    tiltyo : np.float
+        XXXXXXXX
+    tempco : np.float
+        XXXXXXXX
+    drift : np.float
+        Linear drift factor (long-term drift).
+    drift_date_time_start : datetime object (TZ aware)
+        Start epoch for the determination of th linear long-term drift.
+    """
 
     def __init__(self, *args, **kwargs):
-        """Initialize object."""
+        """
+        Parameters
+        ----------
+        *args
+            Variable length argument list.
+        **kwargs : dict
+            Keyword arguments that are parsed to class attributes.
+        """
         self.gcal1 = kwargs.get('gcal1', np.nan)  # np.float
         self.tiltxs = kwargs.get('tiltxs', np.nan)  # np.float
         self.tiltys = kwargs.get('tiltys', np.nan)  # string
@@ -95,7 +187,19 @@ class CG5SetupParameters:
 
     @classmethod
     def populate_from_obs_file_string(cls, str_obs_file):
-        """ Populates class instance by parsing a CG-5 observation file string."""
+        """ Create instance of class :py:class:`.CG5SetupParameters` by
+        parsing a CG-5 observation file string.
+
+        Parameters
+        ----------
+        str_obs_file : str
+            Content of the CG-5 observation file (.txt).
+
+        Returns
+        -------
+        Object: :py:class:`.CG5SetupParameters`
+            Initializes class instance.
+        """
 
         # Parse observation file string:
         expr = r"\/\tCG-5 SETUP PARAMETERS\s*\n\/\s+Gref:\s*(?P<gref>\S+)\s*\n\/\s+Gcal1:\s*(" \
@@ -130,17 +234,47 @@ class CG5SetupParameters:
             raise InvaliFileContentError('{} "CG-5 SETUP PARAMETERS" in observation file found, but maximum one '
                                          'expected.'.format(block_count))
 
-    def is_valid(self) -> bool:
-        """???"""
-        # TODO
-        return True
+    # def is_valid(self) -> bool:
+    #     """???"""
+    #     # TODO
+    #     return True
 
 
 class CG5OptionsParameters:
-    """CG-5 options from the 'CG-5 OPTIONS' block in the observation file."""
+    """CG-5 instrumental options (filters, corrections, output).
+
+    Scintrex CG-5 options from the 'CG-5 OPTIONS' block in
+    the observation file (text format).
+    The class is initialized either by the :py:meth:`.__init__`,
+    method by passing the attributes as keyword arguments directly,
+    or by the class method :py:meth:`.populate_from_obs_file_string`
+    that parses the content of a CG-5 observation file (txt).
+
+    Attributes
+    ----------
+    tide_correction : bool
+        Tide correction (on/off).
+    cont_tilt : bool
+        Continuous tilt correction (on/off).
+    auto_rejection : bool
+       Auto rejection of outliers (on/off).
+    terrain_correction : bool
+        Terrain correction (on/off).
+    seismic_filter : bool
+        Seismic filter (on/off).
+    raw_data : bool
+        Raw data output (on/off).
+    """
 
     def __init__(self, *args, **kwargs):
-        """Initialize object."""
+        """
+        Parameters
+        ----------
+        *args
+            Variable length argument list.
+        **kwargs : dict
+            Keyword arguments that are parsed to class attributes.
+        """
         self.tide_correction = kwargs.get('tide_correction', False)  # bool
         self.cont_tilt = kwargs.get('cont_tilt', False)  # bool
         self.auto_rejection = kwargs.get('auto_rejection', False)  # bool
@@ -150,7 +284,19 @@ class CG5OptionsParameters:
 
     @classmethod
     def populate_from_obs_file_string(cls, str_obs_file):
-        """ Create class instance by parsing a CG-5 observation file string."""
+        """ Create instance of class :py:class:`.CG5OptionsParameters` by
+        parsing a CG-5 observation file string.
+
+        Parameters
+        ----------
+        str_obs_file : str
+            Content of the CG-5 observation file (.txt).
+
+        Returns
+        -------
+        Object: :py:class:`.CG5OptionsParameters`
+            Initializes class instance.
+        """
 
         # Parse observation file string:
         expr = r"\/\tCG-5 OPTIONS\s*\n\/\s+Tide Correction:\s*(?P<tide_correction>\S+)\s*\n\/\s+Cont. Tilt:\s*(" \
@@ -179,20 +325,34 @@ class CG5OptionsParameters:
             raise InvaliFileContentError('{} "CG-5 OPTIONS" in observation file found, but maximum one '
                                          'expected.'.format(block_count))
 
-    def is_valid(self) -> bool:
-        """???"""
-        # TODO
-        return True
+    # def is_valid(self) -> bool:
+    #     """???"""
+    #     # TODO
+    #     return True
 
 
 class CG5Survey:
-    """CG5 CG5Survey data object."""
+    """CG-5 survey data.
+
+
+
+    """
 
     # PARAM_ATTRIBUTES = ["survey_name", ]
 
     def __init__(self, survey_parameters=CG5SurveyParameters(),
                  setup_parameters=CG5SetupParameters(),
                  options=CG5OptionsParameters()):
+        """
+        Parameters
+        ----------
+        survey_parameters : :py:class:`.CG5SurveyParameters`
+            Survey Parameter of the Parameters block in the observation file.
+        setup_parameters :  :py:class:`.CG5SetupParameters`
+            Setup Parameter of the Setup block in the observation file.
+        options : :py:class:`.CG5OptionsParameters`
+            Instrumental options from the Options block in the observation file.
+        """
         assert isinstance(survey_parameters, CG5SurveyParameters), \
             "survey_parameters is not an instance of CG5SurveyParameters"
         self.survey_parameters = survey_parameters
@@ -227,8 +387,22 @@ class CG5Survey:
 
     @staticmethod
     def resolve_station_name(station_name_in):
-        """Convert station name from Scintrex observation file (as Note) to the naming convention used in the output
-        file."""
+        """Convert station name from Scintrex observation file
+        (as Note) to the naming convention used in the output
+        file (BEV conventions).
+
+        Parameters
+        ----------
+        station_name_in : str
+            Station name string as written to the observation file
+            as note.
+
+        Returns
+        -------
+        Corrected station name : str
+
+
+        """
         station_name_in = station_name_in.upper()
         # Check first letter of name in order detect the station type:
         if station_name_in[0] == 'S':
@@ -246,13 +420,26 @@ class CG5Survey:
 
     @staticmethod
     def get_dhb_dhf(dh_str):
-        """Convert dhb and dhf from Notes in the CG-5 observation file to an actual number."""
+        """Convert dhb and dhf from Notes in the CG-5 observation file
+        to an actual number. In the notes '.' is used instead of '-'.
+        This is also handled.
+
+        Parameters
+        ----------
+        dh_str : str
+            Height difference [m] with '.' instead of '-'.
+
+        Returns
+        -------
+        Height difference [m] : np.float
+        """
         if dh_str.startswith('.'):
             dh_str = '-' + dh_str[1:]
         return np.float(dh_str)
 
     def read_obs_file(self, file_path):
-        """Read CG5 observation file an populate object."""
+        """Read CG-5 observation file an populate object."""
+
         self.file_path = file_path
         with open(self.file_path, 'r') as content_file:
             str_obs_file = content_file.read()
@@ -366,8 +553,13 @@ class CG5Survey:
     def plot_g_values(self, station_names=None):
         """Plot g-values of selected or all stations in the df.
 
-        Attributes:
-            station_names - List of names of the stations that should be plotted.
+        Parameters
+        ----------
+        station_names : list of str, optional
+            List of names of stations for which the observations will be plotted.
+            The default value is None which implied that the data of all stations
+            is plotted.
+
         """
         # Check if obs data is available first:
         if self.obs_df is not None:

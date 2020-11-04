@@ -48,8 +48,13 @@ extensions = [
 # - https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html#configuration
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
 # napoleon_use_param = False
 # napoleon_use_ivar = True
+
+# Napoleon settings:
+# see: https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#confval-autoclass_content
+autoclass_content = "both"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

@@ -42,10 +42,12 @@ Drift fits a polynomial of degree 1 to n (commonly 1 to 3) to gravity observatio
 
 ## Code style:
 * Respect the PEP conventions on python coding!
+  * PEP 8 -- Style Guide for Python Code: https://www.python.org/dev/peps/pep-0008/
 * The maximum line length is 120 characters
 * Use **type hints**: https://www.python.org/dev/peps/pep-0484/
 * Use docstrings according to the numpy standard: https://numpydoc.readthedocs.io/en/latest/format.html#docstring-standard
   * They are useful to generate the documentation automatically
+  * Example: https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_numpy.html
 * Comment code, if necessary!
 * Use English language for the code, docstrings and comments
   * German is allowed for user interfaces (GUI, command line), although English is preferred
@@ -79,6 +81,7 @@ Drift fits a polynomial of degree 1 to n (commonly 1 to 3) to gravity observatio
     * Code changes only in feature branches!
     * Naming convention: feature_<description of change/feature>, e.g. feature_new_tide_model
 * Use gitignore files to prevent any data files (except example files), IDE control files, compiled python code, etc. from being stored in the GIT repository
+  * Generally rule: Ignore everything in a directory and define explicit exceptions!
     
 ## Packaging and distribution
 * With setuptools 
