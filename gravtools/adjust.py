@@ -203,6 +203,7 @@ def gauss_markoff(obs_df, stat_df, pol_degree=1):
 def gauss_markoff_omc(obs_df, stat_df, pol_degree=1):
     """
     Adjustment of gravity meter observations using a Gauss-Markoff model.
+
     WITH A RRIORI Vales for the estimates
     Estimated parameters:
      - offset and linear drift per instrument
