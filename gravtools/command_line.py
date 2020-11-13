@@ -1,7 +1,22 @@
-'''
+"""
+gravtools
+=========
+
+Code by Andreas Hellerschmied
+andeas.hellerschmid@bev.gv.at
+
+Summary
+-------
 Command line interface o gravtools.
-Author: Andreas Hellerschmied
-'''
+
+This module contains functions that are accessible from the command line via console_scripts entry points of setuptool.
+
+References
+----------
+.. https://python-packaging.readthedocs.io/en/latest/command-line-scripts.html
+"""
+
+
 from gravtools.schwaus import main as schwaus_main
 import argparse
 import os

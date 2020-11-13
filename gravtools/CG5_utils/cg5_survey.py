@@ -38,11 +38,11 @@ class DataCursor:
     def __init__(self, ax):
         self.ax = ax
         self.annotation = ax.annotate(self.text_template,
-                xy=(self.x, self.y), xytext=(self.xoffset, self.yoffset),
-                textcoords='offset points', ha='right', va='bottom',
-                bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
-                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0')
-                )
+                                      xy=(self.x, self.y), xytext=(self.xoffset, self.yoffset),
+                                      textcoords='offset points', ha='right', va='bottom',
+                                      bbox=dict(boxstyle='round,pad=0.5', fc='yellow', alpha=0.5),
+                                      arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0')
+                                      )
         self.annotation.set_visible(False)
 
     def __call__(self, event):
@@ -394,7 +394,33 @@ class CG5Survey:
        Contains the actual observation data records.
     """
 
-    # PARAM_ATTRIBUTES = ["survey_name", ]
+    # Column names of the dataframe containing tha actual observation data:
+    _OBS_DF_COLUMN_NAMES = ('lat_deg',  # Latitude [deg] :
+                            'lon_deg',  # Longitude [deg]
+                            'alt_m',  # Altitude [m]
+                            'g_mgal',  # Determined gravity (corrected) [mGal]
+                            'sd_mgal',  # Standard deviation of determined gravity [mGal]
+                            'tiltx',
+                            'tilty',
+                            'temp',
+                            'tide',  # Tidal correction determined by the CG-5 [??]
+                            'duration_sec',  # Duration of the current setup [sec]
+                            'rej',  # Number of rejected single measurements
+                            'time_str',  # Reference time = mid of setup with duration `duration_sec`) (dropped later)
+                            'dec_time_date',
+                            'terrain',  # Terrain correction [??]
+                            'date',  # Date (dropped later)
+                            'station_name',  # Station name : str
+                            'dhf_m',  # Distance between instrument top and physical reference point [m]
+                            'dhb_m',  # Distance between instrument top and ground [m]
+                            'setup_id',  # Unique ID of this observation (=setup)
+                            )
+                            # obs_epoch : datetime object (added to df later)
+
+    # Rename columns: df.rename(columns = {'$b':'B'}, inplace = True)
+
+    # Non-numeric columns in the observation dataframe:
+    _OBS_DF_NON_NUMERIC_COLUMNS = ['station_name', 'date', 'time_str']
 
     def __init__(self,
                  obs_filename='',
@@ -525,10 +551,6 @@ class CG5Survey:
         #  See: https://stackoverflow.com/questions/13784192/creating-an-empty-pandas-dataframe-then-filling-it
 
         obs_list = []  # Collect all obs data in this list and then convert to pd dataframe.
-        column_names = ['lat_deg', 'lon_deg', 'alt_m', 'g_mgal', 'sd_mgal', 'tiltx', 'tilty', 'temp',
-                        'tide', 'duration_sec', 'rej', 'time_str', 'dec_time_date', 'terrain', 'date',
-                        'station_name', 'dhf_m', 'dhb_m', 'setup_id']
-        non_numeric_columns = ['station_name', 'date', 'time_str']
 
         # 1.) Only Station name
         expr = "\/\s+Note:\s+(?P<station_name>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
@@ -541,7 +563,7 @@ class CG5Survey:
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
             time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
-            setup_id = dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"))
+            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
 
             for line in lines:
                 line_items = line.split()
@@ -561,8 +583,8 @@ class CG5Survey:
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
-            time_str = lines[0].split()[-1]+' '+lines[0].split()[11]
-            setup_id = dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"))
+            time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
+            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
 
             for line in lines:
                 line_items = line.split()
@@ -584,7 +606,7 @@ class CG5Survey:
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
             time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
-            setup_id = dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"))
+            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
 
             for line in lines:
                 line_items = line.split()
@@ -595,10 +617,10 @@ class CG5Survey:
                 obs_list.append(line_items)
 
         # Create pandas dataframe of prepared list:
-        self.obs_df = pd.DataFrame(obs_list, columns=column_names)
+        self.obs_df = pd.DataFrame(obs_list, columns=self._OBS_DF_COLUMN_NAMES)
 
         # Convert numeric columns to numeric dtypes:
-        cols = self.obs_df.columns.drop(non_numeric_columns)
+        cols = self.obs_df.columns.drop(self._OBS_DF_NON_NUMERIC_COLUMNS)
         self.obs_df[cols] = self.obs_df[cols].apply(pd.to_numeric, errors='raise')
         # Sort observations by time and date:
         self.obs_df.sort_values(by='dec_time_date')
