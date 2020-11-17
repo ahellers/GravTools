@@ -22,6 +22,7 @@ STATION_DATA_SOURCE_TYPES = {
 TIDE_CORRECTION_TYPES = {
     'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
     'no_tide_corr': 'No tide correction applied',
+    'unknown': 'Unknown whether a tide correction was applied.',
 }
 
 REFERENCE_HEIGHT_TYPE = {
@@ -52,6 +53,12 @@ GRAVIMETER_KZ_BEV = {
     '51': 'D',
     '510': 'D',
     '500': 'W',
+}
+
+#  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
+#  observation files:
+BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
+    '5': 'cg5_longman1959'
 }
 
 DEFAULT_GRAVIMETER_ID_CG5_SURVEY = '5'

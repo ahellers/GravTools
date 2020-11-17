@@ -11,11 +11,14 @@ Contains classes for modeling gravity campaigns.
 """
 
 import pandas as pd
+import numpy as np
 import datetime as dt
 import os
 
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYPES, GRAVIMETER_ID_BEV, \
-    TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_ID_CG5_SURVEY, REFERENCE_HEIGHT_TYPE
+    TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_ID_CG5_SURVEY, REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
+    PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
+from gravtools.const import VG_DEFAULT
 from gravtools.models.exceptions import FileTypeError
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 
@@ -34,13 +37,13 @@ class Station:
     """
 
     _STAT_DF_COLUMNS = (
-        'name',  # Station name, str
+        'station_name',  # Station name, str
         'long_deg',  # longitude [deg], float
         'lat_deg',  # latitude [deg], float
         'height_m',  # Height [m]
         'g_mugal',  # gravity [µGal]
         'g_sig_mugal',  # standard deviation of the gravity [µGal]
-        'vg_mugal',  # vertical gradient [µGal/m]
+        'vg_mugalm',  # vertical gradient [µGal/m]
         'is_oesgn',  # flag: True, if station is a OESGN station.
     )
 
@@ -112,14 +115,14 @@ class Station:
             12,  # Punktidentität 79
         )
         column_names = (
-            'name',
+            'station_name',
             'notes',
             'lat_deg',
             'long_deg',
             'height_m',
             'g_mugal',
             'g_sig_mugal',
-            'vg_mugal',
+            'vg_mugalm',
             'date',
             'identity'
         )
@@ -179,12 +182,12 @@ class Station:
         verbose : bool
             If True, print notification on deleted items.
         """
-        idx_series = self.stat_df.name.isin(station_names)
+        idx_series = self.stat_df.station_name.isin(station_names)
         if verbose:
             deleted_df = self.stat_df[idx_series]
             print(f'Deleted {len(deleted_df)} rows in station dataframe:')
             for index, row in deleted_df.iterrows():
-                print(f' - Station {row["name"]:10s} (row index {index:d})')
+                print(f' - Station {row["station_name"]:10s} (row index {index:d})')
         self.stat_df = self.stat_df[~idx_series]
 
     @property
@@ -213,6 +216,16 @@ class Survey:
     same circumstances (same instrument, measurement area, drift- and datum-point planing, same observer, etc.). A
     survey is usually observed on the same day.
 
+    All analytical observation level reductions and corrections are applied here. The reduced g values are stored in the
+    columns `g_red_mugal` and the according standard deviation in `sd_g_red_mugal`.
+
+    - Tidal corrections of observations
+    - Reduction of the observed gravity to various height levels
+
+      - Control point level
+      - Ground level
+      - Level of the gravimeter top
+
     Attributes
     ----------
     # TODO: Add Attribute description!
@@ -225,10 +238,11 @@ class Survey:
         'lon_deg',  # Longitude [deg], optional (float)
         'lat_deg',  # Latitude [deg], optional (float)
         'alt_m',  # Altitude [m], optional (float)
-        'obs_epoch',  # Observation epoch (datetme obj)
+        'obs_epoch',  # Observation epoch (datetime obj)
         'g_obs_mugal',  # observed g from obs file [µGal] (float)
         'sd_g_obs_mugal',  # Standard deviation of g observed from obs file (float) [µGal]
         'g_red_mugal',  # Reduced gravity observation at station (float) [µGal]
+        'sd_g_red_mugal',  # Standard deviation of the reduced gravity (float) [µGal]
         'corr_terrain',  # Terrain correction [??]
         'corr_tide',  # Tidal correction [??], optional
         'corr_temp',  # Temperature [??], optional
@@ -237,6 +251,7 @@ class Survey:
         'dhf_m',  # Distance between instrument top and physical reference point (float) [m]
         'dhb_m',  # Distance between instrument top and ground (float) [m]
         'keep_obs',  # Remove observation, if false (bool)
+        'vg_mugalm',  # vertical gradient [µGal/m]
     )
 
     # TODO: Get missing infos on columns in CG5 obs file!
@@ -254,7 +269,9 @@ class Survey:
                  obs_reference_height_type='',  # of "g_obs_mugal"
                  red_tide_correction_type='',  # of "g_red_mugal"
                  red_reference_height_type='',  # of "g_red_mugal"
+                 keep_survey=True,  # Flag
                  ):
+        """Default constructor of class Survey."""
 
         # Check input arguments:
         # name:
@@ -388,12 +405,20 @@ class Survey:
         else:
             raise TypeError('"red_tide_correction_type" needs to be a string')
 
+        # keep_survey
+        if isinstance(keep_survey, bool):
+            self.keep_survey = keep_survey
+        else:
+            raise TypeError('"keep_survey" needs to be a bool type.')
+
     @classmethod
-    def from_cg5_survey(cls, cg5_survey):
+    def from_cg5_survey(cls, cg5_survey, keep_survey=True):
         """Constructor that generates and populates the survey object from a CG5Survey class object.
 
         Parameters
         ----------
+        keep_survey : bool, optional (default=True)
+            If False, this survey is excluded from further processing.
         cg5_survey : :py:obj:`gravtools.CG5_utils.survey.CG5Survey`
             Objects of the class CG5Survey contain all data from CG-5 observation files.
 
@@ -417,7 +442,7 @@ class Survey:
         # obs_df:
         if cg5_survey.obs_df is not None:
             # Refactor observation dataframe:
-            obs_df = cg5_survey.obs_df.copy(deep=True)  # deep copy => No struggles with references
+            obs_df: object = cg5_survey.obs_df.copy(deep=True)  # deep copy => No struggles with references
 
             # Add missing columns (initialized with default values):
             obs_df['line_id'] = None
@@ -434,11 +459,13 @@ class Survey:
 
             # Drop columns that are not needed any more:
             # - all columns that are not in _OBS_DF_COLUMNS
-            columns_to_be_dropped = list(set(obs_df.columns) - set(cls._OBS_DF_COLUMNS))
-            obs_df.drop(columns=columns_to_be_dropped, inplace=True)
+            obs_df = cls._obs_df_drop_columns(obs_df)
 
-            # Change column order: https://erikrood.com/Python_References/change_order_dataframe_columns_final.html
-            obs_df = obs_df[list(cls._OBS_DF_COLUMNS)]
+            # Add all missing columns (init as None):
+            obs_df = cls._obs_df_add_columns(obs_df)
+
+            # Change column order:
+            obs_df = cls._obs_df_reorder_columns(obs_df)
 
             # Check, if all columns are there:
             # if not all(obs_df.columns.values == cls._OBS_DF_COLUMNS):
@@ -464,16 +491,19 @@ class Survey:
                    obs_reference_height_type='sensor_height',
                    red_tide_correction_type='',  # Not specified
                    red_reference_height_type='',  # Not specified
+                   keep_survey=keep_survey,
                    )
 
     @classmethod
-    def from_cg5_obs_file(cls, filename):
+    def from_cg5_obs_file(cls, filename, keep_survey=True):
         """Constructor that generates and populates the survey object directly from a CG5 observation file.
 
         Parameters
         ----------
         filename : str
             Name (and path) of a CG-5 observation file (text format).
+        keep_survey : bool, optional (default=True)
+            If False, this survey is excluded from further processing.
 
         Returns
         -------
@@ -481,24 +511,243 @@ class Survey:
             Contains all information of s specific survey independent of the data source.
         """
         cg5_survey = CG5Survey(filename)
-        return cls.from_cg5_survey(cg5_survey)
+        return cls.from_cg5_survey(cg5_survey, keep_survey=keep_survey)
 
     @classmethod
-    def from_bev_obs_file(cls, filename):
+    def from_bev_obs_file(cls, filename, keep_survey=True, verbose=False):
         """Constructor that generates populates the survey object from an observation file in the legacy BEV format.
+
+        Notes
+        -----
+        Format of the legacy BEV observation files:
+        - Line 1: Scaled values? ('Y'=True, 'N'=False)
+        - Line 2: Instrument ID (e.g. 5 fpr CG5) and institution
+        - Line 3: Degree of the drift polynomial to be fitted
+        - Line 4: Date (YYYY MM DD)
+        - Line 5: Timezone (UTC, MEZ, OEZ)
+        - Line 6 bis n: Station name(x-xxx-xx), epoch (hh.mm), g [mGal], dhb [cm] (hh.h), dhf [cm] (hh.h)
+        - Line n+1: 'end'
 
         Parameters
         ----------
         filename : str
             Name (and path) of an observation in the legacy BEV format.
+        keep_survey : bool, optional (default=True)
+            If False, this survey is excluded from further processing.
+        verbose : bool, optional (default=False)
+            If True, status messages are printed.
 
         Returns
         -------
         :py:obj:`.Survey`
             Contains all information of s specific survey independent of the data source.
         """
-        pass
+
+        data_file_name = os.path.split(filename)[1]
+
+        if verbose:
+            print(f'Read observations from file: {filename}.')
+
+        # Read header lines:
+        num_of_header_lines = 5
+        with open(filename) as myfile:
+            head = [next(myfile) for x in range(num_of_header_lines)]
+        scaling = head[0][:-1] == 'Y'
+        gravimeter_id = head[1].split()[0]
+        institution = head[1].split()[1]
+        polynomial_degree = int(head[2][:-1])
+        date_str = head[3][:-1]
+        timezone_str = head[4][:-1]
+
+        survey_date = dt.datetime.strptime(date_str, '%Y %m %d').date()
+
+        # Read observations (fixed width file):
+        widths = (
+            11,  # Station name
+            5,  # Time
+            9,  # g [mGal]
+            7,  # dhb [cm]
+            6,  # dhf [cm]
+        )
+        column_names = (
+            'station_name',
+            'time_hh.mm',
+            'g_mgal',
+            'dhb_cm',
+            'dhf_cm',
+        )
+        df = pd.read_fwf(filename, widths=widths, header=None, names=column_names, skiprows=5, skipfooter=1,
+                         dtype={'time_hh.mm': object})
+
+        # Prepare and initialize DataFrame:
+        df['obs_epoch'] = pd.to_datetime(date_str + ' ' + df['time_hh.mm'] + ' ' + timezone_str,
+                                         format='%Y %m %d %H.%M %Z')
+        # Timestamp: https://stackoverflow.com/questions/40881876/python-pandas-convert-datetime-to-timestamp-effectively-through-dt-accessor
+        df['setup_id'] = df['obs_epoch'].values.astype(np.int64) // 10 ** 9
+
+        df['g_obs_mugal'] = df['g_mgal'] * 1e3
+        df['dhb_m'] = df['dhb_cm'] * 1e-2
+        df['dhf_m'] = df['dhf_cm'] * 1e-2
+
+        # Drop columns:
+        obs_df = cls._obs_df_drop_columns(df)
+
+        # Add all missing columns (init as None):
+        obs_df = cls._obs_df_add_columns(obs_df)
+
+        # Change column order:
+        obs_df = cls._obs_df_reorder_columns(obs_df)
+
+        # Get tide correction type:
+        try:
+            obs_tide_correction_type = BEV_GRAVIMETER_TIDE_CORR_LOOKUP[gravimeter_id]
+        except KeyError:
+            obs_tide_correction_type = 'unknown'
+            if VERBOSE:
+                print(f'Warning: For gravimeter ID "{gravimeter_id}" the tide correction type is unknown '
+                      f'(not specified in settings.BEV_GRAVIMETER_TIDE_CORR_LOOKUP). '
+                      f'It is set to "{obs_tide_correction_type}".')
+
+        return cls(name=os.path.split(filename)[1],
+                   date=survey_date,
+                   operator='',
+                   institution=institution,
+                   gravimeter_id=gravimeter_id,
+                   data_file_name=os.path.split(filename)[1],  # Filename only, without path
+                   data_file_type='bev_obs_file',
+                   obs_df=obs_df,
+                   obs_tide_correction_type=obs_tide_correction_type,
+                   obs_reference_height_type='sensor_height',
+                   red_tide_correction_type='',  # Not specified
+                   red_reference_height_type='',  # Not specified
+                   keep_survey=keep_survey,
+                   )
+
+    @classmethod
+    def _obs_df_drop_columns(cls, obs_df):
+        """Drop all columns of obs_df that are not listed in cls._OBS_DF_COLUMNS"""
+        columns_to_be_dropped = list(set(obs_df.columns) - set(cls._OBS_DF_COLUMNS))
+        obs_df.drop(columns=columns_to_be_dropped, inplace=True)
+        return obs_df
+
+    @classmethod
+    def _obs_df_add_columns(cls, obs_df):
+        """Add and initialize (as None) all columns that are listed in cls._OBS_DF_COLUMNS and not present in input
+        obs_df."""
+        columns_to_be_initialized_as_none = list(set(cls._OBS_DF_COLUMNS) - set(obs_df.columns))
+        obs_df[columns_to_be_initialized_as_none] = None
+        return obs_df
+
+    @classmethod
+    def _obs_df_reorder_columns(cls, obs_df):
+        """Change order of columns of obs_df to the order specified in cls._OBS_DF_COLUMNS.
+
+        See: https://erikrood.com/Python_References/change_order_dataframe_columns_final.html
+        """
+        obs_df = obs_df[list(cls._OBS_DF_COLUMNS)]
+        return obs_df
+
+    def is_valid_obs_df(self, verbose=False) -> bool:
+        """Check, whether the observations DataFrame (`obs_df`) is valid.
+
+        This method carried out the following checks:
+
+        - Check the columns as specified in :py:obj:`.Survey._OBS_DF_COLUMNS`?
+
+          - Does `obs_df` have all required columns?
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+            If True, messages are printed that indicate why `obs_df` is not valid in case.
+
+        Returns
+        -------
+        bool
+            True, if `obs_df` is valid.
+        """
+        is_valid = True
+
+        invalid_cols = list(set(self.obs_df.columns) - set(self._OBS_DF_COLUMNS))
+        if len(invalid_cols) > 0:
+            is_valid = False
+            if verbose:
+                print(f'The following columns are not valid: {", ".join(invalid_cols)}')
+
+        invalid_cols = list(set(self._OBS_DF_COLUMNS) - set(self.obs_df.columns))
+        if len(invalid_cols) > 0:
+            is_valid = False
+            if verbose:
+                print(f'The following columns are missing: {", ".join(invalid_cols)}')
+
+        return is_valid
+
+    def obs_df_drop_redundant_columns(self):
+        """Drop all columns of obs_df that are not listed in self._OBS_DF_COLUMNS"""
+        columns_to_be_dropped = list(set(self.obs_df.columns) - set(self._OBS_DF_COLUMNS))
+        self.obs_df.drop(columns=columns_to_be_dropped, inplace=True)
+
+    def get_number_of_observations(self) -> int:
+        """Returns the number of observations of the current survey.
+
+        Returns
+        -------
+        int
+            Number of observations.
+        """
+        if self.obs_df is None:
+            return 0
+        else:
+            return len(self.obs_df)
+
+    def obs_df_populate_vg_from_stations(self, stations, verbose=False):
+        """Populates the vertical gradient columns of the observation DataFrame with values from a Station object.
+
+        Parameters
+        ----------
+        stations : :py:obj:`.Station` object
+            Data of known stations (datum- and non-datum-stations).
+
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line.
+
+        Notes
+        -----
+        - If an observed station is not present in the station object, or the station has no vertical gradient in the
+          station object, the default vertical gradient is assigned to the observation.
+        """
+        # Merge stations Dataframe (`stat_df`) and observations DataFrame (`obs_df`) by the station names:
+        self.obs_df = self.obs_df.merge(stations.stat_df[['station_name', 'vg_mugalm']], on='station_name',
+                                        how='left', suffixes=('_x', ''))
+
+        # Populate all missing VGs with the default value:
+        self.obs_df.loc[self.obs_df['vg_mugalm'].isna(), 'vg_mugalm'] = VG_DEFAULT
+
+        # Drop columns that are not required and check for validity:
+        self.obs_df_drop_redundant_columns()
+        if not self.is_valid_obs_df():
+            raise AssertionError('Th DataFrame "obs_df" is not valid.')
+
+    def reduce_to_reference_height(self, target_ref_height, verbose=False):
+        """Reduce the observed gravity to the specified target reference height.
+
+        Notes
+        -----
+        - For this reduction vertical gravity gradients are required!
+
+        Parameters
+        ----------
+        target_ref_height : string, specifying the target reference height type.
+            The target reference height type has to be listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`
+        """
+        # Check, if VG are available in self.obs_df:
         # TODO
+
+        # 1st: Reduce to gravimeter top (with GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m):
+
+        # 2nd: Reduce to the specified target reference height type (with dhb and dhf):
+
+        pass
 
     def __str__(self):
         if self.obs_df is not None:
@@ -561,25 +810,16 @@ class Campaign:
         self.campaign_name = campaign_name
 
         # Check surveys:
-        # Format:
-        # survey = {<survey_name>: {'survey': <survey_object>,
-        #                          'keep_survey': <bool>}
-        # }
         if surveys is None:
             surveys = {}
         else:
             if not isinstance(surveys, dict):
                 raise TypeError('The argument "survey" needs to be a dict of Survey objects.')
             else:
-                for survey_name, survey_data in surveys.items():
+                for survey_name, survey_obj in surveys.items():
                     if not isinstance(survey_name, str):
                         raise TypeError('The argument "survey" needs to be a string.')
-                    if not isinstance(survey_data, dict):
-                        raise TypeError('The value in the dict "survey" needs to be a dict.')
-                    if not isinstance(survey_data['survey'], Survey):
-                        raise TypeError('"survey" needs to be a Survey object.')
-                    if not isinstance(survey_data['keep_survey'], bool):
-                        raise TypeError('"keep_survey" needs to be a boolean type.')
+
         self.surveys = surveys  # dict: key=Name of Survey, value=Survey object
 
         # Check stations:
@@ -590,7 +830,7 @@ class Campaign:
                 raise TypeError('The argument "stations" needs to be a Station object.')
         self.stations = stations
 
-    def add_survey(self, survey_add: Survey, keep_survey: bool = True, verbose=False):
+    def add_survey(self, survey_add: Survey, verbose=False) -> bool:
         """Add a survey to campaign ans specify whether to use it for ths analysis.
 
         Notes
@@ -601,10 +841,8 @@ class Campaign:
         ----------
         survey_add : :py:obj:`.Survey`
             Contains all information of s specific survey independent of the data source.
-        keep_survey : bool, optional (default=True)
-            Specifies whether the survey is used in the data analysis. 'True' implies that this survey will be used.
         verbose : bool, optional (default=False)
-            If True, Warnings are printed to the command line.
+            If True, status messages are printed to the command line.
 
         Returns
         -------
@@ -620,41 +858,110 @@ class Campaign:
             return False
         else:
             # Add survey:
-            self.surveys[survey_add.name] = {'survey': survey_add, 'keep_survey': keep_survey}
+            self.surveys[survey_add.name] = survey_add
+            if verbose:
+                print(f"Survey {survey_add.name} added to the campaign.")
             return True
 
-    def remove_survey(self, survey_name: str):
+    def remove_survey(self, survey_name: str, verbose=False) -> bool:
         """Remove survey with the specified name from the campaign
 
         Parameters
         ----------
         survey_name : str
             Name of the survey that will be removed from the campaign.
-        """
-        pass
-        # TODO
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line.
 
-    def activate_survey(self, survey_name: str):
+        Returns
+        -------
+        bool
+            True, if the survey was successfully removed; False, if not.
+        """
+        try:
+            del self.surveys[survey_name]
+            if verbose:
+                print(f'Survey "{survey_name}" removed from campaign.')
+        except KeyError:
+            if verbose:
+                print(f'Survey "{survey_name}" does not exist.')
+            return False
+        except:
+            if verbose:
+                print(f'Failed to remove survey {survey_name}.')
+            return False
+        else:
+            return True
+
+    def activate_survey(self, survey_name: str, verbose=False) -> bool:
         """Set the survey with the specified name active.
 
         Parameters
         ----------
         survey_name : str
             Name of the survey that will be set active.
-        """
-        pass
-        # TODO
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line.
 
-    def deactivate_survey(self, survey_name: str):
+        Returns
+        -------
+        bool
+            True, if the survey was successfully activated; False, if not.
+        """
+        try:
+            if self.surveys[survey_name].keep_survey:
+                if verbose:
+                    print(f'Survey "{survey_name}" already active.')
+                return True
+            else:
+                self.surveys[survey_name].keep_survey = True
+                if verbose:
+                    print(f'Survey "{survey_name}" activated.')
+        except KeyError:
+            if verbose:
+                print(f'Survey "{survey_name}" does not exist.')
+            return False
+        except:
+            if verbose:
+                print(f'Failed to activate survey "{survey_name}"')
+            return False
+        else:
+            return True
+
+    def deactivate_survey(self, survey_name: str, verbose=False) -> bool:
         """Set the survey with the specified name inactive.
 
         Parameters
         ----------
         survey_name : str
             Name of the survey that will be set inactive.
+        verbose : bool, optional (default=False)
+                If True, status messages are printed to the command line.
+
+        Returns
+        -------
+        bool
+            True, if the survey was successfully deactivated; False, if not.
         """
-        pass
-        # TODO
+        try:
+            if not self.surveys[survey_name].keep_survey:
+                if verbose:
+                    print(f'Survey "{survey_name}" already inactive.')
+                return True
+            else:
+                self.surveys[survey_name].keep_survey = False
+                if verbose:
+                    print(f'Survey "{survey_name}" deactivated.')
+        except KeyError:
+            if verbose:
+                print(f'Survey "{survey_name}" does not exist.')
+            return False
+        except:
+            if verbose:
+                print(f'Failed to deactivate survey "{survey_name}"')
+            return False
+        else:
+            return True
 
     def get_survey_names_and_status(self, verbose: bool = False) -> dict:
         """Return list with all survey names and information whether the survey is set active.
@@ -673,17 +980,40 @@ class Campaign:
             print('Surveys and their status:')
         info_dict = {}
         lookup_dict = {True: 'active', False: 'inactive'}
-        for surv_name, surv_data in self.surveys.items():
-            info_dict[surv_name] = surv_data['keep_survey']
+        for surv_name, surv_obj in self.surveys.items():
             if verbose:
-                activity_str = lookup_dict[surv_data['keep_survey']]
-                print(f' - {surv_name:12s} ({activity_str})')
+                activity_str = lookup_dict[surv_obj.keep_survey]
+                print(f' - {surv_name:12s} ({activity_str:8s}): {surv_obj.get_number_of_observations()} observations')
+            info_dict[surv_name] = surv_obj.keep_survey
         return info_dict
 
     @property
     def number_of_surveys(self) -> int:
         """int : Returns the number of surveys in this campaign."""
         return len(self.surveys)
+
+    def reduce_to_reference_height(self, target_ref_height, verbose=False):
+        """Reduce the observed gravity to the specified target reference height.
+
+        Notes
+        -----
+        - For this reduction vertical gravity gradients are required on the survey level
+
+        Parameters
+        ----------
+        verbose :
+
+        target_ref_height : string, specifying the target reference height type.
+            The target reference height type has to be listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line.
+        """
+        pass
+        # TODO
+        # wrapper for :
+        # - Survey.obs_df_populate_vg_from_stations()
+        # - Survey.reduce_to_reference_height()
+
 
     def __str__(self):
         return f'Campaign "{self.campaign_name}" with {self.number_of_surveys} surveys ' \
@@ -717,14 +1047,17 @@ if __name__ == '__main__':
     surv2 = Survey.from_cg5_obs_file(PATH_OBS_FILE_CG5 + NAME_OBS_FILE_CG5)
     print(surv2)
 
-    survey = {surv2.name: {'survey': surv2,
-                           'keep_survey': True}
-              }
-    camp = Campaign('AD1', stations=stat, surveys=survey)
+    camp = Campaign('AD1', stations=stat, surveys={surv2.name: surv2})
+    camp.activate_survey(True)
 
-    surv.name += '_2'  # mock 2nd independent survey object
-    camp.add_survey(survey_add=surv, keep_survey=True, verbose=VERBOSE)
+    surv_bev = Survey.from_bev_obs_file(PATH_OBS_FILE_BEV + NAME_OBS_FILE_BEV, verbose=VERBOSE)
+
+    validity = surv_bev.is_valid_obs_df(verbose=True)
+
+    camp.add_survey(survey_add=surv_bev, verbose=VERBOSE)
 
     surveys_info_dict = camp.get_survey_names_and_status(verbose=VERBOSE)
+
+    surv.obs_df_populate_vg_from_stations(stat, verbose=True)
 
     pass
