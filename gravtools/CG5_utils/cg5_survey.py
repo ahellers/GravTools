@@ -578,8 +578,8 @@ class CG5Survey:
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
             station_name = self.resolve_station_name(obs_dict['station_name'])
-            dhf_m = np.float(obs_dict['dh_cm'])
-            dhb_m = np.float(obs_dict['dh_cm'])
+            dhf_m = np.float(obs_dict['dh_cm']) * 1e-2
+            dhb_m = np.float(obs_dict['dh_cm']) * 1e-2
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
@@ -600,8 +600,8 @@ class CG5Survey:
             obs_dict = obs_block.groupdict()
 
             station_name = self.resolve_station_name(obs_dict['station_name'])
-            dhf_m = np.float(obs_dict['dhf_cm'])
-            dhb_m = np.float(obs_dict['dhb_cm'])
+            dhf_m = np.float(obs_dict['dhf_cm']) * 1e-2
+            dhb_m = np.float(obs_dict['dhb_cm']) * 1e-2
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
