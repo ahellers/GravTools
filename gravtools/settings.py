@@ -1,8 +1,36 @@
 """
+gravtools
+=========
+
+Code by Andreas Hellerschmied
+andeas.hellerschmid@bev.gv.at
+
+Summary
+-------
 User-defined settings for gravtools.
-This module is part of the gravtools package.
-Author: Andreas Hellerschmied
 """
+
+SURVEY_DATA_SOURCE_TYPES = {
+    'cg5_obs_file_txt': 'Scintrex CG5 observation file (text format)',
+    'bev_obs_file': 'Simple observation file format used by BEV',
+}
+
+STATION_DATA_SOURCE_TYPES = {
+    'oesgn_table': 'Control points of the Austrian gravity base network (OESGN).',
+}
+
+TIDE_CORRECTION_TYPES = {
+    'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
+    'no_tide_corr': 'No tide correction applied',
+    'unknown': 'Unknown whether a tide correction was applied.',
+}
+
+REFERENCE_HEIGHT_TYPE = {
+    'sensor_height': 'The gravity reverence point at the station is at the sensor height.',
+    'instrument_top': 'The gravity value refers to the height og the instrument top.',
+    'ground': 'The gravity value refers to the ground point at the station.',
+    'control_point': 'The gravity value refers to the control point at the station.',
+}
 
 GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m = {
     'CG3': -0.211,
@@ -26,6 +54,14 @@ GRAVIMETER_KZ_BEV = {
     '510': 'D',
     '500': 'W',
 }
+
+#  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
+#  observation files:
+BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
+    '5': 'cg5_longman1959'
+}
+
+DEFAULT_GRAVIMETER_ID_CG5_SURVEY = '5'
 
 # SCHWAUS and DRIFT settings:
 FLAG_SAVE_DRIFT_PLOT_PDF = True
@@ -53,4 +89,4 @@ NAME_OBS_FILE_BEV = 'n20200701_1'
 # CG-5 observation files (text)
 PATH_OBS_FILE_CG5 = '/home/heller/pyProjects/gravtools/data/CG5/'
 NAME_OBS_FILE_CG5 = '2020-06-18_DACH.TXT'
-#NAME_OBS_FILE_CG5 = '20200907_test.TXT'
+# NAME_OBS_FILE_CG5 = '20200907_test.TXT'

@@ -24,9 +24,11 @@ def adjust_reilly1970(obs_df, stat_df):
     """
     Adjustment of gravity meter observations according to Reilly 1970.
     Estimated parameters:
+
      - offset and linear drift per instrument
      - correction of the calibration constant of each instrument
      - gravity at observed stations
+
     :return:
     """
 

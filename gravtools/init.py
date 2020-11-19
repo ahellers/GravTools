@@ -78,7 +78,6 @@ def read_obs_file(filename, filepath=''):
     if filename.split('_')[-1] == 'sd':
         flag_sd = True
 
-
     # Read 5 header lines
     num_of_header_lines = 5
     with open(filepath + filename) as myfile:
@@ -94,8 +93,8 @@ def read_obs_file(filename, filepath=''):
         11,  # Punktnummer im ÖSGN
         5,  # Zeit
         9,  # g [mGal]
-        7,  # Geograph. Breite [deg]
-        6,  # Geograph. Länge [deg]
+        7,  # dhb [cm]
+        6,  # dhf [cm]
     ]
     column_names = [
         'punktnummer',

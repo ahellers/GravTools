@@ -13,6 +13,7 @@ from gravtools import settings
 def write_nsb_file(stat_df, instrument_id, path_name_nsb_file):
     """
     Schreiben der Input Datei für die NSDB (<session_name>.nsb).
+
     :param stat_df: Station dataframe
     :param path_name_nsb_file: path and name of output file
     :param instrument_id: instrument ID of the used gravimeter
