@@ -33,7 +33,29 @@ class Station:
         The keys are the filenames (valid filename and path) and the values are the types of the station file
         (see: STATION_DATA_SOURCE_TYPES.keys()).
     stat_df : :py:obj:`pandas.core.frame.DataFrame`
-        Pandas Dataframe that with the columns specified in `_STAT_DF_COLUMNS`. It holds all station information.
+        Pandas Dataframe that holds all station data. The columns are specified in :py:obj:`.Station._STAT_DF_COLUMNS`:
+
+        - station_name : str
+            Name of station.
+        - long_deg : float
+            Geographical longitude of the station [°] as optioned from the data source. Be aware that details on the
+            used reference fame are not handled here!
+        - lat_deg : float
+            Geographical longitude of the station [°] as optioned from the data source. Be aware that details on the
+            used reference fame are not handled here!
+        - height_deg : float
+            Height of the station [m] as optioned from the data source. Be aware that details on the
+            used reference fame are not handled here!
+        - g_mugal : float
+            Gravity at the station [µGal] as optioned from the data source.
+        - sd_g_mugal : float
+            Standard deviation of the gravity at the station [µGal] as optioned from the data source.
+        - vg_mugalm : float, optional (default=np.nan)
+            Vertical gradient at the station. If `NaN`, ths value is not available (and will probably be replaced by
+            the standard value defined in :py:obj:`gravtools.const.VG_DEFAULT`).
+        - is_oesgn : bool
+            Flag, that indicates whether the station is part auf the Austrian gravity base network (ÖSGN). If `True`,
+            the station is part of the reference network.
     """
 
     _STAT_DF_COLUMNS = (
@@ -42,7 +64,7 @@ class Station:
         'lat_deg',  # latitude [deg], float
         'height_m',  # Height [m]
         'g_mugal',  # gravity [µGal]
-        'g_sig_mugal',  # standard deviation of the gravity [µGal]
+        'sd_g_mugal',  # standard deviation of the gravity [µGal]
         'vg_mugalm',  # vertical gradient [µGal/m]
         'is_oesgn',  # flag: True, if station is a OESGN station.
     )
@@ -121,7 +143,7 @@ class Station:
             'long_deg',
             'height_m',
             'g_mugal',
-            'g_sig_mugal',
+            'sd_g_mugal',
             'vg_mugalm',
             'date',
             'identity'
@@ -214,27 +236,149 @@ class Survey:
 
     A gravity survey object contains all data that belongs to a single field observation job, carried out under the
     same circumstances (same instrument, measurement area, drift- and datum-point planing, same observer, etc.). A
-    survey is usually observed on the same day.
+    survey is usually observed on the same day, under similar conditions by the same operator.
 
-    All analytical observation level reductions and corrections are applied here. The reduced g values are stored in the
-    columns `g_red_mugal` and the according standard deviation in `sd_g_red_mugal`.
+    All analytical observation-level reductions and corrections are applied here. The reduced g values are stored in the
+    columns `g_red_mugal` and the according standard deviation in `sd_g_red_mugal` of `obs_df`. The following
+    corrections/reductions are supported:
 
     - Tidal corrections of observations
+
+      - Bulit-in corrections of the CG-5 (Longman, 1959)
+
     - Reduction of the observed gravity to various height levels
 
       - Control point level
       - Ground level
       - Level of the gravimeter top
+      - Sensor level
+
+    Notes
+    -----
+    Basically it is possible to initialize an empty survey, by just defining the survey's name on the instantiation
+    step. In this case all other (class and instance) attributes are initialized with the default values listed below
+    in the Attributes section.
 
     Attributes
     ----------
-    # TODO: Add Attribute description!
+    name : str
+        Name of the survy. This parameter is mandatory!
+    date :
+        Date of te survey.
+    operator : str, optional (default='')
+        Name of the responsible operator that carried out the observations of this survey.
+    gravimeter_id : str, optional (default='')
+        ID of the used gravimeter. Valid gravimeter IDs have to be listed in
+        :py:obj:`gravtools.settings.GRAVIMETER_ID_BEV`.
+    data_file_name : str, optional (default='')
+        Name of the data source file (observation file). Without file path!
+    data_file_type : str, optional (default='')
+        Type of the data source file. Since gravtools allows to load data from different sources, it is important to
+        track the data source type.
+    obs_tide_correction_type : str, (default='')
+        Type of the tidal corrections applied on the observations (gravimeter readings as obtained from the data
+        source; column `g_obs_mugal` in `obs_df`). Valid entries have to be listed in
+        :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
+    obs_reference_height_type : str, (default='')
+        Reference level type of the observations (gravimeter readings as obtained from the data
+        source; column `g_obs_mugal` in `obs_df`). Valid entries have to be listed in
+        :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`.
+    red_tide_correction_type : str, optional (default='')
+        Type of the tidal corrections applied on the reduced observations (column `g_red_mugal` in `obs_df`). Valid
+        entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. `Empty string`, if corrected
+        observations are not available.
+    red_reference_height_type : str, optional (default='')
+        Reference level type of the reduced observations (column `g_red_mugal` in `obs_df`). Valid entries have to be
+        listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`. `Empty string`, if corrected observations are not
+        available.
+    keep_survey : bool (default=True)
+        Flag that indicates whether this survey will be considered in the data analysis (adjustment).`True` is the
+        default and implies that this survey is considered.
+    obs_df : :py:obj:`pandas.core.frame.DataFrame`, optional (default=None)
+        Contains all observation data that belongs to this survey. One observation per line. If `None`, no observations
+        have been assigned to the survey. All Columns are listed in :py:obj:`.Survey._OBS_DF_COLUMNS`:
+
+        - station_name : str
+            Name of observed station
+        - setup_id : int (UNIX timestamp of the first observation reference epoch of this setup)
+            Each setup (one or more observations at a station without moving the instrument) gets a unique ID in order
+            to distinguish between independent groups of observations at a station.
+        - loop_id: int, optional (default=None)
+            Unique ID of a line. A survey can be split up into multiple lines. A line needs to have at least one station
+            that was observed at least twice for drift control (preferably at the begin and end of the line). If `None`,
+            loops were not defined. The purpose of splitting surveys into loops is to carry out drift correction for
+            individual loops (shorter time period) rather than fo the complete survey.
+        -  lon_deg : float, optional (default=None)
+            Geographical longitude of the station [°]. When loading observation data from the CG-5 observation files,
+            geographical coordinates are obtained from measurements of the built-in GPS device of teh instrument.
+        -  lat_deg : float, optional (default=None)
+            Geographical latitude of the station [°]. When loading observation data from the CG-5 observation files,
+            geographical coordinates are obtained from measurements of the built-in GPS device of teh instrument.
+        -  alt_m : float, optional (default=None)
+            Altitude of the station [m]. When loading observation data from the CG-5 observation files,
+            altitudes are obtained from measurements of the built-in GPS device of teh instrument.
+        - obs_epoch : :py:obj:`datetime.datetime`; timezone aware, if possible
+            Reference epoch of the observation. Per default the start epoch of an observation. Be aware that for the
+            determination of tidal corrections by the CG-5 built-in model (Longman, 1959) the middle of the observation
+            with the duration dur_sec [sec] is used (obs_epoch + dur_sec/2)!
+        - g_obs_mugal : float
+            Observed gravity value (instrument reading) [µGal], as obtained from the data source (observation files).
+            Be aware that, depending on the instrument settings and the observation data source, different corrections
+            and/or reductions may have been applied already! The reference height type and the applied tidal correction
+            have to be concise with the statements in :py:obj:`.Survey.obs_reference_height_type` and
+            :py:obj:`.Survey.obs_tide_correction_type`, respectively.
+        - sd_g_obs_mugal : float, optional (default=None)
+            Standard deviation of `g_obs_mugal`. If `None`, the standard deviation is not available.
+        - g_red_mugal : float, optional (default=None)
+            Reduced gravity observation. This value is derived from the observed gravimeter reading (`g_obs_mugal`) by
+            applying reductions and corrections, e.g. from analytical models for tidal effects, or by a reduction to a
+            different height level (using the vertical gravity gradient). Take care, that the same  reductions and
+            corrections are not applied more than once! The reference height type and the applied tidal correction
+            have to be concise with the statements in :py:obj:`.Survey.red_reference_height_type` and
+            :py:obj:`.Survey.red_tide_correction_type`, respectively. If `None`, no reductions and/or corrections have
+            been applied so far.
+        - sd_g_red_mugal : float, optional (default=None)
+            Standard deviation of the reduced gravity reading (`g_red_mugal`). This value is derived from the standard
+            deviation of the gravity reading (`sd_g_obs_mugal`) by applying proper error propagation. If `None`, the SD
+            of the gravity reading is not available, or no reductions/corrections have been applied so far, or an error
+            propagation model is still missing. In general, this value should not be `None`, if `g_red_mugal` is not
+            `None`.
+        - corr_terrain : float, optional (default=None)
+            Terrain correction [??] as determined by the built-in model of the Scintrex CG-5. If `None`, this
+            correction is not available in the observation data.
+        - corr_tide : float, optional (default=None)
+            Tidal correction [µGal] as determined by the built-in model of the Scintrex CG-5 (Longman, 1959). Be aware
+            that the tidal corrections by the CG-5 model is determined fot the middl of the observation (also see
+            `obs_epoch`). If `None`, this correction is not available in the observation data.
+        - temp : float, optional (default=None)
+            Temperature [mK] as determined by the Scintrex CG-5. Be aware that this is not the ambient temperature!
+            This temperature is obtained from the GC-5 observation file and indicates internal temperature variations
+            that are measured and used for the instrumental temperature compensation. If `None`, this information is
+            not available in the observation data.
+        - tiltx : float, optional (default=None)
+            Tilt in x-direction [arcsec] of the gravimeter logged during the observation. If `None`, this
+            information is not available in the observation data.
+        - tilty : float, optional (default=None)
+            Tilt in y-direction [arcsec] of the gravimeter logged during the observation. If `None`, this
+            information is not available in the observation data.
+        - dhf_m : float
+            Vertical distance between instrument top and physical reference point [m]. This information is required
+            for reducing the observed gravity to the reference point level (vertical gravity gradient also required).
+        - dhb_m : float
+            Vertical distance between instrument top and the ground [m]. This information is required
+            for reducing the observed gravity to the ground level (vertical gravity gradient also required).
+        - keep_obs : bool (default=True)
+            Flag, that indicates whether this observation should be considered in the data analysis (adjustment).
+            If `True`, the observations takes part in the analysis.
+        - vg_mugalm : float, optional (default=None)
+            Vertical gravity gradient at the station [µGal/m], obtained from an external source (e.g. station info
+            file). The vertical gradient is required for reducing the observed gravity to different reference heights.
     """
 
     _OBS_DF_COLUMNS = (
         'station_name',  # Name of station (str)
         'setup_id',  # unique ID of setup (int)
-        'line_id',  # Line ID, optional (default=None) (int)
+        'loop_id',  # Line ID, optional (default=None) (int)
         'lon_deg',  # Longitude [deg], optional (float)
         'lat_deg',  # Latitude [deg], optional (float)
         'alt_m',  # Altitude [m], optional (float)
@@ -244,10 +388,10 @@ class Survey:
         'g_red_mugal',  # Reduced gravity observation at station (float) [µGal]
         'sd_g_red_mugal',  # Standard deviation of the reduced gravity (float) [µGal]
         'corr_terrain',  # Terrain correction [??]
-        'corr_tide',  # Tidal correction [??], optional
-        'corr_temp',  # Temperature [??], optional
-        'tiltx',  # [??], optional
-        'tilty',  # [??], optional
+        'corr_tide',  # Tidal correction [mGal], optional
+        'temp',  # Temperature [mK], optional
+        'tiltx',  # [arcsec], optional
+        'tilty',  # [arcsec], optional
         'dhf_m',  # Distance between instrument top and physical reference point (float) [m]
         'dhb_m',  # Distance between instrument top and ground (float) [m]
         'keep_obs',  # Remove observation, if false (bool)
@@ -255,6 +399,10 @@ class Survey:
     )
 
     # TODO: Get missing infos on columns in CG5 obs file!
+    # How is the reference epoch of the observations defined?
+    # - begin, middle or end of the observation?
+    # - Does this depend on the obs-file type?
+    # => Enter the missing information in the docstring above!
 
     def __init__(self,
                  name,
@@ -451,8 +599,7 @@ class Survey:
 
             # Rename columns:
             obs_df.rename(columns={'terrain': 'corr_terrain',
-                                   'tide': 'corr_tide',
-                                   'temp': 'corr_temp'},
+                                   'tide': 'corr_tide',},
                           inplace=True)
 
             # Drop columns that are not needed any more:
@@ -513,7 +660,7 @@ class Survey:
 
     @classmethod
     def from_bev_obs_file(cls, filename, keep_survey=True, verbose=False):
-        """Constructor that generates populates the survey object from an observation file in the legacy BEV format.
+        """Constructor that generates and populates the survey object from an observation file in the legacy BEV format.
 
         Notes
         -----
@@ -1088,15 +1235,17 @@ class Campaign:
         return len(self.surveys)
 
     def reduce_to_reference_height(self, target_ref_height, verbose=False):
-        """Reduce the observed gravity to the specified target reference height.
+        """Reduce the observed gravity to the specified target reference heights.
 
         Notes
         -----
-        - For this reduction vertical gravity gradients are required on the survey level
+        - For this reduction vertical gravity gradients are required. They are obtained from the `Station` object.
+          Hence, a `Station` object has to be attached to the Campaign object beforehand.
 
         Parameters
         ----------
-        verbose :
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line.
 
         target_ref_height : string, specifying the target reference height type.
             The target reference height type has to be listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`
@@ -1111,11 +1260,6 @@ class Campaign:
             survey.obs_df_populate_vg_from_stations(self.stations, verbose=verbose)
             if not survey.reduce_to_reference_height(target_ref_height, verbose=verbose):
                 raise AssertionError('Reduction to reference height failed!')
-
-        # TODO
-        # wrapper for :
-        # - Survey.obs_df_populate_vg_from_stations()
-        # - Survey.reduce_to_reference_height()
 
     def __str__(self):
         return f'Campaign "{self.campaign_name}" with {self.number_of_surveys} surveys ' \
