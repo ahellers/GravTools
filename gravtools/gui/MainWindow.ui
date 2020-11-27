@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1403</width>
+    <height>729</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>GravTools</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QStackedWidget" name="stackedWidget_Main">
+      <property name="currentIndex">
+       <number>1</number>
+      </property>
+      <widget class="QWidget" name="page_Observations"/>
+      <widget class="QWidget" name="page_Stations">
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QTabWidget" name="tab_Widget_Stations">
+          <property name="currentIndex">
+           <number>0</number>
+          </property>
+          <widget class="QWidget" name="tab_Stations_Table">
+           <attribute name="title">
+            <string>Table</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="tab_Stations_Plot">
+           <attribute name="title">
+            <string>Plot</string>
+           </attribute>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1403</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuAdd_Survey">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Add Survey</string>
+     </property>
+     <addaction name="action_from_CG5_observation_file"/>
+     <addaction name="action_from_BEV_observation_file"/>
+    </widget>
+    <addaction name="action_New_Campaign"/>
+    <addaction name="action_Save_Campaign"/>
+    <addaction name="action_Load_Campaign"/>
+    <addaction name="separator"/>
+    <addaction name="menuAdd_Survey"/>
+    <addaction name="action_Add_Stations"/>
+    <addaction name="separator"/>
+    <addaction name="action_Exit"/>
+   </widget>
+   <widget class="QMenu" name="menu_Observations">
+    <property name="tearOffEnabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Observations</string>
+    </property>
+    <addaction name="action_Edit_Observations"/>
+    <addaction name="separator"/>
+    <addaction name="action_Corrections"/>
+   </widget>
+   <widget class="QMenu" name="menuEstimation_settings">
+    <property name="title">
+     <string>Estimation settings</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuStations">
+    <property name="title">
+     <string>Stations</string>
+    </property>
+    <addaction name="actionShow_Stations"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menu_Observations"/>
+   <addaction name="menuEstimation_settings"/>
+   <addaction name="menuStations"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="inputMethodHints">
+    <set>Qt::ImhNone</set>
+   </property>
+  </widget>
+  <action name="action_New_Campaign">
+   <property name="text">
+    <string>&amp;New Campaign</string>
+   </property>
+  </action>
+  <action name="action_Save_Campaign">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Save Campaign</string>
+   </property>
+  </action>
+  <action name="action_Load_Campaign">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Load Campaign</string>
+   </property>
+  </action>
+  <action name="action_Add_Stations">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Add Stations</string>
+   </property>
+  </action>
+  <action name="action_Exit">
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+   <property name="toolTip">
+    <string>Exit GravTools</string>
+   </property>
+  </action>
+  <action name="action_Edit_Observations">
+   <property name="text">
+    <string>Edit Observations</string>
+   </property>
+  </action>
+  <action name="actionResiduals">
+   <property name="text">
+    <string>Residuals</string>
+   </property>
+  </action>
+  <action name="actionEstimates">
+   <property name="text">
+    <string>Estimates</string>
+   </property>
+  </action>
+  <action name="action_Corrections">
+   <property name="text">
+    <string>Corrections</string>
+   </property>
+  </action>
+  <action name="actionShow_Stations">
+   <property name="text">
+    <string>Show Stations</string>
+   </property>
+  </action>
+  <action name="action_from_CG5_observation_file">
+   <property name="text">
+    <string>from CG5 observation file</string>
+   </property>
+  </action>
+  <action name="action_from_BEV_observation_file">
+   <property name="text">
+    <string>from BEV observation file</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

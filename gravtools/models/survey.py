@@ -1014,6 +1014,8 @@ class Campaign:
     ----------
     campaign_name : str
         Name of the campaign.
+    output_directory : str
+        Path to output directory (all output files are stored there).
     surveys: dict of :py:obj:`.Survey` objects
         Arbitrary number of survey objects.
     stations : :py:obj:`.Station` object
@@ -1022,6 +1024,7 @@ class Campaign:
 
     def __init__(self,
                  campaign_name,
+                 output_directory,
                  surveys=None,  # Always use non-mutable default arguments!
                  stations=None,  # Always use non-mutable default arguments!
                  ):
@@ -1050,6 +1053,14 @@ class Campaign:
             if not campaign_name:
                 raise ValueError('"campaign_name" should not be empty!')
         self.campaign_name = campaign_name
+
+        # Check output directory:
+        if not isinstance(output_directory, str):
+            raise TypeError('The argument "output_directory" needs to be a string.')
+        else:
+            if not output_directory:
+                raise ValueError('"output_directory" should not be empty!')
+        self.output_directory = output_directory
 
         # Check surveys:
         if surveys is None:
@@ -1293,7 +1304,7 @@ if __name__ == '__main__':
     surv2 = Survey.from_cg5_obs_file(PATH_OBS_FILE_CG5 + NAME_OBS_FILE_CG5)
     print(surv2)
 
-    camp = Campaign('AD1', stations=stat, surveys={surv2.name: surv2})
+    camp = Campaign('AD1', 'dir_name', stations=stat, surveys={surv2.name: surv2})
     camp.activate_survey(True)
 
     surv_bev = Survey.from_bev_obs_file(PATH_OBS_FILE_BEV + NAME_OBS_FILE_BEV, verbose=VERBOSE)
