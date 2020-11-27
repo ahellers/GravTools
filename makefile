@@ -20,3 +20,7 @@ schwaus_test:
 	cat /tmp/n20200701_1.nsb
 	pdfinfo /tmp/n20200701_1_drift.pdf
 
+# Convert *.ui files from Qt Designer to Python files:
+py_gui:
+	pyuic5 -o gravtools/gui/MainWindow.py gravtools/gui/MainWindow.ui
+	pyuic5 -o gravtools/gui/dialog_new_campaign.py gravtools/gui/dialog_new_campaign.ui
