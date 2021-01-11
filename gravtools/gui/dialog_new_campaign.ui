@@ -70,7 +70,7 @@
           </size>
          </property>
          <property name="toolTip">
-          <string>Open dialog to define the output directory.</string>
+          <string>Open dialog to select the output directory.</string>
          </property>
          <property name="text">
           <string>&amp;Change output directory...</string>
@@ -81,11 +81,17 @@
      </item>
      <item>
       <widget class="QDialogButtonBox" name="buttonBox">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
        <property name="standardButtons">
         <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       </property>
+       <property name="centerButtons">
+        <bool>false</bool>
        </property>
       </widget>
      </item>

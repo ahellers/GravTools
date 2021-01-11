@@ -14,33 +14,135 @@
    <string>GravTools</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout">
+   <layout class="QHBoxLayout" name="horizontalLayout_3">
     <item>
-     <widget class="QStackedWidget" name="stackedWidget_Main">
-      <property name="currentIndex">
-       <number>1</number>
+     <widget class="QTabWidget" name="tabWidget_Main">
+      <property name="tabPosition">
+       <enum>QTabWidget::East</enum>
       </property>
-      <widget class="QWidget" name="page_Observations"/>
-      <widget class="QWidget" name="page_Stations">
-       <layout class="QVBoxLayout" name="verticalLayout">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <property name="movable">
+       <bool>true</bool>
+      </property>
+      <widget class="QWidget" name="tabWidget_MainPage1">
+       <attribute name="title">
+        <string>Stations</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
-         <widget class="QTabWidget" name="tab_Widget_Stations">
-          <property name="currentIndex">
-           <number>0</number>
-          </property>
-          <widget class="QWidget" name="tab_Stations_Table">
-           <attribute name="title">
-            <string>Table</string>
-           </attribute>
-          </widget>
-          <widget class="QWidget" name="tab_Stations_Plot">
-           <attribute name="title">
-            <string>Plot</string>
-           </attribute>
-          </widget>
-         </widget>
+         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,4">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="QGroupBox" name="groupBox_filter_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="toolTip">
+               <string>Display options for stations</string>
+              </property>
+              <property name="title">
+               <string>Filter Options</string>
+              </property>
+              <property name="flat">
+               <bool>false</bool>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_2">
+               <item>
+                <widget class="QCheckBox" name="checkBox_filter_observed_stat_only">
+                 <property name="toolTip">
+                  <string>Display only stations that were observed in this campaign. </string>
+                 </property>
+                 <property name="text">
+                  <string>Observed only</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label">
+                 <property name="text">
+                  <string>Station name filter (regex)</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="lineEdit_filter_stat_name">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_edit_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Edit Options</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QTabWidget" name="tab_Widget_Stations">
+            <property name="currentIndex">
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="tab_Stations_Table">
+             <attribute name="title">
+              <string>Table</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="verticalLayout">
+              <item>
+               <widget class="QTableView" name="tableView_Stations">
+                <property name="sizeAdjustPolicy">
+                 <enum>QAbstractScrollArea::AdjustToContents</enum>
+                </property>
+                <attribute name="horizontalHeaderCascadingSectionResizes">
+                 <bool>true</bool>
+                </attribute>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_Stations_Plot">
+             <attribute name="title">
+              <string>Plot</string>
+             </attribute>
+            </widget>
+           </widget>
+          </item>
+         </layout>
         </item>
        </layout>
+      </widget>
+      <widget class="QWidget" name="tabWidget_MainPage2">
+       <attribute name="title">
+        <string>Observations</string>
+       </attribute>
+       <layout class="QHBoxLayout" name="horizontalLayout"/>
       </widget>
      </widget>
     </item>
