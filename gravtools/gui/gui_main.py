@@ -1,6 +1,6 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, QHeaderView
 from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp
 from PyQt5 import QtGui
 
@@ -29,6 +29,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
 
+        # Overwrite setting from ui file, if necessary:
+        # ...
+
         # Connect signals and slots
         self.action_Exit.triggered.connect(self.exit_application)
         self.action_New_Campaign.triggered.connect(self.on_menu_file_new_campaign)
@@ -37,6 +40,82 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
+
+        # Set up GUI items and widgets:
+        self.set_up_survey_tree_widget()
+        # self.observations_splitter.setSizes([1000, 10])
+
+    def set_up_survey_tree_widget(self):
+        """Set up the survey tree widget."""
+        self.treeWidget_observations.setColumnCount(3)
+        self.treeWidget_observations.setHeaderLabels(['Survey', 'Station', '#Obs'])
+        header = self.treeWidget_observations.header()
+        header.setVisible(True)
+        header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        header.setStretchLastSection(True)
+        # The following line raises the following error:
+        # "Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)"
+        # header.setSectionResizeMode(5, QHeaderView.Stretch)
+
+    def populate_survey_tree_widget(self):
+        """Populate the survey tree widget."""
+        # Delete existing items:
+        self.delete_all_items_from_survey_tree_widget()
+
+        # Add new items:
+        # Parent items (surveys):
+        for survey_name, survey in self.campaign.surveys.items():
+            # print (survey_name, survey)
+            # survey.keep_survey
+            obs_df = survey.obs_df.sort_values('obs_epoch').copy(deep=True)
+            num_of_obs_in_survey = survey.get_number_of_observations()
+
+            parent = QTreeWidgetItem(self.treeWidget_observations)
+            parent.setText(0, survey_name)
+            parent.setText(2, str(num_of_obs_in_survey))
+            parent.setFlags(parent.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
+            if survey.keep_survey:
+                parent.setCheckState(0, Qt.Checked)
+            else:
+                parent.setCheckState(0, Qt.Unchecked)
+
+            # Loop over instrument setups in survey:
+            setup_ids = obs_df['setup_id'].unique()
+            for setup_id in setup_ids:
+                # print(setup_id)
+                # get all observations
+                setup_keep_obs_flags = obs_df.loc[obs_df['setup_id'] == setup_id, 'keep_obs']
+                setup_station_names = obs_df.loc[obs_df['setup_id'] == setup_id, 'station_name']
+                num_of_obs_in_setup = len(setup_keep_obs_flags)
+
+                # get station name (has to be unique within one setup!):
+                if len(setup_station_names.unique()) > 1:
+                    QMessageBox.critical(self, 'Error!', 'Setup {} includes observations to more than one '
+                                                         'station ({})!'.format(setup_id,
+                                                         ', '.join(setup_station_names.unique().tolist())))
+                    self.delete_all_items_from_survey_tree_widget()
+                    return
+                else:
+                    setup_station_name = setup_station_names.unique()[0]
+                    child = QTreeWidgetItem(parent)
+                    child.setFlags(child.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsTristate )
+                    child.setText(0, str(setup_id))
+                    child.setText(2, str(num_of_obs_in_setup))
+                    child.setText(1, setup_station_name)
+
+                    if setup_keep_obs_flags.all():
+                        child.setCheckState(0, Qt.Checked)
+                    elif setup_keep_obs_flags.any():
+                        child.setCheckState(0, Qt.PartiallyChecked)
+                    else:
+                        child.setCheckState(0, Qt.Unhecked)
+            parent.setExpanded(True)  # Expand the current parent
+        self.treeWidget_observations.show()
+        # self.treeWidget_observations.expandToDepth(0)  # Expand items to a certain depth
+
+    def delete_all_items_from_survey_tree_widget(self):
+        """Delete all items from the survey tree widget."""
+        self.treeWidget_observations.clear()
 
     @pyqtSlot(str)
     def on_lineEdit_filter_stat_name_textChanged(self, text):
@@ -218,9 +297,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.statusBar().showMessage(f"No survey data added.")
             else:
                 if flag_no_duplicate:
+                    # No problems occurred:
                     self.connect_station_model_to_table_view()  # Disconnect sort & filter proxy model from station view.
                     self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
                     self.refresh_stations_table_model_and_view()
+                    self.populate_survey_tree_widget()
                     self.statusBar().showMessage(f"Survey {new_cg5_survey.name} "
                                                  f"({new_cg5_survey.get_number_of_observations()} observations) added.")
                 else:

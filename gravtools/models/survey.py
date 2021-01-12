@@ -1069,7 +1069,7 @@ class Survey:
         Parameters
         ----------
         stations : :py:obj:`.Station` object
-            Data of known stations (datum- and non-datum-stations).
+            Station data (datum- and non-datum-stations).
 
         verbose : bool, optional (default=False)
             If True, status messages are printed to the command line.
@@ -1255,7 +1255,7 @@ class Campaign:
             Arbitrary number of survey data objects. Default=None which implies that the campaign will be initialized
             without surveys.
         stations: :py:obj:`.Station` object, optional
-            Data of known stations (datum- and non-datum-stations). Default=None implies that the campaign will be
+            Station data (datum- and non-datum-stations). Default=None implies that the campaign will be
             initialized without station data.
 
         Raises
