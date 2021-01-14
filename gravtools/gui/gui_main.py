@@ -1,7 +1,7 @@
 import sys
 import os
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, QHeaderView
-from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp
+from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QModelIndex
 from PyQt5 import QtGui
 
 from MainWindow import Ui_MainWindow
@@ -9,12 +9,20 @@ from dialog_new_campaign import Ui_Dialog_new_Campaign
 from dialog_load_stations import Ui_Dialog_load_stations
 
 from gravtools.models.survey import Campaign, Survey, Station
-from gui_models import StationModel
+from gui_models import StationTableModel, ObservationTableModel
 
 DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
 DEFAULT_CG5_OBS_FILE_PATH = os.path.abspath(os.getcwd())  # Current working directory
 IS_VERBOSE = True  # Define, whether screen output is enabled.
 
+def checked_state_to_bool(checked_state) -> bool:
+    """Converts Qt checked states to boolean values."""
+    if checked_state == Qt.Checked or checked_state == Qt.PartiallyChecked:
+        return True
+    elif checked_state == Qt.Unchecked:
+        return False
+    else:
+        raise AttributeError('Invalid input argument!')
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     """Main Window of the application."""
@@ -40,10 +48,118 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
+        # Observations tree widget:
+        # self.treeWidget_observations.itemClicked.connect(self.on_obs_tree_widget_item_clicked)
+        self.treeWidget_observations.itemSelectionChanged.connect(self.on_obs_tree_widget_item_selected)
+        self.treeWidget_observations.itemChanged.connect(self.on_tree_widget_item_changed)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
         # self.observations_splitter.setSizes([1000, 10])
+
+    def on_observation_model_data_changed(self, topLeft, bottomRight, role):
+        """Invoked whenever data in the observation table view changed."""
+        if IS_VERBOSE:
+            print('TableModel: dataChanged: ', topLeft, bottomRight, role)
+        if topLeft == bottomRight:  # Only one item selected?
+            index = topLeft
+            # Get column and row indices for dataframe:
+            row = self.observation_model.get_data.index[index.row()]
+            col = self.observation_model.get_data.columns[index.column()]
+            if col == 'keep_obs':
+                flag_keep_obs = self.observation_model.get_data.at[row, col]
+                # Change data in `survey.obs_df`:
+                survey_name = self.observation_model.data_survey_name
+                survey = self.campaign.surveys[survey_name]
+                survey.activate_observation(row, flag_keep_obs)
+
+                # Change check state of obs tree widget according to "keep_obs" flags of setup
+                setup_id = self.observation_model.get_data.at[row, 'setup_id']
+                keep_obs_flags_of_setup = self.observation_model.get_data.loc[
+                    self.observation_model.get_data['setup_id'] == setup_id, 'keep_obs']
+                if all(keep_obs_flags_of_setup):
+                    tree_item_check_state = Qt.Checked
+                elif any(keep_obs_flags_of_setup):
+                    tree_item_check_state = Qt.PartiallyChecked
+                else:  # all are = False
+                    tree_item_check_state = Qt.Unchecked
+                # Set Checked state:
+                self.treeWidget_observations.blockSignals(True)  # Block any signals when changing the checked state
+                for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
+                    if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == survey_name:
+                        item = self.treeWidget_observations.topLevelItem(tree_item_idx)
+                        for child_item_idx in range(item.childCount()):
+                            if int(item.child(child_item_idx).text(0)) == setup_id:
+                                setup_item = item.child(child_item_idx)
+                                setup_item.setCheckState(0, tree_item_check_state)  # finally set checked state!
+                                break
+                self.treeWidget_observations.blockSignals(False)
+        else:
+            pass  # More than one items selected/changed.
+
+    def on_tree_widget_item_changed(self, item, column):
+        """Test method."""
+        self.treeWidget_observations.blockSignals(True)  # To avoid recursive effects
+        if IS_VERBOSE:
+            print('TreeView: itemChanged: ', item, column)
+            print(f' - CheckState of item "{item.text(0)}": {item.checkState(0)}')
+        flag_checked_state = checked_state_to_bool(item.checkState(0))
+        # Is parent (survey) or child (setup):
+        if item.parent() is None:  # Is survey item
+            survey_name = item.text(0)
+            setup_id = None
+            if flag_checked_state == True:
+                self.campaign.activate_survey(survey_name, verbose=False)
+            else:
+                self.campaign.deactivate_survey(survey_name, verbose=False)
+            self.on_obs_tree_widget_item_selected()
+            if IS_VERBOSE:
+                print('-----------Parent changed---------------------')
+        else:  # Is a setup item
+            # Update table view and data in dataframe:
+            survey_name = item.parent().text(0)
+            setup_id = int(item.text(0))
+            self.campaign.surveys[survey_name].activate_setup(setup_id, flag_checked_state)
+        self.treeWidget_observations.blockSignals(False)
+
+    @pyqtSlot()
+    def on_obs_tree_widget_item_selected(self):
+        items = self.treeWidget_observations.selectedItems()
+        if len(items) == 1:  # Only one item in tree view selected
+            item = items[0]
+            if item.parent() is None:  # Is a survey
+                survey_name = item.text(0)  # Column 0 = Survey name
+                setup_id = None  # No setup selected
+            else:
+                parent = item.parent()
+                survey_name = parent.text(0)  # Column 0 = Survey name
+                setup_id = int(item.text(0))
+            self.update_obs_table_view(survey_name, setup_id)
+        else:
+            if IS_VERBOSE:
+                print('No item or multiple items selected!')
+
+    # @pyqtSlot(QTreeWidgetItem, int)
+    # def on_obs_tree_widget_item_clicked(self, item, column):
+    #     """Slot for item clicked signal of the observation tree widget."""
+    #     # print(item, column, item.text(column))
+    #     if item.parent() is None:  # Is a survey
+    #         survey_name = item.text(0)  # Column 0 = Survey name
+    #         setup_id = None  # No setup selected
+    #     else:
+    #         parent = item.parent()
+    #         survey_name = parent.text(0)  # Column 0 = Survey name
+    #         setup_id = int(item.text(0))
+    #     self.update_obs_table_view(survey_name, setup_id)
+
+    def update_obs_table_view(self, survey_name: str, setup_id: int):
+        """Update the observation table view according to the selected survey and instrument setup."""
+        if IS_VERBOSE:
+            print(f'survey name: {survey_name}; setup ID: {setup_id}')
+        # Update the observation table view model according to the selected
+        self.observation_model.update_view_model(survey_name, setup_id)  # Show added survey in table
+        self.observation_model.layoutChanged.emit()  # Show changes in table view
+        self.tableView_observations.resizeColumnsToContents()
 
     def set_up_survey_tree_widget(self):
         """Set up the survey tree widget."""
@@ -57,9 +173,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # "Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)"
         # header.setSectionResizeMode(5, QHeaderView.Stretch)
 
+    @pyqtSlot()
+    def set_up_observation_view_model(self):
+        """Set up observation data view model and show observation data table view."""
+        # Set model:
+        try:
+            self.observation_model = ObservationTableModel(self.campaign.surveys)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No surveys available!')
+            self.statusBar().showMessage(f"No surveys available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            # TODO: Add code to initialize the table view here!
+            self.tableView_observations.setModel(self.observation_model)
+            # self.connect_station_model_to_table_view()  # Set view
+            self.tableView_observations.resizeColumnsToContents()
+            self.statusBar().showMessage(f"{self.campaign.number_of_surveys} surveys in current campaign.")
+
+            # TODO: TEST:
+            self.observation_model.dataChanged.connect(self.on_observation_model_data_changed)
+
     def populate_survey_tree_widget(self):
         """Populate the survey tree widget."""
         # Delete existing items:
+        self.treeWidget_observations.blockSignals(True)
         self.delete_all_items_from_survey_tree_widget()
 
         # Add new items:
@@ -82,7 +220,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Loop over instrument setups in survey:
             setup_ids = obs_df['setup_id'].unique()
             for setup_id in setup_ids:
-                # print(setup_id)
                 # get all observations
                 setup_keep_obs_flags = obs_df.loc[obs_df['setup_id'] == setup_id, 'keep_obs']
                 setup_station_names = obs_df.loc[obs_df['setup_id'] == setup_id, 'station_name']
@@ -94,6 +231,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                          'station ({})!'.format(setup_id,
                                                          ', '.join(setup_station_names.unique().tolist())))
                     self.delete_all_items_from_survey_tree_widget()
+                    self.treeWidget_observations.blockSignals(False)
                     return
                 else:
                     setup_station_name = setup_station_names.unique()[0]
@@ -111,6 +249,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         child.setCheckState(0, Qt.Unhecked)
             parent.setExpanded(True)  # Expand the current parent
         self.treeWidget_observations.show()
+        self.treeWidget_observations.blockSignals(False)
         # self.treeWidget_observations.expandToDepth(0)  # Expand items to a certain depth
 
     def delete_all_items_from_survey_tree_widget(self):
@@ -142,18 +281,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Exit the application."""
         sys.exit()
 
-    def create_new_campaign(self, campaign_name=''):
-        """Create a new and empty campaign."""
-        print(f'New campaing: {campaign_name}')
-
     @pyqtSlot()
     def on_menu_file_new_campaign(self):
         """Launching dialog to create a new campaign."""
         dlg = DialogNewCampaign(old_campaign=self.campaign)
         return_value = dlg.exec()
         if return_value == QDialog.Accepted:
-            # print('Accepted')
-
             # Create Campaign object:
             self.campaign = Campaign(
                 campaign_name=dlg.lineEdit_campaign_name.text(),
@@ -169,8 +302,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                          f"output directory: {self.campaign.output_directory})")
             self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
 
+            # Set up view models and views for this campaign:
             self.set_up_station_view_model()
-            # self.set_up_proxy_station_model()
+            self.set_up_observation_view_model()
 
         elif return_value == QDialog.Rejected:
             self.statusBar().showMessage(f"Canceled creating new campaign.")
@@ -239,7 +373,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Set up station data view model and show station data table view."""
         # Set model:
         try:
-            self.station_model = StationModel(self.campaign.stations.stat_df)
+            self.station_model = StationTableModel(self.campaign.stations.stat_df)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No stations available!')
             self.statusBar().showMessage(f"No stations available.")
@@ -248,7 +382,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.connect_station_model_to_table_view()  # Set view
             self.tableView_Stations.resizeColumnsToContents()
-            self.statusBar().showMessage(f"{self.campaign.number_of_stations} stations in current project.")
+            self.statusBar().showMessage(f"{self.campaign.number_of_stations} stations in current campaign.")
 
     def connect_station_model_to_table_view(self):
         """Connect model from table view for stations."""
@@ -302,6 +436,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
                     self.refresh_stations_table_model_and_view()
                     self.populate_survey_tree_widget()
+                    # Select the added survey in the tree view:
+                    for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
+                        if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) ==new_cg5_survey.name:
+                            self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
                     self.statusBar().showMessage(f"Survey {new_cg5_survey.name} "
                                                  f"({new_cg5_survey.get_number_of_observations()} observations) added.")
                 else:
@@ -351,7 +489,6 @@ class DialogNewCampaign(QDialog, Ui_Dialog_new_Campaign):
         """Open dialog to get the output directory."""
 
         initial_folder_path = self.lineEdit_output_directory.text()
-        ## print(initial_folder_path)
         output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path)
 
         if output_dir_name:
@@ -359,7 +496,8 @@ class DialogNewCampaign(QDialog, Ui_Dialog_new_Campaign):
             # operating system.
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             output_dir_name = QDir.toNativeSeparators(output_dir_name)
-            print(output_dir_name)
+            if IS_VERBOSE:
+                print(output_dir_name)
 
         # Check, if path exists:
         if os.path.isdir(output_dir_name):
@@ -399,7 +537,6 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
             initial_oesgn_file_path = os.path.dirname(os.path.abspath(self.lineEdit_oesgn_table_file_path.text()))
         else:
             initial_oesgn_file_path = self.lineEdit_oesgn_table_file_path.text()
-        # print(initial_oesgn_file_path)
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         oesgn_filename, _ = QFileDialog.getOpenFileName(self, 'Select OESGN table file', initial_oesgn_file_path,
@@ -409,7 +546,6 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
             # operating system.
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             oesgn_filename = QDir.toNativeSeparators(oesgn_filename)
-            # print(oesgn_filename)
             self.lineEdit_oesgn_table_file_path.setText(oesgn_filename)
 
 

@@ -1010,6 +1010,33 @@ class Survey:
         obs_df = obs_df[list(cls._OBS_DF_COLUMNS)]
         return obs_df
 
+    def activate_setup(self, setup_id, flag_activate):
+        """Activate or deactivate instrument setup with the specified ID.
+
+        Parameters
+        ----------
+        setup_id : int
+            ID of the setup that will be activated or deactivated.
+        flag_activate : bool
+            Specified whether the setup with the ID `setup_id` will be activated (`TRUE`) or deactivated (`False`).
+        """
+        if not isinstance(flag_activate, bool):
+            raise TypeError('"flag_activate" has to be a boolean variable!')
+        self.obs_df.loc[self.obs_df['setup_id'] == setup_id, 'keep_obs'] = flag_activate
+
+    def activate_observation(self, obs_idx, flag_activate):
+        """Activate or deactivate teh observation with the specified dataframe index.
+
+        Parameters
+        ----------
+        obs_idx : int
+            Index of the observation within the observation dataframe (`obs_df`) that will be activated or deactivated.
+        flag_activate : bool
+            Specified whether the observation with the index `obs_idx` will be activated (`TRUE`) or deactivated
+            (`False`).
+        """
+        self.obs_df.at[obs_idx, 'keep_obs'] = flag_activate
+
     def is_valid_obs_df(self, verbose=False) -> bool:
         """Check, whether the observations DataFrame (`obs_df`) is valid.
 
@@ -1049,6 +1076,39 @@ class Survey:
         """Drop all columns of obs_df that are not listed in self._OBS_DF_COLUMNS"""
         columns_to_be_dropped = list(set(self.obs_df.columns) - set(self._OBS_DF_COLUMNS))
         self.obs_df.drop(columns=columns_to_be_dropped, inplace=True)
+
+    @classmethod
+    def get_obs_df_column_name(cls, col_index):
+        """Return the name of the observation dataframe column with the specified index.
+
+        Parameters
+        ----------
+        col_index : int
+            Column index for the observation dataframe.
+
+        Returns
+        -------
+        str : Column name.
+            Name of the column with index `col_index`
+        """
+        return cls._OBS_DF_COLUMNS[col_index]
+
+    @classmethod
+    def get_obs_df_column_index(cls, column_name: str) -> int:
+        """Returns the column index for specific column name for the obs_df dataframe.
+
+        Parameters
+        ----------
+        column_name: str
+            Name of the columns for which the column index is returned.
+
+        Returns
+        -------
+        int : Column index
+            Index of the column with the name `column_name`.
+        """
+        return cls._OBS_DF_COLUMNS.index(column_name)
+
 
     def get_number_of_observations(self) -> int:
         """Returns the number of observations of the current survey.
@@ -1578,6 +1638,9 @@ if __name__ == '__main__':
 
     surv = Survey.from_cg5_survey(cg5surv)
     print(surv)
+
+    surv.activate_setup(1592449837, False)
+    surv.activate_observation(18, False)
 
     surv2 = Survey.from_cg5_obs_file(PATH_OBS_FILE_CG5 + NAME_OBS_FILE_CG5)
     print(surv2)
