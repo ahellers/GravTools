@@ -4,6 +4,11 @@ from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMe
 from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QModelIndex
 from PyQt5 import QtGui
 
+import datetime as dt
+import pyqtgraph as pg
+import numpy as np
+import pytz
+
 from MainWindow import Ui_MainWindow
 from dialog_new_campaign import Ui_Dialog_new_Campaign
 from dialog_load_stations import Ui_Dialog_load_stations
@@ -15,6 +20,10 @@ DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
 DEFAULT_CG5_OBS_FILE_PATH = os.path.abspath(os.getcwd())  # Current working directory
 IS_VERBOSE = True  # Define, whether screen output is enabled.
 
+MARKER_SYMBOL_ORDER = ('o', 't', 'x', 's', 'star', '+', 'd', 't1', 'p', 't2', 'h', 't3')
+MARKER_COLOR_ODER = ('b', 'r', 'g', 'c', 'm', 'y')
+
+
 def checked_state_to_bool(checked_state) -> bool:
     """Converts Qt checked states to boolean values."""
     if checked_state == Qt.Checked or checked_state == Qt.PartiallyChecked:
@@ -23,6 +32,17 @@ def checked_state_to_bool(checked_state) -> bool:
         return False
     else:
         raise AttributeError('Invalid input argument!')
+
+
+class TimeAxisItem(pg.AxisItem):
+    """From: https://stackoverflow.com/questions/49046931/how-can-i-use-dateaxisitem-of-pyqtgraph
+
+    Note: The timestamps need to refer to UTC!"
+    """
+
+    def tickStrings(self, values, scale, spacing):
+        return [dt.datetime.fromtimestamp(value, tz=pytz.utc) for value in values]
+
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     """Main Window of the application."""
@@ -52,10 +72,136 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.treeWidget_observations.itemClicked.connect(self.on_obs_tree_widget_item_clicked)
         self.treeWidget_observations.itemSelectionChanged.connect(self.on_obs_tree_widget_item_selected)
         self.treeWidget_observations.itemChanged.connect(self.on_tree_widget_item_changed)
+        self.checkBox_obs_plot_reduced_observations.clicked.connect(self.on_obs_tree_widget_item_selected)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
+        self.set_up_obseration_plots_widget()
         # self.observations_splitter.setSizes([1000, 10])
+
+    def set_up_obseration_plots_widget(self):
+        """Set up `self.GraphicsLayoutWidget_observations`."""
+        l = self.GraphicsLayoutWidget_observations
+        l.setBackground('w')  # white background color
+
+        date_axis = TimeAxisItem(orientation='bottom')
+
+        # Create sub-plots:
+        # Gravity g [µGal]
+        self.plot_obs_g = l.addPlot(0, 0, name='plot_obs_g', axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.plot_obs_g.setLabel(axis='left', text='g [µGal]')
+
+        # Standard deviation of gravity g [µGal]
+        self.plot_obs_sd_g = l.addPlot(1, 0, name='plot_obs_sd_g',
+                                       axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.plot_obs_sd_g.setLabel(axis='left', text='sd_g [µGal]')
+        self.plot_obs_sd_g.setXLink(self.plot_obs_g)
+
+        # Instrument tilt in X and Y directions [arcsec]
+        self.plot_obs_tilt = l.addPlot(2, 0, name='plot_obs_tilt',
+                                       axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.plot_obs_tilt.setLabel(axis='left', text='tilt [arcsec]')
+        self.plot_obs_tilt.addLegend()
+        self.plot_obs_tilt.setXLink(self.plot_obs_g)
+
+        # Observation corrections [µGal]
+        self.plot_obs_corrections = l.addPlot(3, 0, name='plot_obs_corrections',
+                                              axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.plot_obs_corrections.setLabel(axis='left', text='Corrections [µGal]')
+        self.plot_obs_corrections.addLegend()
+        self.plot_obs_corrections.setXLink(self.plot_obs_g)
+
+    def plot_observations(self, survey_name, setup_id):
+        """Plots observation data to the GraphicsLayoutWidget."""
+        obs_df = self.observation_model.get_data
+        obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,
+                                                                                                                     's')
+        # l = self.GraphicsLayoutWidget_observations
+
+        # TODO: Distinguish between survey and setup data here, in necessary!
+        # if setup_id is None:  # survey selected:
+        #     pass
+        # else:  # setup selected:
+        #     pass
+
+        # Plot reduced or unreduced observations:
+        flag_show_reduced_observations = False
+        if self.checkBox_obs_plot_reduced_observations.checkState() == Qt.Checked and not any(
+                obs_df['g_red_mugal'].isnull()):
+            # Reduced observations are available and will be shown:
+            flag_show_reduced_observations = True
+        elif self.checkBox_obs_plot_reduced_observations.checkState() == Qt.Checked and any(
+                obs_df['g_red_mugal'].isnull()):
+            flag_show_reduced_observations = False
+            QMessageBox.warning(self, 'Warning!', 'Reduced observations are not available!')
+            self.checkBox_obs_plot_reduced_observations.setChecked(Qt.Unchecked)
+
+            # Get data:
+        if flag_show_reduced_observations:
+            g_mugal = obs_df['g_red_mugal'].values
+            sd_g_mugal = obs_df['sd_g_red_mugal'].values
+            corr_tide = obs_df['corr_tide_red_mugal'].values
+            corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
+        else:
+            g_mugal = obs_df['g_obs_mugal'].values
+            sd_g_mugal = obs_df['sd_g_obs_mugal'].values
+            corr_tide = obs_df['corr_tide_mugal'].values
+            corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
+
+        # Gravity g [µGal]
+        self.plot_obs_g.clear()
+        self.plot_xy_data(self.plot_obs_g, obs_epoch_timestamps, g_mugal, plot_name='g_mugal', color='b',
+                          symbol='o', symbol_size=10)
+        self.plot_obs_g.showGrid(x=True, y=True)
+        self.plot_obs_g.autoRange()
+
+        # Standard deviation of gravity g [µGal]
+        self.plot_obs_sd_g.clear()
+        self.plot_xy_data(self.plot_obs_sd_g, obs_epoch_timestamps, sd_g_mugal, plot_name='sd_g_mugal',
+                          color='b', symbol='o', symbol_size=10)
+        self.plot_obs_sd_g.showGrid(x=True, y=True)
+        self.plot_obs_sd_g.autoRange()
+
+        # Instrument tilt in X and Y directions [arcsec]
+        self.plot_obs_tilt.clear()
+        tilt_x = obs_df['tiltx'].values
+        tilt_y = obs_df['tilty'].values
+        self.plot_xy_data(self.plot_obs_tilt, obs_epoch_timestamps, tilt_x, plot_name='X', color='b', symbol='o',
+                          symbol_size=10)
+        self.plot_xy_data(self.plot_obs_tilt, obs_epoch_timestamps, tilt_y, plot_name='Y', color='r', symbol='t',
+                          symbol_size=10)
+        self.plot_obs_tilt.showGrid(x=True, y=True)
+        self.plot_obs_tilt.autoRange()
+
+        # Observation corrections [µGal]
+        self.plot_obs_corrections.clear()
+        self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_tide,
+                          plot_name=f'tides ({corr_tide_name})', color='b', symbol='o', symbol_size=10)
+        self.plot_obs_corrections.showGrid(x=True, y=True)
+        self.plot_obs_corrections.autoRange()
+
+        self.plot_obs_g.autoRange()  # Finally adjust data range to g values!
+
+        # TODO: Use the following method to flag observations!
+        self.plot_keep_obs_markers()
+
+    def plot_xy_data(self, plot_item, x, y, plot_name, color='k', symbol='o', symbol_size=10):
+        """Plot XY-data."""
+        pen = pg.mkPen(color=color)
+        plot_item.plot(x, y, name=plot_name, pen=pen, symbol=symbol, symbolSize=symbol_size, symbolBrush=(color))
+
+    def plot_keep_obs_markers(self):
+        """Plot markers for observations with `keep_obs == True`."""
+        if hasattr(self, 'plot_obs_g_keep_obs_markers'):
+            self.plot_obs_g_keep_obs_markers.clear()
+        obs_df = self.observation_model.get_data
+        # keep_obs_flags = obs_df['keep_obs']
+        obs_df_tmp = obs_df.loc[obs_df['keep_obs']].copy(deep=True)
+        y = obs_df_tmp['g_obs_mugal'].values
+        obs_epoch_timestamps = (obs_df_tmp['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
+        self.plot_obs_g_keep_obs_markers = self.plot_obs_g.plot(obs_epoch_timestamps, y, name='keep_obs', pen=None,
+                                                                symbol='o', symbolSize=11,
+                                                                symbolBrush='g', symbolPen='k')
 
     def on_observation_model_data_changed(self, topLeft, bottomRight, role):
         """Invoked whenever data in the observation table view changed."""
@@ -94,11 +240,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 setup_item.setCheckState(0, tree_item_check_state)  # finally set checked state!
                                 break
                 self.treeWidget_observations.blockSignals(False)
+                # Plot markers:
+                self.plot_keep_obs_markers()
         else:
             pass  # More than one items selected/changed.
 
     def on_tree_widget_item_changed(self, item, column):
-        """Test method."""
+        """Invoked whenever an item in th observation tree view is changed, e.g. if the check-state changes."""
         self.treeWidget_observations.blockSignals(True)  # To avoid recursive effects
         if IS_VERBOSE:
             print('TreeView: itemChanged: ', item, column)
@@ -124,6 +272,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     @pyqtSlot()
     def on_obs_tree_widget_item_selected(self):
+        """Invoked whenever an item in the observation tree is selected."""
         items = self.treeWidget_observations.selectedItems()
         if len(items) == 1:  # Only one item in tree view selected
             item = items[0]
@@ -135,6 +284,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 survey_name = parent.text(0)  # Column 0 = Survey name
                 setup_id = int(item.text(0))
             self.update_obs_table_view(survey_name, setup_id)
+            self.plot_observations(survey_name, setup_id)
         else:
             if IS_VERBOSE:
                 print('No item or multiple items selected!')
@@ -229,14 +379,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if len(setup_station_names.unique()) > 1:
                     QMessageBox.critical(self, 'Error!', 'Setup {} includes observations to more than one '
                                                          'station ({})!'.format(setup_id,
-                                                         ', '.join(setup_station_names.unique().tolist())))
+                                                                                ', '.join(
+                                                                                    setup_station_names.unique().tolist())))
                     self.delete_all_items_from_survey_tree_widget()
                     self.treeWidget_observations.blockSignals(False)
                     return
                 else:
                     setup_station_name = setup_station_names.unique()[0]
                     child = QTreeWidgetItem(parent)
-                    child.setFlags(child.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsTristate )
+                    child.setFlags(child.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsTristate)
                     child.setText(0, str(setup_id))
                     child.setText(2, str(num_of_obs_in_setup))
                     child.setText(1, setup_station_name)
@@ -438,7 +589,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.populate_survey_tree_widget()
                     # Select the added survey in the tree view:
                     for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
-                        if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) ==new_cg5_survey.name:
+                        if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
                             self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
                     self.statusBar().showMessage(f"Survey {new_cg5_survey.name} "
                                                  f"({new_cg5_survey.get_number_of_observations()} observations) added.")

@@ -564,9 +564,9 @@ class Survey:
         - corr_terrain : float, optional (default=None)
             Terrain correction [??] as determined by the built-in model of the Scintrex CG-5. If `None`, this
             correction is not available in the observation data.
-        - corr_tide : float, optional (default=None)
+        - corr_tide_mugal : float, optional (default=None)
             Tidal correction [µGal] as determined by the built-in model of the Scintrex CG-5 (Longman, 1959). Be aware
-            that the tidal corrections by the CG-5 model is determined fot the middl of the observation (also see
+            that the tidal corrections by the CG-5 model is determined fot the middle of the observation (also see
             `obs_epoch`). If `None`, this correction is not available in the observation data.
         - temp : float, optional (default=None)
             Temperature [mK] as determined by the Scintrex CG-5. Be aware that this is not the ambient temperature!
@@ -591,6 +591,8 @@ class Survey:
         - vg_mugalm : float, optional (default=None)
             Vertical gravity gradient at the station [µGal/m], obtained from an external source (e.g. station info
             file). The vertical gradient is required for reducing the observed gravity to different reference heights.
+        - corr_tide_red_mugal : float, optional (default=None)
+            Tidal correction [µGal] that is applied to `g_red_mugal`.
     """
 
     _OBS_DF_COLUMNS = (
@@ -606,7 +608,7 @@ class Survey:
         'g_red_mugal',  # Reduced gravity observation at station (float) [µGal]
         'sd_g_red_mugal',  # Standard deviation of the reduced gravity (float) [µGal]
         'corr_terrain',  # Terrain correction [??]
-        'corr_tide',  # Tidal correction [mGal], optional
+        'corr_tide_mugal',  # Tidal correction loaded from input file [mGal], optional (e.g. from CG5 built-in model)
         'temp',  # Temperature [mK], optional
         'tiltx',  # [arcsec], optional
         'tilty',  # [arcsec], optional
@@ -614,6 +616,7 @@ class Survey:
         'dhb_m',  # Distance between instrument top and ground (float) [m]
         'keep_obs',  # Remove observation, if false (bool)
         'vg_mugalm',  # vertical gradient [µGal/m]
+        'corr_tide_red_mugal',  # Alternative tidal correction [mGal], optional
     )
 
     # TODO: Get missing infos on columns in CG5 obs file!
@@ -808,16 +811,18 @@ class Survey:
         # obs_df:
         if cg5_survey.obs_df is not None:
             # Refactor observation dataframe:
-            obs_df: object = cg5_survey.obs_df.copy(deep=True)  # deep copy => No struggles with references
+            obs_df: object = cg5_survey.obs_df.sort_values('obs_epoch').copy(deep=True)  # deep copy => No struggles with references
 
             # Add missing columns (initialized with default values):
             obs_df['g_obs_mugal'] = obs_df['g_mgal'] * 1e3
             obs_df['sd_g_obs_mugal'] = obs_df['sd_mgal'] * 1e3
+            obs_df['sd_g_obs_mugal'] = obs_df['sd_mgal'] * 1e3
+            obs_df['tide'] = obs_df['tide'] * 1e3
             obs_df['keep_obs'] = True
 
             # Rename columns:
             obs_df.rename(columns={'terrain': 'corr_terrain',
-                                   'tide': 'corr_tide',},
+                                   'tide': 'corr_tide_mugal',},
                           inplace=True)
 
             # Drop columns that are not needed any more:

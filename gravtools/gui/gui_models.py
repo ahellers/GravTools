@@ -140,7 +140,7 @@ class ObservationTableModel(QAbstractTableModel):
         'g_red_mugal': 1,
         'sd_g_red_mugal': 1,
         'corr_terrain': 1,
-        'corr_tide': 1,
+        'corr_tide_mugal': 1,
         'temp': 1,
         'tiltx': 1,
         'tilty': 1,

@@ -403,7 +403,7 @@ class CG5Survey:
                             'tiltx',
                             'tilty',
                             'temp',
-                            'tide',  # Tidal correction determined by the CG-5 [??]
+                            'tide',  # Tidal correction determined by the CG-5 [mGal]
                             'duration_sec',  # Duration of the current setup [sec]
                             'rej',  # Number of rejected single measurements
                             'time_str',  # Reference time = mid of setup with duration `duration_sec`) (dropped later)
