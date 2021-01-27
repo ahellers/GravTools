@@ -12,6 +12,7 @@ import pytz
 from MainWindow import Ui_MainWindow
 from dialog_new_campaign import Ui_Dialog_new_Campaign
 from dialog_load_stations import Ui_Dialog_load_stations
+from dialog_corrections import Ui_Dialog_corrections
 
 from gravtools.models.survey import Campaign, Survey, Station
 from gui_models import StationTableModel, ObservationTableModel
@@ -71,6 +72,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Exit.triggered.connect(self.exit_application)
         self.action_New_Campaign.triggered.connect(self.on_menu_file_new_campaign)
         self.action_Add_Stations.triggered.connect(self.on_menu_file_load_stations)
+        self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
         # self.actionShow_Stations.triggered.connect(self.show_station_data)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
@@ -223,7 +225,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.plot_obs_g_data_item.scatter.points()[index].setBrush(self.BRUSH_ACTIVE_OBS)
         else:
             self.plot_obs_g_data_item.scatter.points()[index].setBrush(self.BRUSH_INACTIVE_OBS)
-
 
     def on_observation_plot_data_item_clicked(self, points, ev):
         """Invoked whenever a data point in the observation time series plot is clicked.
@@ -473,6 +474,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Exit the application."""
         sys.exit()
 
+    def on_menu_observations_corrections(self):
+        """Launch diaglog to select and apply observation corrections."""
+        dlg = DialogCorrections()
+        return_value = dlg.exec()
+        if return_value == QDialog.Accepted:
+            pass
+            self.statusBar().showMessage(f"Observation corrections applied.")
+        else:
+            self.statusBar().showMessage(f"No observation corrections applied.")
+
     @pyqtSlot()
     def on_menu_file_new_campaign(self):
         """Launching dialog to create a new campaign."""
@@ -526,9 +537,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.campaign.add_stations_from_oesgn_table_file(dlg.lineEdit_oesgn_table_file_path.text(),
                                                                  verbose=IS_VERBOSE)
                 self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
-
                 self.refresh_stations_table_model_and_view()
-
                 self.set_up_proxy_station_model()
 
             except FileNotFoundError:
@@ -745,6 +754,18 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             oesgn_filename = QDir.toNativeSeparators(oesgn_filename)
             self.lineEdit_oesgn_table_file_path.setText(oesgn_filename)
+
+
+class DialogCorrections(QDialog, Ui_Dialog_corrections):
+    """Dialog to select and apply observation corrections."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+        # connect signals and slots:
+        pass
 
 
 if __name__ == "__main__":
