@@ -24,3 +24,4 @@ schwaus_test:
 py_gui:
 	pyuic5 -o gravtools/gui/MainWindow.py gravtools/gui/MainWindow.ui
 	pyuic5 -o gravtools/gui/dialog_new_campaign.py gravtools/gui/dialog_new_campaign.ui
+	pyuic5 -o gravtools/gui/dialog_load_stations.py gravtools/gui/dialog_load_stations.ui

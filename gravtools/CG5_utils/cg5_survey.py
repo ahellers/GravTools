@@ -308,12 +308,19 @@ class CG5OptionsParameters:
         **kwargs : dict
             Keyword arguments that are parsed to class attributes.
         """
-        self.tide_correction = kwargs.get('tide_correction', False)  # bool
-        self.cont_tilt = kwargs.get('cont_tilt', False)  # bool
-        self.auto_rejection = kwargs.get('auto_rejection', False)  # bool
-        self.terrain_correction = kwargs.get('terrain_correction', False)  # bool
-        self.seismic_filter = kwargs.get('seismic_filter', False)  # bool
-        self.raw_data = kwargs.get('raw_data', False)  # bool
+        self.tide_correction = kwargs.get('tide_correction', None)  # bool
+        self.cont_tilt = kwargs.get('cont_tilt', None)  # bool
+        self.auto_rejection = kwargs.get('auto_rejection', None)  # bool
+        self.terrain_correction = kwargs.get('terrain_correction', None)  # bool
+        self.seismic_filter = kwargs.get('seismic_filter', None)  # bool
+        self.raw_data = kwargs.get('raw_data', None)  # bool
+        #
+        # self.tide_correction = kwargs.get('tide_correction', False)  # bool
+        # self.cont_tilt = kwargs.get('cont_tilt', False)  # bool
+        # self.auto_rejection = kwargs.get('auto_rejection', False)  # bool
+        # self.terrain_correction = kwargs.get('terrain_correction', False)  # bool
+        # self.seismic_filter = kwargs.get('seismic_filter', False)  # bool
+        # self.raw_data = kwargs.get('raw_data', False)  # bool
 
     @classmethod
     def create_from_obs_file_string(cls, str_obs_file):
@@ -403,7 +410,7 @@ class CG5Survey:
                             'tiltx',
                             'tilty',
                             'temp',
-                            'tide',  # Tidal correction determined by the CG-5 [??]
+                            'tide',  # Tidal correction determined by the CG-5 [mGal]
                             'duration_sec',  # Duration of the current setup [sec]
                             'rej',  # Number of rejected single measurements
                             'time_str',  # Reference time = mid of setup with duration `duration_sec`) (dropped later)

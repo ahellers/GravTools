@@ -53,9 +53,18 @@ class Station:
         - vg_mugalm : float, optional (default=np.nan)
             Vertical gradient at the station. If `NaN`, ths value is not available (and will probably be replaced by
             the standard value defined in :py:obj:`gravtools.const.VG_DEFAULT`).
-        - is_oesgn : bool
-            Flag, that indicates whether the station is part auf the Austrian gravity base network (ÖSGN). If `True`,
-            the station is part of the reference network.
+        - is_observed : bool
+            Flag, that indicates whether the station was observed at least once in at least one survey in the current
+            campaign. If `True`, the station was observed.
+        - source_type : str
+            The data source type indicates where the station data originates. It hast to be listed in
+            :py:obj:`gravtools.settings.STATION_DATA_SOURCE_TYPES`.
+        - is_datum : bool
+            This flag indicates, whether this station is used as datum station in the analysis. Hence, this is an
+            estimation setting. For stations from observation files the default is `False`, for ÖSGN stations the
+            default is `True`.
+        - in_survey : str
+            String that lists the names of the surveys in which the station was observed in (separated by ';')
     """
 
     _STAT_DF_COLUMNS = (
@@ -66,8 +75,19 @@ class Station:
         'g_mugal',  # gravity [µGal]
         'sd_g_mugal',  # standard deviation of the gravity [µGal]
         'vg_mugalm',  # vertical gradient [µGal/m]
-        'is_oesgn',  # flag: True, if station is a OESGN station.
+        'is_observed',  # flag: True, if station was observed in at least one survey in the current campaign.
+        'source_type',  # Source of the station data, str
+        'source_name',  # Name of the data source
+        'is_datum',  # flag, that indicates whether this is a datum station, bool
+        'in_survey',  # Names of surveys in which ths station was observed (separator = ;), str
     )
+    # _STAT_DF_COLUMNS_SAME_STATION_INDICATORS = (
+    #     'station_name',  # Station name, str
+    #     'long_deg',  # longitude [deg], float
+    #     'lat_deg',  # latitude [deg], float
+    #     'height_m',  # Height [m]
+    #     'source_type',
+    # )
 
     def __init__(self, station_files=None):
         """
@@ -156,9 +176,14 @@ class Station:
 
         stat_df_oesgn = pd.read_fwf(filename, widths=widths, header=None)
         stat_df_oesgn.columns = column_names
-        stat_df_oesgn['is_oesgn'] = True
+        stat_df_oesgn['is_observed'] = False  # Default = False
+        stat_df_oesgn['is_datum'] = True
+        stat_df_oesgn['source_type'] = 'oesgn_table'
+        stat_df_oesgn['source_name'] = os.path.basename(filename)  # filename
 
         stat_df_oesgn.drop(columns=columns_to_be_dropped, inplace=True)
+
+        stat_df_oesgn['height_m'] = stat_df_oesgn['height_m'] * 1e-3  # Conversion: [mm] => [m]
 
         return stat_df_oesgn
 
@@ -170,28 +195,51 @@ class Station:
         filename : str
             Name (and path) of the OESGN table file.
         verbose : bool, optional
-            Print notifications if True (default=False)
+            Print notifications, if `True` (default=`False`)
         """
         stat_df_new = self._read_oesgn_table(filename)
-        number_of_existing_stations = len(self.stat_df)
+        stat_df_new = self._stat_df_add_columns(stat_df_new)
+        stat_df_new = self._stat_df_reorder_columns(stat_df_new)
+        self.add_stations(stat_df_new, data_source_type='oesgn_table', verbose=verbose)
 
-        # Concatinate multiple df without duplicate rows and a unique indices:
-        # https://stackoverflow.com/questions/21317384/pandas-python-how-to-concatenate-two-dataframes-without-duplicates
-        # https://learndataanalysis.org/concatenate-pandas-dataframes-without-duplicates/
-        # - pd.concat([self.stat_df, stat_df_new]) => simply concat both df, while it may result in duplicate indices
-        #   and rows.
-        # - drop_duplicates() => Drop duplicate rows
-        # - reset_index(drop=True) => Reset index creates a new indec col with unique indices. With drop=True the old
-        #   index column is dropped.
-
-        self.stat_df = pd.concat([self.stat_df, stat_df_new]).drop_duplicates().reset_index(drop=True)
-
-        if verbose:
-            number_of_new_stations = len(stat_df_new)
-            number_of_stations = len(self.stat_df)
-            stations_added = number_of_stations - number_of_existing_stations
-            print(f"{number_of_new_stations} stations loaded from {filename}. "
-                  f"{stations_added} stations added ({number_of_new_stations - stations_added} already existed).")
+        # number_of_existing_stations = len(self.stat_df)
+        #
+        # # Concatenate multiple df without duplicate rows and a unique indices:
+        # # https://stackoverflow.com/questions/21317384/pandas-python-how-to-concatenate-two-dataframes-without-duplicates
+        # # https://learndataanalysis.org/concatenate-pandas-dataframes-without-duplicates/
+        # # - pd.concat([self.stat_df, stat_df_new]) => simply concat both df, while it may result in duplicate indices
+        # #   and rows.
+        # # - drop_duplicates() => Drop duplicate rows
+        # # - reset_index(drop=True) => Reset index creates a new indec col with unique indices. With drop=True the old
+        # #   index column is dropped.
+        #
+        # # Concatenate existing with new stations and drop duplicates, based on the columns in specified in
+        # # _STAT_DF_COLUMNS_SAME_STATION_INDICATORS:
+        # self.stat_df = pd.concat([self.stat_df, stat_df_new]).drop_duplicates(
+        #     subset=self._STAT_DF_COLUMNS_SAME_STATION_INDICATORS,
+        #     keep='first'
+        # ).reset_index(drop=True)
+        #
+        # # Check, if station names still have multiple occurrences in the station DataFrame:
+        # number_of_occurrences_per_station_name_series = self.stat_df.value_counts(subset=['station_name'])
+        # if sum(number_of_occurrences_per_station_name_series > 1):
+        #     duplicate_stations = number_of_occurrences_per_station_name_series[
+        #         number_of_occurrences_per_station_name_series > 1
+        #     ].index.values  # The index contains the names of stations with multiple occurrences
+        #     duplicate_stations_list = []
+        #     for item in duplicate_stations:  # Convert list of tuples of strings to list of strings
+        #         duplicate_stations_list.append(item[0])
+        #     duplicate_stations_str = ', '.join(duplicate_stations_list)
+        #     raise AssertionError(f'When adding news stations the following station already exist with differing '
+        #                          f'location parameters and/or a differing data source:' + duplicate_stations_str + f'.'
+        #                          f'\nPlease load station files before adding observations to the campaign!')
+        #
+        # if verbose:
+        #     number_of_new_stations = len(stat_df_new)
+        #     number_of_stations = len(self.stat_df)
+        #     stations_added = number_of_stations - number_of_existing_stations
+        #     print(f"{number_of_new_stations} stations loaded from {filename}. "
+        #           f"{stations_added} stations added ({number_of_new_stations - stations_added} already existed).")
 
     def delete_station(self, station_names, verbose=False):
         """
@@ -202,7 +250,7 @@ class Station:
         station_names : list of str
             List of station names. The related station records will be deleted from `self.stat_df`.
         verbose : bool
-            If True, print notification on deleted items.
+            If `True`, print notification on deleted items.
         """
         idx_series = self.stat_df.station_name.isin(station_names)
         if verbose:
@@ -213,7 +261,7 @@ class Station:
         self.stat_df = self.stat_df[~idx_series]
 
     @property
-    def get_number_of_stations(self):
+    def get_number_of_stations(self) -> int:
         """int : Returns the number of stations."""
         return len(self.stat_df)
 
@@ -225,10 +273,180 @@ class Station:
         """:py:obj:`pandas.core.frame.DataFrame` : Returns all available stations."""
         return self.stat_df
 
-    @property
-    def get_oesgn_stations(self):
-        """:py:obj:`pandas.core.frame.DataFrame` : Returns all OESGN stations."""
-        return self.stat_df[self.stat_df['is_oesgn']]
+    def set_observed_info_from_survey(self, survey, verbose=False):
+        """Set the `is_observed` flags and the `in_survey` strings in the py:obj:`Station.stat_df` DataFrame.
+
+        Parameters
+        ----------
+        survey : py:obj:`Survey`
+            Survey object which is used as reference to set the `is_observed` flags in the stations Dataframe.
+        verbose : bool, optional
+            Print notifications, if `True` (default=`False`)
+        """
+        self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'is_observed'] = True
+
+        # Delete None entries:
+        self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']) & self.stat_df['in_survey'].isnull(), 'in_survey'] = ''
+        # self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'in_survey'] = ''
+
+        # Add survey names:
+        num_entries = len(self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'in_survey'])
+        self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'in_survey'] = \
+            self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']),
+                             'in_survey'].str.cat([survey.name + '; '] * num_entries)
+
+    @classmethod
+    def _stat_df_add_columns(cls, stat_df):
+        """Add and initialize (as None) all columns that are listed in cls._STAT_DF_COLUMNS and not present in input
+        stat_df."""
+        columns_to_be_initialized_as_none = list(set(cls._STAT_DF_COLUMNS) - set(stat_df.columns))
+        stat_df[columns_to_be_initialized_as_none] = None
+        return stat_df
+
+    @classmethod
+    def _stat_df_reorder_columns(cls, stat_df):
+        """Change order of columns of stat_df to the order specified in cls._STAT_DF_COLUMNS.
+
+        See: https://erikrood.com/Python_References/change_order_dataframe_columns_final.html
+        """
+        stat_df = stat_df[list(cls._STAT_DF_COLUMNS)]
+        return stat_df
+
+    @classmethod
+    def _stat_df_check_columns(cls, stat_df, verbose=False) -> bool:
+        """Check if all columns specified in cls._STAT_DF_COLUMNS are present."""
+        is_valid = True
+
+        invalid_cols = list(set(stat_df) - set(cls._STAT_DF_COLUMNS))
+        if len(invalid_cols) > 0:
+            is_valid = False
+            if verbose:
+                print(f'The following columns are not valid: {", ".join(invalid_cols)}')
+
+        invalid_cols = list(set(cls._STAT_DF_COLUMNS) - set(stat_df))
+        if len(invalid_cols) > 0:
+            is_valid = False
+            if verbose:
+                print(f'The following columns are missing: {", ".join(invalid_cols)}')
+
+        return is_valid
+
+    def add_stations_from_survey(self, survey, verbose=False):
+        """Add stations from a survey dataset, if they are not included in the station data yet.
+
+        Notes
+        -----
+        The location information (longitude, latitude and height) are taken from the first appearance of a station in
+        the survey dataframe, although this information may differ between setups if the location was determined (e.g.
+        by GPS) for each individual measurement setup.
+
+        Parameters
+        ----------
+        survey : py:obj:`Survey`
+            Survey object which is search for stations that are not included in the station dataframe yet.
+        verbose : bool, defualt=False
+            If `True`, print notifications to command line.
+        """
+        # Get the essential information from the input survey:
+        tmp_df = survey.obs_df[['station_name', 'lon_deg', 'lat_deg', 'alt_m', 'obs_epoch']].copy(deep=True)
+        tmp_df = tmp_df.sort_values(by=['obs_epoch']).drop_duplicates(subset=['station_name']).drop(columns=['obs_epoch'])
+
+        # Add missing columns (defined in self._STAT_DF_COLUMNS) to temp_df and initialize data:
+        tmp_df.rename(columns={'lon_deg': 'long_deg', 'alt_m': 'height_m'}, inplace=True)
+        tmp_df = self._stat_df_add_columns(tmp_df)
+        tmp_df = self._stat_df_reorder_columns(tmp_df)
+        tmp_df['is_datum'] = False
+        tmp_df['is_observed'] = True
+        tmp_df['source_type'] = 'obs_file'
+        tmp_df['source_name'] = survey.name  # survey name
+        tmp_df.reset_index(drop=True, inplace=True)
+
+        self.add_stations(tmp_df, data_source_type='obs_file', verbose=verbose)
+
+        # # Add missing stations to stat_df by matching the station names only (location parameters of observed stations
+        # # may differ!):
+        # self.stat_df = pd.concat([self.stat_df, tmp_df]).drop_duplicates(
+        #     subset=['station_name'],
+        #     keep='first'
+        # ).reset_index(drop=True)
+
+    def add_stations(self, stat_df_add, data_source_type, verbose=False):
+        """Adds stations from various sources (e.g. station and observation files) to the station dataframe.
+
+        Notes
+        -----
+
+        - Station names (column 'station_name') have to be unique in the resulting station dataframe
+        - Keep the added station and drop existing entries, if the sation names match.
+        - If a station (with a unique station_name) is already available in the station dataframe and originates from a
+            station file (e.g. ÖSGN file), the new station (from any source) is not added.
+        - If a station originating from an observation file is already available in the station dataframe an the same
+            station (same name) should be added from a station file (e.g. ÖSGN), the old version is overwritten be the
+            entry from the staton file.
+        - If a station originating from an observation file is already available in the station dataframe an the same
+            station (same name) should be added from an observation file (e.g. CG5 observation file), the old version
+            is kept and the new version is discarded.
+
+        Parameters
+        ----------
+        stat_df_add : py:oby:`.Station.stat_df`
+            Station dataframe, that should be added so `self.stat_df`. The new station data has to come from one source
+            (specified in `data_source_type`).
+        data_source_type : str
+            Specifies the type of the data source. Valid data source types are defined in
+            :py:obj:`gravtools.settings.STATION_DATA_SOURCE_TYPES`.
+        verbose : bool, delauft = `False`
+            If `True`, the status mesages are printed to the command line.
+
+        """
+        number_of_existing_stations = len(self.stat_df)
+
+        # check, if the input station dataframe has valid columns:
+        if not self._stat_df_check_columns(stat_df_add, verbose=verbose):
+            raise AssertionError('The columns of the input dataframe are not valid!')
+
+        # Check if data source type is valid:
+        if data_source_type not in STATION_DATA_SOURCE_TYPES:
+            raise AssertionError(f'The station data source type "{data_source_type}" is not valid!')
+
+        # Check if the data in the input dataframe comes from the (valid) source given as input parameter:
+        if not all(stat_df_add['source_type'] == data_source_type):
+            raise AssertionError(f'All entries in the input station dataframe need to have the same data source '
+                                 f'type ("{data_source_type}")!')
+
+        # Add stations to a temp. copy of self.stat_df:
+        stat_df_old = self.stat_df.copy(deep=True)
+
+        # Add missing stations to stat_df by matching the station names only (location parameters of observed stations
+        # may differ!):
+        # - From station files => Drop existing entries with the same name in any case!
+        if data_source_type == 'oesgn_table':
+            stat_df_new = pd.concat([stat_df_old, stat_df_add]).drop_duplicates(
+                subset=['station_name'],
+                keep='last'
+            ).reset_index(drop=True)
+        # From observation file  => Drop existing entries with the same name!
+        elif data_source_type == 'obs_file':
+            # => Replace entries with data_source = obs_file:
+            stat_df_new = pd.concat([stat_df_old, stat_df_add]).drop_duplicates(
+                subset=['station_name', 'source_type'],
+                keep='last'
+            ).reset_index(drop=True)
+            # => Drop new entries from obs files, if entries from another data source type (station file) with the same
+            # name already exist:
+            stat_df_new = pd.concat([stat_df_new, stat_df_add]).drop_duplicates(
+                subset=['station_name'],
+                keep='first'
+            ).reset_index(drop=True)
+
+        self.stat_df = stat_df_new
+
+        if verbose:
+            number_of_new_stations = len(stat_df_add)
+            number_of_stations = len(self.stat_df)
+            stations_added = number_of_stations - number_of_existing_stations
+            print(f"{number_of_new_stations} stations loaded. "
+                  f"{stations_added} stations added ({number_of_new_stations - stations_added} already listed).")
 
 
 class Survey:
@@ -262,7 +480,7 @@ class Survey:
     Attributes
     ----------
     name : str
-        Name of the survy. This parameter is mandatory!
+        Name of the survey. This parameter is mandatory!
     date :
         Date of te survey.
     operator : str, optional (default='')
@@ -346,9 +564,9 @@ class Survey:
         - corr_terrain : float, optional (default=None)
             Terrain correction [??] as determined by the built-in model of the Scintrex CG-5. If `None`, this
             correction is not available in the observation data.
-        - corr_tide : float, optional (default=None)
+        - corr_tide_mugal : float, optional (default=None)
             Tidal correction [µGal] as determined by the built-in model of the Scintrex CG-5 (Longman, 1959). Be aware
-            that the tidal corrections by the CG-5 model is determined fot the middl of the observation (also see
+            that the tidal corrections by the CG-5 model is determined fot the middle of the observation (also see
             `obs_epoch`). If `None`, this correction is not available in the observation data.
         - temp : float, optional (default=None)
             Temperature [mK] as determined by the Scintrex CG-5. Be aware that this is not the ambient temperature!
@@ -373,6 +591,8 @@ class Survey:
         - vg_mugalm : float, optional (default=None)
             Vertical gravity gradient at the station [µGal/m], obtained from an external source (e.g. station info
             file). The vertical gradient is required for reducing the observed gravity to different reference heights.
+        - corr_tide_red_mugal : float, optional (default=None)
+            Tidal correction [µGal] that is applied to `g_red_mugal`.
     """
 
     _OBS_DF_COLUMNS = (
@@ -388,7 +608,7 @@ class Survey:
         'g_red_mugal',  # Reduced gravity observation at station (float) [µGal]
         'sd_g_red_mugal',  # Standard deviation of the reduced gravity (float) [µGal]
         'corr_terrain',  # Terrain correction [??]
-        'corr_tide',  # Tidal correction [mGal], optional
+        'corr_tide_mugal',  # Tidal correction loaded from input file [mGal], optional (e.g. from CG5 built-in model)
         'temp',  # Temperature [mK], optional
         'tiltx',  # [arcsec], optional
         'tilty',  # [arcsec], optional
@@ -396,6 +616,7 @@ class Survey:
         'dhb_m',  # Distance between instrument top and ground (float) [m]
         'keep_obs',  # Remove observation, if false (bool)
         'vg_mugalm',  # vertical gradient [µGal/m]
+        'corr_tide_red_mugal',  # Alternative tidal correction [mGal], optional
     )
 
     # TODO: Get missing infos on columns in CG5 obs file!
@@ -590,16 +811,18 @@ class Survey:
         # obs_df:
         if cg5_survey.obs_df is not None:
             # Refactor observation dataframe:
-            obs_df: object = cg5_survey.obs_df.copy(deep=True)  # deep copy => No struggles with references
+            obs_df: object = cg5_survey.obs_df.sort_values('obs_epoch').copy(deep=True)  # deep copy => No struggles with references
 
             # Add missing columns (initialized with default values):
             obs_df['g_obs_mugal'] = obs_df['g_mgal'] * 1e3
             obs_df['sd_g_obs_mugal'] = obs_df['sd_mgal'] * 1e3
+            obs_df['sd_g_obs_mugal'] = obs_df['sd_mgal'] * 1e3
+            obs_df['tide'] = obs_df['tide'] * 1e3
             obs_df['keep_obs'] = True
 
             # Rename columns:
             obs_df.rename(columns={'terrain': 'corr_terrain',
-                                   'tide': 'corr_tide',},
+                                   'tide': 'corr_tide_mugal',},
                           inplace=True)
 
             # Drop columns that are not needed any more:
@@ -619,10 +842,13 @@ class Survey:
         else:
             obs_df = None  # If no observations are available, initialize as None
 
-        if cg5_survey.options.tide_correction:
-            obs_tide_correction_type = 'cg5_longman1959'  # built-in tide correction of the CG5
+        if cg5_survey.options.tide_correction is None:
+            obs_tide_correction_type = 'unknown'  # e.g. "CG-5 OPTIONS" block in observation file missing
         else:
-            obs_tide_correction_type = 'no_tide_corr'
+            if cg5_survey.options.tide_correction:
+                obs_tide_correction_type = 'cg5_longman1959'  # built-in tide correction of the CG5
+            else:
+                obs_tide_correction_type = 'no_tide_corr'
 
         return cls(name=cg5_survey.survey_parameters.survey_name,
                    date=survey_date,
@@ -792,6 +1018,33 @@ class Survey:
         obs_df = obs_df[list(cls._OBS_DF_COLUMNS)]
         return obs_df
 
+    def activate_setup(self, setup_id, flag_activate):
+        """Activate or deactivate instrument setup with the specified ID.
+
+        Parameters
+        ----------
+        setup_id : int
+            ID of the setup that will be activated or deactivated.
+        flag_activate : bool
+            Specified whether the setup with the ID `setup_id` will be activated (`TRUE`) or deactivated (`False`).
+        """
+        if not isinstance(flag_activate, bool):
+            raise TypeError('"flag_activate" has to be a boolean variable!')
+        self.obs_df.loc[self.obs_df['setup_id'] == setup_id, 'keep_obs'] = flag_activate
+
+    def activate_observation(self, obs_idx, flag_activate):
+        """Activate or deactivate teh observation with the specified dataframe index.
+
+        Parameters
+        ----------
+        obs_idx : int
+            Index of the observation within the observation dataframe (`obs_df`) that will be activated or deactivated.
+        flag_activate : bool
+            Specified whether the observation with the index `obs_idx` will be activated (`TRUE`) or deactivated
+            (`False`).
+        """
+        self.obs_df.at[obs_idx, 'keep_obs'] = flag_activate
+
     def is_valid_obs_df(self, verbose=False) -> bool:
         """Check, whether the observations DataFrame (`obs_df`) is valid.
 
@@ -832,6 +1085,39 @@ class Survey:
         columns_to_be_dropped = list(set(self.obs_df.columns) - set(self._OBS_DF_COLUMNS))
         self.obs_df.drop(columns=columns_to_be_dropped, inplace=True)
 
+    @classmethod
+    def get_obs_df_column_name(cls, col_index):
+        """Return the name of the observation dataframe column with the specified index.
+
+        Parameters
+        ----------
+        col_index : int
+            Column index for the observation dataframe.
+
+        Returns
+        -------
+        str : Column name.
+            Name of the column with index `col_index`
+        """
+        return cls._OBS_DF_COLUMNS[col_index]
+
+    @classmethod
+    def get_obs_df_column_index(cls, column_name: str) -> int:
+        """Returns the column index for specific column name for the obs_df dataframe.
+
+        Parameters
+        ----------
+        column_name: str
+            Name of the columns for which the column index is returned.
+
+        Returns
+        -------
+        int : Column index
+            Index of the column with the name `column_name`.
+        """
+        return cls._OBS_DF_COLUMNS.index(column_name)
+
+
     def get_number_of_observations(self) -> int:
         """Returns the number of observations of the current survey.
 
@@ -851,7 +1137,7 @@ class Survey:
         Parameters
         ----------
         stations : :py:obj:`.Station` object
-            Data of known stations (datum- and non-datum-stations).
+            Station data (datum- and non-datum-stations).
 
         verbose : bool, optional (default=False)
             If True, status messages are printed to the command line.
@@ -871,7 +1157,7 @@ class Survey:
         # Drop columns that are not required and check for validity:
         self.obs_df_drop_redundant_columns()
         if not self.is_valid_obs_df():
-            raise AssertionError('Th DataFrame "obs_df" is not valid.')
+            raise AssertionError('The DataFrame "obs_df" is not valid.')
 
     def reduce_to_reference_height(self, target_ref_height: str, verbose: bool = False) -> bool:
         """Reduce the observed gravity to the specified target reference height.
@@ -1037,7 +1323,7 @@ class Campaign:
             Arbitrary number of survey data objects. Default=None which implies that the campaign will be initialized
             without surveys.
         stations: :py:obj:`.Station` object, optional
-            Data of known stations (datum- and non-datum-stations). Default=None implies that the campaign will be
+            Station data (datum- and non-datum-stations). Default=None implies that the campaign will be
             initialized without station data.
 
         Raises
@@ -1084,7 +1370,7 @@ class Campaign:
         self.stations = stations
 
     def add_survey(self, survey_add: Survey, verbose=False) -> bool:
-        """Add a survey to campaign ans specify whether to use it for ths analysis.
+        """Add a survey to campaign and specify whether to use it for ths analysis.
 
         Notes
         -----
@@ -1106,7 +1392,7 @@ class Campaign:
         # - Raise warning:
         if survey_add.name in self.surveys.keys():
             if verbose:
-                print('Warnung: the current campaign already contains a survey named {survey_add.name}.')
+                print(f'Warnung: the current campaign already contains a survey named {survey_add.name}.')
                 print(' - Survey names need to be unique within a campaign.')
             return False
         else:
@@ -1245,6 +1531,11 @@ class Campaign:
         """int : Returns the number of surveys in this campaign."""
         return len(self.surveys)
 
+    @property
+    def number_of_stations(self) -> int:
+        """int : Returns the number of stations in this campaign."""
+        return self.stations.get_number_of_stations
+
     def reduce_to_reference_height(self, target_ref_height, verbose=False):
         """Reduce the observed gravity to the specified target reference heights.
 
@@ -1255,9 +1546,6 @@ class Campaign:
 
         Parameters
         ----------
-        verbose : bool, optional (default=False)
-            If True, status messages are printed to the command line.
-
         target_ref_height : string, specifying the target reference height type.
             The target reference height type has to be listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`
         verbose : bool, optional (default=False)
@@ -1272,9 +1560,67 @@ class Campaign:
             if not survey.reduce_to_reference_height(target_ref_height, verbose=verbose):
                 raise AssertionError('Reduction to reference height failed!')
 
+    def add_stations_from_oesgn_table_file(self, oesgn_filename, verbose=False):
+        """Add station from an OESGN table file.
+
+        Parameters
+        ----------
+        oesgn_filename : string, specifying the path/file of the OESGN file
+            Stations in the specified OESGN table file are added to the Campaign.
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line.
+        """
+        self.stations.add_stations_from_oesgn_table(filename=oesgn_filename, verbose=verbose)
+
     def __str__(self):
         return f'Campaign "{self.campaign_name}" with {self.number_of_surveys} surveys ' \
                f'and {self.stations.get_number_of_stations} stations.'
+
+    def synchronize_stations_and_surveys(self, verbose=False):
+        """Synchronize information between station and survey data in the campaign.
+
+        The following information is synchronized:
+
+        - The `is_observed` flags in the :py:obj:`.Campaign.stations.stat_df` are set according to the surveys in
+          :py:obj:`.Campaign.surveys`. `True` indicated that the station as observed at least once.
+        - Populates the vertical gradient columns (``) of the observation DataFrames (:py:obj:`.Campaign.surveys`) with
+          values from a Station object (:py:obj:`.Campaign.stations`).
+        - Add observed stations
+
+        Notes
+        -----
+        It is recommended to run this method whenever new stations and/or new surveys are added to the campaign on order
+        to synchronize the data.
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        self.stations.stat_df['is_observed'] = False  # Reset to default.
+        self.stations.stat_df['in_survey'] = None  # Reset to default.
+        self.sync_observed_stations(verbose=verbose)  # Add stations from surveys.
+
+        # Loop over all surveys to match and synchronize the survey data with the station data:
+        for survey_name, survey in self.surveys.items():
+            if verbose:
+                print(f' - Survey: {survey_name}')
+            survey.obs_df_populate_vg_from_stations(self.stations, verbose=verbose)
+            self.stations.set_observed_info_from_survey(survey, verbose=verbose)
+
+    def sync_observed_stations(self, verbose=False):
+        """Adds all stations that were observed in at least one survey to this campaign's station dataframe.
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Loop over surveys in this campaign:
+        for survey_name, survey in self.surveys.items():
+            if verbose:
+                print(f' - Survey: {survey_name}')
+            self.stations.add_stations_from_survey(survey, verbose)
 
 
 if __name__ == '__main__':
@@ -1301,6 +1647,9 @@ if __name__ == '__main__':
     surv = Survey.from_cg5_survey(cg5surv)
     print(surv)
 
+    surv.activate_setup(1592449837, False)
+    surv.activate_observation(18, False)
+
     surv2 = Survey.from_cg5_obs_file(PATH_OBS_FILE_CG5 + NAME_OBS_FILE_CG5)
     print(surv2)
 
@@ -1322,4 +1671,4 @@ if __name__ == '__main__':
 
     camp.reduce_to_reference_height(target_ref_height=target_ref_h, verbose=True)
 
-    pass
+    camp.synchronize_stations_and_surveys()
