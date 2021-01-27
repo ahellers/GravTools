@@ -35,17 +35,24 @@ def checked_state_to_bool(checked_state) -> bool:
 
 
 class TimeAxisItem(pg.AxisItem):
-    """From: https://stackoverflow.com/questions/49046931/how-can-i-use-dateaxisitem-of-pyqtgraph
+    """"Needed to handle the x-axes tags representing date and time.
+    From: https://stackoverflow.com/questions/49046931/how-can-i-use-dateaxisitem-of-pyqtgraph
 
-    Note: The timestamps need to refer to UTC!"
+    Notes
+    -----
+    The timestamps need to refer to UTC!"
     """
-
-    def tickStrings(self, values, scale, spacing):
+    def tickStrings(self, values, scale, spacing) -> str:
+        """Handles the x-axes tags representing date and time."""
         return [dt.datetime.fromtimestamp(value, tz=pytz.utc) for value in values]
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     """Main Window of the application."""
+
+    # General options for the main window:
+    BRUSH_ACTIVE_OBS = pg.mkBrush('g')
+    BRUSH_INACTIVE_OBS = pg.mkBrush('r')
 
     def __init__(self):
         """Initializer."""
@@ -69,7 +76,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
         # Observations tree widget:
-        # self.treeWidget_observations.itemClicked.connect(self.on_obs_tree_widget_item_clicked)
         self.treeWidget_observations.itemSelectionChanged.connect(self.on_obs_tree_widget_item_selected)
         self.treeWidget_observations.itemChanged.connect(self.on_tree_widget_item_changed)
         self.checkBox_obs_plot_reduced_observations.clicked.connect(self.on_obs_tree_widget_item_selected)
@@ -116,9 +122,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         obs_df = self.observation_model.get_data
         obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,
                                                                                                                      's')
-        # l = self.GraphicsLayoutWidget_observations
-
-        # TODO: Distinguish between survey and setup data here, in necessary!
+        # Distinguish between survey and setup data here, in necessary!
         # if setup_id is None:  # survey selected:
         #     pass
         # else:  # setup selected:
@@ -149,9 +153,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
 
         # Gravity g [µGal]
+        # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
         self.plot_obs_g.clear()
-        self.plot_xy_data(self.plot_obs_g, obs_epoch_timestamps, g_mugal, plot_name='g_mugal', color='b',
-                          symbol='o', symbol_size=10)
+        pen = pg.mkPen(color='b')
+        flags_keep_obs = obs_df['keep_obs'].values
+        symbol_brushes = []
+        for flag in flags_keep_obs:
+            if flag:
+                symbol_brushes.append(self.BRUSH_ACTIVE_OBS)
+            else:
+                symbol_brushes.append(self.BRUSH_INACTIVE_OBS)
+
+        # Type of 'self.plot_obs_g_data_item': PlotDataItem
+        self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal, name='g_mugal', pen=pen,
+                                                         symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
+        self.plot_obs_g_data_item.sigPointsClicked.connect(self.on_observation_plot_data_item_clicked)
         self.plot_obs_g.showGrid(x=True, y=True)
         self.plot_obs_g.autoRange()
 
@@ -182,26 +198,63 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.plot_obs_g.autoRange()  # Finally adjust data range to g values!
 
-        # TODO: Use the following method to flag observations!
-        self.plot_keep_obs_markers()
-
     def plot_xy_data(self, plot_item, x, y, plot_name, color='k', symbol='o', symbol_size=10):
         """Plot XY-data."""
         pen = pg.mkPen(color=color)
         plot_item.plot(x, y, name=plot_name, pen=pen, symbol=symbol, symbolSize=symbol_size, symbolBrush=(color))
 
-    def plot_keep_obs_markers(self):
-        """Plot markers for observations with `keep_obs == True`."""
-        if hasattr(self, 'plot_obs_g_keep_obs_markers'):
-            self.plot_obs_g_keep_obs_markers.clear()
-        obs_df = self.observation_model.get_data
-        # keep_obs_flags = obs_df['keep_obs']
-        obs_df_tmp = obs_df.loc[obs_df['keep_obs']].copy(deep=True)
-        y = obs_df_tmp['g_obs_mugal'].values
-        obs_epoch_timestamps = (obs_df_tmp['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
-        self.plot_obs_g_keep_obs_markers = self.plot_obs_g.plot(obs_epoch_timestamps, y, name='keep_obs', pen=None,
-                                                                symbol='o', symbolSize=11,
-                                                                symbolBrush='g', symbolPen='k')
+    def set_keep_obs_markers_in_obs_plot(self, index: int, keep_obs_flag: bool):
+        """Set a marker (scatter symbols) in the observation plot according to the `keep_obs` flag.
+
+        Notes
+        -----
+        This method only changes ONE single marker symbol! Hence, `index` is a scalar.
+
+        Parameters
+        ----------
+        index : int
+            This is the index of the marker symbol to be changed in the current plot (and data in
+            `self.observation_model.get_data` respectively).
+        keep_obs_flag : bool
+            Indicates whether the observation should ba active or inactive. The symbol brush is set accordingly.
+        """
+
+        if keep_obs_flag:
+            self.plot_obs_g_data_item.scatter.points()[index].setBrush(self.BRUSH_ACTIVE_OBS)
+        else:
+            self.plot_obs_g_data_item.scatter.points()[index].setBrush(self.BRUSH_INACTIVE_OBS)
+
+
+    def on_observation_plot_data_item_clicked(self, points, ev):
+        """Invoked whenever a data point in the observation time series plot is clicked.
+
+        Notes
+        -----
+        Whenever an observation data point is clicked the `keep_obs` flag toggles (True/False) and the marker (brush)
+        is set accordingly to visualize the situation in the observation timeseries plot. Additionally this flag is
+        changed in the observation model data (dataframe accessed via `self.observation_model.get_data`) and the
+        `dataChanged` signal is emitted. The signal triggers the method `self.on_observation_model_data_changed`
+        where the observation tree view is changed accordingly and the `keep_ob` fag is set in the survey in the
+        campaign data (method: `self.campaign.surveys[<survey_nanem>].activate_observation()`).
+        """
+        # print(points, ev)
+        # print(f'Number of clicked points: {len(ev)}')  # Initially ALL points under the mouse cursor are selected!
+        # print(f'-----------------------------')
+
+        # Get first selected point (only select ONE point!):
+        spot_item = ev[0]  # <class 'pyqtgraph.graphicsItems.ScatterPlotItem.SpotItem'>
+        # Select item in observation_model and toggel the "keep_obs" state:
+        row = self.observation_model.get_data.index[spot_item._index]
+        if self.observation_model.get_data.at[row, 'keep_obs']:
+            self.observation_model.get_data.at[row, 'keep_obs'] = False
+            # Handled in `self.on_observation_model_data_changed` with `self.set_keep_obs_markers_in_obs_plot` instead:
+            # spot_item.setBrush(self.BRUSH_INACTIVE_OBS)
+        else:
+            self.observation_model.get_data.at[row, 'keep_obs'] = True
+            # Handled in `self.on_observation_model_data_changed` with `self.set_keep_obs_markers_in_obs_plot` instead:
+            # spot_item.setBrush(self.BRUSH_ACTIVE_OBS)
+        index = self.tableView_observations.model().index(spot_item._index, Survey.get_obs_df_column_index('keep_obs'))
+        self.observation_model.dataChanged.emit(index, index)  # Triggers all following events...
 
     def on_observation_model_data_changed(self, topLeft, bottomRight, role):
         """Invoked whenever data in the observation table view changed."""
@@ -240,8 +293,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 setup_item.setCheckState(0, tree_item_check_state)  # finally set checked state!
                                 break
                 self.treeWidget_observations.blockSignals(False)
-                # Plot markers:
-                self.plot_keep_obs_markers()
+
+                # Plot 'keep_obs' marker symbols in the observation timeseries plot:
+                self.set_keep_obs_markers_in_obs_plot(index.row(), flag_keep_obs)
         else:
             pass  # More than one items selected/changed.
 
@@ -288,19 +342,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             if IS_VERBOSE:
                 print('No item or multiple items selected!')
-
-    # @pyqtSlot(QTreeWidgetItem, int)
-    # def on_obs_tree_widget_item_clicked(self, item, column):
-    #     """Slot for item clicked signal of the observation tree widget."""
-    #     # print(item, column, item.text(column))
-    #     if item.parent() is None:  # Is a survey
-    #         survey_name = item.text(0)  # Column 0 = Survey name
-    #         setup_id = None  # No setup selected
-    #     else:
-    #         parent = item.parent()
-    #         survey_name = parent.text(0)  # Column 0 = Survey name
-    #         setup_id = int(item.text(0))
-    #     self.update_obs_table_view(survey_name, setup_id)
 
     def update_obs_table_view(self, survey_name: str, setup_id: int):
         """Update the observation table view according to the selected survey and instrument setup."""
@@ -583,6 +624,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 if flag_no_duplicate:
                     # No problems occurred:
+                    # Check if all expected information is available in the survey and raise warning:
+                    if new_cg5_survey.obs_tide_correction_type == 'unknown':
+                        QMessageBox.warning(self, 'Warning!',
+                                            'Type of tidal correction is unknown! '
+                                            'Check, if the "CG-5 OPTIONS" block in the input file is missing.')
+
                     self.connect_station_model_to_table_view()  # Disconnect sort & filter proxy model from station view.
                     self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
                     self.refresh_stations_table_model_and_view()

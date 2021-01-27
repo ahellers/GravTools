@@ -842,10 +842,13 @@ class Survey:
         else:
             obs_df = None  # If no observations are available, initialize as None
 
-        if cg5_survey.options.tide_correction:
-            obs_tide_correction_type = 'cg5_longman1959'  # built-in tide correction of the CG5
+        if cg5_survey.options.tide_correction is None:
+            obs_tide_correction_type = 'unknown'  # e.g. "CG-5 OPTIONS" block in observation file missing
         else:
-            obs_tide_correction_type = 'no_tide_corr'
+            if cg5_survey.options.tide_correction:
+                obs_tide_correction_type = 'cg5_longman1959'  # built-in tide correction of the CG5
+            else:
+                obs_tide_correction_type = 'no_tide_corr'
 
         return cls(name=cg5_survey.survey_parameters.survey_name,
                    date=survey_date,
