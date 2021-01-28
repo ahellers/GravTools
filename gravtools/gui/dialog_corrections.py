@@ -67,7 +67,7 @@ class Ui_Dialog_corrections(object):
         self.verticalLayout_5.addWidget(self.groupBox_corrections_ref_heights)
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog_corrections)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Apply|QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
         self.buttonBox.setObjectName("buttonBox")
         self.verticalLayout_5.addWidget(self.buttonBox)
         self.verticalLayout_6.addLayout(self.verticalLayout_5)
@@ -88,3 +88,4 @@ class Ui_Dialog_corrections(object):
         self.radioButton_corr_ref_heights_instrument_top.setText(_translate("Dialog_corrections", "Instrument top"))
         self.radioButton_corr_ref_heights_ground.setText(_translate("Dialog_corrections", "Ground"))
         self.radioButton_corr_ref_heights_control_point.setText(_translate("Dialog_corrections", "Control point"))
+        self.buttonBox.setToolTip(_translate("Dialog_corrections", "When clicking OK the corrections are applied on all observations in the current campaign."))

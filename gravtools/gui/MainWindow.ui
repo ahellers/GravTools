@@ -307,6 +307,9 @@
     <addaction name="action_Exit"/>
    </widget>
    <widget class="QMenu" name="menu_Observations">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="tearOffEnabled">
      <bool>false</bool>
     </property>
@@ -376,6 +379,9 @@
    </property>
   </action>
   <action name="action_Edit_Observations">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Edit Observations</string>
    </property>
@@ -391,6 +397,9 @@
    </property>
   </action>
   <action name="action_Corrections">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Corrections</string>
    </property>

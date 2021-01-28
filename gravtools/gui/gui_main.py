@@ -87,6 +87,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_obseration_plots_widget()
         # self.observations_splitter.setSizes([1000, 10])
 
+        # Initialize dialogs if necessary at the start of the application:
+        self.dlg_corrections = DialogCorrections()
+
     def set_up_obseration_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
         l = self.GraphicsLayoutWidget_observations
@@ -476,13 +479,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
-        dlg = DialogCorrections()
-        return_value = dlg.exec()
+        # dlg = DialogCorrections()
+        return_value = self.dlg_corrections.exec()
         if return_value == QDialog.Accepted:
             pass
+
+
+            self.apply_observation_corrections()
+
+
+
             self.statusBar().showMessage(f"Observation corrections applied.")
         else:
             self.statusBar().showMessage(f"No observation corrections applied.")
+
+
+    def apply_observation_corrections(self):
+        """Apply observation corrections according to the selected settings."""
+
+        self.c
+        pass
 
     @pyqtSlot()
     def on_menu_file_new_campaign(self):
@@ -497,13 +513,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 surveys=None,  # Always use non-mutable default arguments!
                 stations=None,  # Always use non-mutable default arguments!
             )
-            # Activate main menu items:
+            # Enable/disable main menu items:
             self.menuAdd_Survey.setEnabled(True)
             self.action_Add_Stations.setEnabled(True)
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
                                          f"output directory: {self.campaign.output_directory})")
             self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
+            self.enable_menu_observations_based_on_campaign_data()  # Disable when starting a new campaign (no surveys).
 
             # Set up view models and views for this campaign:
             self.set_up_station_view_model()
@@ -511,6 +528,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         elif return_value == QDialog.Rejected:
             self.statusBar().showMessage(f"Canceled creating new campaign.")
+
+    def enable_menu_observations_based_on_campaign_data(self):
+        """Enable the main menu item `observations` is the campaign contains at least one survey."""
+        if self.campaign.number_of_surveys > 0:
+            self.menu_Observations.setEnabled(True)
+        else:
+            self.menu_Observations.setEnabled(False)
+
 
     @pyqtSlot()
     def on_menu_file_load_stations(self):
@@ -647,6 +672,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
                         if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
                             self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
+                    self.enable_menu_observations_based_on_campaign_data()
                     self.statusBar().showMessage(f"Survey {new_cg5_survey.name} "
                                                  f"({new_cg5_survey.get_number_of_observations()} observations) added.")
                 else:
