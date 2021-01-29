@@ -81,6 +81,7 @@ class Station:
         'is_datum',  # flag, that indicates whether this is a datum station, bool
         'in_survey',  # Names of surveys in which ths station was observed (separator = ;), str
     )
+
     # _STAT_DF_COLUMNS_SAME_STATION_INDICATORS = (
     #     'station_name',  # Station name, str
     #     'long_deg',  # longitude [deg], float
@@ -286,11 +287,13 @@ class Station:
         self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'is_observed'] = True
 
         # Delete None entries:
-        self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']) & self.stat_df['in_survey'].isnull(), 'in_survey'] = ''
+        self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']) & self.stat_df[
+            'in_survey'].isnull(), 'in_survey'] = ''
         # self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'in_survey'] = ''
 
         # Add survey names:
-        num_entries = len(self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'in_survey'])
+        num_entries = len(
+            self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'in_survey'])
         self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'in_survey'] = \
             self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']),
                              'in_survey'].str.cat([survey.name + '; '] * num_entries)
@@ -349,7 +352,8 @@ class Station:
         """
         # Get the essential information from the input survey:
         tmp_df = survey.obs_df[['station_name', 'lon_deg', 'lat_deg', 'alt_m', 'obs_epoch']].copy(deep=True)
-        tmp_df = tmp_df.sort_values(by=['obs_epoch']).drop_duplicates(subset=['station_name']).drop(columns=['obs_epoch'])
+        tmp_df = tmp_df.sort_values(by=['obs_epoch']).drop_duplicates(subset=['station_name']).drop(
+            columns=['obs_epoch'])
 
         # Add missing columns (defined in self._STAT_DF_COLUMNS) to temp_df and initialize data:
         tmp_df.rename(columns={'lon_deg': 'long_deg', 'alt_m': 'height_m'}, inplace=True)
@@ -811,7 +815,8 @@ class Survey:
         # obs_df:
         if cg5_survey.obs_df is not None:
             # Refactor observation dataframe:
-            obs_df: object = cg5_survey.obs_df.sort_values('obs_epoch').copy(deep=True)  # deep copy => No struggles with references
+            obs_df: object = cg5_survey.obs_df.sort_values('obs_epoch').copy(
+                deep=True)  # deep copy => No struggles with references
 
             # Add missing columns (initialized with default values):
             obs_df['g_obs_mugal'] = obs_df['g_mgal'] * 1e3
@@ -822,7 +827,7 @@ class Survey:
 
             # Rename columns:
             obs_df.rename(columns={'terrain': 'corr_terrain',
-                                   'tide': 'corr_tide_mugal',},
+                                   'tide': 'corr_tide_mugal', },
                           inplace=True)
 
             # Drop columns that are not needed any more:
@@ -1117,7 +1122,6 @@ class Survey:
         """
         return cls._OBS_DF_COLUMNS.index(column_name)
 
-
     def get_number_of_observations(self) -> int:
         """Returns the number of observations of the current survey.
 
@@ -1159,123 +1163,236 @@ class Survey:
         if not self.is_valid_obs_df():
             raise AssertionError('The DataFrame "obs_df" is not valid.')
 
-    def reduce_to_reference_height(self, target_ref_height: str, verbose: bool = False) -> bool:
-        """Reduce the observed gravity to the specified target reference height.
+    def reduce_observations(self, target_ref_height: str = None, target_tide_corr: str = None,
+                            verbose: bool = False) -> [bool, str]:
+        """Reduce the observed gravity values by applying the selected corrections.
+
+        The following corrections can be applied:
+
+        - Reference height: Using the vertical gravity gradient at the measurement points (from station data file) and
+          the vertical distances between instrument top, sensor height, ground and control point, the observations are
+          reduced to the selected reference height. Information on the reference height of the input data (usually
+          sensor height, as observed) and the target reference height are required.
+
+        - Tidal correction: Observations are reduced due tidal gravitational attraction (caused by sun and moon).
+          The applied model to determine the corrections for each observation, dependent on the location and time, can
+          be selected. Information on the tidal corrections that were already applied on the input data is required
 
         Notes
         -----
-        - For this reduction vertical gravity gradients are required!
+        - For the reduction of the reference height vertical gravity gradients are required!
 
         Parameters
         ----------
-        target_ref_height : string, specifying the target reference height type.
-            The target reference height type has to be listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`
+        target_ref_height : string, specifying the target reference height type (default = `None`).
+            The target reference height type has to be listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`.
+            Default is `None` indicating that the reference heights of the input data are not changed.
+        target_tide_corr : str, specifying the tidal correction type to be applied (default = `None`).
+            The target tidal correction type specifies what kind of tidal correction will be applied. Valid types have
+            to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
+            tidal corrections are not considered here (tidal corrections are inherited from input data).
         verbose : bool, optional (default=False)
             If True, status messages are printed to the command line.
 
         Returns
         -------
-        bool : True, if no errors occurred
-            True implies that the reduction was successful, or that it was not necessary (already reduced).
+        flag_corrections_applied_correctly : bool
+            `False` indicates that an error occurred when applying the observation corrections.
+        error_msg : str, default = ''
+            Message that describes the error in case an error occurred.
         """
-        # Initial checks:
-        if target_ref_height not in REFERENCE_HEIGHT_TYPE:
-            raise ValueError(f'"{target_ref_height}" is an unknown reference height type.')
+        # Init.:
+        flag_corrections_applied = True
+        error_msg = ''
 
-        # Whether all or none of the data fields have to be None:
-        if (self.obs_df['g_red_mugal'].isna().all() != self.obs_df['g_red_mugal'].isna().any()) or \
-            (self.obs_df['sd_g_red_mugal'].isna().all() != self.obs_df['sd_g_red_mugal'].isna().any()):
-            raise AssertionError('In "obs_df" the columns "g_red_mugal" and/or "sd_g_red_mugal" are not initialized '
-                                 'consistently!')
+        # Create a copy auf obs_df in order prevent problems with manipulation assigned py reference variables:
+        obs_df = self.obs_df.copy(deep=True)
 
-        # Check, if VG are available in self.obs_df:
-        if self.obs_df.vg_mugalm.isna().any():
+        # Initialize pandas series for reduced data by copying the observation data as loaded from the input file:
+        g_red_mugal = obs_df['g_obs_mugal']
+        sd_g_red_mugal = obs_df['sd_g_obs_mugal']
+
+        # Check whether field for reduced data are initialized correctly:
+        flag_all_field_are_nan = all([obs_df['g_red_mugal'].isna().all(),
+                                      obs_df['sd_g_red_mugal'].isna().all(),
+                                      obs_df['corr_tide_red_mugal'].isna().all()
+                                      ])
+        flag_no_field_is_nan = all([
+            all(~obs_df['g_red_mugal'].isna().values),
+            all(~obs_df['sd_g_red_mugal'].isna().values),
+            all(~obs_df['corr_tide_red_mugal'].isna().values)])
+        if not (flag_all_field_are_nan or flag_no_field_is_nan):
+            # raise AssertionError('In "obs_df" the columns "g_red_mugal", "sd_g_red_mugal" and "corr_tide_red_mugal" '
+            #                      'are not initialized consistently!'
+            error_msg = 'In "obs_df" the columns "g_red_mugal", "sd_g_red_mugal" and "corr_tide_red_mugal" are not ' \
+                        'initialized consistently! '
+            flag_corrections_applied = False
             if verbose:
-                print('For the following stations the vertical gravity gradient is not available:')
-                print(f'{", ".join(self.obs_df[self.obs_df.vg_mugalm.isna()].station_name.unique())}')
-                print('Without vertical gradient the observed gravity cannot be reduced to another height level!')
-            return False
+                print(error_msg)
+            return flag_corrections_applied, error_msg
 
-        # Initilalize fields for reduced data, if empty:
-        if self.obs_df['g_red_mugal'].isna().all():
-            self.obs_df['g_red_mugal'] = self.obs_df['g_obs_mugal']
-            self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_obs_mugal']
-            self.red_reference_height_type = self.obs_reference_height_type
-            self.red_tide_correction_type = self.obs_tide_correction_type
+        if verbose:
+            print(f'## Calculate reduced observations by applying the specified corrections:')
 
-        # Reduction not necessary:
-        if self.red_reference_height_type == target_ref_height:
+        # 1.) Check reference heights:
+        if verbose:
+            print(
+                f'Reduction of reference heights to "{target_ref_height}" ({REFERENCE_HEIGHT_TYPE[target_ref_height]}):')
+
+        if target_ref_height is None:  # Do nothing
             if verbose:
-                print(f'Reduced gravity values are already referenced to: {target_ref_height}')
-                return True
+                print(f' - Reference heights are not changed!')
+            flag_corrections_applied = True
+        else:
+            # Check if the target reference height type is valid:
+            if target_ref_height not in REFERENCE_HEIGHT_TYPE:
+                raise ValueError(f'"{target_ref_height}" is an unknown reference height type.')
 
-        # Reduction:
-        # # Distance between instrument top and sensor level:
-        dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[GRAVIMETER_ID_BEV[self.gravimeter_id]]
-        if self.red_reference_height_type == 'sensor_height':
-            if target_ref_height == 'control_point':
-                # + dst_m + dhf_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] + (dst_m + self.obs_df['dhf_m']) * \
-                                             self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-            elif target_ref_height == 'instrument_top':
-                # + dst_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] + dst_m * self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-            elif target_ref_height == 'ground':
-                # + dst_m + dhb_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] + (dst_m + self.obs_df['dhb_m']) * \
-                                             self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-        if self.red_reference_height_type == 'instrument_top':
-            if target_ref_height == 'sensor_height':
-                # - dst_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] - dst_m * self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-            elif target_ref_height == 'ground':
-                # + dhb_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] + self.obs_df['dhb_m'] * \
-                                             self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-            elif target_ref_height == 'control_point':
-                # + dhf_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] + self.obs_df['dhf_m'] * \
-                                             self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-        if self.red_reference_height_type == 'ground':
-            if target_ref_height == 'instrument_top':
-                # - dhb_m - dst_m + dst_m = - dhb_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] - self.obs_df['dhb_m'] * \
-                                             self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-            elif target_ref_height == 'sensor_height':
-                # - dhb_m - dst_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] - (self.obs_df['dhb_m'] + dst_m) * \
-                                             self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-            elif target_ref_height == 'control_point':
-                # - dhb_m - dst_m + dhf_m + dst_m = dhf_m - dhb_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] + \
-                                             (self.obs_df['dhf_m'] - self.obs_df['dhb_m']) * self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-        if self.red_reference_height_type == 'control_point':
-            if target_ref_height == 'instrument_top':
-                # - dhf_m - dst_m + dst_m = - dhf_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] - self.obs_df['dhf_m'] * \
-                                             self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
-            elif target_ref_height == 'ground':
-                # - dhf_m - dst_m + dst_m + dhb_m = dhb_m - dhf_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] + \
-                                             (self.obs_df['dhb_m'] - self.obs_df['dhf_m']) * self.obs_df['vg_mugalm']
-            elif target_ref_height == 'sensor_height':
-                # - dhf_m - dst_m
-                self.obs_df['g_red_mugal'] = self.obs_df['g_red_mugal'] - (self.obs_df['dhf_m'] + dst_m) * \
-                                             self.obs_df['vg_mugalm']
-                self.obs_df['sd_g_red_mugal'] = self.obs_df['sd_g_red_mugal']  # Keep SD
+            # Check if reduction is necessary:
+            if self.obs_reference_height_type == target_ref_height:
+                if verbose:
+                    print(f' - Observations are already referenced to: {target_ref_height}')
+                flag_corrections_applied = True
+            else:
+                # Check, if VG are available in obs_df:
+                if obs_df.vg_mugalm.isna().any():
+                    error_msg = f'For the following stations the vertical gravity gradient is not available: ' \
+                                f'{", ".join(obs_df[obs_df.vg_mugalm.isna()].station_name.unique())}. ' \
+                                f'Without vertical gradient the observed gravity cannot be reduced to another height ' \
+                                f'level! '
+                    flag_corrections_applied = False
+                    if verbose:
+                        print(error_msg)
+                    return flag_corrections_applied, error_msg
 
-        self.red_reference_height_type = target_ref_height
-        return True
+                # Reduction:
+                # Distance between instrument top and sensor level:
+                dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[GRAVIMETER_ID_BEV[self.gravimeter_id]]
+                if self.obs_reference_height_type == 'sensor_height':
+                    if target_ref_height == 'control_point':
+                        # + dst_m + dhf_m
+                        g_red_mugal = g_red_mugal + (dst_m + obs_df['dhf_m']) * \
+                                      obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                    elif target_ref_height == 'instrument_top':
+                        # + dst_m
+                        g_red_mugal = g_red_mugal + dst_m * obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                    elif target_ref_height == 'ground':
+                        # + dst_m + dhb_m
+                        g_red_mugal = g_red_mugal + (dst_m + obs_df['dhb_m']) * \
+                                      obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                elif self.obs_reference_height_type == 'instrument_top':
+                    if target_ref_height == 'sensor_height':
+                        # - dst_m
+                        g_red_mugal = g_red_mugal - dst_m * obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                    elif target_ref_height == 'ground':
+                        # + dhb_m
+                        g_red_mugal = g_red_mugal + obs_df['dhb_m'] * \
+                                      obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                    elif target_ref_height == 'control_point':
+                        # + dhf_m
+                        g_red_mugal = g_red_mugal + obs_df['dhf_m'] * \
+                                      obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                elif self.obs_reference_height_type == 'ground':
+                    if target_ref_height == 'instrument_top':
+                        # - dhb_m - dst_m + dst_m = - dhb_m
+                        g_red_mugal = g_red_mugal - obs_df['dhb_m'] * \
+                                      obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                    elif target_ref_height == 'sensor_height':
+                        # - dhb_m - dst_m
+                        g_red_mugal = g_red_mugal - (obs_df['dhb_m'] + dst_m) * \
+                                      obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                    elif target_ref_height == 'control_point':
+                        # - dhb_m - dst_m + dhf_m + dst_m = dhf_m - dhb_m
+                        g_red_mugal = g_red_mugal + \
+                                      (obs_df['dhf_m'] - obs_df['dhb_m']) * obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                elif self.obs_reference_height_type == 'control_point':
+                    if target_ref_height == 'instrument_top':
+                        # - dhf_m - dst_m + dst_m = - dhf_m
+                        g_red_mugal = g_red_mugal - obs_df['dhf_m'] * \
+                                      obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                    elif target_ref_height == 'ground':
+                        # - dhf_m - dst_m + dst_m + dhb_m = dhb_m - dhf_m
+                        g_red_mugal = g_red_mugal + \
+                                      (obs_df['dhb_m'] - obs_df['dhf_m']) * obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                    elif target_ref_height == 'sensor_height':
+                        # - dhf_m - dst_m
+                        g_red_mugal = g_red_mugal - (obs_df['dhf_m'] + dst_m) * \
+                                      obs_df['vg_mugalm']
+                        # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
+                if verbose:
+                    print('...done!')
+                flag_corrections_applied = True
+
+        # 2.) Check tidal corrections:
+        if verbose:
+            print(f'Tidal corrections "{target_tide_corr}" ({TIDE_CORRECTION_TYPES[target_tide_corr]}):')
+
+        if target_tide_corr is None:  # Do nothing
+            if verbose:
+                print(f' - Tidal corrections are not changed!')
+            corr_tide_red_mugal = obs_df['corr_tide_mugal']
+            flag_corrections_applied = True
+        else:
+            # Check if the target tidal correction type is valid:
+            if target_tide_corr not in TIDE_CORRECTION_TYPES:
+                # raise ValueError(f'"{target_tide_corr}" is unknown ab invalid!')
+                error_msg = f'"{target_tide_corr}" is unknown ab invalid!'
+                flag_corrections_applied = False
+                if verbose:
+                    print(error_msg)
+                return flag_corrections_applied, error_msg
+
+            # Check if reduction is necessary or possible:
+            if self.obs_tide_correction_type == target_tide_corr:
+                if verbose:
+                    print(f' - Observations are already reduced by: {target_tide_corr}')
+                corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                flag_corrections_applied = True
+
+            elif self.obs_tide_correction_type == 'unknown':
+                error_msg = 'Unknown tidal corrections at input data!'
+                flag_corrections_applied = False
+                if verbose:
+                    print(error_msg)
+                return flag_corrections_applied, error_msg
+            else:
+                # Reduction:
+                if self.obs_tide_correction_type == 'no_tide_corr':  # status of unreduced observations
+                    if target_tide_corr == 'cg5_longman1959':  # Add instrumental corrections
+                        g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
+                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
+                        corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                    # elif target_tide_corr == '......':
+                elif self.obs_tide_correction_type == 'cg5_longman1959':
+                    if target_tide_corr == 'no_tide_corr':  # Subtract instrumental corrections
+                        g_red_mugal = g_red_mugal - obs_df['corr_tide_mugal']
+                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
+                        corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                        corr_tide_red_mugal.values[:] = 0
+                    # elif target_tide_corr == '......':
+                if verbose:
+                    print('...done!')
+                flag_corrections_applied = True
+
+        # Apply changes, if everything worked out in here:
+        if flag_corrections_applied:
+            self.red_tide_correction_type = target_tide_corr
+            self.red_reference_height_type = target_ref_height
+            self.obs_df['g_red_mugal'] = g_red_mugal
+            self.obs_df['sd_g_red_mugal'] = sd_g_red_mugal
+            self.obs_df['corr_tide_red_mugal'] = corr_tide_red_mugal
+        return flag_corrections_applied, error_msg
 
     def __str__(self):
         if self.obs_df is not None:
@@ -1536,29 +1653,59 @@ class Campaign:
         """int : Returns the number of stations in this campaign."""
         return self.stations.get_number_of_stations
 
-    def reduce_to_reference_height(self, target_ref_height, verbose=False):
-        """Reduce the observed gravity to the specified target reference heights.
+    def reduce_observations_in_all_surveys(self, target_ref_height=None, target_tide_corr=None, verbose=False):
+        """Reduce the observed gravity by applying the specified corrections.
 
         Notes
         -----
         - For this reduction vertical gravity gradients are required. They are obtained from the `Station` object.
           Hence, a `Station` object has to be attached to the Campaign object beforehand.
 
+        - All corrections are applied on the survey-level. See py:obj:`.Survey.reduce_observations` for more details.
+
         Parameters
         ----------
-        target_ref_height : string, specifying the target reference height type.
-            The target reference height type has to be listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`
+        target_ref_height : string, specifying the target reference height type (default = `None`).
+            The target reference height type has to be listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`.
+            Default is `None` indicating that the reference heights of the input data are not changed.
+        target_tide_corr : str, specifying the tidal correction type to be applied (default = `None`).
+            The target tidal correction type specifies what kind of tidal correction will be applied. Valid types have
+            to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
+            tidal corrections are not considered here (tidal corrections are inherited from input data).
         verbose : bool, optional (default=False)
             If True, status messages are printed to the command line.
+
+        Returns
+        -------
+        flag_corrections_applied_correctly : bool, default = True
+            `False` indicates that an error occurred when applying the observation corrections.
+        error_msg : str, default = ''
+            Message that describes the error in case an error occurred.
+
         """
+        flag_corrections_applied_correctly = True
+        error_msg = ''
         if verbose:
-            print(f'Get VG from stations and reduce to reference height "{target_ref_height}":')
+            print(f'## Reduce all observation in this campaign:')
         for survey_name, survey in self.surveys.items():
             if verbose:
-                print(f' - Survey: {survey_name}')
-            survey.obs_df_populate_vg_from_stations(self.stations, verbose=verbose)
-            if not survey.reduce_to_reference_height(target_ref_height, verbose=verbose):
-                raise AssertionError('Reduction to reference height failed!')
+                print(f'Survey {survey_name}:')
+            if target_ref_height is not None:
+                if verbose:
+                    print(f' - Get vertical gradients')
+                survey.obs_df_populate_vg_from_stations(self.stations, verbose=verbose)
+            flag_corrections_applied_correctly, error_msg = survey.reduce_observations(
+                target_ref_height=target_ref_height,
+                target_tide_corr=target_tide_corr,
+                verbose=verbose)
+            # Check, if corrections were applied correctly and return error message if an error occurred:
+            if not flag_corrections_applied_correctly:
+                error_msg = f'Survey: {survey_name}: ' + error_msg
+                if verbose:
+                    print(error_msg)
+                return flag_corrections_applied_correctly, error_msg
+                # raise AssertionError('Reduction to reference height failed!')
+        return flag_corrections_applied_correctly, error_msg
 
     def add_stations_from_oesgn_table_file(self, oesgn_filename, verbose=False):
         """Add station from an OESGN table file.
@@ -1666,9 +1813,14 @@ if __name__ == '__main__':
 
     surv.obs_df_populate_vg_from_stations(stat, verbose=True)
 
-    target_ref_h = 'control_point'
-    surv.reduce_to_reference_height(target_ref_h, verbose=True)
+    print(surv.reduce_observations(target_ref_height='control_point', target_tide_corr='no_tide_corr', verbose=True))
+    print(surv.reduce_observations(target_ref_height='control_point', target_tide_corr='cg5_longman1959', verbose=True))
+    print(surv.reduce_observations(target_ref_height='ground', target_tide_corr='no_tide_corr', verbose=True))
+    print(surv.reduce_observations(target_ref_height='instrument_top', target_tide_corr='cg5_longman1959',
+                                   verbose=True))
+    print(surv.reduce_observations(target_ref_height='sensor_height', target_tide_corr='no_tide_corr', verbose=True))
 
-    camp.reduce_to_reference_height(target_ref_height=target_ref_h, verbose=True)
+    print(camp.reduce_observations_in_all_surveys(target_ref_height='control_point', target_tide_corr='cg5_longman1959',
+                                                  verbose=True))
 
     camp.synchronize_stations_and_surveys()

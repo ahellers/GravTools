@@ -141,6 +141,7 @@ class ObservationTableModel(QAbstractTableModel):
         'sd_g_red_mugal': 1,
         'corr_terrain': 1,
         'corr_tide_mugal': 1,
+        'corr_tide_red_mugal': 1,
         'temp': 1,
         'tiltx': 1,
         'tilty': 1,
@@ -163,7 +164,7 @@ class ObservationTableModel(QAbstractTableModel):
         self._data_survey_name = ''  # Name of the Survey that is currently represented by `self._data`
 
     def load_surveys(self, surveys):
-        """Load observation data (dict of survey objects in the campaing object) to the observation model.
+        """Load observation data (dict of survey objects in the campaign object) to the observation model.
 
         Notes
         -----

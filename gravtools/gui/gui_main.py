@@ -43,6 +43,7 @@ class TimeAxisItem(pg.AxisItem):
     -----
     The timestamps need to refer to UTC!"
     """
+
     def tickStrings(self, values, scale, spacing) -> str:
         """Handles the x-axes tags representing date and time."""
         return [dt.datetime.fromtimestamp(value, tz=pytz.utc) for value in values]
@@ -101,6 +102,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Gravity g [µGal]
         self.plot_obs_g = l.addPlot(0, 0, name='plot_obs_g', axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.plot_obs_g.setLabel(axis='left', text='g [µGal]')
+        self.plot_obs_g.addLegend()
 
         # Standard deviation of gravity g [µGal]
         self.plot_obs_sd_g = l.addPlot(1, 0, name='plot_obs_sd_g',
@@ -151,11 +153,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             sd_g_mugal = obs_df['sd_g_red_mugal'].values
             corr_tide = obs_df['corr_tide_red_mugal'].values
             corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
+            ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
         else:
             g_mugal = obs_df['g_obs_mugal'].values
             sd_g_mugal = obs_df['sd_g_obs_mugal'].values
             corr_tide = obs_df['corr_tide_mugal'].values
             corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
+            ref_height_name = self.campaign.surveys[survey_name].obs_reference_height_type
 
         # Gravity g [µGal]
         # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
@@ -170,8 +174,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 symbol_brushes.append(self.BRUSH_INACTIVE_OBS)
 
         # Type of 'self.plot_obs_g_data_item': PlotDataItem
-        self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal, name='g_mugal', pen=pen,
-                                                         symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
+        self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal, name=f'Ref.: {ref_height_name}',
+                                                         pen=pen, symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
+
         self.plot_obs_g_data_item.sigPointsClicked.connect(self.on_observation_plot_data_item_clicked)
         self.plot_obs_g.showGrid(x=True, y=True)
         self.plot_obs_g.autoRange()
@@ -482,23 +487,54 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # dlg = DialogCorrections()
         return_value = self.dlg_corrections.exec()
         if return_value == QDialog.Accepted:
-            pass
-
-
-            self.apply_observation_corrections()
-
-
-
-            self.statusBar().showMessage(f"Observation corrections applied.")
+            flag_corrections_ok, error_msg = self.apply_observation_corrections()
+            if flag_corrections_ok:
+                # Load survey from campaing data to observations vie model:
+                self.observation_model.load_surveys(self.campaign.surveys)
+                self.on_obs_tree_widget_item_selected()
+                self.statusBar().showMessage(f"Observation corrections applied.")
+            else:
+                QMessageBox.critical('Error!', error_msg)
+                self.statusBar().showMessage(f"Error: No observation corrections applied.")
         else:
             self.statusBar().showMessage(f"No observation corrections applied.")
 
-
     def apply_observation_corrections(self):
         """Apply observation corrections according to the selected settings."""
+        flag_selection_ok = True
+        error_msg = ''
+        if self.dlg_corrections.radioButton_corr_ref_heights_ground.isChecked():
+            target_ref_height = 'ground'
+        elif self.dlg_corrections.radioButton_corr_ref_heights_control_point.isChecked():
+            target_ref_height = 'control_point'
+        elif self.dlg_corrections.radioButton_corr_ref_heights_sensor.isChecked():
+            target_ref_height = 'sensor_height'
+        elif self.dlg_corrections.radioButton_corr_ref_heights_instrument_top.isChecked():
+            target_ref_height = 'instrument_top'
+        else:
+            flag_selection_ok = False
+            error_msg = f'Invalid selection of reference height in GUI (observation corrections dialog).'
+            # QMessageBox.critical('Error!', error_msg)
 
-        self.c
-        pass
+        if self.dlg_corrections.radioButton_corr_tides_no_correction.isChecked():
+            target_tide_corr = 'no_tide_corr'
+        elif self.dlg_corrections.radioButton_corr_tides_cg5_model.isChecked():
+            target_tide_corr = 'cg5_longman1959'
+        else:
+            flag_selection_ok = False
+            error_msg = f'Invalid selection of tidal correction in GUI (observation corrections dialog).'
+            # QMessageBox.critical('Error!', error_msg)
+
+        if flag_selection_ok:
+            flag_corrections_ok, error_msg = self.campaign.reduce_observations_in_all_surveys(
+                target_ref_height=target_ref_height,
+                target_tide_corr=target_tide_corr,
+                verbose=IS_VERBOSE)
+        else:
+            flag_corrections_ok = False
+
+        return flag_corrections_ok, error_msg
+
 
     @pyqtSlot()
     def on_menu_file_new_campaign(self):
@@ -535,7 +571,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.menu_Observations.setEnabled(True)
         else:
             self.menu_Observations.setEnabled(False)
-
 
     @pyqtSlot()
     def on_menu_file_load_stations(self):
