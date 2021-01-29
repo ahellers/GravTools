@@ -23,14 +23,14 @@ STATION_DATA_SOURCE_TYPES = {
 TIDE_CORRECTION_TYPES = {
     'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
     'no_tide_corr': 'No tide correction applied',
-    'unknown': 'Unknown whether a tide correction was applied.',
+    'unknown': 'Unknown whether a tide correction was applied',
 }
 
 REFERENCE_HEIGHT_TYPE = {
-    'sensor_height': 'The gravity reverence point at the station is at the sensor height.',
-    'instrument_top': 'The gravity value refers to the height og the instrument top.',
-    'ground': 'The gravity value refers to the ground point at the station.',
-    'control_point': 'The gravity value refers to the control point at the station.',
+    'sensor_height': 'The gravity reverence point at the station is at the sensor height',
+    'instrument_top': 'The gravity value refers to the height og the instrument top',
+    'ground': 'The gravity value refers to the ground point at the station',
+    'control_point': 'The gravity value refers to the control point at the station',
 }
 
 GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m = {

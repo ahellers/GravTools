@@ -12,6 +12,7 @@ import pytz
 from MainWindow import Ui_MainWindow
 from dialog_new_campaign import Ui_Dialog_new_Campaign
 from dialog_load_stations import Ui_Dialog_load_stations
+from dialog_corrections import Ui_Dialog_corrections
 
 from gravtools.models.survey import Campaign, Survey, Station
 from gui_models import StationTableModel, ObservationTableModel
@@ -42,6 +43,7 @@ class TimeAxisItem(pg.AxisItem):
     -----
     The timestamps need to refer to UTC!"
     """
+
     def tickStrings(self, values, scale, spacing) -> str:
         """Handles the x-axes tags representing date and time."""
         return [dt.datetime.fromtimestamp(value, tz=pytz.utc) for value in values]
@@ -71,6 +73,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Exit.triggered.connect(self.exit_application)
         self.action_New_Campaign.triggered.connect(self.on_menu_file_new_campaign)
         self.action_Add_Stations.triggered.connect(self.on_menu_file_load_stations)
+        self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
         # self.actionShow_Stations.triggered.connect(self.show_station_data)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
@@ -85,6 +88,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_obseration_plots_widget()
         # self.observations_splitter.setSizes([1000, 10])
 
+        # Initialize dialogs if necessary at the start of the application:
+        self.dlg_corrections = DialogCorrections()
+
     def set_up_obseration_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
         l = self.GraphicsLayoutWidget_observations
@@ -96,6 +102,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Gravity g [µGal]
         self.plot_obs_g = l.addPlot(0, 0, name='plot_obs_g', axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.plot_obs_g.setLabel(axis='left', text='g [µGal]')
+        self.plot_obs_g.addLegend()
 
         # Standard deviation of gravity g [µGal]
         self.plot_obs_sd_g = l.addPlot(1, 0, name='plot_obs_sd_g',
@@ -146,11 +153,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             sd_g_mugal = obs_df['sd_g_red_mugal'].values
             corr_tide = obs_df['corr_tide_red_mugal'].values
             corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
+            ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
         else:
             g_mugal = obs_df['g_obs_mugal'].values
             sd_g_mugal = obs_df['sd_g_obs_mugal'].values
             corr_tide = obs_df['corr_tide_mugal'].values
             corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
+            ref_height_name = self.campaign.surveys[survey_name].obs_reference_height_type
 
         # Gravity g [µGal]
         # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
@@ -165,8 +174,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 symbol_brushes.append(self.BRUSH_INACTIVE_OBS)
 
         # Type of 'self.plot_obs_g_data_item': PlotDataItem
-        self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal, name='g_mugal', pen=pen,
-                                                         symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
+        self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal, name=f'Ref.: {ref_height_name}',
+                                                         pen=pen, symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
+
         self.plot_obs_g_data_item.sigPointsClicked.connect(self.on_observation_plot_data_item_clicked)
         self.plot_obs_g.showGrid(x=True, y=True)
         self.plot_obs_g.autoRange()
@@ -223,7 +233,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.plot_obs_g_data_item.scatter.points()[index].setBrush(self.BRUSH_ACTIVE_OBS)
         else:
             self.plot_obs_g_data_item.scatter.points()[index].setBrush(self.BRUSH_INACTIVE_OBS)
-
 
     def on_observation_plot_data_item_clicked(self, points, ev):
         """Invoked whenever a data point in the observation time series plot is clicked.
@@ -473,6 +482,60 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Exit the application."""
         sys.exit()
 
+    def on_menu_observations_corrections(self):
+        """Launch diaglog to select and apply observation corrections."""
+        # dlg = DialogCorrections()
+        return_value = self.dlg_corrections.exec()
+        if return_value == QDialog.Accepted:
+            flag_corrections_ok, error_msg = self.apply_observation_corrections()
+            if flag_corrections_ok:
+                # Load survey from campaing data to observations vie model:
+                self.observation_model.load_surveys(self.campaign.surveys)
+                self.on_obs_tree_widget_item_selected()
+                self.statusBar().showMessage(f"Observation corrections applied.")
+            else:
+                QMessageBox.critical('Error!', error_msg)
+                self.statusBar().showMessage(f"Error: No observation corrections applied.")
+        else:
+            self.statusBar().showMessage(f"No observation corrections applied.")
+
+    def apply_observation_corrections(self):
+        """Apply observation corrections according to the selected settings."""
+        flag_selection_ok = True
+        error_msg = ''
+        if self.dlg_corrections.radioButton_corr_ref_heights_ground.isChecked():
+            target_ref_height = 'ground'
+        elif self.dlg_corrections.radioButton_corr_ref_heights_control_point.isChecked():
+            target_ref_height = 'control_point'
+        elif self.dlg_corrections.radioButton_corr_ref_heights_sensor.isChecked():
+            target_ref_height = 'sensor_height'
+        elif self.dlg_corrections.radioButton_corr_ref_heights_instrument_top.isChecked():
+            target_ref_height = 'instrument_top'
+        else:
+            flag_selection_ok = False
+            error_msg = f'Invalid selection of reference height in GUI (observation corrections dialog).'
+            # QMessageBox.critical('Error!', error_msg)
+
+        if self.dlg_corrections.radioButton_corr_tides_no_correction.isChecked():
+            target_tide_corr = 'no_tide_corr'
+        elif self.dlg_corrections.radioButton_corr_tides_cg5_model.isChecked():
+            target_tide_corr = 'cg5_longman1959'
+        else:
+            flag_selection_ok = False
+            error_msg = f'Invalid selection of tidal correction in GUI (observation corrections dialog).'
+            # QMessageBox.critical('Error!', error_msg)
+
+        if flag_selection_ok:
+            flag_corrections_ok, error_msg = self.campaign.reduce_observations_in_all_surveys(
+                target_ref_height=target_ref_height,
+                target_tide_corr=target_tide_corr,
+                verbose=IS_VERBOSE)
+        else:
+            flag_corrections_ok = False
+
+        return flag_corrections_ok, error_msg
+
+
     @pyqtSlot()
     def on_menu_file_new_campaign(self):
         """Launching dialog to create a new campaign."""
@@ -486,13 +549,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 surveys=None,  # Always use non-mutable default arguments!
                 stations=None,  # Always use non-mutable default arguments!
             )
-            # Activate main menu items:
+            # Enable/disable main menu items:
             self.menuAdd_Survey.setEnabled(True)
             self.action_Add_Stations.setEnabled(True)
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
                                          f"output directory: {self.campaign.output_directory})")
             self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
+            self.enable_menu_observations_based_on_campaign_data()  # Disable when starting a new campaign (no surveys).
 
             # Set up view models and views for this campaign:
             self.set_up_station_view_model()
@@ -500,6 +564,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         elif return_value == QDialog.Rejected:
             self.statusBar().showMessage(f"Canceled creating new campaign.")
+
+    def enable_menu_observations_based_on_campaign_data(self):
+        """Enable the main menu item `observations` is the campaign contains at least one survey."""
+        if self.campaign.number_of_surveys > 0:
+            self.menu_Observations.setEnabled(True)
+        else:
+            self.menu_Observations.setEnabled(False)
 
     @pyqtSlot()
     def on_menu_file_load_stations(self):
@@ -526,9 +597,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.campaign.add_stations_from_oesgn_table_file(dlg.lineEdit_oesgn_table_file_path.text(),
                                                                  verbose=IS_VERBOSE)
                 self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
-
                 self.refresh_stations_table_model_and_view()
-
                 self.set_up_proxy_station_model()
 
             except FileNotFoundError:
@@ -638,6 +707,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
                         if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
                             self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
+                    self.enable_menu_observations_based_on_campaign_data()
                     self.statusBar().showMessage(f"Survey {new_cg5_survey.name} "
                                                  f"({new_cg5_survey.get_number_of_observations()} observations) added.")
                 else:
@@ -745,6 +815,18 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             oesgn_filename = QDir.toNativeSeparators(oesgn_filename)
             self.lineEdit_oesgn_table_file_path.setText(oesgn_filename)
+
+
+class DialogCorrections(QDialog, Ui_Dialog_corrections):
+    """Dialog to select and apply observation corrections."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+        # connect signals and slots:
+        pass
 
 
 if __name__ == "__main__":
