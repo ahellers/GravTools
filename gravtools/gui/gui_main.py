@@ -13,6 +13,7 @@ from MainWindow import Ui_MainWindow
 from dialog_new_campaign import Ui_Dialog_new_Campaign
 from dialog_load_stations import Ui_Dialog_load_stations
 from dialog_corrections import Ui_Dialog_corrections
+from dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 
 from gravtools.models.survey import Campaign, Survey, Station
 from gui_models import StationTableModel, ObservationTableModel
@@ -74,6 +75,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_New_Campaign.triggered.connect(self.on_menu_file_new_campaign)
         self.action_Add_Stations.triggered.connect(self.on_menu_file_load_stations)
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
+        self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
+        self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         # self.actionShow_Stations.triggered.connect(self.show_station_data)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
@@ -90,6 +93,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Initialize dialogs if necessary at the start of the application:
         self.dlg_corrections = DialogCorrections()
+        self.dlg_autoselect_settings = DialogAutoselectSettings()
+
+    def on_apply_autoselection(self):
+        """Appply autoselection on the currently selected setup or survey according to the predefined setttings."""
+        pass
+
+    def on_menu_observations_autoselection_settings(self):
+        """Launch dialog for defining the autoselection settings."""
+        return_value = self.dlg_autoselect_settings.exec()
+        pass
 
     def set_up_obseration_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
@@ -569,8 +582,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Enable the main menu item `observations` is the campaign contains at least one survey."""
         if self.campaign.number_of_surveys > 0:
             self.menu_Observations.setEnabled(True)
+            self.groupBox_obs_view_options.setEnabled(True)
+            self.groupBox_obs_autoselect.setEnabled(True)
         else:
             self.menu_Observations.setEnabled(False)
+            self.groupBox_obs_view_options.setEnabled(False)
+            self.groupBox_obs_autoselect.setEnabled(False)
 
     @pyqtSlot()
     def on_menu_file_load_stations(self):
@@ -819,6 +836,18 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
 
 class DialogCorrections(QDialog, Ui_Dialog_corrections):
     """Dialog to select and apply observation corrections."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+        # connect signals and slots:
+        pass
+
+
+class DialogAutoselectSettings(QDialog, Ui_Dialog_autoselection_settings):
+    """Dialog to define the autoselect settings."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
