@@ -200,7 +200,54 @@
              </widget>
             </item>
             <item>
+             <widget class="QGroupBox" name="groupBox_obs_autoselect">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Data Selection</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_10">
+               <item>
+                <widget class="QPushButton" name="pushButton_obs_apply_autoselect_current_data">
+                 <property name="toolTip">
+                  <string>Activate/deactivate observations of the current selected survey or setup according to the auto-selection options.</string>
+                 </property>
+                 <property name="text">
+                  <string>Apply Autoselection</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_obs_setups">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Setups</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_11">
+               <item>
+                <widget class="QPushButton" name="pushButton_obs_comp_setup_data">
+                 <property name="toolTip">
+                  <string>Combine all observations per setup in oder to compute a singel pseudo observation.</string>
+                 </property>
+                 <property name="text">
+                  <string>Compute setup data</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
              <widget class="QGroupBox" name="groupBox_obs_view_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
               <property name="title">
                <string>View Options</string>
               </property>
@@ -217,6 +264,9 @@
                </item>
                <item>
                 <widget class="QCheckBox" name="checkBox_obs_plot_reduced_observations">
+                 <property name="toolTip">
+                  <string>Plot reduced observatio data, if availble.</string>
+                 </property>
                  <property name="text">
                   <string>Plot reduced observations</string>
                  </property>
@@ -235,7 +285,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -319,6 +369,7 @@
     <addaction name="action_Edit_Observations"/>
     <addaction name="separator"/>
     <addaction name="action_Corrections"/>
+    <addaction name="action_Autoselection_settings"/>
    </widget>
    <widget class="QMenu" name="menuEstimation_settings">
     <property name="title">
@@ -417,6 +468,11 @@
   <action name="action_from_BEV_observation_file">
    <property name="text">
     <string>from BEV observation file</string>
+   </property>
+  </action>
+  <action name="action_Autoselection_settings">
+   <property name="text">
+    <string>Autoselection settings</string>
    </property>
   </action>
  </widget>

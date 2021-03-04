@@ -236,6 +236,13 @@ class ObservationTableModel(QAbstractTableModel):
                         # Align right, vertical middle.
                         return Qt.AlignVCenter + Qt.AlignRight
 
+                if role == Qt.BackgroundRole:
+                    # keep_obs_index = self.observation_model.get_data.columns.to_list().index('keep_obs')
+                    # keep_obs_flag = self._data.iloc[index.row(), keep_obs_index]
+                    keep_obs_flag = self._data.iloc[index.row(), 18]  # keep_obs
+                    if not keep_obs_flag:
+                        return QtGui.QColor('red')
+
     def flags(self, index):
         """Enable editing of table items."""
         flags = super(self.__class__, self).flags(index)

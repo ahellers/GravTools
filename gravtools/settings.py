@@ -89,5 +89,5 @@ NAME_OBS_FILE_BEV = 'n20200701_1'
 
 # CG-5 observation files (text)
 PATH_OBS_FILE_CG5 = '/home/heller/pyProjects/gravtools/data/CG5/'
-NAME_OBS_FILE_CG5 = '2020-06-18_DACH.TXT'
-# NAME_OBS_FILE_CG5 = '20200907_test.TXT'
+# NAME_OBS_FILE_CG5 = '2020-06-18_DACH.TXT'
+NAME_OBS_FILE_CG5 = '20200907_test.TXT'

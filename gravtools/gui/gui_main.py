@@ -13,6 +13,7 @@ from MainWindow import Ui_MainWindow
 from dialog_new_campaign import Ui_Dialog_new_Campaign
 from dialog_load_stations import Ui_Dialog_load_stations
 from dialog_corrections import Ui_Dialog_corrections
+from dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 
 from gravtools.models.survey import Campaign, Survey, Station
 from gui_models import StationTableModel, ObservationTableModel
@@ -74,6 +75,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_New_Campaign.triggered.connect(self.on_menu_file_new_campaign)
         self.action_Add_Stations.triggered.connect(self.on_menu_file_load_stations)
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
+        self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
+        self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         # self.actionShow_Stations.triggered.connect(self.show_station_data)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
@@ -90,6 +93,108 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Initialize dialogs if necessary at the start of the application:
         self.dlg_corrections = DialogCorrections()
+        self.dlg_autoselect_settings = DialogAutoselectSettings()
+
+    def on_apply_autoselection(self):
+        """Appply autoselection on the currently selected setup or survey according to the predefined setttings."""
+        pass
+
+        # Get autoselect parameters from settings dialog
+        flag_apply_tilt = self.dlg_autoselect_settings.checkBox_tilt.isChecked()
+        flag_apply_g_sd = self.dlg_autoselect_settings.checkBox_sd.isChecked()
+        flag_apply_delta_g = self.dlg_autoselect_settings.checkBox_delta_g.isChecked()
+
+        treshold_g_sd_mugal = int(self.dlg_autoselect_settings.spinBox_sd.text())
+        treshold_tilt_arcsec = int(self.dlg_autoselect_settings.spinBox_tilt.text())
+        treshold_delta_sd_mugal = int(self.dlg_autoselect_settings.spinBox_delta_g.text())
+        delta_g_number_of_points = int(self.dlg_autoselect_settings.spinBox_n.text())
+
+        if self.dlg_autoselect_settings.radioButton_ref_data_reduced_observations.isChecked():
+            reference_data = 'reduced'
+        else:
+            reference_data = 'observed'
+
+        # Get selected setup or survey
+        survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+
+        # Apply autoselection on selected survey/setup (campaign data):
+        surv = self.campaign.surveys[survey_name]
+
+        # Check if reduced observations are available, if they are required as reference:
+        if reference_data == 'reduced':
+            if surv.obs_df['g_red_mugal'].isnull().any() or surv.obs_df['sd_g_red_mugal'].isnull().any():
+                if IS_VERBOSE:
+                    print('Reduced observations not available!')
+                QMessageBox.critical(self, 'Error!',
+                                     'Reduced observations (reference for autoselection) are not avialable yet!')
+                return
+
+        if flag_apply_tilt:
+            surv.autselect_tilt(threshold_arcsec=treshold_tilt_arcsec, setup_id=setup_id)
+        if flag_apply_g_sd:
+            surv.autselect_g_sd(threshold_mugal=treshold_g_sd_mugal, obs_type=reference_data, setup_id=setup_id,
+                            verbose=IS_VERBOSE)
+        if flag_apply_delta_g:
+            surv.autselect_delta_g(threshold_mugal=treshold_delta_sd_mugal, n_obs=delta_g_number_of_points,
+                               obs_type=reference_data, setup_id=setup_id, verbose=IS_VERBOSE)
+
+        # Update data visualization in GUI
+        self.update_obs_table_view(survey_name, setup_id)
+        self.plot_observations(survey_name, setup_id)
+        self.update_obs_tree_widgget_from_observation_model()
+        pass
+
+    def update_obs_tree_widgget_from_observation_model(self):
+        """Update observation tree widget by checking data in the observation model."""
+        self.treeWidget_observations.blockSignals(True)  # Block any signals when changing the checked state
+        survey_name = self.observation_model.data_survey_name
+        setup_ids = self.observation_model.get_data.loc[:, 'setup_id'].unique()
+        for setup_id in setup_ids:
+            keep_obs_flags_of_setup = self.observation_model.get_data.loc[
+                self.observation_model.get_data['setup_id'] == setup_id, 'keep_obs']
+            if all(keep_obs_flags_of_setup):
+                tree_item_check_state = Qt.Checked
+            elif any(keep_obs_flags_of_setup):
+                tree_item_check_state = Qt.PartiallyChecked
+            else:  # all are = False
+                tree_item_check_state = Qt.Unchecked
+            # Set Checked state:
+            for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
+                if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == survey_name:
+                    item = self.treeWidget_observations.topLevelItem(tree_item_idx)
+                    for child_item_idx in range(item.childCount()):
+                        if int(item.child(child_item_idx).text(0)) == setup_id:
+                            setup_item = item.child(child_item_idx)
+                            setup_item.setCheckState(0, tree_item_check_state)  # finally set checked state!
+                            break
+        self.treeWidget_observations.blockSignals(False)
+        pass
+
+    def get_obs_tree_widget_selected_item(self):
+        """Returns survey name and setup nam of the selected items in the observation tree widget."""
+        items = self.treeWidget_observations.selectedItems()
+        if len(items) == 1:  # Only one item in tree view selected
+            item = items[0]
+            if item.parent() is None:  # Is a survey
+                survey_name = item.text(0)  # Column 0 = Survey name
+                setup_id = None  # No setup selected
+            else:
+                parent = item.parent()
+                survey_name = parent.text(0)  # Column 0 = Survey name
+                setup_id = int(item.text(0))
+            self.update_obs_table_view(survey_name, setup_id)
+            self.plot_observations(survey_name, setup_id)
+        else:
+            if IS_VERBOSE:
+                print('No item or multiple items selected!')
+            survey_name = None
+            setup_id = None
+        return survey_name, setup_id
+
+    def on_menu_observations_autoselection_settings(self):
+        """Launch dialog for defining the autoselection settings."""
+        return_value = self.dlg_autoselect_settings.exec()
+        pass
 
     def set_up_obseration_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
@@ -268,7 +373,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_observation_model_data_changed(self, topLeft, bottomRight, role):
         """Invoked whenever data in the observation table view changed."""
         if IS_VERBOSE:
-            print('TableModel: dataChanged: ', topLeft, bottomRight, role)
+            # print('TableModel: dataChanged: ', topLeft, bottomRight, role)
+            pass
         if topLeft == bottomRight:  # Only one item selected?
             index = topLeft
             # Get column and row indices for dataframe:
@@ -569,8 +675,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Enable the main menu item `observations` is the campaign contains at least one survey."""
         if self.campaign.number_of_surveys > 0:
             self.menu_Observations.setEnabled(True)
+            self.groupBox_obs_view_options.setEnabled(True)
+            self.groupBox_obs_autoselect.setEnabled(True)
+            self.groupBox_obs_setups.setEnabled(True)
         else:
             self.menu_Observations.setEnabled(False)
+            self.groupBox_obs_view_options.setEnabled(False)
+            self.groupBox_obs_autoselect.setEnabled(False)
+            self.groupBox_obs_setups.setEnabled(False)
 
     @pyqtSlot()
     def on_menu_file_load_stations(self):
@@ -819,6 +931,18 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
 
 class DialogCorrections(QDialog, Ui_Dialog_corrections):
     """Dialog to select and apply observation corrections."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+        # connect signals and slots:
+        pass
+
+
+class DialogAutoselectSettings(QDialog, Ui_Dialog_autoselection_settings):
+    """Dialog to define the autoselect settings."""
 
     def __init__(self, parent=None):
         super().__init__(parent)

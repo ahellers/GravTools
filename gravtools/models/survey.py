@@ -1192,7 +1192,7 @@ class Survey:
             to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
             tidal corrections are not considered here (tidal corrections are inherited from input data).
         verbose : bool, optional (default=False)
-            If True, status messages are printed to the command line.
+            If `True`, status messages are printed to the command line.
 
         Returns
         -------
@@ -1393,6 +1393,148 @@ class Survey:
             self.obs_df['sd_g_red_mugal'] = sd_g_red_mugal
             self.obs_df['corr_tide_red_mugal'] = corr_tide_red_mugal
         return flag_corrections_applied, error_msg
+
+    def autselect_tilt(self, threshold_arcsec: int, setup_id: int = None):
+        """Deactivate all observations of the survey or of a setup with a tilt larger than the defined threshold.
+
+        Parameters
+        ----------
+        threshold_arcsec : int
+            Observations in this survey or the specified setup are deactivated, if their tilt in X or Y direction
+            (columns `tiltx` and `tilty` in :py:obj:`.Survey.obs_df`) exceeds the given threshold [arcsec].
+        setup_id : int (default=None)
+            `None` implies that this autoselection function is applied on all observations of this survey. Otherwise,
+            the autoselection function is only applied on observations of the setup wirth the provided ID (`setup_id`)
+        """
+        filter_tilt = (abs(self.obs_df['tiltx']) > threshold_arcsec) | (abs(self.obs_df['tilty']) > threshold_arcsec)
+        if setup_id is not None:  # Apply on whole survey
+            filter_tilt = filter_tilt & (self.obs_df['setup_id'] == setup_id)
+        self.obs_df.loc[filter_tilt, 'keep_obs'] = False
+
+    def autselect_g_sd(self, threshold_mugal: int, obs_type: str = 'reduced', setup_id: int = None,
+                       verbose: bool = False):
+        """Deactivate observations with a gravity standard deviation larger than the defined threshold.
+
+        Parameters
+        ----------
+        threshold_mugal : int
+            Observations in this survey or the specified setup are deactivated, if the standard deviation of the
+            observed or the reduced gravity (columns `sd_g_obs_mugal` or `sd_g_red_mugal` in
+            :py:obj:`.Survey.obs_df`) exceed the given threshold [µGal].
+        obs_type : str, 'observed' or 'reduced' (default)
+            Defines whether the observed (as loaded from an observation file) or the reduced observations are used as
+            reference for this autoselection function.
+        setup_id : int (default=None)
+            `None` implies that this autoselection function is applied on all observations of this survey. Otherwise,
+            the autoselection function is only applied on observations of the setup wirth the provided ID (`setup_id`).
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        Returns
+        -------
+        bool : Error indicator.
+            `False`, if at least one standard deviation value is `None` is case, reduced observations are usd as
+            reference.
+        """
+        if obs_type == 'reduced':
+            if self.obs_df['sd_g_red_mugal'].isna().any():
+                if verbose:
+                    print('ERROR: At least one value in column "sd_g_red_mugal" is None.')
+                return False
+            filter_g_sd = (abs(self.obs_df['sd_g_red_mugal']) > threshold_mugal)
+        elif obs_type == 'observed':
+            filter_g_sd = (abs(self.obs_df['sd_g_obs_mugal']) > threshold_mugal)
+        else:
+            raise ValueError(f'Invalid value assigned to the parameter "obs_type": {obs_type}')
+        if setup_id is not None:  # Apply on whole survey
+            filter_g_sd = filter_g_sd & (self.obs_df['setup_id'] == setup_id)
+        self.obs_df.loc[filter_g_sd, 'keep_obs'] = False
+        return True
+
+    def autselect_delta_g(self, threshold_mugal: int, n_obs: int = 3, obs_type: str = 'reduced', setup_id: int = None,
+                          verbose: bool=False):
+        """Deactivate observations based ob the deviation of the stabilized gravity at a setup.
+
+        Notes
+        -----
+        If a setup consists of less than `n_obs` observations, this autosection function is not applied.
+
+
+        Parameters
+        ----------
+        threshold_mugal : int
+            Observations in this survey or the specified setup are deactivated, if the observed or the reduced gravity
+            (columns `sd_g_obs_mugal` or `sd_g_red_mugal` in :py:obj:`.Survey.obs_df`) deviates from the stabilized
+            gravity at the setup by more than the given threshold. The stabilized gravity at a setup is calculated as
+            the mean (observed or reduced) gravity of the last `n_obs` observations in a setup.
+        n_obs : int, optional (default=3)
+            Number of observations at the end of a setup that are used to calculate the stabilized gravity as reference
+            for deactivating observations.
+        obs_type : str, 'observed' or 'reduced' (default)
+            Defines whether the observed (as loaded from an observation file) or the reduced observations are used as
+            reference for this autoselection function.
+        setup_id : int, optional (default=None)
+            `None` implies that this autoselection function is applied on all setup of this survey. Otherwise,
+            the autoselection function is only applied on observations of the setup with the provided ID (`setup_id`).
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        Returns
+        -------
+        bool : Error indicator.
+            `False`, if at least one standard deviation value is `None` is case, reduced observations are usd as
+            reference.
+        """
+        # TODO: Check, if it makes sense to keept the last n_obs observations anyway (even if they do not meet the
+        #  conditions here)! Check if reduced observations are available, if required:
+        if obs_type == 'reduced':
+            if self.obs_df['g_red_mugal'].isna().any():
+                if verbose:
+                    print('ERROR: At least one value in column "g_red_mugal" is None.')
+                return False
+
+        # Get list of IDs of all setups that will be handled:
+        if setup_id is None:
+            setup_ids = self.get_setup_ids()
+        else:
+            setup_ids = [setup_id]
+
+        # Loop over all setups:
+        for id in setup_ids:
+            filter_id = self.obs_df['setup_id'] == id
+            if verbose:
+                print(f' - setup ID: {id}')
+            # Check number of observations in setup:
+            if len(self.obs_df.loc[filter_id]) < (n_obs + 1):
+                if verbose:
+                    print(f'   - Less than {n_obs} observations available: {len(self.obs_df.loc[filter_id])}')
+            else:  # Enough observations in this setup
+                # Calculate stabilized gravity and set up filter:
+                if obs_type == 'reduced':
+                    g_stabilized_mugal = self.obs_df.loc[filter_id, 'g_red_mugal'].tail(n_obs).mean()
+                    filter_delta_g = (self.obs_df['g_red_mugal'] < (g_stabilized_mugal - threshold_mugal)) | (
+                            self.obs_df['g_red_mugal'] > (g_stabilized_mugal + threshold_mugal))
+                elif obs_type == 'observed':
+                    g_stabilized_mugal = self.obs_df.loc[filter_id, 'g_obs_mugal'].tail(n_obs).mean()
+                    filter_delta_g = (self.obs_df['g_obs_mugal'] < (g_stabilized_mugal - threshold_mugal)) | (
+                                self.obs_df['g_obs_mugal'] > (g_stabilized_mugal + threshold_mugal))
+                else:
+                    raise ValueError(f'Invalid value assigned to the parameter "obs_type": {obs_type}')
+
+                # Apply filter:
+                filter_all = filter_delta_g & filter_id
+                if verbose:
+                    print(f'   - Number of removed observations: {len(self.obs_df.loc[filter_all, "keep_obs"])}')
+                self.obs_df.loc[filter_all, 'keep_obs'] = False
+        return True
+
+    def get_setup_ids(self) -> list:
+        """Return the IDs of all setups in this survey
+
+        Returns
+        list : List of all setup IDs.
+        """
+        return self.obs_df.setup_id.unique().tolist()
 
     def __str__(self):
         if self.obs_df is not None:
@@ -1824,3 +1966,10 @@ if __name__ == '__main__':
                                                   verbose=True))
 
     camp.synchronize_stations_and_surveys()
+
+    surv.autselect_tilt(threshold_arcsec=5, setup_id=None)
+    surv.autselect_g_sd(threshold_mugal=10, obs_type='observed', setup_id=None, verbose=True)
+    surv.autselect_delta_g(threshold_mugal=10, obs_type='observed', setup_id=None, verbose=True)
+    surv.autselect_delta_g(threshold_mugal=10, obs_type='observed', setup_id=1599551889, verbose=True)
+
+    pass
