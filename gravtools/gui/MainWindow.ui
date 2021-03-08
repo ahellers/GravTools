@@ -14,14 +14,14 @@
    <string>GravTools</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="horizontalLayout_3">
+   <layout class="QVBoxLayout" name="verticalLayout_13">
     <item>
      <widget class="QTabWidget" name="tabWidget_Main">
       <property name="tabPosition">
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -114,7 +114,7 @@
              </sizepolicy>
             </property>
             <property name="currentIndex">
-             <number>1</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="tab_Stations_Table">
              <attribute name="title">
@@ -285,7 +285,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -319,6 +319,67 @@
        <attribute name="toolTip">
         <string>Setup data: Corrected and reduces observation data accumulated for each instrument setup.</string>
        </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_14">
+        <item>
+         <widget class="QSplitter" name="splitter_setups">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <widget class="QWidget" name="verticalLayoutWidget">
+           <layout class="QVBoxLayout" name="verticalLayout_12">
+            <item>
+             <widget class="QTreeWidget" name="treeWidget_setups">
+              <property name="minimumSize">
+               <size>
+                <width>280</width>
+                <height>0</height>
+               </size>
+              </property>
+              <column>
+               <property name="text">
+                <string notr="true">1</string>
+               </property>
+              </column>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_estimation">
+              <property name="title">
+               <string>Estimation</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QTabWidget" name="tabWidget_setups">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="currentIndex">
+            <number>1</number>
+           </property>
+           <widget class="QWidget" name="tab_setups_table">
+            <attribute name="title">
+             <string>Table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_15">
+             <item>
+              <widget class="QTableView" name="tableView_setups"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_setups_plot">
+            <attribute name="title">
+             <string>Plots</string>
+            </attribute>
+           </widget>
+          </widget>
+         </widget>
+        </item>
+       </layout>
       </widget>
      </widget>
     </item>
