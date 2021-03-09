@@ -16,6 +16,7 @@ from dialog_corrections import Ui_Dialog_corrections
 from dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 
 from gravtools.models.survey import Campaign, Survey, Station
+from gravtools import settings
 from gui_models import StationTableModel, ObservationTableModel
 
 DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
@@ -830,8 +831,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     if new_cg5_survey.obs_tide_correction_type == 'unknown':
                         QMessageBox.warning(self, 'Warning!',
                                             'Type of tidal correction is unknown! '
-                                            'Check, if the "CG-5 OPTIONS" block in the input file is missing.')
-
+                                            'Check, if the "CG-5 OPTIONS" block in the input file is missing. '
+                                            ' => Reduced observations not calculated yet!')
+                    else:
+                        # Calculate reduced observation data:
+                        if settings.CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA:
+                            flag_corrections_ok, error_msg = self.apply_observation_corrections()
+                            if flag_corrections_ok:
+                                # Load survey from campaing data to observations vie model:
+                                # self.observation_model.load_surveys(self.campaign.surveys)
+                                # self.on_obs_tree_widget_item_selected()
+                                self.statusBar().showMessage(f"Observation corrections applied.")
+                            else:
+                                QMessageBox.critical('Error!', error_msg)
+                                self.statusBar().showMessage(f"Error: No observation corrections applied.")
                     self.connect_station_model_to_table_view()  # Disconnect sort & filter proxy model from station view.
                     self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
                     self.refresh_stations_table_model_and_view()
