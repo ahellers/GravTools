@@ -131,9 +131,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         delta_g_number_of_points = int(self.dlg_autoselect_settings.spinBox_n.text())
 
         if self.dlg_autoselect_settings.radioButton_ref_data_reduced_observations.isChecked():
-            reference_
-
-            data = 'reduced'
+            reference_data = 'reduced'
         else:
             reference_data = 'observed'
 
