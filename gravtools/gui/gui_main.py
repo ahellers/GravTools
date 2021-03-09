@@ -77,6 +77,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
+        self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         # self.actionShow_Stations.triggered.connect(self.show_station_data)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
@@ -95,9 +96,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_corrections = DialogCorrections()
         self.dlg_autoselect_settings = DialogAutoselectSettings()
 
+    def on_pushbutton_obs_comp_setup_data(self):
+        """Invoked when pushing the button 'pushbutton_obs_comp_setup_data'."""
+        self.compute_setup_data_for_campaign()
+
+    def compute_setup_data_for_campaign(self):
+        """Compute setup data for the campaign."""
+        try:
+            self.campaign.calculate_setup_data(obs_type='reduced', verbose=IS_VERBOSE)
+        except AssertionError as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+            self.statusBar().showMessage(f"Error! No setup data computed")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+            self.statusBar().showMessage(f"Error! No setup data computed")
+        else:
+            # No errors when computing the setup data:
+            self.statusBar().showMessage(f"Setup data computed successfully!")
+            # Update models for data visualization, etc.:
+            #TODO: Add code here!
+            pass
+
     def on_apply_autoselection(self):
         """Appply autoselection on the currently selected setup or survey according to the predefined setttings."""
-        pass
 
         # Get autoselect parameters from settings dialog
         flag_apply_tilt = self.dlg_autoselect_settings.checkBox_tilt.isChecked()
@@ -110,7 +131,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         delta_g_number_of_points = int(self.dlg_autoselect_settings.spinBox_n.text())
 
         if self.dlg_autoselect_settings.radioButton_ref_data_reduced_observations.isChecked():
-            reference_data = 'reduced'
+            reference_
+
+            data = 'reduced'
         else:
             reference_data = 'observed'
 

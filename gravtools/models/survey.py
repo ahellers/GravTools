@@ -623,7 +623,7 @@ class Survey:
         'lon_deg',  # Longitude [deg], optional (float)
         'lat_deg',  # Latitude [deg], optional (float)
         'alt_m',  # Altitude [m], optional (float)
-        'obs_epoch',  # Observation epoch (datetime obj)
+        'obs_epoch',  # Observation epoch (datetime object, TZ=<UTC>)
         'g_obs_mugal',  # observed g from obs file [µGal] (float)
         'sd_g_obs_mugal',  # Standard deviation of g observed from obs file (float) [µGal]
         'g_red_mugal',  # Reduced gravity observation at station (float) [µGal]
@@ -645,7 +645,8 @@ class Survey:
         'setup_id',  # Unique ID of setup (int)
         'g_mugal',  # Variance weighted mean of all active observations in setup [µGal] (float)
         'sd_g_red_mugal',  # Standard deviation of `g_mugal` (float) [µGal]
-        'epoch_unix',  # Reference epoch of `g_mugal` (datetime obj)
+        'epoch_unix',  # Reference epoch of `g_mugal` (unix time [sec])
+        'epoch_dt',  # Reference epoch of `g_mugal` (datetime obj)
     )
 
     # TODO: Get missing infos on columns in CG5 obs file!
@@ -829,6 +830,11 @@ class Survey:
     def from_cg5_survey(cls, cg5_survey, keep_survey=True):
         """Constructor that generates and populates the survey object from a CG5Survey class object.
 
+        Notes
+        -----
+        The observation epochs are represented by timezone aware datetime objects with TZ=<UTC>. The TZ is changed
+        if necessary when loading data from any source.
+
         Parameters
         ----------
         keep_survey : bool, optional (default=True)
@@ -865,6 +871,13 @@ class Survey:
             obs_df['sd_g_obs_mugal'] = obs_df['sd_mgal'] * 1e3
             obs_df['tide'] = obs_df['tide'] * 1e3
             obs_df['keep_obs'] = True
+
+            # Check timezone of observation epoch and convert it to UTC, if necessary:
+            if obs_df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
+                obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_localize('UTC')
+            else:
+                if obs_df['obs_epoch'].dt.tz.zone is not 'UTC':  # Change TZ to <UTC>
+                    obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_convert('UTC')
 
             # Rename columns:
             obs_df.rename(columns={'terrain': 'corr_terrain',
@@ -945,6 +958,9 @@ class Survey:
         - Line 6 bis n: Station name(x-xxx-xx), epoch (hh.mm), g [mGal], dhb [cm] (hh.h), dhf [cm] (hh.h)
         - Line n+1: 'end'
 
+        The observation epochs are represented by timezone aware datetime objects with TZ=<UTC>. The TZ is changed
+        if necessary when loading data from any source.
+
         Parameters
         ----------
         filename : str
@@ -999,6 +1015,14 @@ class Survey:
         # Prepare and initialize DataFrame:
         df['obs_epoch'] = pd.to_datetime(date_str + ' ' + df['time_hh.mm'] + ' ' + timezone_str,
                                          format='%Y %m %d %H.%M %Z')
+
+        # Check timezone of observation epoch and convert it to UTC, if necessary:
+        if df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
+            df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_localize('UTC')
+        else:
+            if df['obs_epoch'].dt.tz.zone is not 'UTC':  # Change TZ to <UTC>
+                df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_convert('UTC')
+
         # Timestamp: https://stackoverflow.com/questions/40881876/python-pandas-convert-datetime-to-timestamp-effectively-through-dt-accessor
         df['setup_id'] = df['obs_epoch'].values.astype(np.int64) // 10 ** 9
 
@@ -1614,8 +1638,6 @@ class Survey:
         _VALID_OBS_TYPES = ('observed', 'reduced',)
 
         self.reset_setup_data(verbose)
-        pass
-        #TODO: Add code here to set up "setup_df" properly!
 
         # Initial checks:
         if obs_type not in _VALID_OBS_TYPES:
@@ -1624,61 +1646,67 @@ class Survey:
             raise AssertionError('Observation dataframe is empty!')
 
         # Get all active observations:
-        filter = self.obs_df['keep_obs'] == True
-        active_obs_df = self.obs_df[filter].copy(deep=True)
+        tmp_filter = self.obs_df['keep_obs'] == True
+        active_obs_df = self.obs_df[tmp_filter].copy(deep=True)
 
         # Check, if at least one observation is active:
         if len(active_obs_df) == 0:
-            raise AssertionError(f'No active observations in survey {self.name}')
+            # raise AssertionError(f'No active observations in survey {self.name}')
+            if verbose:
+                print(f'No active observations in survey {self.name}')
+        else:
 
-        # Check, if reduced data is available:
-        if obs_type == 'reduced':
-            if active_obs_df['g_red_mugal'].isnull().any() or active_obs_df['sd_g_red_mugal'].isnull().any():
-                raise AssertionError('Reduced observations (g and sd) are missing!')
+            # Check, if reduced data is available:
+            if obs_type == 'reduced':
+                if active_obs_df['g_red_mugal'].isnull().any() or active_obs_df['sd_g_red_mugal'].isnull().any():
+                    raise AssertionError('Reduced observations (g and sd) are missing!')
 
-        # Initialize colums lists for creating dataframe:
-        station_name_list = []
-        setup_id_list = []
-        g_mugal_list = []
-        sd_g_red_mugal_list = []
-        obs_epoch_list = []
+            # Initialize colums lists for creating dataframe:
+            station_name_list = []
+            setup_id_list = []
+            g_mugal_list = []
+            sd_g_red_mugal_list = []
+            obs_epoch_list_unix = []
+            obs_epoch_list_dt = []
 
-        # Loop over setups:
-        setup_ids = active_obs_df['setup_id'].unique()
-        for setup_id in setup_ids:
-            print(setup_id)
-            filter = active_obs_df['setup_id'] == setup_id
-            if obs_type == 'observed':
-                g_mugal = active_obs_df.loc[filter, 'g_obs_mugal'].to_numpy()
-                sd_g_mugal = active_obs_df.loc[filter, 'sd_g_obs_mugal'].to_numpy()
-            elif  obs_type == 'reduced':
-                g_mugal = active_obs_df.loc[filter, 'g_red_mugal'].to_numpy()
-                sd_g_mugal = active_obs_df.loc[filter, 'sd_g_red_mugal'].to_numpy()
-            weights = 1/sd_g_mugal**2
-            g_setup_mugal = np.sum(g_mugal * weights) / np.sum(weights)
-            sd_g_setup_mugal = np.sqrt(1 / np.sum(weights))
-            if len(active_obs_df.loc[filter, 'station_name'].unique()) > 1:
-                raise AssertionError(
-                    f'Setup with ID "{setup_id}" in survey "{self.name}" contains '
-                    f'{len(active_obs_df.loc[filter, "station_name"].unique())} stations (only 1 allowed)!'
-                )
-            # observation epoch (UNIX timestamps in full seconds):
-            obs_epochs_series = active_obs_df.loc[filter, 'obs_epoch']
-            unix_obs_epochs = obs_epochs_series.values.astype(np.int64) // 10 ** 9
-            unix_setup_epoch = np.sum(unix_obs_epochs * weights) / np.sum(weights)
+            # Loop over setups:
+            setup_ids = active_obs_df['setup_id'].unique()
+            for setup_id in setup_ids:
+                tmp_filter = active_obs_df['setup_id'] == setup_id
+                if obs_type == 'observed':
+                    g_mugal = active_obs_df.loc[tmp_filter, 'g_obs_mugal'].to_numpy()
+                    sd_g_mugal = active_obs_df.loc[tmp_filter, 'sd_g_obs_mugal'].to_numpy()
+                elif obs_type == 'reduced':
+                    g_mugal = active_obs_df.loc[tmp_filter, 'g_red_mugal'].to_numpy()
+                    sd_g_mugal = active_obs_df.loc[tmp_filter, 'sd_g_red_mugal'].to_numpy()
+                weights = 1 / sd_g_mugal ** 2
+                g_setup_mugal = np.sum(g_mugal * weights) / np.sum(weights)
+                sd_g_setup_mugal = np.sqrt(1 / np.sum(weights))
+                if len(active_obs_df.loc[tmp_filter, 'station_name'].unique()) > 1:
+                    raise AssertionError(
+                        f'Setup with ID "{setup_id}" in survey "{self.name}" contains '
+                        f'{len(active_obs_df.loc[tmp_filter, "station_name"].unique())} stations (only 1 allowed)!'
+                    )
+                # observation epoch (UNIX timestamps in full seconds):
+                obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
+                unix_obs_epochs = obs_epochs_series.values.astype(np.int64) // 10 ** 9
+                unix_setup_epoch = np.sum(unix_obs_epochs * weights) / np.sum(weights)
 
-            station_name_list.append(active_obs_df.loc[filter, 'station_name'].unique()[0])
-            setup_id_list.append(setup_id)
-            g_mugal_list.append(g_setup_mugal)
-            sd_g_red_mugal_list.append(sd_g_setup_mugal)
-            obs_epoch_list.append(unix_setup_epoch)
+                # Reference epoch as datetime object (TZ=<UTC>):
+                dt_setup_epoch = dt.datetime.fromtimestamp(unix_setup_epoch)
+                dt_setup_epoch = dt_setup_epoch.replace(tzinfo=dt.timezone.utc)  # TZ = <UTC>
 
-        # convert to pd dataframe:
-        self.setup_df = pd.DataFrame(list(zip(station_name_list, setup_id_list, g_mugal_list, sd_g_red_mugal_list,
-                                              obs_epoch_list)), columns=self._SETUP_DF_COLUMNS)
-        #TODO: Convert unix timestamp to datetime objectz and add it to the df (!!! TZ !!!)!
+                station_name_list.append(active_obs_df.loc[tmp_filter, 'station_name'].unique()[0])
+                setup_id_list.append(setup_id)
+                g_mugal_list.append(g_setup_mugal)
+                sd_g_red_mugal_list.append(sd_g_setup_mugal)
+                obs_epoch_list_unix.append(unix_setup_epoch)
+                obs_epoch_list_dt.append(dt_setup_epoch)
 
-
+            # convert to pd dataframe:
+            self.setup_df = pd.DataFrame(list(zip(station_name_list, setup_id_list, g_mugal_list, sd_g_red_mugal_list,
+                                                  obs_epoch_list_unix, obs_epoch_list_dt)),
+                                         columns=self._SETUP_DF_COLUMNS)
 
 
 class Campaign:
@@ -2049,6 +2077,27 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             self.stations.add_stations_from_survey(survey, verbose)
 
+    def calculate_setup_data(self, obs_type='reduced', verbose=False):
+        """Calculate accumulated pseudo observations for each active setup in all active surveys.
+
+        Parameters
+        ----------
+        obs_type : str, 'observed' or 'reduced' (default)
+            Defines whether the observed (as loaded from an observation file) or the reduced observations from
+            `self.obs_df` are used to determine the weighted mean values per setup.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Loop over all surveys in the campaign:
+        if verbose:
+            print(f'Calculate setup data:')
+        for survey_name, survey in self.surveys.items():
+            if verbose:
+                print(f' - Survey: {survey_name}')
+            if survey.keep_survey:
+                survey.calculate_setup_data(obs_type=obs_type, verbose=verbose)
+        pass
+
 
 if __name__ == '__main__':
     """Main function, primarily for debugging and testing."""
@@ -2112,4 +2161,6 @@ if __name__ == '__main__':
 
     surv.reset_setup_data(verbose=True)
     surv.calculate_setup_data(obs_type='observed', verbose=True)
+
+    camp.calculate_setup_data(obs_type='observed', verbose=True)
     pass
