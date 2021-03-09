@@ -83,6 +83,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
+        self.checkBox_obs_plot_setup_data.stateChanged.connect(self.on_checkBox_obs_plot_setup_data_state_changed)
         # Observations tree widget:
         self.treeWidget_observations.itemSelectionChanged.connect(self.on_obs_tree_widget_item_selected)
         self.treeWidget_observations.itemChanged.connect(self.on_tree_widget_item_changed)
@@ -97,9 +98,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_corrections = DialogCorrections()
         self.dlg_autoselect_settings = DialogAutoselectSettings()
 
+    def on_checkBox_obs_plot_setup_data_state_changed(self):
+        """Invoke, whenever the state of the checkbox changes."""
+        self.refresh_observation_plot()
+
+    def refresh_observation_plot(self):
+        """Refresh the observation plot."""
+        survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+        self.plot_observations(survey_name, setup_id)
+
     def on_pushbutton_obs_comp_setup_data(self):
         """Invoked when pushing the button 'pushbutton_obs_comp_setup_data'."""
         self.compute_setup_data_for_campaign()
+        survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+        self.observation_model.update_view_model(survey_name, setup_id)
+        self.refresh_observation_plot()
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
@@ -235,6 +248,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plot_obs_sd_g = l.addPlot(1, 0, name='plot_obs_sd_g',
                                        axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.plot_obs_sd_g.setLabel(axis='left', text='sd_g [µGal]')
+        self.plot_obs_sd_g.addLegend()
         self.plot_obs_sd_g.setXLink(self.plot_obs_g)
 
         # Instrument tilt in X and Y directions [arcsec]
@@ -254,6 +268,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def plot_observations(self, survey_name, setup_id):
         """Plots observation data to the GraphicsLayoutWidget."""
         obs_df = self.observation_model.get_data
+        setup_df = self.observation_model.get_setup_data
         obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,
                                                                                                                      's')
         # Distinguish between survey and setup data here, in necessary!
@@ -300,18 +315,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 symbol_brushes.append(self.BRUSH_INACTIVE_OBS)
 
+        # setup data: g
+        if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
+            self.plot_xy_data(self.plot_obs_g, setup_df['epoch_unix'].values, setup_df['g_mugal'].values,
+                              plot_name='setup', color='k', symbol='x', symbol_size=25)
+
         # Type of 'self.plot_obs_g_data_item': PlotDataItem
         self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal, name=f'Ref.: {ref_height_name}',
                                                          pen=pen, symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
-
         self.plot_obs_g_data_item.sigPointsClicked.connect(self.on_observation_plot_data_item_clicked)
         self.plot_obs_g.showGrid(x=True, y=True)
         self.plot_obs_g.autoRange()
 
         # Standard deviation of gravity g [µGal]
         self.plot_obs_sd_g.clear()
+        # setup data: sd_g
+        if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
+            self.plot_xy_data(self.plot_obs_sd_g, setup_df['epoch_unix'].values, setup_df['sd_g_mugal'].values,
+                              plot_name='setup', color='k', symbol='x', symbol_size=25)
         self.plot_xy_data(self.plot_obs_sd_g, obs_epoch_timestamps, sd_g_mugal, plot_name='sd_g_mugal',
                           color='b', symbol='o', symbol_size=10)
+
         self.plot_obs_sd_g.showGrid(x=True, y=True)
         self.plot_obs_sd_g.autoRange()
 

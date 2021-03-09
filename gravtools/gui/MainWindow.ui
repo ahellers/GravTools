@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -269,6 +269,16 @@
                  </property>
                  <property name="text">
                   <string>Plot reduced observations</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_obs_plot_setup_data">
+                 <property name="text">
+                  <string>Plot setup data</string>
                  </property>
                 </widget>
                </item>

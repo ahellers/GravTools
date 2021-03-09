@@ -644,7 +644,7 @@ class Survey:
         'station_name',  # Name of station (str)
         'setup_id',  # Unique ID of setup (int)
         'g_mugal',  # Variance weighted mean of all active observations in setup [µGal] (float)
-        'sd_g_red_mugal',  # Standard deviation of `g_mugal` (float) [µGal]
+        'sd_g_mugal',  # Standard deviation of `g_mugal` (float) [µGal]
         'epoch_unix',  # Reference epoch of `g_mugal` (unix time [sec])
         'epoch_dt',  # Reference epoch of `g_mugal` (datetime obj)
     )
