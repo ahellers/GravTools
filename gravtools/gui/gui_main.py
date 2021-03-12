@@ -722,13 +722,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.campaign.number_of_surveys > 0:
             self.menu_Observations.setEnabled(True)
             self.groupBox_obs_view_options.setEnabled(True)
-            self.groupBox_obs_autoselect.setEnabled(True)
-            self.groupBox_obs_setups.setEnabled(True)
+            self.groupBox_obs_data_manipulation.setEnabled(True)
         else:
             self.menu_Observations.setEnabled(False)
             self.groupBox_obs_view_options.setEnabled(False)
-            self.groupBox_obs_autoselect.setEnabled(False)
-            self.groupBox_obs_setups.setEnabled(False)
+            self.groupBox_obs_data_manipulation.setEnabled(False)
 
     @pyqtSlot()
     def on_menu_file_load_stations(self):
