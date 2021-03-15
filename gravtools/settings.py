@@ -64,6 +64,9 @@ BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
 
 DEFAULT_GRAVIMETER_ID_CG5_SURVEY = '5'
 
+# GUI and Program options:
+CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
+
 # SCHWAUS and DRIFT settings:
 FLAG_SAVE_DRIFT_PLOT_PDF = True
 FLAG_CREATE_SCHWAUS_PROTOCOL = True

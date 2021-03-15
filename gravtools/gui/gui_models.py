@@ -158,10 +158,11 @@ class ObservationTableModel(QAbstractTableModel):
         surveys : dict of py.obj:`gravtools.survey.Survey` objects
         """
         self._surveys = {}
-        self._data = None  # Observations (or at subset of them) the survey with the name `self._data_survey_name`
+        self._data = None  # Observations (or at subset of them) of the survey with the name `self._data_survey_name`
         QAbstractTableModel.__init__(self)
         self.load_surveys(surveys)
         self._data_survey_name = ''  # Name of the Survey that is currently represented by `self._data`
+        self._setup_data = None  # Setup data (or at subset) of the survey with the name `self._data_survey_name`
 
     def load_surveys(self, surveys):
         """Load observation data (dict of survey objects in the campaign object) to the observation model.
@@ -177,14 +178,23 @@ class ObservationTableModel(QAbstractTableModel):
 
         try:
             obs_df = self._surveys[survey_name].obs_df  # Select the survey
+            setup_df = self._surveys[survey_name].setup_df
         except KeyError:
             QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
         else:
             self._data_survey_name = survey_name
             if setup_id is None:  # No setup ID provided => Take all observations in survey
                 self._data = obs_df.copy(deep=True)
+                if setup_df is None:
+                    self._setup_data = None
+                else:
+                    self._setup_data = setup_df.copy(deep=True)
             else:  # Only take observations of the specified setup
                 self._data = obs_df[obs_df['setup_id'] == setup_id].copy(deep=True)
+                if setup_df is None:
+                    self._setup_data = None
+                else:
+                    self._setup_data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
@@ -294,3 +304,7 @@ class ObservationTableModel(QAbstractTableModel):
     @property
     def get_data(self):
         return self._data
+
+    @property
+    def get_setup_data(self):
+        return self._setup_data

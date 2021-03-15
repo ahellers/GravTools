@@ -597,6 +597,23 @@ class Survey:
             file). The vertical gradient is required for reducing the observed gravity to different reference heights.
         - corr_tide_red_mugal : float, optional (default=None)
             Tidal correction [µGal] that is applied to `g_red_mugal`.
+
+    setup_df : :py:obj:`pandas.core.frame.DataFrame`, optional (default=None)
+        Contains a single pseudo observation per setup calculated as variance weighted mean of all active
+        (flag `keep_obs = True`) reduced observations of a setup and other information that is required for the
+        subsequent parameter adjustment. If `None`, setup data ha not been determined yet. All Columns are listed in
+        :py:obj:`.Survey._SETUP_DF_COLUMNS`:
+
+        - station_name : str
+            Name of the station that is observed in the setup.
+        - setup_id : int
+            Same as in `obs_df`.
+        - g_mugal : float
+            Variance weighted mean of all active reduced observations the setup [µGal].
+        - sd_g_red_mugal : float
+            Standard deviation of `g_mugal` [µGal]
+        - obs_epoch : :py:obj:`datetime.datetime`; timezone aware, if possible
+            Reference epoch of `g_mugal`.
     """
 
     _OBS_DF_COLUMNS = (
@@ -606,7 +623,7 @@ class Survey:
         'lon_deg',  # Longitude [deg], optional (float)
         'lat_deg',  # Latitude [deg], optional (float)
         'alt_m',  # Altitude [m], optional (float)
-        'obs_epoch',  # Observation epoch (datetime obj)
+        'obs_epoch',  # Observation epoch (datetime object, TZ=<UTC>)
         'g_obs_mugal',  # observed g from obs file [µGal] (float)
         'sd_g_obs_mugal',  # Standard deviation of g observed from obs file (float) [µGal]
         'g_red_mugal',  # Reduced gravity observation at station (float) [µGal]
@@ -621,6 +638,15 @@ class Survey:
         'keep_obs',  # Remove observation, if false (bool)
         'vg_mugalm',  # vertical gradient [µGal/m]
         'corr_tide_red_mugal',  # Alternative tidal correction [mGal], optional
+    )
+
+    _SETUP_DF_COLUMNS = (
+        'station_name',  # Name of station (str)
+        'setup_id',  # Unique ID of setup (int)
+        'g_mugal',  # Variance weighted mean of all active observations in setup [µGal] (float)
+        'sd_g_mugal',  # Standard deviation of `g_mugal` (float) [µGal]
+        'epoch_unix',  # Reference epoch of `g_mugal` (unix time [sec])
+        'epoch_dt',  # Reference epoch of `g_mugal` (datetime obj)
     )
 
     # TODO: Get missing infos on columns in CG5 obs file!
@@ -643,6 +669,7 @@ class Survey:
                  red_tide_correction_type='',  # of "g_red_mugal"
                  red_reference_height_type='',  # of "g_red_mugal"
                  keep_survey=True,  # Flag
+                 setup_df=None
                  ):
         """Default constructor of class Survey."""
 
@@ -784,9 +811,29 @@ class Survey:
         else:
             raise TypeError('"keep_survey" needs to be a bool type.')
 
+        # setup_df:
+        if setup_df is not None:
+            if isinstance(setup_df, pd.DataFrame):
+                # Check if setup_df contains exactly all columns defined by self._SETUP_DF_COLUMNS:
+                if all([item for item in obs_df.columns.isin(self._SETUP_DF_COLUMNS)]) and \
+                        obs_df.shape[1] == len(self._SETUP_DF_COLUMNS):
+                    self.setup_df = setup_df
+                else:
+                    raise ValueError(
+                        '"setup_df" needs the following columns:{}'.format(', '.join(self._SETUP_DF_COLUMNS)))
+            else:
+                raise TypeError('"setup_df" needs to be a pandas DataFrame.')
+        else:
+            self.setup_df = setup_df  # None
+
     @classmethod
     def from_cg5_survey(cls, cg5_survey, keep_survey=True):
         """Constructor that generates and populates the survey object from a CG5Survey class object.
+
+        Notes
+        -----
+        The observation epochs are represented by timezone aware datetime objects with TZ=<UTC>. The TZ is changed
+        if necessary when loading data from any source.
 
         Parameters
         ----------
@@ -824,6 +871,13 @@ class Survey:
             obs_df['sd_g_obs_mugal'] = obs_df['sd_mgal'] * 1e3
             obs_df['tide'] = obs_df['tide'] * 1e3
             obs_df['keep_obs'] = True
+
+            # Check timezone of observation epoch and convert it to UTC, if necessary:
+            if obs_df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
+                obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_localize('UTC')
+            else:
+                if obs_df['obs_epoch'].dt.tz.zone is not 'UTC':  # Change TZ to <UTC>
+                    obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_convert('UTC')
 
             # Rename columns:
             obs_df.rename(columns={'terrain': 'corr_terrain',
@@ -904,6 +958,9 @@ class Survey:
         - Line 6 bis n: Station name(x-xxx-xx), epoch (hh.mm), g [mGal], dhb [cm] (hh.h), dhf [cm] (hh.h)
         - Line n+1: 'end'
 
+        The observation epochs are represented by timezone aware datetime objects with TZ=<UTC>. The TZ is changed
+        if necessary when loading data from any source.
+
         Parameters
         ----------
         filename : str
@@ -958,6 +1015,14 @@ class Survey:
         # Prepare and initialize DataFrame:
         df['obs_epoch'] = pd.to_datetime(date_str + ' ' + df['time_hh.mm'] + ' ' + timezone_str,
                                          format='%Y %m %d %H.%M %Z')
+
+        # Check timezone of observation epoch and convert it to UTC, if necessary:
+        if df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
+            df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_localize('UTC')
+        else:
+            if df['obs_epoch'].dt.tz.zone is not 'UTC':  # Change TZ to <UTC>
+                df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_convert('UTC')
+
         # Timestamp: https://stackoverflow.com/questions/40881876/python-pandas-convert-datetime-to-timestamp-effectively-through-dt-accessor
         df['setup_id'] = df['obs_epoch'].values.astype(np.int64) // 10 ** 9
 
@@ -1452,7 +1517,7 @@ class Survey:
         return True
 
     def autselect_delta_g(self, threshold_mugal: int, n_obs: int = 3, obs_type: str = 'reduced', setup_id: int = None,
-                          verbose: bool=False):
+                          verbose: bool = False):
         """Deactivate observations based ob the deviation of the stabilized gravity at a setup.
 
         Notes
@@ -1517,7 +1582,7 @@ class Survey:
                 elif obs_type == 'observed':
                     g_stabilized_mugal = self.obs_df.loc[filter_id, 'g_obs_mugal'].tail(n_obs).mean()
                     filter_delta_g = (self.obs_df['g_obs_mugal'] < (g_stabilized_mugal - threshold_mugal)) | (
-                                self.obs_df['g_obs_mugal'] > (g_stabilized_mugal + threshold_mugal))
+                            self.obs_df['g_obs_mugal'] > (g_stabilized_mugal + threshold_mugal))
                 else:
                     raise ValueError(f'Invalid value assigned to the parameter "obs_type": {obs_type}')
 
@@ -1541,6 +1606,107 @@ class Survey:
             return f'Survey "{self.name}" with {len(self.obs_df)} observations.'
         else:
             return f'Survey "{self.name}"'
+
+    def reset_setup_data(self, verbose=False):
+        """Deletes the setup data.
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        if self.setup_df is None:
+            if verbose:
+                print('Nothing to delete. Setup data is empty.')
+        else:
+            if verbose:
+                print('Setup data deleted.')
+            self.setup_df = None
+
+    def calculate_setup_data(self, obs_type='reduced', verbose=False):
+        """Accumulate all active observation within each setup and calculate a single representative pseudo observation.
+
+        Parameters
+        ----------
+        obs_type : str, 'observed' or 'reduced' (default)
+            Defines whether the observed (as loaded from an observation file) or the reduced observations from
+            `self.obs_df` are used to determine the weighted mean values per setup.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+
+        _VALID_OBS_TYPES = ('observed', 'reduced',)
+
+        self.reset_setup_data(verbose)
+
+        # Initial checks:
+        if obs_type not in _VALID_OBS_TYPES:
+            raise AssertionError(f'Invalid observation type: {obs_type} (valid: "reduced" or "observed").')
+        if self.obs_df is None:
+            raise AssertionError('Observation dataframe is empty!')
+
+        # Get all active observations:
+        tmp_filter = self.obs_df['keep_obs'] == True
+        active_obs_df = self.obs_df[tmp_filter].copy(deep=True)
+
+        # Check, if at least one observation is active:
+        if len(active_obs_df) == 0:
+            # raise AssertionError(f'No active observations in survey {self.name}')
+            if verbose:
+                print(f'No active observations in survey {self.name}')
+        else:
+
+            # Check, if reduced data is available:
+            if obs_type == 'reduced':
+                if active_obs_df['g_red_mugal'].isnull().any() or active_obs_df['sd_g_red_mugal'].isnull().any():
+                    raise AssertionError('Reduced observations (g and sd) are missing!')
+
+            # Initialize colums lists for creating dataframe:
+            station_name_list = []
+            setup_id_list = []
+            g_mugal_list = []
+            sd_g_red_mugal_list = []
+            obs_epoch_list_unix = []
+            obs_epoch_list_dt = []
+
+            # Loop over setups:
+            setup_ids = active_obs_df['setup_id'].unique()
+            for setup_id in setup_ids:
+                tmp_filter = active_obs_df['setup_id'] == setup_id
+                if obs_type == 'observed':
+                    g_mugal = active_obs_df.loc[tmp_filter, 'g_obs_mugal'].to_numpy()
+                    sd_g_mugal = active_obs_df.loc[tmp_filter, 'sd_g_obs_mugal'].to_numpy()
+                elif obs_type == 'reduced':
+                    g_mugal = active_obs_df.loc[tmp_filter, 'g_red_mugal'].to_numpy()
+                    sd_g_mugal = active_obs_df.loc[tmp_filter, 'sd_g_red_mugal'].to_numpy()
+                weights = 1 / sd_g_mugal ** 2
+                g_setup_mugal = np.sum(g_mugal * weights) / np.sum(weights)
+                sd_g_setup_mugal = np.sqrt(1 / np.sum(weights))
+                if len(active_obs_df.loc[tmp_filter, 'station_name'].unique()) > 1:
+                    raise AssertionError(
+                        f'Setup with ID "{setup_id}" in survey "{self.name}" contains '
+                        f'{len(active_obs_df.loc[tmp_filter, "station_name"].unique())} stations (only 1 allowed)!'
+                    )
+                # observation epoch (UNIX timestamps in full seconds):
+                obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
+                unix_obs_epochs = obs_epochs_series.values.astype(np.int64) // 10 ** 9
+                unix_setup_epoch = np.sum(unix_obs_epochs * weights) / np.sum(weights)
+
+                # Reference epoch as datetime object (TZ=<UTC>):
+                dt_setup_epoch = dt.datetime.fromtimestamp(unix_setup_epoch)
+                dt_setup_epoch = dt_setup_epoch.replace(tzinfo=dt.timezone.utc)  # TZ = <UTC>
+
+                station_name_list.append(active_obs_df.loc[tmp_filter, 'station_name'].unique()[0])
+                setup_id_list.append(setup_id)
+                g_mugal_list.append(g_setup_mugal)
+                sd_g_red_mugal_list.append(sd_g_setup_mugal)
+                obs_epoch_list_unix.append(unix_setup_epoch)
+                obs_epoch_list_dt.append(dt_setup_epoch)
+
+            # convert to pd dataframe:
+            self.setup_df = pd.DataFrame(list(zip(station_name_list, setup_id_list, g_mugal_list, sd_g_red_mugal_list,
+                                                  obs_epoch_list_unix, obs_epoch_list_dt)),
+                                         columns=self._SETUP_DF_COLUMNS)
 
 
 class Campaign:
@@ -1911,6 +2077,27 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             self.stations.add_stations_from_survey(survey, verbose)
 
+    def calculate_setup_data(self, obs_type='reduced', verbose=False):
+        """Calculate accumulated pseudo observations for each active setup in all active surveys.
+
+        Parameters
+        ----------
+        obs_type : str, 'observed' or 'reduced' (default)
+            Defines whether the observed (as loaded from an observation file) or the reduced observations from
+            `self.obs_df` are used to determine the weighted mean values per setup.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Loop over all surveys in the campaign:
+        if verbose:
+            print(f'Calculate setup data:')
+        for survey_name, survey in self.surveys.items():
+            if verbose:
+                print(f' - Survey: {survey_name}')
+            if survey.keep_survey:
+                survey.calculate_setup_data(obs_type=obs_type, verbose=verbose)
+        pass
+
 
 if __name__ == '__main__':
     """Main function, primarily for debugging and testing."""
@@ -1968,8 +2155,12 @@ if __name__ == '__main__':
     camp.synchronize_stations_and_surveys()
 
     surv.autselect_tilt(threshold_arcsec=5, setup_id=None)
-    surv.autselect_g_sd(threshold_mugal=10, obs_type='observed', setup_id=None, verbose=True)
-    surv.autselect_delta_g(threshold_mugal=10, obs_type='observed', setup_id=None, verbose=True)
-    surv.autselect_delta_g(threshold_mugal=10, obs_type='observed', setup_id=1599551889, verbose=True)
+    # surv.autselect_g_sd(threshold_mugal=10, obs_type='observed', setup_id=None, verbose=True)
+    # surv.autselect_delta_g(threshold_mugal=10, obs_type='observed', setup_id=None, verbose=True)
+    # surv.autselect_delta_g(threshold_mugal=10, obs_type='observed', setup_id=1599551889, verbose=True)
 
+    surv.reset_setup_data(verbose=True)
+    surv.calculate_setup_data(obs_type='observed', verbose=True)
+
+    camp.calculate_setup_data(obs_type='observed', verbose=True)
     pass
