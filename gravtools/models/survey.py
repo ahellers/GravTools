@@ -1030,6 +1030,8 @@ class Survey:
         df['dhb_m'] = df['dhb_cm'] * 1e-2
         df['dhf_m'] = df['dhf_cm'] * 1e-2
 
+        df['keep_obs'] = True
+
         # Drop columns:
         obs_df = cls._obs_df_drop_columns(df)
 
@@ -1717,7 +1719,7 @@ class Campaign:
     - Campaign name
     - One or more gravity surveys that belong together and
       - Each survey was observed with one gravimeter on a single day
-    - Station data (datum an non-datum stations)
+    - Station data (datum and non-datum stations)
     - Reductions and corrections
       - All observations (from surveys) are corrected and reduced in the same way
 
@@ -2130,7 +2132,6 @@ if __name__ == '__main__':
     print(surv2)
 
     camp = Campaign('AD1', 'dir_name', stations=stat, surveys={surv2.name: surv2})
-    camp.activate_survey(True)
 
     surv_bev = Survey.from_bev_obs_file(PATH_OBS_FILE_BEV + NAME_OBS_FILE_BEV, verbose=VERBOSE)
 
@@ -2162,5 +2163,13 @@ if __name__ == '__main__':
     surv.reset_setup_data(verbose=True)
     surv.calculate_setup_data(obs_type='observed', verbose=True)
 
+    camp.deactivate_survey('n20200701_1')  # From BEV obsrvation file => SD of observations is missing!
     camp.calculate_setup_data(obs_type='observed', verbose=True)
+
+    # Test adjustment:
+    from gravtools.models import lsm
+
+    lsm_diff = lsm.LSM_diff.from_campaign(camp)
+    lsm_diff.adjust(drift_pol_degree=1, sig0_mugal=10, scaling_factor_datum_observations=1e-3, verbose=True)
+
     pass
