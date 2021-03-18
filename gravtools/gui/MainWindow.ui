@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1403</width>
+    <width>1337</width>
     <height>729</height>
    </rect>
   </property>
@@ -231,6 +231,16 @@
                  </property>
                 </widget>
                </item>
+               <item>
+                <widget class="QPushButton" name="pushButton_obs_run_estimation">
+                 <property name="toolTip">
+                  <string>Run parameter estimation according to the estimation settings.</string>
+                 </property>
+                 <property name="text">
+                  <string>Run estimation</string>
+                 </property>
+                </widget>
+               </item>
               </layout>
              </widget>
             </item>
@@ -289,7 +299,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -308,6 +318,16 @@
             <layout class="QVBoxLayout" name="verticalLayout_8">
              <item>
               <widget class="GraphicsLayoutWidget" name="GraphicsLayoutWidget_observations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_observations_setups">
+            <attribute name="title">
+             <string>Setups</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_11">
+             <item>
+              <widget class="QTableView" name="tableView_observations_setups"/>
              </item>
             </layout>
            </widget>
@@ -366,17 +386,13 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_setups_table">
             <attribute name="title">
              <string>Table</string>
             </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_15">
-             <item>
-              <widget class="QTableView" name="tableView_setups"/>
-             </item>
-            </layout>
+            <layout class="QVBoxLayout" name="verticalLayout_15"/>
            </widget>
            <widget class="QWidget" name="tab_setups_plot">
             <attribute name="title">
@@ -397,7 +413,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1403</width>
+     <width>1337</width>
      <height>22</height>
     </rect>
    </property>
@@ -443,6 +459,7 @@
     <property name="title">
      <string>Estimation settings</string>
     </property>
+    <addaction name="action_Estimation_settings"/>
    </widget>
    <widget class="QMenu" name="menuStations">
     <property name="title">
@@ -541,6 +558,11 @@
   <action name="action_Autoselection_settings">
    <property name="text">
     <string>Autoselection settings</string>
+   </property>
+  </action>
+  <action name="action_Estimation_settings">
+   <property name="text">
+    <string>Settings</string>
    </property>
   </action>
  </widget>

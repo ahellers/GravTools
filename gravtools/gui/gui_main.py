@@ -14,6 +14,7 @@ from dialog_new_campaign import Ui_Dialog_new_Campaign
 from dialog_load_stations import Ui_Dialog_load_stations
 from dialog_corrections import Ui_Dialog_corrections
 from dialog_autoselection_settings import Ui_Dialog_autoselection_settings
+from dialog_estimation_settings import Ui_Dialog_estimation_settings
 
 from gravtools.models.survey import Campaign, Survey, Station
 from gravtools import settings
@@ -68,17 +69,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
 
-        # Overwrite setting from ui file, if necessary:
-        # ...
-
         # Connect signals and slots
         self.action_Exit.triggered.connect(self.exit_application)
         self.action_New_Campaign.triggered.connect(self.on_menu_file_new_campaign)
         self.action_Add_Stations.triggered.connect(self.on_menu_file_load_stations)
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
+        self.action_Estimation_settings.triggered.connect(self.on_menu_estimation_settings)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
+        self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
         # self.actionShow_Stations.triggered.connect(self.show_station_data)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
@@ -97,6 +97,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Initialize dialogs if necessary at the start of the application:
         self.dlg_corrections = DialogCorrections()
         self.dlg_autoselect_settings = DialogAutoselectSettings()
+        self.dlg_estimation_settings = DialogEstimationSettings()
+
+        # Overwrite/change setting from ui file, if necessary:
+        self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
 
     def on_checkBox_obs_plot_setup_data_state_changed(self):
         """Invoke, whenever the state of the checkbox changes."""
@@ -130,6 +134,57 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Update models for data visualization, etc.:
             #TODO: Add code here!
             pass
+
+    def on_pushbutton_obs_run_estimation(self):
+        """Invoked when pushing the button 'on_pushbutton_obs_run_estimation'."""
+        self.run_parameter_estimation()
+
+    def run_parameter_estimation(self):
+        """Run the parameter estimation process according to the defined estimation settings."""
+        try:
+            # Check if setup data is prepared:
+            flag_setup_data_available = False
+            for survey_name, survey in self.campaign.surveys.items():
+                if survey.setup_df is not None:
+                    if len(survey.setup_df) > 0:
+                        flag_setup_data_available = True
+            if not flag_setup_data_available:
+                raise AssertionError('No setup data available!')
+
+            # Get estimation settings
+            lsm_method_value = self.dlg_estimation_settings.comboBox_adjustment_method.currentText()
+            for key, value in settings.ADJUSTMENT_METHODS.items():
+                if value == lsm_method_value:
+                    lsm_method = key
+            degree_drift_polynomial = self.dlg_estimation_settings.spinBox_degree_drift_polynomial.value()
+            sig0 = self.dlg_estimation_settings.doubleSpinBox_sig0.value()
+            weight_factor_datum = self.dlg_estimation_settings.doubleSpinBox_weight_factor_datum.value()
+            comment = self.dlg_estimation_settings.lineEdit_comment.text()
+            confidence_level_chi_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_chi.value()
+            confidence_level_tau_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_tau.value()
+
+            # Initialize LSM object and add it to the campaign object:
+            self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment)
+
+            # Run the estimation:
+            self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
+                                              sig0_mugal=sig0,
+                                              scaling_factor_datum_observations=weight_factor_datum,
+                                              confidence_level_chi_test=confidence_level_chi_test,
+                                              confidence_level_tau_test=confidence_level_tau_test,
+                                              verbose=IS_VERBOSE)
+        except AssertionError as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+            self.statusBar().showMessage(f"Error! No parameters estimated.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+            self.statusBar().showMessage(f"Error! No parameters estimated.")
+        else:
+            # No errors when computing the setup data:
+            self.statusBar().showMessage(f"Parameters estimated successfully!")
+            # Update models for data visualization, etc.:
+            # TODO: Add code here to present results!
+        pass
 
     def on_apply_autoselection(self):
         """Appply autoselection on the currently selected setup or survey according to the predefined setttings."""
@@ -229,6 +284,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_menu_observations_autoselection_settings(self):
         """Launch dialog for defining the autoselection settings."""
         return_value = self.dlg_autoselect_settings.exec()
+        pass
+
+    def on_menu_estimation_settings(self):
+        """Launch dialog for defining the estimation settings."""
+        return_value = self.dlg_estimation_settings.exec()
         pass
 
     def set_up_obseration_plots_widget(self):
@@ -1007,6 +1067,16 @@ class DialogAutoselectSettings(QDialog, Ui_Dialog_autoselection_settings):
         self.setupUi(self)
         # connect signals and slots:
         pass
+
+
+class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
+    """Dialog to define the estimation settings."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
 
 
 if __name__ == "__main__":

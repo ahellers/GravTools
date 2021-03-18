@@ -21,6 +21,7 @@ from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYP
 from gravtools.const import VG_DEFAULT
 from gravtools.models.exceptions import FileTypeError
 from gravtools.CG5_utils.cg5_survey import CG5Survey
+from gravtools.models.lsm import LSM, LSMDiff
 
 
 class Station:
@@ -1733,6 +1734,9 @@ class Campaign:
         Arbitrary number of survey objects.
     stations : :py:obj:`.Station` object
         Data of known stations (datum- and non-datum-stations).
+    lsm_runs : list of objects inherited from :py:obj:`gravtools.models.lsm.LSM`
+        Each item in the list contains one enclosed LSM object. Each LSM object reflects one dedicated run of an
+        least-squares adjustment in order to estimate target parameters.
     """
 
     def __init__(self,
@@ -1740,6 +1744,7 @@ class Campaign:
                  output_directory,
                  surveys=None,  # Always use non-mutable default arguments!
                  stations=None,  # Always use non-mutable default arguments!
+                 lsm_runs=None  # Always use non-mutable default arguments!
                  ):
         """
         Parameters
@@ -1752,6 +1757,9 @@ class Campaign:
         stations: :py:obj:`.Station` object, optional
             Station data (datum- and non-datum-stations). Default=None implies that the campaign will be
             initialized without station data.
+        lsm_runs : list of objects inherited from :py:obj:`gravtools.models.lsm.LSM`
+            Each item in the list contains one enclosed LSM object. Each LSM object reflects one dedicated run of an
+            least-squares adjustment in order to estimate target parameters.
 
         Raises
         ------
@@ -1785,7 +1793,6 @@ class Campaign:
                 for survey_name, survey_obj in surveys.items():
                     if not isinstance(survey_name, str):
                         raise TypeError('The argument "survey" needs to be a string.')
-
         self.surveys = surveys  # dict: key=Name of Survey, value=Survey object
 
         # Check stations:
@@ -1795,6 +1802,18 @@ class Campaign:
             if not isinstance(stations, Station):
                 raise TypeError('The argument "stations" needs to be a Station object.')
         self.stations = stations
+
+        # Check lsm_runs:
+        if lsm_runs is None:
+            lsm_runs = []  # Empty list
+        else:
+            if not isinstance(lsm_runs, list):
+                raise TypeError('The argument "lsm_runs" needs to be a list of LSM-objects.')
+            else:
+                for items in lsm_runs:
+                    if not isinstance(lsm_runs, LSM):
+                        raise TypeError('The argument "lsm_runs" needs to be a list of LSM-objects.')
+        self.lsm_runs = lsm_runs
 
     def add_survey(self, survey_add: Survey, verbose=False) -> bool:
         """Add a survey to campaign and specify whether to use it for ths analysis.
@@ -2100,6 +2119,24 @@ class Campaign:
                 survey.calculate_setup_data(obs_type=obs_type, verbose=verbose)
         pass
 
+    def initialize_and_add_lsm_run(self, lsm_method, comment=''):
+        """Initialize and add an least-squares adjustment run (object) to the campaign.
+
+        Parameters
+        ----------
+        lsm_method : str
+            Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
+        comment : str, optional (default = '')
+            Optional comment on the adjustment run.
+        """
+        # Initialize LSM object:
+        if lsm_method == 'LSM_diff':
+            lsm_run = LSMDiff.from_campaign(self, comment)
+        else:
+            raise AssertionError('Unknown LSM method: {lsm_method}')
+        # Add LSM object to campaign:
+        self.lsm_runs.append(lsm_run)
+
 
 if __name__ == '__main__':
     """Main function, primarily for debugging and testing."""
@@ -2169,7 +2206,9 @@ if __name__ == '__main__':
     # Test adjustment:
     from gravtools.models import lsm
 
-    lsm_diff = lsm.LSM_diff.from_campaign(camp)
+    lsm_diff = lsm.LSMDiff.from_campaign(camp)
     lsm_diff.adjust(drift_pol_degree=1, sig0_mugal=10, scaling_factor_datum_observations=1e-3, verbose=True)
+
+    camp.initialize_and_add_lsm_run('LSM_diff', 'Test number one!')
 
     pass

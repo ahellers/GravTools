@@ -14,8 +14,11 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 import datetime as dt
+import pytz
 import os
 import copy
+# from abc import ABC
+from gravtools import settings
 
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYPES, GRAVIMETER_ID_BEV, \
     TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_ID_CG5_SURVEY, REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
@@ -24,8 +27,37 @@ from gravtools.const import VG_DEFAULT
 from gravtools.models.exceptions import FileTypeError
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 
+# Using abstract base classes, see e.g.:
+#  - https://www.python-course.eu/python3_abstract_classes.php
+#  - https://stackoverflow.com/questions/5133262/python-abstract-base-class-init-initializion-or-validation
 
-class LSM_diff:
+
+class LSM:
+    """Base class for LSM classes.
+
+    Attributes
+    ----------
+    lsm_method : str
+        Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
+    comment : str, optional (default = '')
+        Optional comment on the adjustment run.
+    init_time : datetime object
+        Representing the date and time the LSM object has been initialized.
+        """
+    def __init__(self, lsm_method, comment=''):
+        if lsm_method in settings.ADJUSTMENT_METHODS.keys():
+            self.lsm_method = lsm_method
+        else:
+            raise ValueError(f'"{lsm_method}" is not a valid adjustment method identifier! All valid methods are '
+                             f'defined in gravtools.settings.ADJUSTMENT_METHODS.')
+        if isinstance(comment, str):
+            self.comment = comment
+        else:
+            raise ValueError(f'"{comment}" need to be a string.')
+        self.init_time = dt.datetime.now(tz=pytz.utc)
+
+
+class LSMDiff(LSM):
     """Least-squares adjustment of differential gravimeter observations with weighted constraints.
 
     Attributes
@@ -64,16 +96,18 @@ class LSM_diff:
         'sd_coeff',
     )
 
-    def __init__(self, stat_df=None, setups=None):
+    def __init__(self, stat_df, setups, comment=''):
         """
         Parameters
         ----------
-        stat_df : :py:obj:`gravtools.Station.stat_df`, optional (default=None)
+        stat_df : :py:obj:`gravtools.Station.stat_df`
             The station dataframe contains all relevant station data.
-        setups : dict, optional (default=None)
+        setups : dict of pandas DataFrames
             The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
             are the survey names (str) and the items are pandas dataframes containing the observation data (see
             :py:obj:`gravtool.Survey.setup_df`)
+        comment : str, optional (default = '')
+            Arbitrary comment on the LSM run.
 
         Notes
         -----
@@ -81,6 +115,10 @@ class LSM_diff:
         input data are stored in objects of this class.
 
         """
+        # Call constructor from abstract base class:
+        lsm_method = 'LSM_diff'
+        super().__init__(lsm_method, comment=comment)
+
         # Create deep copies of the input data items:
         self.stat_df = stat_df.copy(deep=True)
         self.setups = copy.deepcopy(setups)
@@ -91,7 +129,7 @@ class LSM_diff:
         # their statistics for each survey
 
     @classmethod
-    def from_campaign(cls, campaign):
+    def from_campaign(cls, campaign, comment=''):
         """Constructor that generates and populates the LSM object from a Campaign class object.
 
         Notes
@@ -103,13 +141,20 @@ class LSM_diff:
         ----------
         campaign : :py:obj:`gravtools.models.survey.Campaign`
             The campaign object needs to provide setup data for all active surveys and the related station data.
+        comment : str, optional (default = '')
+            Arbitrary comment on the LSM run.
 
         Returns
         -------
-        :py:obj:`.LSM_diff`
+        :py:obj:`.LSMDiff`
             Contains all information required for adjusting the campaign.
         """
         # Check if all required data is available in the campaign object:
+
+        # Comment:
+        if not isinstance(comment, str):
+            raise TypeError(f'"comment" needs to be a string!')
+
         # Station data:
         if campaign.stations is None:
             raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any station data!')
@@ -147,7 +192,7 @@ class LSM_diff:
             raise AssertionError(f'Setup data of campaign "{campaign.campaign_name}" does not contain observations!')
 
         # Initialize and return LSM object:
-        return cls(campaign.stations.stat_df, setups)
+        return cls(campaign.stations.stat_df, setups, comment=comment)
 
     def adjust(self, drift_pol_degree=1,
                sig0_mugal=1,
@@ -224,6 +269,9 @@ class LSM_diff:
         if number_of_datum_stations < 1:
             raise AssertionError('None of the observed (and active) stations is a datum station '
                                  '(minimum one is required)!')
+        if stat_df_obs_datum.loc[:, 'g_mugal'].isnull().any() or stat_df_obs_datum.loc[:, 'sd_g_mugal'].isnull().any():
+            raise AssertionError('g and/or sd(g) is missing for at least one datum station! Both values are required'
+                                 'for ALL datum stations.')
 
         if verbose:
             print(f'Number of datum stations: {number_of_datum_stations}')
@@ -271,7 +319,7 @@ class LSM_diff:
                     epoch_from = previous_row['epoch_unix']  # [sec]
                     epoch_to = row['epoch_unix']  # [sec]
 
-                    # TODO: Evtl. die startecpoche t0 anders setzen! Auf nummerische Stabilität achten!
+                    # TODO: Evtl. die start epoche t0 anders setzen! Auf nummerische Stabilität achten!
                     # Jetzt in UNIX time [sec]
 
                     # Populate matrices and vectors:
@@ -525,3 +573,14 @@ def goodness_of_fit_test(cf, dof, ref_var, apriori_var):
         chi_test = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
     return chi_crit, chi_val, chi_test
+
+
+if __name__ == '__main__':
+    test2 = LSMDiff('a', 'b')  # This test will cause an error due to invalid data types!
+    pass
+
+# TODO: Save relevant estimation settings and matrices/vectors in LSM object for later analysis and documentation!
+# TODO: Check and handle the statistical tests properly!
+# TODO: Check the unit and the time-reference of the drift estimates
+# TODO: Visualize the results ("LSM runs") properly!
+# TODO: Check the documentation/docstrings!
