@@ -62,6 +62,11 @@ BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
     '5': 'cg5_longman1959'
 }
 
+# Available adjustment methods
+ADJUSTMENT_METHODS = {
+    'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
+}
+
 DEFAULT_GRAVIMETER_ID_CG5_SURVEY = '5'
 
 # GUI and Program options:
