@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -336,49 +336,85 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="tab_main_setups">
+      <widget class="QWidget" name="tab_main_results">
        <property name="toolTipDuration">
         <number>2</number>
        </property>
        <attribute name="title">
-        <string>Setups and Results</string>
+        <string>Results</string>
        </attribute>
        <attribute name="toolTip">
         <string>Setup data: Corrected and reduces observation data accumulated for each instrument setup.</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_14">
         <item>
-         <widget class="QSplitter" name="splitter_setups">
+         <widget class="QSplitter" name="splitter_results">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
           <widget class="QWidget" name="verticalLayoutWidget">
            <layout class="QVBoxLayout" name="verticalLayout_12">
             <item>
-             <widget class="QTreeWidget" name="treeWidget_setups">
-              <property name="minimumSize">
-               <size>
-                <width>280</width>
-                <height>0</height>
-               </size>
+             <widget class="QGroupBox" name="groupBox_results_lsm_runs">
+              <property name="title">
+               <string>LSM runs</string>
               </property>
-              <column>
-               <property name="text">
-                <string notr="true">1</string>
-               </property>
-              </column>
+              <layout class="QVBoxLayout" name="verticalLayout_16">
+               <item>
+                <widget class="QComboBox" name="comboBox_results_lsm_run_selection"/>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pushButton_results_delete_lsm_run">
+                 <property name="text">
+                  <string>Delete selected lsm run</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="groupBox_estimation">
+             <widget class="QGroupBox" name="groupBox_results_data_selection">
               <property name="title">
-               <string>Estimation</string>
+               <string>Data selection</string>
               </property>
+              <layout class="QVBoxLayout" name="verticalLayout_17">
+               <item>
+                <widget class="QTreeWidget" name="treeWidget_results_selection">
+                 <property name="minimumSize">
+                  <size>
+                   <width>280</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <layout class="QFormLayout" name="formLayout">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_2">
+                   <property name="text">
+                    <string>Station</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="comboBox_results_selection_station">
+                   <item>
+                    <property name="text">
+                     <string>All stations</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
           </widget>
-          <widget class="QTabWidget" name="tabWidget_setups">
+          <widget class="QTabWidget" name="tabWidget_results">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
              <horstretch>1</horstretch>
@@ -388,13 +424,172 @@
            <property name="currentIndex">
             <number>0</number>
            </property>
-           <widget class="QWidget" name="tab_setups_table">
+           <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
-             <string>Table</string>
+             <string>Info</string>
             </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_15"/>
+            <layout class="QVBoxLayout" name="verticalLayout_23">
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_22">
+               <item>
+                <widget class="QGroupBox" name="groupBox_results_info">
+                 <property name="title">
+                  <string>Info</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_21">
+                  <item>
+                   <layout class="QFormLayout" name="formLayout_2">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_3">
+                      <property name="text">
+                       <string>Adjustment method:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_results_adjustment_method">
+                      <property name="minimumSize">
+                       <size>
+                        <width>100</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_4">
+                      <property name="text">
+                       <string>Time and Date:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_results_time_and_date">
+                      <property name="minimumSize">
+                       <size>
+                        <width>100</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="label_results_comment">
+                      <property name="text">
+                       <string>Comment: </string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_8">
+                      <property name="minimumSize">
+                       <size>
+                        <width>100</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QGroupBox" name="groupBox_results_statistics">
+                 <property name="title">
+                  <string>Statistics and tests</string>
+                 </property>
+                 <widget class="QLabel" name="label_9">
+                  <property name="geometry">
+                   <rect>
+                    <x>50</x>
+                    <y>20</y>
+                    <width>67</width>
+                    <height>17</height>
+                   </rect>
+                  </property>
+                  <property name="text">
+                   <string>sig0 = </string>
+                  </property>
+                 </widget>
+                 <widget class="QLabel" name="label_results_sig0">
+                  <property name="geometry">
+                   <rect>
+                    <x>280</x>
+                    <y>20</y>
+                    <width>100</width>
+                    <height>17</height>
+                   </rect>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>100</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </widget>
+               </item>
+               <item>
+                <widget class="QGroupBox" name="groupBox_results_lsm_run_log">
+                 <property name="title">
+                  <string>LSM run log</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_20">
+                  <item>
+                   <widget class="QPlainTextEdit" name="plainTextEdit_results_log"/>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
            </widget>
-           <widget class="QWidget" name="tab_setups_plot">
+           <widget class="QWidget" name="tab_results_obs_table">
+            <attribute name="title">
+             <string>Observations table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_15">
+             <item>
+              <widget class="QTableView" name="tableView_results_observations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_stat_table">
+            <attribute name="title">
+             <string> Stations table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_19">
+             <item>
+              <widget class="QTableView" name="tableView_results_stations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_drift">
+            <attribute name="title">
+             <string>Drift</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_18">
+             <item>
+              <widget class="QTableView" name="tableView_results_drift"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_plots">
             <attribute name="title">
              <string>Plots</string>
             </attribute>

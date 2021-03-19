@@ -79,6 +79,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
+        self.pushButton_results_delete_lsm_run.pressed.connect(self.on_pushbutton_results_delete_lsm_run)
         # self.actionShow_Stations.triggered.connect(self.show_station_data)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
@@ -88,6 +89,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.treeWidget_observations.itemSelectionChanged.connect(self.on_obs_tree_widget_item_selected)
         self.treeWidget_observations.itemChanged.connect(self.on_tree_widget_item_changed)
         self.checkBox_obs_plot_reduced_observations.clicked.connect(self.on_obs_tree_widget_item_selected)
+        self.comboBox_results_lsm_run_selection.activated.connect(
+            self.on_comboBox_results_lsm_run_selection_activated)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
@@ -105,6 +108,59 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Init models:
         self.observation_model = None
         self.setup_model = None
+
+    def on_comboBox_results_lsm_run_selection_activated(self):
+        """Invoked whenever the user selects an item in the combo box.."""
+        self.update_results_tab()
+
+    def update_results_tab(self, select_latest_item=False):
+        """Update the results tab of the main tab widget with the content of the selected lsm run."""
+        # Update combo box content for lsm run selection:
+        self.update_comboBox_lsm_run_selection(select_latest_item=select_latest_item)
+
+        # Get the currently selected lsm run object:
+        idx, time_str = self.get_selected_lsm_run()
+
+        # Get data from LSM object an populate GUI widgets:
+        pass
+        # TODO: Add further assignments for displaying data here!
+        # TODO: HERE HERE!
+
+    def update_comboBox_lsm_run_selection(self, select_latest_item=False):
+        """Update the LSM run selection combo box in the results tab, based on the available runs in the campaign."""
+        # Get current item:
+        idx, current_time_str = self.get_selected_lsm_run()
+        self.comboBox_results_lsm_run_selection.clear()
+        self.comboBox_results_lsm_run_selection.addItems(self.campaign.lsm_run_times)
+        # Try to select the previous item again:
+        if select_latest_item:
+            idx = self.comboBox_results_lsm_run_selection.count()-1
+            self.comboBox_results_lsm_run_selection.setCurrentIndex(idx)
+            # last index in list
+        else:
+            if idx != -1:  # Previous selection available
+                self.comboBox_results_lsm_run_selection.setCurrentText(current_time_str)
+
+    def on_pushbutton_results_delete_lsm_run(self):
+        """Delete the lsm object with index `idx` in the campaign."""
+        idx, time_str = self.get_selected_lsm_run()
+        if idx == -1:  # combo box is empty => No lsm run available!
+            QMessageBox.warning(self, 'Warning!', 'No LSM adjustment run to be deleted!')
+        else:
+            try:
+                self.campaign.delete_lsm_run(idx)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f'LSM run "{time_str}" not deleted.')
+            else:
+                self.statusBar().showMessage(f'LSM run "{time_str}" deleted.')
+                self.update_results_tab()
+
+    def get_selected_lsm_run(self):
+        """Get the selected lsm run in the results tab."""
+        time_str = self.comboBox_results_lsm_run_selection.currentText()
+        idx = self.comboBox_results_lsm_run_selection.currentIndex()
+        return idx, time_str
 
     def on_checkBox_obs_plot_setup_data_state_changed(self):
         """Invoke, whenever the state of the checkbox changes."""
@@ -144,7 +200,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.statusBar().showMessage(f"Setup data computed successfully!")
             # Update models for data visualization, etc.:
             #TODO: Add code here!
-            pass
 
     def on_pushbutton_obs_run_estimation(self):
         """Invoked when pushing the button 'on_pushbutton_obs_run_estimation'."""
@@ -193,8 +248,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             # No errors when computing the setup data:
             self.statusBar().showMessage(f"Parameters estimated successfully!")
-            # Update models for data visualization, etc.:
-            # TODO: Add code here to present results!
+            # Update list of lsm runs in results tab of the GUI:
+            self.update_results_tab(select_latest_item=True)
         pass
 
     def on_apply_autoselection(self):
@@ -609,7 +664,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.tableView_observations_setups.setModel(self.setup_model)
             self.tableView_observations_setups.resizeColumnsToContents()
-
 
     @pyqtSlot()
     def set_up_observation_view_model(self):

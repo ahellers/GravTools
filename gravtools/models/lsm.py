@@ -533,6 +533,11 @@ class LSMDiff(LSM):
             for idx, station_name in enumerate(datum_stations):
                 print(f'{station_name:10}   {sd_pseudo_obs_mugal[idx]:8.3}     {v_pseudo_obs_mugal[idx]:+8.3}')
 
+    @property
+    def time_str(self):
+        """Return time of lsm adjustment as formatted string."""
+        return self.init_time.strftime("%Y-%m-%d, %H:%M:%S")
+
 
 def tau_criterion_test(diag_Qvv, mat_R, mat_V, ref_var, dof, sv):
     std_res = []
