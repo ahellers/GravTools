@@ -119,7 +119,7 @@ class StationTableModel(QAbstractTableModel):
         return flags
 
 
-class ObservationTableModel(QAbstractTableModel):
+class SetupTableModel(QAbstractTableModel):
     """Model for displaying the station data.
 
     Attributes
@@ -129,6 +129,124 @@ class ObservationTableModel(QAbstractTableModel):
         (py.obj:`gravtools.survey.Campaign`).
     _data : pandas dataframe
         Data frame that holds the observation data of a specific setup or survey to be displayed in the table view.
+    _data_survey_name : str
+        Name of the currently selected survey.
+    """
+
+    _DECIMAL_PLACES_PER_FLOAT_COLUMN = {  # key = column name; value = number of decimal places
+        'g_mugal': 1,
+        'sd_g_mugal': 1,
+        'epoch_unix': 1,
+    }
+
+    def __init__(self, surveys):
+        """Initialize the observation table view model.
+
+        Parameters
+        ----------
+        surveys : dict of py.obj:`gravtools.survey.Survey` objects
+        """
+        QAbstractTableModel.__init__(self)
+        self._surveys = {}
+        self._data = None  # Observations (or at subset of them) of the survey with the name `self._data_survey_name`
+        self.load_surveys(surveys)
+        self._data_survey_name = ''  # Name of the Survey that is currently represented by `self._data`
+
+    def load_surveys(self, surveys):
+        """Load observation data (dict of survey objects in the campaign object) to the observation model.
+
+        Notes
+        -----
+        The data is assigned by reference, i.e. all changes in `_surveys` will propagate to the data origin.
+        """
+        self._surveys = surveys
+
+    def update_view_model(self, survey_name, setup_id):
+        """Update the `_data` DataFrame that hold the actual data that is displayed."""
+
+        try:
+            setup_df = self._surveys[survey_name].setup_df
+        except KeyError:
+            QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
+        else:
+            self._data_survey_name = survey_name
+            if setup_id is None:  # No setup ID provided => Take all observations in survey
+                if setup_df is None:
+                    self._data = None
+                else:
+                    self._data = setup_df.copy(deep=True)
+            else:  # Only take observations of the specified setup
+                if setup_df is None:
+                    self._data = None
+                else:
+                    self._data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
+
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if self._data is not None:  # No data available yet
+            if role == Qt.DisplayRole:
+                if orientation == Qt.Horizontal:
+                    return str(self._data.columns[section])
+                if orientation == Qt.Vertical:
+                    return str(self._data.index[section])
+
+    def rowCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[0]
+        else:
+            return 0
+
+    def columnCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[1]
+        else:
+            return 0
+
+    def data(self, index, role=Qt.DisplayRole):
+        if self._data is not None:
+            if index.isValid():
+                if role == Qt.DisplayRole:
+                    value = self._data.iloc[index.row(), index.column()]
+                    # Custom formatter (string is expected as return type):
+                    if value is None:  #
+                        return NONE_REPRESENTATION_IN_TABLE_VIEW
+                    elif isinstance(value, float):
+                        if value != value:  # True, if value is "NaN"
+                            return NONE_REPRESENTATION_IN_TABLE_VIEW
+                        else:
+                            try:
+                                col_name_str = Survey.get_setup_df_column_name(index.column())
+                                num_dec_places = self._DECIMAL_PLACES_PER_FLOAT_COLUMN[col_name_str]
+                                return '{1:.{0}f}'.format(num_dec_places, value)
+                            except KeyError:
+                                return str(value)
+                    elif isinstance(value, dt.datetime):
+                        return value.strftime("%Y-%m-%d, %H:%M:%S")
+                    else:  # all other
+                        return str(value)
+
+                if role == Qt.TextAlignmentRole:
+                    value = self._data.iloc[index.row(), index.column()]
+                    if isinstance(value, int) or isinstance(value, float):
+                        # Align right, vertical middle.
+                        return Qt.AlignVCenter + Qt.AlignRight
+
+
+class ObservationTableModel(QAbstractTableModel):
+    """Model for displaying the observation data.
+
+    Attributes
+    ----------
+    _surveys : dict of py.obj:`gravtools.survey.Survey`
+        Dict of survey object that are assigne by reference to the campaing data object
+        (py.obj:`gravtools.survey.Campaign`).
+    _data : pandas dataframe
+        Data frame that holds the observation data of a specific setup or survey to be displayed in the table view.
+    _data_survey_name : str
+        Name of the currently selected survey.
+    _setup_data : pandas DataFrame
+        Contains one observation per setup.
+
     """
 
     _DECIMAL_PLACES_PER_FLOAT_COLUMN = {

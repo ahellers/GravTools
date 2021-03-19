@@ -18,7 +18,7 @@ from dialog_estimation_settings import Ui_Dialog_estimation_settings
 
 from gravtools.models.survey import Campaign, Survey, Station
 from gravtools import settings
-from gui_models import StationTableModel, ObservationTableModel
+from gui_models import StationTableModel, ObservationTableModel, SetupTableModel
 
 DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
 DEFAULT_CG5_OBS_FILE_PATH = os.path.abspath(os.getcwd())  # Current working directory
@@ -102,6 +102,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Overwrite/change setting from ui file, if necessary:
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
 
+        # Init models:
+        self.observation_model = None
+        self.setup_model = None
+
     def on_checkBox_obs_plot_setup_data_state_changed(self):
         """Invoke, whenever the state of the checkbox changes."""
         self.refresh_observation_plot()
@@ -117,6 +121,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         survey_name, setup_id = self.get_obs_tree_widget_selected_item()
         self.observation_model.update_view_model(survey_name, setup_id)
         self.refresh_observation_plot()
+        self.update_setup_table_view(survey_name, setup_id)
+
+    def update_setup_table_view(self, survey_name, setup_id):
+        """Update the setups table view after changing the table model."""
+        self.setup_model.update_view_model(survey_name, setup_id)
+        self.setup_model.layoutChanged.emit()  # Show changes in table view
+        self.tableView_observations_setups.resizeColumnsToContents()
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
@@ -559,6 +570,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 survey_name = parent.text(0)  # Column 0 = Survey name
                 setup_id = int(item.text(0))
             self.update_obs_table_view(survey_name, setup_id)
+            self.update_setup_table_view(survey_name, setup_id)
             self.plot_observations(survey_name, setup_id)
         else:
             if IS_VERBOSE:
@@ -585,6 +597,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # "Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)"
         # header.setSectionResizeMode(5, QHeaderView.Stretch)
 
+    def set_up_setup_view_model(self):
+        """Set up the view model for the setup data table view."""
+        try:
+            self.setup_model = SetupTableModel(self.campaign.surveys)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No surveys available!')
+            self.statusBar().showMessage(f"No surveys available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.tableView_observations_setups.setModel(self.setup_model)
+            self.tableView_observations_setups.resizeColumnsToContents()
+
+
     @pyqtSlot()
     def set_up_observation_view_model(self):
         """Set up observation data view model and show observation data table view."""
@@ -597,13 +623,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
-            # TODO: Add code to initialize the table view here!
             self.tableView_observations.setModel(self.observation_model)
             # self.connect_station_model_to_table_view()  # Set view
             self.tableView_observations.resizeColumnsToContents()
             self.statusBar().showMessage(f"{self.campaign.number_of_surveys} surveys in current campaign.")
 
-            # TODO: TEST:
             self.observation_model.dataChanged.connect(self.on_observation_model_data_changed)
 
     def populate_survey_tree_widget(self):
@@ -773,6 +797,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Set up view models and views for this campaign:
             self.set_up_station_view_model()
             self.set_up_observation_view_model()
+            self.set_up_setup_view_model()
 
         elif return_value == QDialog.Rejected:
             self.statusBar().showMessage(f"Canceled creating new campaign.")

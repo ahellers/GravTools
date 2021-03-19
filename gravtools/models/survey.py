@@ -1175,6 +1175,22 @@ class Survey:
         return cls._OBS_DF_COLUMNS[col_index]
 
     @classmethod
+    def get_setup_df_column_name(cls, col_index):
+        """Return the name of the setup dataframe column with the specified index.
+
+        Parameters
+        ----------
+        col_index : int
+            Column index for the setup dataframe.
+
+        Returns
+        -------
+        str : Column name.
+            Name of the column with index `col_index`
+        """
+        return cls._SETUP_DF_COLUMNS[col_index]
+
+    @classmethod
     def get_obs_df_column_index(cls, column_name: str) -> int:
         """Returns the column index for specific column name for the obs_df dataframe.
 
