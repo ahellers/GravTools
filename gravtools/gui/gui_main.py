@@ -89,8 +89,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.treeWidget_observations.itemSelectionChanged.connect(self.on_obs_tree_widget_item_selected)
         self.treeWidget_observations.itemChanged.connect(self.on_tree_widget_item_changed)
         self.checkBox_obs_plot_reduced_observations.clicked.connect(self.on_obs_tree_widget_item_selected)
-        self.comboBox_results_lsm_run_selection.activated.connect(
-            self.on_comboBox_results_lsm_run_selection_activated)
+        self.comboBox_results_lsm_run_selection.currentIndexChanged.connect(
+            self.on_comboBox_results_lsm_run_selection_current_index_changed)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
@@ -109,8 +109,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.observation_model = None
         self.setup_model = None
 
-    def on_comboBox_results_lsm_run_selection_activated(self):
-        """Invoked whenever the user selects an item in the combo box.."""
+    @pyqtSlot(int)
+    def on_comboBox_results_lsm_run_selection_current_index_changed(self, index: int):
+        """Invoked whenever the index of the selected item in the combobox changed."""
+        print(index)
         self.update_results_tab()
 
     def update_results_tab(self, select_latest_item=False):
@@ -120,14 +122,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Get the currently selected lsm run object:
         idx, time_str = self.get_selected_lsm_run()
+        lsm_run = self.campaign.lsm_runs[idx]
 
         # Get data from LSM object an populate GUI widgets:
         pass
+        # - Info tab:
+        self.label_results_comment.setText(lsm_run.comment)
+        self.label_results_adjustment_method.setText(settings.ADJUSTMENT_METHODS[lsm_run.lsm_method])
+        self.label_results_time_and_date.setText(lsm_run.init_time.strftime("%Y-%m-%d, %H:%M:%S"))
+        self.label_results_sig0.setText(f'{lsm_run.s02_a_posteriori:1.3f}')
+
         # TODO: Add further assignments for displaying data here!
         # TODO: HERE HERE!
 
     def update_comboBox_lsm_run_selection(self, select_latest_item=False):
         """Update the LSM run selection combo box in the results tab, based on the available runs in the campaign."""
+        self.comboBox_results_lsm_run_selection.blockSignals(True)
         # Get current item:
         idx, current_time_str = self.get_selected_lsm_run()
         self.comboBox_results_lsm_run_selection.clear()
@@ -140,6 +150,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             if idx != -1:  # Previous selection available
                 self.comboBox_results_lsm_run_selection.setCurrentText(current_time_str)
+        self.comboBox_results_lsm_run_selection.blockSignals(False)
 
     def on_pushbutton_results_delete_lsm_run(self):
         """Delete the lsm object with index `idx` in the campaign."""

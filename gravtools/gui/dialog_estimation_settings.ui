@@ -108,7 +108,7 @@
         <item row="0" column="0">
          <widget class="QLabel" name="label_3">
           <property name="toolTip">
-           <string>Weight factor for datum constraints: Multiplicative factor for the standard deviation of g at datum stations.</string>
+           <string>Weight factor for datum constraints: The standard deviation of g at datum stations is divided by this factr in order to adjust the weights of the pseudo observations introduced as datum constraints.</string>
           </property>
           <property name="text">
            <string>Weight factor for datum</string>
@@ -118,7 +118,7 @@
         <item row="0" column="1">
          <widget class="QDoubleSpinBox" name="doubleSpinBox_weight_factor_datum">
           <property name="toolTip">
-           <string>Weight factor for datum constraints: Multiplicative factor for the standard deviation of g at datum stations.</string>
+           <string>Weight factor for datum constraints: The standard deviation of g at datum stations is divided by this factr in order to adjust the weights of the pseudo observations introduced as datum constraints.</string>
           </property>
           <property name="maximum">
            <double>1000000.000000000000000</double>

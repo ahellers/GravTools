@@ -2251,3 +2251,6 @@ if __name__ == '__main__':
     camp.initialize_and_add_lsm_run('LSM_diff', 'Test number one!')
 
     pass
+
+# TODO: Use pickle to serialize campaign objects: https://www.youtube.com/watch?v=BbRY9gsKA7Q
+

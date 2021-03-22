@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -299,7 +299,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>2</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -387,6 +387,11 @@
                    <height>0</height>
                   </size>
                  </property>
+                 <column>
+                  <property name="text">
+                   <string notr="true">1</string>
+                  </property>
+                 </column>
                 </widget>
                </item>
                <item>
@@ -480,14 +485,14 @@
                      </widget>
                     </item>
                     <item row="2" column="0">
-                     <widget class="QLabel" name="label_results_comment">
+                     <widget class="QLabel" name="label_10">
                       <property name="text">
                        <string>Comment: </string>
                       </property>
                      </widget>
                     </item>
                     <item row="2" column="1">
-                     <widget class="QLabel" name="label_8">
+                     <widget class="QLabel" name="label_results_comment">
                       <property name="minimumSize">
                        <size>
                         <width>100</width>
@@ -649,6 +654,7 @@
     <addaction name="separator"/>
     <addaction name="action_Corrections"/>
     <addaction name="action_Autoselection_settings"/>
+    <addaction name="actionEstimate_long_term_drift"/>
    </widget>
    <widget class="QMenu" name="menuEstimation_settings">
     <property name="title">
@@ -758,6 +764,14 @@
   <action name="action_Estimation_settings">
    <property name="text">
     <string>Settings</string>
+   </property>
+  </action>
+  <action name="actionEstimate_long_term_drift">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Estimate long-term drift</string>
    </property>
   </action>
  </widget>

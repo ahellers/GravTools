@@ -67,6 +67,9 @@ ADJUSTMENT_METHODS = {
     'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
 }
 
+# Treshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
+ANSERMET_DIFF_TRESHOLD = 1e-5
+
 DEFAULT_GRAVIMETER_ID_CG5_SURVEY = '5'
 
 # GUI and Program options:

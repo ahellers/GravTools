@@ -128,6 +128,24 @@ class LSMDiff(LSM):
         self.drift_pol_df = None  # DataFrame that contains the estimated parameters of the drift polynomials an
         # their statistics for each survey
 
+        # Estimation settings:
+        self.drift_polynomial_degree = None
+        self.sig02_a_priori = None
+        self.scaling_factor_datum_observations = None
+        self.confidence_level_chi_test = None
+        self.confidence_level_tau_test = None
+
+        # General statistics:
+        self.number_of_stations = None
+        self.number_of_datum_stations = None
+        self.number_of_estimates = None
+        self.degree_of_freedom = None
+
+        # A posteriori statistics:
+        self.s02_a_posteriori = None
+
+        # Matrices and vectors:
+
     @classmethod
     def from_campaign(cls, campaign, comment=''):
         """Constructor that generates and populates the LSM object from a Campaign class object.
@@ -392,7 +410,7 @@ class LSMDiff(LSM):
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
         u = np.sum(np.diag((mat_P @ mat_Qldld)))
         tmp_diff = np.abs(number_of_parameters - u)
-        if np.abs(number_of_parameters - u) > 1e-6:
+        if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_TRESHOLD:
             raise AssertionError(f'"Gewichtsreziprokenprobe nach Ansermet" failed! Difference = {tmp_diff}')
         else:
             if verbose:
@@ -479,7 +497,7 @@ class LSMDiff(LSM):
             for degree in range(drift_pol_degree):
                 survey_name_list.append(survey_name)
                 degree_list.append(degree + 1)  # starts with 1
-                coefficient_list.append(drift_pol_coeff[tmp_idx])
+                coefficient_list.append(drift_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
@@ -533,6 +551,18 @@ class LSMDiff(LSM):
             for idx, station_name in enumerate(datum_stations):
                 print(f'{station_name:10}   {sd_pseudo_obs_mugal[idx]:8.3}     {v_pseudo_obs_mugal[idx]:+8.3}')
 
+        # Save data/infos to object for later use:
+        self.drift_polynomial_degree = drift_pol_degree
+        self.sig02_a_priori = sig0_mugal
+        self.scaling_factor_datum_observations = scaling_factor_datum_observations
+        self.confidence_level_chi_test = confidence_level_chi_test
+        self.confidence_level_tau_test = confidence_level_chi_test
+        self.number_of_stations = number_of_stations
+        self.number_of_datum_stations = number_of_datum_stations
+        self.number_of_estimates = number_of_parameters
+        self.degree_of_freedom = dof
+        self.s02_a_posteriori = s02_a_posteriori_mugal2
+
     @property
     def time_str(self):
         """Return time of lsm adjustment as formatted string."""
@@ -585,6 +615,7 @@ if __name__ == '__main__':
     pass
 
 # TODO: Save relevant estimation settings and matrices/vectors in LSM object for later analysis and documentation!
+#  => Write log of adjustment to string and print that string in results/info tab ("LSM run log")!
 # TODO: Check and handle the statistical tests properly!
 # TODO: Check the unit and the time-reference of the drift estimates
 # TODO: Visualize the results ("LSM runs") properly!
