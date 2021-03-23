@@ -109,6 +109,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.observation_model = None
         self.setup_model = None
 
+        # Get system fonts:
+        self.system_default_fixed_width_font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
+
+        # Set fonts:
+        self.plainTextEdit_results_log.setFont(self.system_default_fixed_width_font)  # Monospace font
+
+
     @pyqtSlot(int)
     def on_comboBox_results_lsm_run_selection_current_index_changed(self, index: int):
         """Invoked whenever the index of the selected item in the combobox changed."""
@@ -131,6 +138,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.label_results_adjustment_method.setText(settings.ADJUSTMENT_METHODS[lsm_run.lsm_method])
         self.label_results_time_and_date.setText(lsm_run.init_time.strftime("%Y-%m-%d, %H:%M:%S"))
         self.label_results_sig0.setText(f'{lsm_run.s02_a_posteriori:1.3f}')
+        if lsm_run.write_log:
+            self.plainTextEdit_results_log.setPlainText(lsm_run.log_str)
 
         # TODO: Add further assignments for displaying data here!
         # TODO: HERE HERE!
@@ -241,7 +250,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             confidence_level_tau_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_tau.value()
 
             # Initialize LSM object and add it to the campaign object:
-            self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment)
+            self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
 
             # Run the estimation:
             self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,

@@ -276,6 +276,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_20 = QtWidgets.QVBoxLayout(self.groupBox_results_lsm_run_log)
         self.verticalLayout_20.setObjectName("verticalLayout_20")
         self.plainTextEdit_results_log = QtWidgets.QPlainTextEdit(self.groupBox_results_lsm_run_log)
+        self.plainTextEdit_results_log.setReadOnly(True)
         self.plainTextEdit_results_log.setObjectName("plainTextEdit_results_log")
         self.verticalLayout_20.addWidget(self.plainTextEdit_results_log)
         self.verticalLayout_22.addWidget(self.groupBox_results_lsm_run_log)
@@ -392,7 +393,7 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuStations.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.tabWidget_Main.setCurrentIndex(1)
+        self.tabWidget_Main.setCurrentIndex(2)
         self.tab_Widget_Stations.setCurrentIndex(0)
         self.tabWidget_observations.setCurrentIndex(0)
         self.tabWidget_results.setCurrentIndex(0)

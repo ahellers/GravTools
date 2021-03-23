@@ -43,8 +43,22 @@ class LSM:
         Optional comment on the adjustment run.
     init_time : datetime object
         Representing the date and time the LSM object has been initialized.
+    write_log : bool, optional (default=True)
+        Flag that indicates whether log string should be written or not.
+    log_str : str
+        String to log the status of the adjustment.
         """
-    def __init__(self, lsm_method, comment=''):
+    def __init__(self, lsm_method, comment='', write_log=True):
+        """
+        Parameters
+        ----------
+        lsm_method : str
+            Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
+        comment : str, optional (default = '')
+            Optional comment on the adjustment run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
+        """
         if lsm_method in settings.ADJUSTMENT_METHODS.keys():
             self.lsm_method = lsm_method
         else:
@@ -54,7 +68,12 @@ class LSM:
             self.comment = comment
         else:
             raise ValueError(f'"{comment}" need to be a string.')
+        if isinstance(write_log, bool):
+            self.write_log = write_log
+        else:
+            raise ValueError(f'"{write_log}" needs to be a boolean.')
         self.init_time = dt.datetime.now(tz=pytz.utc)
+        self.log_str = ''
 
 
 class LSMDiff(LSM):
@@ -96,7 +115,7 @@ class LSMDiff(LSM):
         'sd_coeff',
     )
 
-    def __init__(self, stat_df, setups, comment=''):
+    def __init__(self, stat_df, setups, comment='', write_log=True):
         """
         Parameters
         ----------
@@ -108,6 +127,8 @@ class LSMDiff(LSM):
             :py:obj:`gravtool.Survey.setup_df`)
         comment : str, optional (default = '')
             Arbitrary comment on the LSM run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
 
         Notes
         -----
@@ -117,7 +138,7 @@ class LSMDiff(LSM):
         """
         # Call constructor from abstract base class:
         lsm_method = 'LSM_diff'
-        super().__init__(lsm_method, comment=comment)
+        super().__init__(lsm_method, comment=comment, write_log=write_log)
 
         # Create deep copies of the input data items:
         self.stat_df = stat_df.copy(deep=True)
@@ -147,12 +168,12 @@ class LSMDiff(LSM):
         # Matrices and vectors:
 
     @classmethod
-    def from_campaign(cls, campaign, comment=''):
+    def from_campaign(cls, campaign, comment='', write_log=True):
         """Constructor that generates and populates the LSM object from a Campaign class object.
 
         Notes
         -----
-        From all active surveys in the campaing the setup data (= observations) are loaded, additionally to the station
+        From all active surveys in the campaign the setup data (= observations) are loaded, additionally to the station
         data (station dataframe).
 
         Parameters
@@ -161,6 +182,8 @@ class LSMDiff(LSM):
             The campaign object needs to provide setup data for all active surveys and the related station data.
         comment : str, optional (default = '')
             Arbitrary comment on the LSM run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
 
         Returns
         -------
@@ -210,7 +233,7 @@ class LSMDiff(LSM):
             raise AssertionError(f'Setup data of campaign "{campaign.campaign_name}" does not contain observations!')
 
         # Initialize and return LSM object:
-        return cls(campaign.stations.stat_df, setups, comment=comment)
+        return cls(campaign.stations.stat_df, setups, comment=comment, write_log=write_log)
 
     def adjust(self, drift_pol_degree=1,
                sig0_mugal=1,
@@ -263,15 +286,6 @@ class LSMDiff(LSM):
         number_of_parameters = number_of_stations + drift_pol_degree * number_of_surveys  # Total number of parameters to be estimated
         number_of_diff_obs = number_of_observations - number_of_surveys
 
-        if verbose:
-            print(f'')
-            print(f'#### Adjustment ####')
-            print(f'---- Collect Information ----')
-            print(f'Number of surveys: {number_of_surveys}')
-            print(f'Number of stations: {number_of_stations}')
-            print(f'Number of differential observations: {number_of_diff_obs}')
-            print(f'Number of estimated parameters: {number_of_parameters}')
-
         # Check, if setup IDs are unique:
         if len(set(setup_ids)) != len(setup_ids):
             raise AssertionError('Setup IDs are not unique within the campaign!')
@@ -291,11 +305,28 @@ class LSMDiff(LSM):
             raise AssertionError('g and/or sd(g) is missing for at least one datum station! Both values are required'
                                  'for ALL datum stations.')
 
-        if verbose:
-            print(f'Number of datum stations: {number_of_datum_stations}')
-            print(f'-------------------------------')
-            print(f'')
-            print(f'---- Set up and populate matrices ----')
+        if verbose or self.write_log:
+            tmp_str = f'#### Adjustment log ####\n'
+            tmp_str += f'\n'
+            tmp_str += f'---- Input data and settings ----\n'
+            tmp_str += f'Number of surveys: {number_of_surveys}\n'
+            tmp_str += f'Number of stations: {number_of_stations}\n'
+            tmp_str += f'Number of differential observations: {number_of_diff_obs}\n'
+            tmp_str += f'Number of estimated parameters: {number_of_parameters}\n'
+            tmp_str += f'Number of datum stations: {number_of_datum_stations}\n'
+            tmp_str += f'Degree of freedom: {number_of_diff_obs - number_of_parameters}\n'
+            tmp_str += f'\n'
+            tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
+            tmp_str += f'A priori variance of unit weight: {sig0_mugal}\n'
+            tmp_str += f'Confidence level Chi-test: {confidence_level_chi_test:4.2f}\n'
+            tmp_str += f'Confidence level Tau-test: {confidence_level_tau_test:4.2f}\n'
+            tmp_str += f'\n'
+            tmp_str += f'---- Set up and populate matrices ----\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
+
 
         # Initialize matrices:
         # => Initialize complete matrices first and then populate them. This is most efficient!
@@ -394,9 +425,13 @@ class LSMDiff(LSM):
         mat_L = np.vstack((mat_L0, mat_Lc))  # Eq. (16)
         mat_P = np.diag(np.hstack((mat_p0, mat_pc)))  # Eq. (18)
 
-        if verbose:
-            print(f'')
-            print(f'---- Solve equation system: Results and statistics ----')
+        if verbose or self.write_log:
+            tmp_str = f'\n'
+            tmp_str += f'---- Solve equation system: Results and statistics ----\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
 
         # Solve equation system:
         mat_N = mat_A.T @ mat_P @ mat_A
@@ -413,8 +448,12 @@ class LSMDiff(LSM):
         if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_TRESHOLD:
             raise AssertionError(f'"Gewichtsreziprokenprobe nach Ansermet" failed! Difference = {tmp_diff}')
         else:
-            if verbose:
-                print(f'Gewichtsreziprokenprobe nach Ansermet: Difference = {tmp_diff} => Passed!')
+            if verbose or self.write_log:
+                tmp_str = f'# Gewichtsreziprokenprobe nach Ansermet (difference = {tmp_diff}) => Passed!\n'
+                if verbose:
+                    print(tmp_str)
+                if self.write_log:
+                    self.log_str += tmp_str
 
         # A posteriori variance of unit weight s02:
         dof = mat_A.shape[0] - mat_A.shape[1]  # degree of freedom
@@ -423,10 +462,14 @@ class LSMDiff(LSM):
             s02_a_posteriori_mugal2 = par_r[0][0]  # ref_var
         else:
             s02_a_posteriori_mugal2 = par_r[0][0] / dof  # Eq. (20)
-        if verbose:
-            print(f'Degree of freedom: {dof}')
-            print(f'A posteriori variance (sd) of unit weight '
-                  f': {s02_a_posteriori_mugal2} ({np.sqrt(s02_a_posteriori_mugal2)})')
+        if verbose or self.write_log:
+            tmp_str = f'\n'
+            tmp_str += f'A posteriori variance (sd) of unit weight: ' \
+                       f'{s02_a_posteriori_mugal2:5.3f} ({np.sqrt(s02_a_posteriori_mugal2):5.3f})\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
 
         # ### Statistics and tests ###
 
@@ -446,16 +489,20 @@ class LSMDiff(LSM):
         # goodness-of-fit test
         chi_crit, chi_val, chi_test = goodness_of_fit_test(confidence_level_chi_test, dof,
                                                            s02_a_posteriori_mugal2, sig0_mugal ** 2)
-        if verbose:
-            print(f'')
-            print(f'# Goodness-of-fit test results:')
-            print(f'# Chi-val  Chi-crt-lower  Chi-crt-upper  Status')
-            print(f'  {chi_val:7.3f}  {chi_crit[0]:13.3f}  {chi_crit[1]:13.3f}  {chi_test:s}')
-            print(f'')
-            print(f'# Histogram of the residuals:')
-            print(f'# Lower-edge(mGal)  Upper-edge(mGal)  Frequency')
+        if verbose or self.write_log:
+            tmp_str = f'\n'
+            tmp_str += f'# Goodness-of-fit test results:\n'
+            tmp_str += f'# Chi-val  Chi-crt-lower  Chi-crt-upper  Status\n'
+            tmp_str += f'  {chi_val:7.3f}  {chi_crit[0]:13.3f}  {chi_crit[1]:13.3f}  {chi_test:s}\n'
+            tmp_str += f'\n'
+            tmp_str += f'# Histogram of the residuals:\n'
+            tmp_str += f'# Lower-edge(mGal)  Upper-edge(mGal)  Frequency\n'
             for loop_1 in range(len(residual_hist)):
-                print(f'  {bin_edges[loop_1]:16.4f}  {bin_edges[loop_1 + 1]:16.4f}  {residual_hist[loop_1]:9.0f}')
+                tmp_str += f'  {bin_edges[loop_1]:16.4f}  {bin_edges[loop_1 + 1]:16.4f}  {residual_hist[loop_1]:9.0f}\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
 
         # outlier detection effectiveness (redundancy number)
         diag_Qvv = np.diag(mat_Qvv)
@@ -518,38 +565,34 @@ class LSMDiff(LSM):
             self.setups_diff_df.loc[filter_tmp, 'sd_g_diff_est_mugal'] = sd_diff_obs_mugal[idx]
 
         # Print results to terminal:
-        if verbose:
-            print(f'')
-            print(f'Station data:')
-            pd.options.display.float_format = '{:.3f}'.format
-            pd.set_option('display.max_columns', None)
-            pd.set_option('display.width', 1000)
-            # print here...
-            print(self.stat_obs_df[['station_name', 'is_datum',
-                                    'g_mugal', 'g_est_mugal', 'diff_g_est_mugal', 'sd_g_mugal', 'sd_g_est_mugal']])
-
-            pd.options.display.float_format = '{:.6f}'.format
-            print(f'')
-            print(f'Drift polynomial coefficients:')
-            print(self.drift_pol_df)
-
-            pd.options.display.float_format = '{:.3f}'.format
-            print(f'')
-            print(f'Differential observations:')
+        if verbose or self.write_log:
+            tmp_str = f'\n'
+            tmp_str += f' - Station data:\n'
+            tmp_str += self.stat_obs_df[['station_name', 'is_datum', 'g_mugal', 'g_est_mugal',
+                                                'diff_g_est_mugal', 'sd_g_mugal',
+                                                'sd_g_est_mugal']].to_string(index=False,
+                                                                             float_format=lambda x: '{:.1f}'.format(x))
+            tmp_str += f'\n\n'
+            tmp_str += f' - Drift polynomial coefficients:\n'
+            tmp_str += self.drift_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
+            tmp_str += f'\n\n'
+            tmp_str += f' - Differential observations:\n'
             for survey_name in survey_names:
-                print(f' - Survey: {survey_name}')
                 filter_tmp = self.setups_diff_df['survey_name'] == survey_name
-                print(self.setups_diff_df.loc[filter_tmp, ['station_name_from', 'station_name_to', 'g_diff_mugal', 'sd_g_diff_mugal', 'sd_g_diff_est_mugal', 'v_diff_mugal']])
-                # TODO: Print relevant content of self.setups_diff_df here!
-
-            pd.reset_option('max_columns')
-
-            print(f'')
-            print(f'Pseudo observations at datum stations (constraints):')
-            # Datum constraints (pseudo observations at datum stations):
-            print(f'Station name  sd [µGal]   v [µGal]')
+                tmp_str += f'   - Survey: {survey_name}\n'
+            tmp_str += self.setups_diff_df.loc[filter_tmp, ['station_name_from', 'station_name_to', 'g_diff_mugal',
+                                                            'sd_g_diff_mugal', 'sd_g_diff_est_mugal',
+                                                            'v_diff_mugal']].to_string(index=False,
+                                                                                       float_format=lambda x: '{:.1f}'.format(x))
+            tmp_str += f'\n\n'
+            tmp_str += f' - Pseudo observations at datum stations (constraints):\n'
+            tmp_str += f'Station name  sd [µGal]   v [µGal]\n'
             for idx, station_name in enumerate(datum_stations):
-                print(f'{station_name:10}   {sd_pseudo_obs_mugal[idx]:8.3}     {v_pseudo_obs_mugal[idx]:+8.3}')
+                tmp_str += f'{station_name:10}   {sd_pseudo_obs_mugal[idx]:8.3}     {v_pseudo_obs_mugal[idx]:+8.3}\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
 
         # Save data/infos to object for later use:
         self.drift_polynomial_degree = drift_pol_degree

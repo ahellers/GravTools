@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -555,7 +555,11 @@
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_20">
                   <item>
-                   <widget class="QPlainTextEdit" name="plainTextEdit_results_log"/>
+                   <widget class="QPlainTextEdit" name="plainTextEdit_results_log">
+                    <property name="readOnly">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
                 </widget>

@@ -2135,7 +2135,7 @@ class Campaign:
                 survey.calculate_setup_data(obs_type=obs_type, verbose=verbose)
         pass
 
-    def initialize_and_add_lsm_run(self, lsm_method, comment=''):
+    def initialize_and_add_lsm_run(self, lsm_method, comment='', write_log=True):
         """Initialize and add an least-squares adjustment run (object) to the campaign.
 
         Parameters
@@ -2144,10 +2144,12 @@ class Campaign:
             Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
         comment : str, optional (default = '')
             Optional comment on the adjustment run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
         """
         # Initialize LSM object:
         if lsm_method == 'LSM_diff':
-            lsm_run = LSMDiff.from_campaign(self, comment)
+            lsm_run = LSMDiff.from_campaign(self, comment, write_log)
         else:
             raise AssertionError('Unknown LSM method: {lsm_method}')
         # Add LSM object to campaign:
