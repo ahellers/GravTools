@@ -2135,7 +2135,7 @@ class Campaign:
                 survey.calculate_setup_data(obs_type=obs_type, verbose=verbose)
         pass
 
-    def initialize_and_add_lsm_run(self, lsm_method, comment=''):
+    def initialize_and_add_lsm_run(self, lsm_method, comment='', write_log=True):
         """Initialize and add an least-squares adjustment run (object) to the campaign.
 
         Parameters
@@ -2144,14 +2144,39 @@ class Campaign:
             Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
         comment : str, optional (default = '')
             Optional comment on the adjustment run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
         """
         # Initialize LSM object:
         if lsm_method == 'LSM_diff':
-            lsm_run = LSMDiff.from_campaign(self, comment)
+            lsm_run = LSMDiff.from_campaign(self, comment, write_log)
         else:
             raise AssertionError('Unknown LSM method: {lsm_method}')
         # Add LSM object to campaign:
         self.lsm_runs.append(lsm_run)
+
+    @property
+    def lsm_run_times(self):
+        """Returns a list of lsm-run times/dates that can be used to identify individual runs.
+
+        Returns
+        -------
+        list : List of string stating the epochs of lsm adjustment runs that can be used to identify individual runs.
+        """
+        lsm_run_times = []
+        for lsm_run in self.lsm_runs:
+            lsm_run_times.append(lsm_run.time_str)
+        return lsm_run_times
+
+    def delete_lsm_run(self, idx):
+        """Delete the LSM run with the specified index in the list.
+
+        Parameters
+        ----------
+        idx : int
+            Index of the LSM object in the list.
+        """
+        del self.lsm_runs[idx]
 
 
 if __name__ == '__main__':
@@ -2228,3 +2253,6 @@ if __name__ == '__main__':
     camp.initialize_and_add_lsm_run('LSM_diff', 'Test number one!')
 
     pass
+
+# TODO: Use pickle to serialize campaign objects: https://www.youtube.com/watch?v=BbRY9gsKA7Q
+

@@ -4,6 +4,7 @@ from PyQt5.QtCore import QAbstractTableModel, Qt
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QMessageBox
 import datetime as dt
+import pandas as pd
 
 from gravtools.models.survey import Survey
 
@@ -426,3 +427,394 @@ class ObservationTableModel(QAbstractTableModel):
     @property
     def get_setup_data(self):
         return self._setup_data
+
+
+class ResultsObservationModel(QAbstractTableModel):
+    """Model for displaying the observations-related results."""
+
+    _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
+        'g_diff_mugal': 1,
+        'sd_g_diff_mugal': 1,
+        'sd_g_diff_est_mugal': 1,
+        'v_diff_mugal': 1,
+    }
+
+    _SHOW_COLUMNS_IN_TABLE = [
+        'survey_name',
+        'ref_epoch_dt',
+        'station_name_from',
+        'station_name_to',
+        'g_diff_mugal',
+        'sd_g_diff_mugal',
+        'sd_g_diff_est_mugal',
+        'v_diff_mugal',
+    ]
+
+    # Columns that can be plotted. Column names (keys) and description (values):
+    _PLOTABLE_DATA_COLUMNS = {
+        'v_diff_mugal': 'Post-fit residuals [µGal]',
+        'sd_g_diff_est_mugal': 'A posteriori SD of diff. obs. [µGal]',
+        'g_diff_mugal': 'Differential observation [µGal]',
+        'sd_g_diff_mugal': 'A priori SD of differential observation [µGal]',
+    }
+
+    def __init__(self, lsm_runs):
+        """Initialize the observation-results table view model.
+
+        Parameters
+        ----------
+        lsm_runs : list of py.obj:`gravtools.lsm.LSM` objects
+        """
+        QAbstractTableModel.__init__(self)
+        self._lsm_runs = []
+        self._data = None  # Observations (or at subset of them) of the survey with the name `self._data_survey_name`
+        self.load_lsm_runs(lsm_runs)
+        self._lsm_run_index = None  # Name of the Survey that is currently represented by `self._data`
+        self._data_column_names = None
+
+    def load_lsm_runs(self, lsm_runs: list):
+        """Load adjustment results.
+
+        Notes
+        -----
+        The data is assigned by reference, i.e. all changes in `_surveys` will propagate to the data origin.
+        """
+        self._lsm_runs = lsm_runs
+
+    def update_view_model(self, lsm_run_index: int, station_name=None, survey_name=None):
+        """Update the `_data` DataFrame that hold the actual data that is displayed."""
+        if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
+            self._data = None
+            self._lsm_run_index = None
+            self._data_column_names = None
+        else:
+            try:
+                results_obs_df = self._lsm_runs[lsm_run_index].get_results_obs_df
+            except KeyError:
+                QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
+            else:
+                self._lsm_run_index = lsm_run_index
+
+                # Apply filter:
+                if ((station_name is not None) or (survey_name is not None)) and (results_obs_df is not None):
+                    tmp_filter = pd.Series([False] * len(results_obs_df))  # Init boolean filter series
+                    column_names = results_obs_df.columns
+
+                    if station_name is not None:  # Filer data for station names
+                        flag_is_diff_obs = ('station_name_from' in column_names) and ('station_name_to' in column_names)
+
+                        # Differential observations => Check columns 'station_name_from' and 'station_name_to'
+                        if flag_is_diff_obs:
+                            tmp_filter = tmp_filter | ((results_obs_df['station_name_from'] == station_name) |
+                                                       (results_obs_df['station_name_to'] == station_name))
+                        else:  # No differential observations => Check column 'station_name'
+                            tmp_filter = tmp_filter | (results_obs_df['station_name'] == station_name)
+
+                    if survey_name is not None:  # Filer data for survey name
+                        tmp_filter = tmp_filter | (results_obs_df['survey_name'] == survey_name)
+
+                    self._data = results_obs_df.loc[tmp_filter, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
+                else:  # No filter
+                    self._data = results_obs_df.loc[:, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
+                self._data_column_names = self._data.columns.to_list()
+
+    def rowCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[0]
+        else:
+            return 0
+
+    def columnCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[1]
+        else:
+            return 0
+
+    def data(self, index, role=Qt.DisplayRole):
+        if index.isValid():
+            if role == Qt.DisplayRole:
+                value = self._data.iloc[index.row(), index.column()]
+                column_name = self._data_column_names[index.column()]
+                # Custom formatter (string is expected as return type):
+                if value is None:  #
+                    return NONE_REPRESENTATION_IN_TABLE_VIEW
+                elif isinstance(value, float):
+                    if value != value:  # True, if value is "NaN"
+                        return NONE_REPRESENTATION_IN_TABLE_VIEW
+                    else:
+                        if column_name in self._DECIMAL_PLACES_PER_FLOAT_COLUMN.keys():
+                            num_dec_places = self._DECIMAL_PLACES_PER_FLOAT_COLUMN[column_name]
+                            return '{1:.{0}f}'.format(num_dec_places, value)
+                        else:
+                            return str(value)
+                elif isinstance(value, dt.datetime):
+                    return value.strftime("%Y-%m-%d, %H:%M:%S")
+                else:  # all other
+                    return str(value)
+
+            if role == Qt.TextAlignmentRole:
+                value = self._data.iloc[index.row(), index.column()]
+                if isinstance(value, int) or isinstance(value, float):
+                    # Align right, vertical middle.
+                    return Qt.AlignVCenter + Qt.AlignRight
+        return None
+
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self._data.columns[section])
+            if orientation == Qt.Vertical:
+                return str(self._data.index[section])
+
+    def get_plotable_columns(self) -> dict:
+        """Returns a dict with names and description of the plotable numerical columns.
+
+        Notes
+        -----
+        If the model data is empty return an empty dict.
+        """
+        plotable_columns_dict = {}
+        if self._data_column_names is not None:  # Data model is not empty
+            for key, item in self._PLOTABLE_DATA_COLUMNS.items():
+                # Check if key is a column-name in the current data
+                if key in self._data_column_names:
+                    plotable_columns_dict[key] = item
+        return plotable_columns_dict
+
+    @property
+    def get_model_data_df(self):
+        """Returns the model data dataframe."""
+        return self._data
+
+
+class ResultsStationModel(QAbstractTableModel):
+    """Model for displaying the stations-related results."""
+
+    _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
+        'lon_deg': 3,
+        'lat_deg': 3,
+        'height_m': 3,
+        'g_mugal': 1,
+        'sd_g_mugal': 1,
+        'vg_mugalm': 1,
+        'g_est_mugal': 1,
+        'sd_g_est_mugal': 1,
+        'diff_g_est_mugal': 1,
+        'diff_sd_g_est_mugal': 1,
+    }
+
+    _PLOT_COLUMNS = [
+        'station_name',
+        'g_mugal',
+        'sd_g_mugal',
+        'is_datum',
+        'g_est_mugal',
+        'sd_g_est_mugal',
+        'diff_g_est_mugal',
+        'diff_sd_g_est_mugal',
+    ]
+
+    def __init__(self, lsm_runs):
+        """Initialize the station-results table view model.
+
+        Parameters
+        ----------
+        lsm_runs : list of py.obj:`gravtools.lsm.LSM` objects
+        """
+        QAbstractTableModel.__init__(self)
+        self._lsm_runs = []
+        self._data = None  # Observations (or at subset of them) of the survey with the name `self._data_survey_name`
+        self.load_lsm_runs(lsm_runs)
+        self._lsm_run_index = None  # Name of the Survey that is currently represented by `self._data`
+        self._data_column_names = None
+
+    def load_lsm_runs(self, lsm_runs: list):
+        """Load adjustment results.
+
+        Notes
+        -----
+        The data is assigned by reference, i.e. all changes in `_surveys` will propagate to the data origin.
+        """
+        self._lsm_runs = lsm_runs
+
+    def update_view_model(self, lsm_run_index: int, station_name=None, survey_name=None):
+        """Update the `_data` DataFrame that hold the actual data that is displayed.
+
+        Notes
+        -----
+        Dat selection based on survey name (only display stations that were observed in the selected survey) is not
+        implemented yet.
+        """
+        if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
+            self._data = None
+            self._lsm_run_index = None
+            self._data_column_names = None
+        else:
+            try:
+                results_stat_df = self._lsm_runs[lsm_run_index].get_results_stat_df
+            except KeyError:
+                QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
+            else:
+                self._lsm_run_index = lsm_run_index
+
+                if (station_name is not None) and (results_stat_df is not None):
+                    tmp_filter = results_stat_df['station_name'] == station_name
+                    self._data = results_stat_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
+                else:  # No filter
+                    self._data = results_stat_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
+                self._data_column_names = self._data.columns.to_list()
+
+    def rowCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[0]
+        else:
+            return 0
+
+    def columnCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[1]
+        else:
+            return 0
+
+    def data(self, index, role=Qt.DisplayRole):
+        if index.isValid():
+            if role == Qt.DisplayRole:
+                value = self._data.iloc[index.row(), index.column()]
+                column_name = self._data_column_names[index.column()]
+                # Custom formatter (string is expected as return type):
+                if value is None:  #
+                    return NONE_REPRESENTATION_IN_TABLE_VIEW
+                elif isinstance(value, float):
+                    if value != value:  # True, if value is "NaN"
+                        return NONE_REPRESENTATION_IN_TABLE_VIEW
+                    else:
+                        if column_name in self._DECIMAL_PLACES_PER_FLOAT_COLUMN.keys():
+                            num_dec_places = self._DECIMAL_PLACES_PER_FLOAT_COLUMN[column_name]
+                            return '{1:.{0}f}'.format(num_dec_places, value)
+                        else:
+                            return str(value)
+                else:  # all other
+                    return str(value)
+
+            if role == Qt.TextAlignmentRole:
+                value = self._data.iloc[index.row(), index.column()]
+                if isinstance(value, int) or isinstance(value, float):
+                    # Align right, vertical middle.
+                    return Qt.AlignVCenter + Qt.AlignRight
+        return None
+
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self._data.columns[section])
+            if orientation == Qt.Vertical:
+                return str(self._data.index[section])
+
+
+class ResultsDriftModel(QAbstractTableModel):
+    """Model for displaying the drift-related results."""
+
+    _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
+        'coefficient': 9,
+        'sd_coeff': 9,
+    }
+
+    _PLOT_COLUMNS = [
+        'survey_name',
+        'degree',
+        'coefficient',
+        'sd_coeff',
+    ]
+
+    def __init__(self, lsm_runs):
+        """Initialize the drift-results table view model.
+
+        Parameters
+        ----------
+        lsm_runs : list of py.obj:`gravtools.lsm.LSM` objects
+        """
+        QAbstractTableModel.__init__(self)
+        self._lsm_runs = []
+        self._data = None  # Observations (or at subset of them) of the survey with the name `self._data_survey_name`
+        self.load_lsm_runs(lsm_runs)
+        self._lsm_run_index = None  # Name of the Survey that is currently represented by `self._data`
+        self._data_column_names = None
+
+    def load_lsm_runs(self, lsm_runs: list):
+        """Load adjustment results.
+
+        Notes
+        -----
+        The data is assigned by reference, i.e. all changes in `_surveys` will propagate to the data origin.
+        """
+        self._lsm_runs = lsm_runs
+
+    def update_view_model(self, lsm_run_index: int, survey_name=None):
+        """Update the `_data` DataFrame that hold the actual data that is displayed."""
+        if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
+            self._data = None
+            self._lsm_run_index = None
+            self._data_column_names = None
+        else:
+            try:
+                results_drift_df = self._lsm_runs[lsm_run_index].get_results_drift_df
+            except KeyError:
+                QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
+            else:
+                self._lsm_run_index = lsm_run_index
+
+                if survey_name is None:  # No filter
+                    self._data = results_drift_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
+                else:  # Filer data for survey name
+                    tmp_filter = results_drift_df['survey_name'] == survey_name
+                    self._data = results_drift_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
+                self._data_column_names = self._data.columns.to_list()
+
+    def rowCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[0]
+        else:
+            return 0
+
+    def columnCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[1]
+        else:
+            return 0
+
+    def data(self, index, role=Qt.DisplayRole):
+        if index.isValid():
+            if role == Qt.DisplayRole:
+                value = self._data.iloc[index.row(), index.column()]
+                column_name = self._data_column_names[index.column()]
+                # Custom formatter (string is expected as return type):
+                if value is None:  #
+                    return NONE_REPRESENTATION_IN_TABLE_VIEW
+                elif isinstance(value, float):
+                    if value != value:  # True, if value is "NaN"
+                        return NONE_REPRESENTATION_IN_TABLE_VIEW
+                    else:
+                        if column_name in self._DECIMAL_PLACES_PER_FLOAT_COLUMN.keys():
+                            num_dec_places = self._DECIMAL_PLACES_PER_FLOAT_COLUMN[column_name]
+                            return '{1:.{0}f}'.format(num_dec_places, value)
+                        else:
+                            return str(value)
+                else:  # all other
+                    return str(value)
+
+            if role == Qt.TextAlignmentRole:
+                value = self._data.iloc[index.row(), index.column()]
+                if isinstance(value, int) or isinstance(value, float):
+                    # Align right, vertical middle.
+                    return Qt.AlignVCenter + Qt.AlignRight
+        return None
+
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return str(self._data.columns[section])
+            if orientation == Qt.Vertical:
+                return str(self._data.index[section])
