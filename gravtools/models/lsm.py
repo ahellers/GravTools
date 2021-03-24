@@ -143,7 +143,7 @@ class LSMDiff(LSM):
         # Create deep copies of the input data items:
         self.stat_df = stat_df.copy(deep=True)
         self.setups = copy.deepcopy(setups)
-        self.setups_diff_df = None  # Dataframe that containe the observation (setup) related results
+        self.setups_diff_df = None  # Dataframe that contain the observation (setup) related results
         self.observed_stations = None  # Unique list of observed stations; defines the station IDs for matrices
         self.stat_obs_df = None  # Station dataframe that contains estimation results of observed stations
         self.drift_pol_df = None  # DataFrame that contains the estimated parameters of the drift polynomials an
@@ -611,6 +611,21 @@ class LSMDiff(LSM):
         """Return time of lsm adjustment as formatted string."""
         return self.init_time.strftime("%Y-%m-%d, %H:%M:%S")
 
+    @property
+    def get_results_obs_df(self):
+        """Getter for the observation-related results."""
+        return self.setups_diff_df
+
+    @property
+    def get_results_drift_df(self):
+        """Getter for the drift-related results."""
+        return self.drift_pol_df
+
+    @property
+    def get_results_stat_df(self):
+        """Getter for the station-related results."""
+        return self.stat_obs_df
+
 
 def tau_criterion_test(diag_Qvv, mat_R, mat_V, ref_var, dof, sv):
     std_res = []
@@ -658,8 +673,6 @@ if __name__ == '__main__':
     pass
 
 # TODO: Save relevant estimation settings and matrices/vectors in LSM object for later analysis and documentation!
-#  => Write log of adjustment to string and print that string in results/info tab ("LSM run log")!
 # TODO: Check and handle the statistical tests properly!
 # TODO: Check the unit and the time-reference of the drift estimates
-# TODO: Visualize the results ("LSM runs") properly!
 # TODO: Check the documentation/docstrings!
