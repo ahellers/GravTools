@@ -311,7 +311,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Update the observaterion results data column selection combo box in the results tab."""
         self.comboBox_results_obs_plot_select_data_column.blockSignals(True)
         # Get data columns with data that is plottable from the observations results table view model:
-        data_columns_dict = self.results_observation_model.get_plotable_columns()  # TODO: Get column names!
+        data_columns_dict = self.results_observation_model.get_plotable_columns()
         data_columns = list(data_columns_dict.keys())
         # Get current item:
         idx, current_column_name = self.get_selected_obs_data_column()
@@ -444,8 +444,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             # No errors when computing the setup data:
             self.statusBar().showMessage(f"Setup data computed successfully!")
-            # Update models for data visualization, etc.:
-            # TODO: Add code here!
 
     def on_pushbutton_obs_run_estimation(self):
         """Invoked when pushing the button 'on_pushbutton_obs_run_estimation'."""
@@ -939,8 +937,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Add new items:
         # Parent items (surveys):
         for survey_name, survey in self.campaign.surveys.items():
-            # print (survey_name, survey)
-            # survey.keep_survey
             obs_df = survey.obs_df.sort_values('obs_epoch').copy(deep=True)
             num_of_obs_in_survey = survey.get_number_of_observations()
 
@@ -1414,6 +1410,6 @@ if __name__ == "__main__":
     # Create and show the application's main window
     main_window = MainWindow()
     main_window.show()
-    # Run the application's main loop
+    # Run the application's main loop:
     sys.exit(
         app.exec())  # exit or error code of Qt (app.exec_) is passed to sys.exit. Terminates pgm with standard python method

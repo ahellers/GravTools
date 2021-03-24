@@ -587,6 +587,7 @@ class ResultsObservationModel(QAbstractTableModel):
         """Returns the model data dataframe."""
         return self._data
 
+
 class ResultsStationModel(QAbstractTableModel):
     """Model for displaying the stations-related results."""
 
@@ -817,5 +818,3 @@ class ResultsDriftModel(QAbstractTableModel):
                 return str(self._data.columns[section])
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
-
-# TODO: Plot observation-related results!
