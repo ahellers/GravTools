@@ -94,10 +94,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.on_comboBox_results_lsm_run_selection_current_index_changed)
         self.comboBox_results_selection_station.currentIndexChanged.connect(
             self.on_comboBox_results_selection_station_current_index_changed)
+        self.comboBox_results_selection_survey.currentIndexChanged.connect(
+            self.on_comboBox_results_selection_survey_current_index_changed)
+        self.comboBox_results_obs_plot_select_data_column.currentIndexChanged.connect(
+            self.on_comboBox_results_obs_plot_select_data_column_current_index_changed)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
         self.set_up_obseration_plots_widget()
+        self.set_up_obseration_results_plots_widget()
         # self.observations_splitter.setSizes([1000, 10])
 
         # Initialize dialogs if necessary at the start of the application:
@@ -120,6 +125,49 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Set fonts:
         self.plainTextEdit_results_log.setFont(self.system_default_fixed_width_font)  # Monospace font
+
+    def set_up_obseration_results_plots_widget(self):
+        """Set up `self.graphicsLayoutWidget_results_observations_plots`."""
+        self.glw_obs_results = self.graphicsLayoutWidget_results_observations_plots
+        self.glw_obs_results.setBackground('w')  # white background color
+
+        # Create sub-plots:
+        self.plot_obs_results = self.glw_obs_results.addPlot(0, 0, name='obs_results',
+                                                             axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.plot_obs_results.setLabel(axis='left', text='')
+        self.plot_obs_results.addLegend()
+
+    def plot_observation_results(self, results_obs_df=None, column_name=''):
+        """Plots observation data to the GraphicsLayoutWidget.
+
+        Notes
+        -----
+        If input parameters `` or/and `` is/are `None` or '', the plot content is deleted and the plot is resetted.
+        """
+        # Clear plot in any case:
+        self.plot_obs_results.clear()
+
+        if results_obs_df is not None:  # Data available for plotting
+            # Get data:
+            data = results_obs_df[column_name].values
+            obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,'s')
+
+            self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=column_name, color='b',
+                              symbol='o', symbol_size=10)
+            self.plot_obs_results.showGrid(x=True, y=True)
+            column_description = self.results_observation_model.get_plotable_columns()[column_name]
+            self.plot_obs_results.setLabel(axis='left', text=column_description)
+            self.plot_obs_results.autoRange()
+
+    def update_results_obs_plots(self):
+        """Update the observation results plots in the results tab."""
+        # Get data from selected column
+        col_idx, column_name = self.get_selected_obs_data_column()
+        if col_idx != -1:
+            filtered_results_obs_df = self.results_observation_model.get_model_data_df
+        else:  # Invalid indices
+            filtered_results_obs_df = None
+        self.plot_observation_results(filtered_results_obs_df, column_name)
 
     def set_up_results_drift_view_model(self):
         """Set up the view model for the drift results table view."""
@@ -160,6 +208,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                          survey_name=survey_name)
         self.results_observation_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_results_observations.resizeColumnsToContents()
+        self.update_comboBox_results_obs_plot_select_data_column_based_on_table_view()
 
     def set_up_results_stations_view_model(self):
         """Set up the view model for the station results table view."""
@@ -193,6 +242,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Invoked whenever the index of the selected item in the combobox changed."""
         self.update_results_tab()
 
+    @pyqtSlot(int)
+    def on_comboBox_results_selection_survey_current_index_changed(self, index: int):
+        """Invoked whenever the index of the selected item in the combobox changed."""
+        self.update_results_tab()
+
+    @pyqtSlot(int)
+    def on_comboBox_results_obs_plot_select_data_column_current_index_changed(self, index: int):
+        """Invoked whenever the index of the selected item in the combobox changed."""
+        self.update_results_obs_plots()
+
     def update_results_tab(self, select_latest_item=False):
         """Update the results tab of the main tab widget with the content of the selected lsm run."""
         # Update combo box content for lsm run selection:
@@ -203,8 +262,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if idx != -1:  # Valid index
             lsm_run = self.campaign.lsm_runs[idx]
 
-            # Update the list of observed stations in the combobox:
+            # Update the list in the combobox:
             self.update_comboBox_results_selection_station(observed_stations=lsm_run.observed_stations)
+            self.update_comboBox_results_selection_surrvey(survey_names=list(lsm_run.setups.keys()))
 
             # Get data from LSM object an populate GUI widgets:
             # - Info tab:
@@ -217,16 +277,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # TODO: Add further assignments for displaying data here!
 
-            # Get station and/or survey names for filtering the data:
+            # Get station and/or survey names for filtering the displayed data:
             stat_idx, current_station_name = self.get_selected_station()
             if current_station_name == 'All stations':
                 station_name = None
             else:
                 station_name = current_station_name
-            survey_name = None  # TODO: Select survey via tree-widget!
+            survey_idx, current_survey_name = self.get_selected_survey()
+            if current_survey_name == 'All surveys':
+                survey_name = None
+            else:
+                survey_name = current_survey_name
+
+            # Update widgets:
             self.update_results_station_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_observation_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_drift_table_view(idx, survey_name=survey_name)
+            self.update_results_obs_plots()
         else:  # invalid index => Reset results views
             self.label_results_comment.clear()
             self.label_results_adjustment_method.clear()
@@ -237,6 +304,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_results_observation_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
             self.update_results_drift_table_view(idx, survey_name=None)
             self.update_comboBox_results_selection_station(observed_stations=[])
+            self.update_comboBox_results_selection_surrvey(survey_names=[])
+            self.update_results_obs_plots()
+
+    def update_comboBox_results_obs_plot_select_data_column_based_on_table_view(self):
+        """Update the observaterion results data column selection combo box in the results tab."""
+        self.comboBox_results_obs_plot_select_data_column.blockSignals(True)
+        # Get data columns with data that is plottable from the observations results table view model:
+        data_columns_dict = self.results_observation_model.get_plotable_columns()  # TODO: Get column names!
+        data_columns = list(data_columns_dict.keys())
+        # Get current item:
+        idx, current_column_name = self.get_selected_obs_data_column()
+        self.comboBox_results_obs_plot_select_data_column.clear()
+        self.comboBox_results_obs_plot_select_data_column.addItems(data_columns)
+        # Try to select the previous item again:
+        if idx != -1:  # Previous selection available
+            try:
+                self.comboBox_results_obs_plot_select_data_column.setCurrentText(current_column_name)
+            except:
+                pass
+        self.comboBox_results_obs_plot_select_data_column.blockSignals(False)
 
     def update_comboBox_results_selection_station(self, observed_stations: list):
         """Update station selection combo box in the results tab, based on the observed station in the lsm run."""
@@ -249,6 +336,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if stat_idx != -1:  # Previous selection available
             self.comboBox_results_selection_station.setCurrentText(current_station_name)
         self.comboBox_results_selection_station.blockSignals(False)
+
+    def update_comboBox_results_selection_surrvey(self, survey_names: list):
+        """Update the surve seletion combobox in the results tab, based on the current lsm run."""
+        self.comboBox_results_selection_survey.blockSignals(True)
+        # Get current item:
+        survey_idx, current_survey_name = self.get_selected_survey()
+        self.comboBox_results_selection_survey.clear()
+        self.comboBox_results_selection_survey.addItems(['All surveys'] + survey_names)
+        # Try to select the previous item again:
+        if survey_idx != -1:  # Previous selection available
+            self.comboBox_results_selection_survey.setCurrentText(current_survey_name)
+        self.comboBox_results_selection_survey.blockSignals(False)
 
     def update_comboBox_lsm_run_selection(self, select_latest_item=False):
         """Update the LSM run selection combo box in the results tab, based on the available runs in the campaign."""
@@ -296,6 +395,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         station_name = self.comboBox_results_selection_station.currentText()
         idx = self.comboBox_results_selection_station.currentIndex()
         return idx, station_name
+
+    def get_selected_survey(self):
+        """Get the selected survey in the results tab."""
+        survey_name = self.comboBox_results_selection_survey.currentText()
+        idx = self.comboBox_results_selection_survey.currentIndex()
+        return idx, survey_name
+
+    def get_selected_obs_data_column(self):
+        """Get the selected observation results data column."""
+        column_name = self.comboBox_results_obs_plot_select_data_column.currentText()
+        idx = self.comboBox_results_obs_plot_select_data_column.currentIndex()
+        return idx, column_name
 
     def on_checkBox_obs_plot_setup_data_state_changed(self):
         """Invoke, whenever the state of the checkbox changes."""

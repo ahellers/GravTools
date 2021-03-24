@@ -14,7 +14,7 @@
    <string>GravTools</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_13">
+   <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
      <widget class="QTabWidget" name="tabWidget_Main">
       <property name="tabPosition">
@@ -114,7 +114,7 @@
              </sizepolicy>
             </property>
             <property name="currentIndex">
-             <number>0</number>
+             <number>1</number>
             </property>
             <widget class="QWidget" name="tab_Stations_Table">
              <attribute name="title">
@@ -284,6 +284,9 @@
                  <property name="text">
                   <string>Plot setup data</string>
                  </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
                 </widget>
                </item>
               </layout>
@@ -299,7 +302,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -380,21 +383,6 @@
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_17">
                <item>
-                <widget class="QTreeWidget" name="treeWidget_results_selection">
-                 <property name="minimumSize">
-                  <size>
-                   <width>280</width>
-                   <height>0</height>
-                  </size>
-                 </property>
-                 <column>
-                  <property name="text">
-                   <string notr="true">1</string>
-                  </property>
-                 </column>
-                </widget>
-               </item>
-               <item>
                 <layout class="QFormLayout" name="formLayout">
                  <item row="0" column="0">
                   <widget class="QLabel" name="label_2">
@@ -412,10 +400,39 @@
                    </item>
                   </widget>
                  </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_5">
+                   <property name="text">
+                    <string>Survey</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QComboBox" name="comboBox_results_selection_survey">
+                   <item>
+                    <property name="text">
+                     <string>All surveys</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
                 </layout>
                </item>
               </layout>
              </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
             </item>
            </layout>
           </widget>
@@ -427,7 +444,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>4</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -514,38 +531,60 @@
                  <property name="title">
                   <string>Statistics and tests</string>
                  </property>
-                 <widget class="QLabel" name="label_9">
-                  <property name="geometry">
-                   <rect>
-                    <x>50</x>
-                    <y>20</y>
-                    <width>67</width>
-                    <height>17</height>
-                   </rect>
-                  </property>
-                  <property name="text">
-                   <string>sig0 = </string>
-                  </property>
-                 </widget>
-                 <widget class="QLabel" name="label_results_sig0">
-                  <property name="geometry">
-                   <rect>
-                    <x>280</x>
-                    <y>20</y>
-                    <width>100</width>
-                    <height>17</height>
-                   </rect>
-                  </property>
-                  <property name="minimumSize">
-                   <size>
-                    <width>100</width>
-                    <height>0</height>
-                   </size>
-                  </property>
-                  <property name="text">
-                   <string/>
-                  </property>
-                 </widget>
+                 <layout class="QVBoxLayout" name="verticalLayout_24">
+                  <item>
+                   <layout class="QFormLayout" name="formLayout_3">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_9">
+                      <property name="text">
+                       <string>sig0 = </string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_results_sig0">
+                      <property name="minimumSize">
+                       <size>
+                        <width>100</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_6">
+                      <property name="text">
+                       <string>Goodness-of-fit test:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_results_goodness_of_fit_test_status">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="label_7">
+                      <property name="text">
+                       <string>Number of outliers:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_results_numbr_of_outliers">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
                 </widget>
                </item>
                <item>
@@ -590,7 +629,7 @@
            </widget>
            <widget class="QWidget" name="tab_results_drift">
             <attribute name="title">
-             <string>Drift</string>
+             <string>Drift table</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_18">
              <item>
@@ -598,10 +637,38 @@
              </item>
             </layout>
            </widget>
-           <widget class="QWidget" name="tab_results_plots">
+           <widget class="QWidget" name="tab_results_obs_plots">
             <attribute name="title">
-             <string>Plots</string>
+             <string>Observations Plots</string>
             </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_13">
+             <item>
+              <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_results_observations_plots"/>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox_plot_settings">
+               <property name="title">
+                <string>Plot settings</string>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_25">
+                <item>
+                 <layout class="QFormLayout" name="formLayout_4">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_8">
+                    <property name="text">
+                     <string>Select data column:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QComboBox" name="comboBox_results_obs_plot_select_data_column"/>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </widget>
          </widget>

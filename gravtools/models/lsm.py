@@ -97,6 +97,7 @@ class LSMDiff(LSM):
 
     _SETUP_DIFF_COLUMNS = (
         'survey_name',
+        'ref_epoch_dt',
         'diff_obs_id',
         'station_name_from',
         'station_name_to',
@@ -351,6 +352,7 @@ class LSMDiff(LSM):
         sd_g_diff_obs_mugal_list = []
         diff_obs_id_list = []
         survey_names_list = []
+        ref_epoch_dt_list = []  # Reference epochs (datetime objects) of differential observations
 
         for survey_name, setup_df in self.setups.items():
             previous_row = None
@@ -367,6 +369,7 @@ class LSMDiff(LSM):
                     setup_id_to = row['setup_id']
                     epoch_from = previous_row['epoch_unix']  # [sec]
                     epoch_to = row['epoch_unix']  # [sec]
+                    ref_epoch_dt = previous_row['epoch_dt'] + (row['epoch_dt'] - previous_row['epoch_dt']) / 2  # mean
 
                     # TODO: Evtl. die start epoche t0 anders setzen! Auf nummerische Stabilität achten!
                     # Jetzt in UNIX time [sec]
@@ -391,11 +394,13 @@ class LSMDiff(LSM):
                     survey_names_list.append(survey_name)
                     setup_id_from_list.append(setup_id_from)
                     setup_id_to_list.append(setup_id_to)
+                    ref_epoch_dt_list.append(ref_epoch_dt)
 
                     previous_row = row  # Store old row
 
         None_list_placeholder = [None] * len(survey_names_list)
         self.setups_diff_df = pd.DataFrame(list(zip(survey_names_list,
+                                                    ref_epoch_dt_list,
                                                     diff_obs_id_list,
                                                     station_name_from_list,
                                                     station_name_to_list,
