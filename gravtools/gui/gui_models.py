@@ -138,6 +138,7 @@ class SetupTableModel(QAbstractTableModel):
         'g_mugal': 1,
         'sd_g_mugal': 1,
         'epoch_unix': 1,
+        'delta_t_h': 3,
     }
 
     def __init__(self, surveys):
@@ -512,10 +513,18 @@ class ResultsObservationModel(QAbstractTableModel):
 
                     if survey_name is not None:  # Filer data for survey name
                         tmp_filter = tmp_filter | (results_obs_df['survey_name'] == survey_name)
-
-                    self._data = results_obs_df.loc[tmp_filter, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
+                    # TODO: For MLR "self._SHOW_COLUMNS_IN_TABLE" is not suitable! => More flexibility is needed!
+                    try:
+                        self._data = results_obs_df.loc[tmp_filter, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
+                    except:
+                        self._data = results_obs_df.loc[tmp_filter, :].copy(deep=True)
                 else:  # No filter
-                    self._data = results_obs_df.loc[:, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
+                    # TODO: For MLR "self._SHOW_COLUMNS_IN_TABLE" is not suitable! => More flexibility is needed!
+                    # TODO: KeyError: "Passing list-likes to .loc or [] with any missing labels is no longer supported. The following labels were missing: Index(['ref_epoch_dt', 'station_name_from', 'station_name_to', 'g_diff_mugal',\n       'sd_g_diff_mugal', 'sd_g_diff_est_mugal', 'v_diff_mugal'],\n      dtype='object').
+                    try:
+                        self._data = results_obs_df.loc[:, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
+                    except:
+                        self._data = results_obs_df.copy(deep=True)
                 self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):
@@ -574,6 +583,7 @@ class ResultsObservationModel(QAbstractTableModel):
         -----
         If the model data is empty return an empty dict.
         """
+        #TODO: Change this method for MLR!
         plotable_columns_dict = {}
         if self._data_column_names is not None:  # Data model is not empty
             for key, item in self._PLOTABLE_DATA_COLUMNS.items():
@@ -643,7 +653,7 @@ class ResultsStationModel(QAbstractTableModel):
 
         Notes
         -----
-        Dat selection based on survey name (only display stations that were observed in the selected survey) is not
+        Data selection based on survey name (only display stations that were observed in the selected survey) is not
         implemented yet.
         """
         if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
@@ -768,8 +778,12 @@ class ResultsDriftModel(QAbstractTableModel):
                 if survey_name is None:  # No filter
                     self._data = results_drift_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
                 else:  # Filer data for survey name
-                    tmp_filter = results_drift_df['survey_name'] == survey_name
-                    self._data = results_drift_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
+                    if results_drift_df['survey_name'].isna().all():
+                        # On drift polynomial estimated for all surveys in campaign
+                        self._data = results_drift_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
+                    else:
+                        tmp_filter = results_drift_df['survey_name'] == survey_name
+                        self._data = results_drift_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
                 self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):

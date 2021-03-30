@@ -15,7 +15,6 @@ import numpy as np
 from scipy import stats
 import datetime as dt
 import pytz
-import os
 import copy
 # from abc import ABC
 from gravtools import settings
@@ -39,6 +38,12 @@ class LSM:
     ----------
     lsm_method : str
         Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
+    stat_df : :py:obj:`gravtools.Station.stat_df`
+        The station dataframe contains all relevant station data.
+    setups : dict of pandas DataFrames
+        The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
+        are the survey names (str) and the items are pandas dataframes containing the observation data (see
+        :py:obj:`gravtool.Survey.setup_df`)
     comment : str, optional (default = '')
         Optional comment on the adjustment run.
     init_time : datetime object
@@ -47,18 +52,33 @@ class LSM:
         Flag that indicates whether log string should be written or not.
     log_str : str
         String to log the status of the adjustment.
+    setup_obs_df : Pandas DataFrame
+        Pandas Dataframes for logging (differential or absolute) setup observations, the related metadata, estimation
+        results and statistics. The columns of the dataframe may differ between adjustment methods.
         """
-    def __init__(self, lsm_method, comment='', write_log=True):
+    def __init__(self, lsm_method, stat_df, setups, comment='', write_log=True):
         """
         Parameters
         ----------
         lsm_method : str
             Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
+        stat_df : :py:obj:`gravtools.Station.stat_df`
+            The station dataframe contains all relevant station data.
+        setups : dict of pandas DataFrames
+            The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
+            are the survey names (str) and the items are pandas dataframes containing the observation data (see
+            :py:obj:`gravtool.Survey.setup_df`)
         comment : str, optional (default = '')
             Optional comment on the adjustment run.
         write_log : bool, optional (default=True)
             Flag that indicates whether log string should be written or not.
+
+        Notes
+        -----
+        In order to prevent altering the original input data (in case of assignment via reference), deep copies of the
+        input data are stored in objects of this class.
         """
+        # Initial input checks:
         if lsm_method in settings.ADJUSTMENT_METHODS.keys():
             self.lsm_method = lsm_method
         else:
@@ -75,76 +95,12 @@ class LSM:
         self.init_time = dt.datetime.now(tz=pytz.utc)
         self.log_str = ''
 
-
-class LSMDiff(LSM):
-    """Least-squares adjustment of differential gravimeter observations with weighted constraints.
-
-    Attributes
-    ----------
-    stat_df : :py:obj:`gravtools.Station.stat_df`, optional (default=None)
-            The station dataframe contains all relevant station data.
-    setups : dict, optional (default=None)
-        The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-        are the survey names (str) and the items are pandas dataframes containing the observation data (see
-        :py:obj:`gravtool.Survey.setup_df`)
-    setups_diff_df : Pandas DataFrame
-        Pandas Dataframes for logging differential observations, the related metadata, estimation results and
-        statistics. The columns of the dataframe are defined in `self._SETUP_DIFF_COLUMNS`.
-    observed_stations : list of str
-        Unique list of names of observed stations, defining the order of stations (station IDs) for all matrices and
-        vectors used in the adjustment scheme.
-    """
-
-    _SETUP_DIFF_COLUMNS = (
-        'survey_name',
-        'ref_epoch_dt',
-        'diff_obs_id',
-        'station_name_from',
-        'station_name_to',
-        'setup_id_from',
-        'setup_id_to',
-        'g_diff_mugal',
-        'sd_g_diff_mugal',
-        'sd_g_diff_est_mugal',
-        'v_diff_mugal',
-    )
-
-    _DRIFT_POL_DF_COLUMNS = (
-        'survey_name',
-        'degree',
-        'coefficient',
-        'sd_coeff',
-    )
-
-    def __init__(self, stat_df, setups, comment='', write_log=True):
-        """
-        Parameters
-        ----------
-        stat_df : :py:obj:`gravtools.Station.stat_df`
-            The station dataframe contains all relevant station data.
-        setups : dict of pandas DataFrames
-            The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-            are the survey names (str) and the items are pandas dataframes containing the observation data (see
-            :py:obj:`gravtool.Survey.setup_df`)
-        comment : str, optional (default = '')
-            Arbitrary comment on the LSM run.
-        write_log : bool, optional (default=True)
-            Flag that indicates whether log string should be written or not.
-
-        Notes
-        -----
-        In order to prevent altering the original input data (in case of assignment via reference), deep copies of the
-        input data are stored in objects of this class.
-
-        """
-        # Call constructor from abstract base class:
-        lsm_method = 'LSM_diff'
-        super().__init__(lsm_method, comment=comment, write_log=write_log)
-
         # Create deep copies of the input data items:
         self.stat_df = stat_df.copy(deep=True)
         self.setups = copy.deepcopy(setups)
-        self.setups_diff_df = None  # Dataframe that contain the observation (setup) related results
+
+        # Initialize attributes:
+        self.setup_obs_df = None  # Dataframe that contain the observation (setup) related results
         self.observed_stations = None  # Unique list of observed stations; defines the station IDs for matrices
         self.stat_obs_df = None  # Station dataframe that contains estimation results of observed stations
         self.drift_pol_df = None  # DataFrame that contains the estimated parameters of the drift polynomials an
@@ -166,7 +122,61 @@ class LSMDiff(LSM):
         # A posteriori statistics:
         self.s02_a_posteriori = None
 
-        # Matrices and vectors:
+    @property
+    def time_str(self):
+        """Return time of lsm adjustment as formatted string."""
+        return self.init_time.strftime("%Y-%m-%d, %H:%M:%S")
+
+
+class LSMDiff(LSM):
+    """Least-squares adjustment of differential gravimeter observations with weighted constraints.
+
+    Attributes
+    ----------
+    setup_obs_df : Pandas DataFrame
+        Pandas Dataframes for logging (differential or absolute) setup observations, the related metadata, estimation
+        results and statistics. The columns of the dataframe are defined in `self._SETUP_DIFF_COLUMNS`.
+    observed_stations : list of str
+        Unique list of names of observed stations, defining the order of stations (station IDs) for all matrices and
+        vectors used in the adjustment scheme.
+    """
+
+    # Column names of self.setup_obs_df:
+    _SETUP_DIFF_COLUMNS = (
+        'survey_name',
+        'ref_epoch_dt',
+        'diff_obs_id',
+        'station_name_from',
+        'station_name_to',
+        'setup_id_from',
+        'setup_id_to',
+        'g_diff_mugal',
+        'sd_g_diff_mugal',
+        'sd_g_diff_est_mugal',
+        'v_diff_mugal',
+    )
+
+    # Column names of self.drift_pol_df:
+    _DRIFT_POL_DF_COLUMNS = (
+        'survey_name',
+        'degree',
+        'coefficient',
+        'sd_coeff',
+    )
+
+    def __init__(self, stat_df, setups, comment='', write_log=True):
+        """
+        Parameters
+        ----------
+        comment : str, optional (default = '')
+            Arbitrary comment on the LSM run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
+        """
+        # Call constructor from abstract base class:
+        lsm_method = 'LSM_diff'
+        super().__init__(lsm_method, stat_df=stat_df, setups=setups, comment=comment, write_log=write_log)
+
 
     @classmethod
     def from_campaign(cls, campaign, comment='', write_log=True):
@@ -399,19 +409,19 @@ class LSMDiff(LSM):
                     previous_row = row  # Store old row
 
         None_list_placeholder = [None] * len(survey_names_list)
-        self.setups_diff_df = pd.DataFrame(list(zip(survey_names_list,
-                                                    ref_epoch_dt_list,
-                                                    diff_obs_id_list,
-                                                    station_name_from_list,
-                                                    station_name_to_list,
-                                                    setup_id_from_list,
-                                                    setup_id_to_list,
-                                                    g_diff_obs_mugal_list,
-                                                    sd_g_diff_obs_mugal_list,
-                                                    None_list_placeholder,
-                                                    None_list_placeholder,
-                                                    )),
-                                           columns=self._SETUP_DIFF_COLUMNS)
+        self.setup_obs_df = pd.DataFrame(list(zip(survey_names_list,
+                                                  ref_epoch_dt_list,
+                                                  diff_obs_id_list,
+                                                  station_name_from_list,
+                                                  station_name_to_list,
+                                                  setup_id_from_list,
+                                                  setup_id_to_list,
+                                                  g_diff_obs_mugal_list,
+                                                  sd_g_diff_obs_mugal_list,
+                                                  None_list_placeholder,
+                                                  None_list_placeholder,
+                                                  )),
+                                         columns=self._SETUP_DIFF_COLUMNS)
 
         # - constraints:
         datum_station_id = -1
@@ -536,8 +546,8 @@ class LSMDiff(LSM):
             self.stat_obs_df.loc[filter_tmp, 'g_est_mugal'] = g_est_mugal[idx]
             self.stat_obs_df.loc[filter_tmp, 'sd_g_est_mugal'] = sd_g_est_mugal[idx]
         # Calculate differences to estimates:
-        self.stat_obs_df['diff_g_est_mugal'] = self.stat_obs_df['g_mugal'] - self.stat_obs_df['g_est_mugal']
-        self.stat_obs_df['diff_sd_g_est_mugal'] = self.stat_obs_df['sd_g_mugal'] - self.stat_obs_df['sd_g_est_mugal']
+        self.stat_obs_df['diff_g_est_mugal'] = self.stat_obs_df['g_est_mugal'] - self.stat_obs_df['g_mugal']
+        self.stat_obs_df['diff_sd_g_est_mugal'] = self.stat_obs_df['sd_g_est_mugal'] - self.stat_obs_df['sd_g_mugal']
 
         # Drift parameters:
         survey_name_list = []
@@ -557,17 +567,17 @@ class LSMDiff(LSM):
                                                   sd_coeff_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
 
-        # TODO: Add content (estimation results and statistics) to self.setups_diff_df here:
+        # TODO: Add content (estimation results and statistics) to self.setup_obs_df here:
         # Observation related results:
-        # self.setups_diff_df.columns
+        # self.setup_obs_df.columns
         # Index(['survey_name', 'diff_obs_id', 'station_name_from', 'station_name_to', 'setup_id_from', 'setup_id_to',
         #        'g_diff_mugal', 'sd_g_diff_mugal'], dtype='object')
         #         'sd_g_diff_est_mugal',
         #         'v_diff_mugal'
         for idx, v_diff_mugal in enumerate(v_diff_obs_mugal):
-            filter_tmp = self.setups_diff_df['diff_obs_id'] == idx
-            self.setups_diff_df.loc[filter_tmp, 'v_diff_mugal'] = v_diff_mugal
-            self.setups_diff_df.loc[filter_tmp, 'sd_g_diff_est_mugal'] = sd_diff_obs_mugal[idx]
+            filter_tmp = self.setup_obs_df['diff_obs_id'] == idx
+            self.setup_obs_df.loc[filter_tmp, 'v_diff_mugal'] = v_diff_mugal
+            self.setup_obs_df.loc[filter_tmp, 'sd_g_diff_est_mugal'] = sd_diff_obs_mugal[idx]
 
         # Print results to terminal:
         if verbose or self.write_log:
@@ -583,9 +593,9 @@ class LSMDiff(LSM):
             tmp_str += f'\n\n'
             tmp_str += f' - Differential observations:\n'
             for survey_name in survey_names:
-                filter_tmp = self.setups_diff_df['survey_name'] == survey_name
+                filter_tmp = self.setup_obs_df['survey_name'] == survey_name
                 tmp_str += f'   - Survey: {survey_name}\n'
-            tmp_str += self.setups_diff_df.loc[filter_tmp, ['station_name_from', 'station_name_to', 'g_diff_mugal',
+            tmp_str += self.setup_obs_df.loc[filter_tmp, ['station_name_from', 'station_name_to', 'g_diff_mugal',
                                                             'sd_g_diff_mugal', 'sd_g_diff_est_mugal',
                                                             'v_diff_mugal']].to_string(index=False,
                                                                                        float_format=lambda x: '{:.1f}'.format(x))
@@ -612,14 +622,9 @@ class LSMDiff(LSM):
         self.s02_a_posteriori = s02_a_posteriori_mugal2
 
     @property
-    def time_str(self):
-        """Return time of lsm adjustment as formatted string."""
-        return self.init_time.strftime("%Y-%m-%d, %H:%M:%S")
-
-    @property
     def get_results_obs_df(self):
         """Getter for the observation-related results."""
-        return self.setups_diff_df
+        return self.setup_obs_df
 
     @property
     def get_results_drift_df(self):

@@ -33,7 +33,7 @@ def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):
     df_dummy = pd.get_dummies(df_short, prefix=[prefix])
     categorical_variables = [prefix + '_' + str for str in stat_df.punktnummer]
 
-    # Set up target parameters accoding to polynomial degree:
+    # Set up target parameters according to polynomial degree:
     target_parameters = []
     for i in range(1, pol_degree + 1):  # i = 1 to polynomial_degree
         col_name = 'dt_{}'.format(i)

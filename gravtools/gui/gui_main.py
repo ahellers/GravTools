@@ -271,7 +271,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.label_results_comment.setText(lsm_run.comment)
             self.label_results_adjustment_method.setText(settings.ADJUSTMENT_METHODS[lsm_run.lsm_method])
             self.label_results_time_and_date.setText(lsm_run.init_time.strftime("%Y-%m-%d, %H:%M:%S"))
-            self.label_results_sig0.setText(f'{lsm_run.s02_a_posteriori:1.3f}')
+            if lsm_run.s02_a_posteriori is not None:
+                self.label_results_sig0.setText(f'{lsm_run.s02_a_posteriori:1.3f}')
+            else:
+                self.label_results_sig0.clear()
             if lsm_run.write_log:
                 self.plainTextEdit_results_log.setPlainText(lsm_run.log_str)
 
@@ -434,7 +437,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
         try:
-            self.campaign.calculate_setup_data(obs_type='reduced', verbose=IS_VERBOSE)
+            self.campaign.calculate_setup_data(obs_type='reduced', set_epoch_of_first_obs_as_reference=True,
+                                               active_obs_only_for_ref_epoch=settings.ACTIVE_OBS_ONLY_FOR_REF_EPOCH,
+                                               verbose=IS_VERBOSE)
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
             self.statusBar().showMessage(f"Error! No setup data computed")
@@ -467,9 +472,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if value == lsm_method_value:
                     lsm_method = key
             degree_drift_polynomial = self.dlg_estimation_settings.spinBox_degree_drift_polynomial.value()
+            comment = self.dlg_estimation_settings.lineEdit_comment.text()
             sig0 = self.dlg_estimation_settings.doubleSpinBox_sig0.value()
             weight_factor_datum = self.dlg_estimation_settings.doubleSpinBox_weight_factor_datum.value()
-            comment = self.dlg_estimation_settings.lineEdit_comment.text()
             confidence_level_chi_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_chi.value()
             confidence_level_tau_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_tau.value()
 
@@ -477,12 +482,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
 
             # Run the estimation:
-            self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
-                                              sig0_mugal=sig0,
-                                              scaling_factor_datum_observations=weight_factor_datum,
-                                              confidence_level_chi_test=confidence_level_chi_test,
-                                              confidence_level_tau_test=confidence_level_tau_test,
-                                              verbose=IS_VERBOSE)
+            if lsm_method == 'LSM_diff':
+                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
+                                                  sig0_mugal=sig0,
+                                                  scaling_factor_datum_observations=weight_factor_datum,
+                                                  confidence_level_chi_test=confidence_level_chi_test,
+                                                  confidence_level_tau_test=confidence_level_tau_test,
+                                                  verbose=IS_VERBOSE)
+            elif lsm_method == 'MLR_BEV':
+                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
+                                                  verbose=IS_VERBOSE)
+
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
             self.statusBar().showMessage(f"Error! No parameters estimated.")
