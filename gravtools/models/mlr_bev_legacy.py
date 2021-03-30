@@ -259,7 +259,7 @@ class BEVLegacyProcessing(LSM):
             # print(station_name, g_est_mugal)
             # print(filter_tmp_stat_obs_df)
 
-            # Calculate difference between drift corrected reading and the estimates gravity reading at this point:
+            # Calculate difference between drift corrected reading and the estimated gravity reading at this point:
             filter_tmp_all_setups_df = all_setups_df['station_name'] == station_name
             all_setups_df.loc[filter_tmp_all_setups_df, 'abw_mugal'] = \
                 all_setups_df.loc[filter_tmp_all_setups_df, 'g_mugal'] - \
@@ -344,8 +344,8 @@ class BEVLegacyProcessing(LSM):
 
         # Write log:
         if verbose or self.write_log:
-            tmp_str += f'\n'
-            tmp_str = f'#### Absolute gravity determination ####\n'
+            tmp_str = f'\n'
+            tmp_str += f'#### Absolute gravity determination ####\n'
             tmp_str += f'\n'
             tmp_str += f'Number of datum stations: {number_of_datum_stations}\n'
             tmp_str += self.stat_obs_df[['station_name', 'g_est_mugal', 'sd_g_est_mugal',
@@ -355,8 +355,6 @@ class BEVLegacyProcessing(LSM):
                 print(tmp_str)
             if self.write_log:
                 self.log_str += tmp_str
-
-
 
         # ##### 4.) Save data/infos for later use #####
         self.observed_stations = observed_stations
@@ -380,6 +378,9 @@ class BEVLegacyProcessing(LSM):
                                                   coefficient_list,
                                                   sd_coeff_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
+
+        # Rename columns to be compatible with the table view model:
+        all_setups_df.rename(columns={'epoch_dt': 'ref_epoch_dt'}, inplace=True)
         self.setup_obs_df = all_setups_df
 
         # Not used here => =None as initialized!

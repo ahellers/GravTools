@@ -1223,7 +1223,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         cg5_obs_file_filename, _ = QFileDialog.getOpenFileName(self,
-                                                               'Select OESGN table file',
+                                                               'Select CG5 observation file',
                                                                DEFAULT_CG5_OBS_FILE_PATH,
                                                                "CG5 observation file (*.TXT)",
                                                                options=options)

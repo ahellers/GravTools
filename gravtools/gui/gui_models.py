@@ -438,17 +438,29 @@ class ResultsObservationModel(QAbstractTableModel):
         'sd_g_diff_mugal': 1,
         'sd_g_diff_est_mugal': 1,
         'v_diff_mugal': 1,
+        'sd_g_mugal': 1,
+        'g_mugal': 1,
+        'abw_mugal': 1,
+        'delta_t_h': 3,
+        'corr_drift_mugal': 1,
     }
 
+    # Colums that will be shown in the table view, if available in the data (Also defines the order of columns):
     _SHOW_COLUMNS_IN_TABLE = [
         'survey_name',
-        'ref_epoch_dt',
         'station_name_from',
         'station_name_to',
+        'station_name',  # MLR
+        'ref_epoch_dt',
+        'delta_t_h',
+        'g_mugal',  # MLR
+        'sd_g_mugal',  # MLR
         'g_diff_mugal',
         'sd_g_diff_mugal',
         'sd_g_diff_est_mugal',
         'v_diff_mugal',
+        'corr_drift_mugal',  # MLR: Estimated drift correction
+        'abw_mugal',  # MLLR: Difference between drift-corrected instrument reading and the estimated station gravity
     ]
 
     # Columns that can be plotted. Column names (keys) and description (values):
@@ -457,6 +469,10 @@ class ResultsObservationModel(QAbstractTableModel):
         'sd_g_diff_est_mugal': 'A posteriori SD of diff. obs. [µGal]',
         'g_diff_mugal': 'Differential observation [µGal]',
         'sd_g_diff_mugal': 'A priori SD of differential observation [µGal]',
+        'g_mugal': 'Instrument reading [µGal]',  # MLR
+        'sd_g_mugal': 'Standard deviation of the instrument reading [µGal]',  # MLR
+        'corr_drift_mugal': 'Estimated drift correction [µGal]',  # MLR
+        'abw_mugal': 'Drift-corrected reading minus estimated station gravity (not absolute) [µGal]',  # MLR
     }
 
     def __init__(self, lsm_runs):
@@ -496,9 +512,14 @@ class ResultsObservationModel(QAbstractTableModel):
             else:
                 self._lsm_run_index = lsm_run_index
 
+                # Get list of columns to be depicted via the table model:
+                # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+                results_obs_df_columns_set = frozenset(results_obs_df.columns)
+                table_model_columns = [x for x in self._SHOW_COLUMNS_IN_TABLE if x in results_obs_df_columns_set]
+
                 # Apply filter:
                 if ((station_name is not None) or (survey_name is not None)) and (results_obs_df is not None):
-                    tmp_filter = pd.Series([False] * len(results_obs_df))  # Init boolean filter series
+                    tmp_filter = pd.Series([True] * len(results_obs_df))  # Init boolean filter series
                     column_names = results_obs_df.columns
 
                     if station_name is not None:  # Filer data for station names
@@ -506,26 +527,25 @@ class ResultsObservationModel(QAbstractTableModel):
 
                         # Differential observations => Check columns 'station_name_from' and 'station_name_to'
                         if flag_is_diff_obs:
-                            tmp_filter = tmp_filter | ((results_obs_df['station_name_from'] == station_name) |
+                            tmp_filter = tmp_filter & ((results_obs_df['station_name_from'] == station_name) |
                                                        (results_obs_df['station_name_to'] == station_name))
                         else:  # No differential observations => Check column 'station_name'
-                            tmp_filter = tmp_filter | (results_obs_df['station_name'] == station_name)
+                            tmp_filter = tmp_filter & (results_obs_df['station_name'] == station_name)
 
                     if survey_name is not None:  # Filer data for survey name
-                        tmp_filter = tmp_filter | (results_obs_df['survey_name'] == survey_name)
-                    # TODO: For MLR "self._SHOW_COLUMNS_IN_TABLE" is not suitable! => More flexibility is needed!
+                        tmp_filter = tmp_filter & (results_obs_df['survey_name'] == survey_name)
                     try:
-                        self._data = results_obs_df.loc[tmp_filter, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
-                    except:
-                        self._data = results_obs_df.loc[tmp_filter, :].copy(deep=True)
+                        self._data = results_obs_df.loc[tmp_filter, table_model_columns].copy(deep=True)
+                        # self._data = self._data.reindex(columns=table_model_columns)  # Reoorder columns
+                    except:  # Just in case any problem occurs...
+                        self._data = results_obs_df.loc[tmp_filter, :].copy(deep=True)  # Show all columns
                 else:  # No filter
-                    # TODO: For MLR "self._SHOW_COLUMNS_IN_TABLE" is not suitable! => More flexibility is needed!
-                    # TODO: KeyError: "Passing list-likes to .loc or [] with any missing labels is no longer supported. The following labels were missing: Index(['ref_epoch_dt', 'station_name_from', 'station_name_to', 'g_diff_mugal',\n       'sd_g_diff_mugal', 'sd_g_diff_est_mugal', 'v_diff_mugal'],\n      dtype='object').
                     try:
-                        self._data = results_obs_df.loc[:, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
-                    except:
+                        self._data = results_obs_df.loc[:, table_model_columns].copy(deep=True)
+                        # self._data = self._data.reindex(columns=table_model_columns)  # Reoorder columns
+                    except:  # Just in case any problem occurs...
                         self._data = results_obs_df.copy(deep=True)
-                self._data_column_names = self._data.columns.to_list()
+                self._data_column_names = self._data.columns.to_list()  # Show all columns
 
     def rowCount(self, parent=None):
         if self._data is not None:
@@ -583,7 +603,6 @@ class ResultsObservationModel(QAbstractTableModel):
         -----
         If the model data is empty return an empty dict.
         """
-        #TODO: Change this method for MLR!
         plotable_columns_dict = {}
         if self._data_column_names is not None:  # Data model is not empty
             for key, item in self._PLOTABLE_DATA_COLUMNS.items():
@@ -612,9 +631,11 @@ class ResultsStationModel(QAbstractTableModel):
         'sd_g_est_mugal': 1,
         'diff_g_est_mugal': 1,
         'diff_sd_g_est_mugal': 1,
+        'g0_mugal': 1,
+        'sig_g0_mugal': 1,
     }
 
-    _PLOT_COLUMNS = [
+    _SHOW_COLUMNS_IN_TABLE = [
         'station_name',
         'g_mugal',
         'sd_g_mugal',
@@ -623,6 +644,8 @@ class ResultsStationModel(QAbstractTableModel):
         'sd_g_est_mugal',
         'diff_g_est_mugal',
         'diff_sd_g_est_mugal',
+        'g0_mugal',
+        'sig_g0_mugal',
     ]
 
     def __init__(self, lsm_runs):
@@ -668,11 +691,16 @@ class ResultsStationModel(QAbstractTableModel):
             else:
                 self._lsm_run_index = lsm_run_index
 
+                # Get list of columns to be depicted via the table model:
+                # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+                results_stat_df_columns_set = frozenset(results_stat_df.columns)
+                table_model_columns = [x for x in self._SHOW_COLUMNS_IN_TABLE if x in results_stat_df_columns_set]
+
                 if (station_name is not None) and (results_stat_df is not None):
                     tmp_filter = results_stat_df['station_name'] == station_name
-                    self._data = results_stat_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
+                    self._data = results_stat_df.loc[tmp_filter, table_model_columns].copy(deep=True)
                 else:  # No filter
-                    self._data = results_stat_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
+                    self._data = results_stat_df.loc[:, table_model_columns].copy(deep=True)
                 self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):
