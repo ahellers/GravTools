@@ -154,6 +154,9 @@ class LSMDiff(LSM):
         'sd_g_diff_mugal',
         'sd_g_diff_est_mugal',
         'v_diff_mugal',
+        'w_diff_mugal',
+        'r_diff_obs',
+        'tau_test_result',
     )
 
     # Column names of self.drift_pol_df:
@@ -162,6 +165,7 @@ class LSMDiff(LSM):
         'degree',
         'coefficient',
         'sd_coeff',
+        'coeff_unit',
     )
 
     def __init__(self, stat_df, setups, comment='', write_log=True):
@@ -275,8 +279,11 @@ class LSMDiff(LSM):
 
         Notes
         -----
-        The adjustemnt method (weighted constraints adjustment based on differential observations) is documented in
-        Wijaya et al. (2019) - pyGABEUR-ITB: A free Software for Adjustment of Relative Gravimeter Data.
+        The adjustemnt method (weighted constraints adjustment based on differential observations) is described in
+        Wijaya et al. (2019) - pyGABEUR-ITB: A free Software for Adjustment of Relative Gravimeter Data
+        and in
+        Hwang et al. (2002) - Adjustment of relative gravity measurements using weighted and datum-free constraints,
+        Computers & Geosciences 28 (2002), pp. 1005-1015 (implemented in the software "gravnet").
         """
 
         # Prepare lists and indices:
@@ -344,12 +351,12 @@ class LSMDiff(LSM):
         # - Observation model:
         mat_A0 = np.zeros([number_of_diff_obs, number_of_parameters])  # Model-matrix
         mat_L0 = np.zeros((number_of_diff_obs, 1))
-        mat_p0 = np.zeros(number_of_diff_obs)  # Vector of weights for differential observations.
+        mat_sig_ll0 = np.zeros(number_of_diff_obs)
         # - Constraints:
         mat_Ac = np.zeros([number_of_datum_stations, number_of_parameters])  # Model-matrix for constraints
         mat_Lc = np.zeros((number_of_datum_stations, 1))
-        mat_pc = np.zeros(number_of_datum_stations)
         #  => Convert to diagonal matrix: P0 = np.diag(np.array([1,2,3,4])) = np.diag(mat_p0)
+        mat_sig_llc = np.zeros(number_of_datum_stations)
 
         # Populate matrices:
         diff_obs_id = -1  # Index of differential observations in vectors mat_L0, rows of mat_A0 and mat_p0
@@ -377,16 +384,15 @@ class LSMDiff(LSM):
                     station_name_to = row['station_name']
                     setup_id_from = previous_row['setup_id']
                     setup_id_to = row['setup_id']
-                    epoch_from = previous_row['epoch_unix']  # [sec]
-                    epoch_to = row['epoch_unix']  # [sec]
+                    # epoch_from = previous_row['epoch_unix']  # [sec]
+                    epoch_from = previous_row['delta_t_h']  # [hours]
+                    # epoch_to = row['epoch_unix']  # [sec]
+                    epoch_to = row['delta_t_h']  # [hours]
                     ref_epoch_dt = previous_row['epoch_dt'] + (row['epoch_dt'] - previous_row['epoch_dt']) / 2  # mean
-
-                    # TODO: Evtl. die start epoche t0 anders setzen! Auf nummerische Stabilität achten!
-                    # Jetzt in UNIX time [sec]
 
                     # Populate matrices and vectors:
                     mat_L0[(diff_obs_id, 0)] = g_diff_mugal
-                    mat_p0[diff_obs_id] = sig0_mugal ** 2 / sd_g_diff_mugal ** 2
+                    mat_sig_ll0[diff_obs_id]  = sd_g_diff_mugal ** 2
                     # Partial derivative for g at stations:
                     mat_A0[diff_obs_id, self.observed_stations.index(station_name_to)] = 1
                     mat_A0[diff_obs_id, self.observed_stations.index(station_name_from)] = -1
@@ -420,6 +426,9 @@ class LSMDiff(LSM):
                                                   sd_g_diff_obs_mugal_list,
                                                   None_list_placeholder,
                                                   None_list_placeholder,
+                                                  None_list_placeholder,
+                                                  None_list_placeholder,
+                                                  None_list_placeholder,
                                                   )),
                                          columns=self._SETUP_DIFF_COLUMNS)
 
@@ -433,12 +442,14 @@ class LSMDiff(LSM):
             mat_Ac[datum_station_id, station_id] = 1  # Partial derivative
             mat_Lc[(datum_station_id, 0)] = row['g_mugal']  # g for datum definition
             sd_mugal_for_weighting = row['sd_g_mugal'] * scaling_factor_datum_observations
-            mat_pc[datum_station_id] = sig0_mugal ** 2 / sd_mugal_for_weighting ** 2  # Weighting
+            mat_sig_llc[datum_station_id] = sd_mugal_for_weighting ** 2
 
         # Set up all required matrices:
         mat_A = np.vstack((mat_A0, mat_Ac))  # Eq. (16)
         mat_L = np.vstack((mat_L0, mat_Lc))  # Eq. (16)
-        mat_P = np.diag(np.hstack((mat_p0, mat_pc)))  # Eq. (18)
+        mat_sig_ll = np.diag(np.hstack((mat_sig_ll0, mat_sig_llc)))
+        mat_Qll = mat_sig_ll / (sig0_mugal**2)
+        mat_P = np.linalg.inv(mat_Qll)
 
         if verbose or self.write_log:
             tmp_str = f'\n'
@@ -454,7 +465,7 @@ class LSMDiff(LSM):
         mat_x = mat_Qxx @ (mat_A.T @ mat_P @ mat_L)
         mat_v = (mat_A @ mat_x) - mat_L  # a posteriori residuals
         mat_Qldld = mat_A @ mat_Qxx @ mat_A.T
-        mat_Qll = np.linalg.inv(mat_P)
+        # mat_Qll = np.linalg.inv(mat_P)
         mat_Qvv = mat_Qll - mat_Qldld
 
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
@@ -474,13 +485,15 @@ class LSMDiff(LSM):
         dof = mat_A.shape[0] - mat_A.shape[1]  # degree of freedom
         par_r = mat_v.T @ mat_P @ mat_v  # = v^T * P * v
         if dof == 0:
-            s02_a_posteriori_mugal2 = par_r[0][0]  # ref_var
+            s02_a_posteriori_mugal2 = par_r[0][0]  # a_posteriori_variance_of_unit_weight
         else:
             s02_a_posteriori_mugal2 = par_r[0][0] / dof  # Eq. (20)
+
+        s0 = np.sqrt(s02_a_posteriori_mugal2)
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'A posteriori variance (sd) of unit weight: ' \
-                       f'{s02_a_posteriori_mugal2:5.3f} ({np.sqrt(s02_a_posteriori_mugal2):5.3f})\n'
+                       f'{s02_a_posteriori_mugal2:5.3f} ({s0:5.3f})\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:
@@ -519,12 +532,39 @@ class LSMDiff(LSM):
             if self.write_log:
                 self.log_str += tmp_str
 
-        # outlier detection effectiveness (redundancy number)
+        # outlier detection effectiveness (redundancy components)
         diag_Qvv = np.diag(mat_Qvv)
-        mat_R = np.diag(mat_P) * diag_Qvv
+        # mat_R = np.diag(mat_P) * diag_Qvv
+        # mat_R is exactly the same as "mat_r"
+
+        # Redundanzanteile (redundancy components):
+        # - AG II, pp. 66-71
+        mat_r = np.diag(mat_Qvv @ mat_P)
+
+        # Standardisierte Versesserungen (AG II, p. 66)
+        # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
+        # - Standardabweichung = 1 (standardisiert)
+        mat_w = mat_v / (s0 * np.sqrt(np.array([diag_Qvv]).T))
+
+        # Tau test for outlier detection:
+        alpha_tau = 1 - confidence_level_tau_test
+        tau_test_result, tau_critical_value = tau_test(mat_w=mat_w, dof=dof, alpha=alpha_tau, mat_r=mat_r)
+
+        if verbose or self.write_log:
+            tmp_str = f'\n'
+            tmp_str += f'# Tau-test results:\n'
+            tmp_str += f'Critical value: {tau_critical_value:1.3f}\n'
+            tmp_str += f' - Number of detected outliers: {tau_test_result.count("failed")}\n'
+            tmp_str += f' - Number low redundancy component: {tau_test_result.count("r too small")}\n'
+            tmp_str += f'\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
+
         # blunder detection parameters calculation
-        sv_tau = 1 - confidence_level_tau_test
-        std_res, tau_val, tau_crt = tau_criterion_test(diag_Qvv, mat_R, mat_v, s02_a_posteriori_mugal2, dof, sv_tau)
+        # sv_tau = 1 - confidence_level_tau_test
+        # std_res, tau_val, tau_crt = tau_criterion_test(diag_Qvv, mat_r, mat_v, s02_a_posteriori_mugal2, dof, sv_tau)
 
         # #### Store results ####
         g_est_mugal = mat_x[0:number_of_stations, 0]
@@ -535,9 +575,13 @@ class LSMDiff(LSM):
         sd_pseudo_obs_mugal = mat_sd_ldld[number_of_diff_obs:]
         v_diff_obs_mugal = mat_v[:number_of_diff_obs, 0]
         v_pseudo_obs_mugal = mat_v[number_of_diff_obs:, 0]
-        # std_res ...
-        # tau_val ...
+        w_diff_mugal = mat_w[:number_of_diff_obs, 0]
+        w_pseudo_obs_mugal = mat_w[number_of_diff_obs:, 0]
+        r_diff_obs = mat_r[:number_of_diff_obs]
+        r_pseudo_obs = mat_r[number_of_diff_obs:]
         # TODO: Add Tau criterion data here
+        tau_test_result_diff_obs = tau_test_result[:number_of_diff_obs]
+        tau_test_result_pseudo_obs = tau_test_result[number_of_diff_obs:]
 
 
         # Station related results:
@@ -554,6 +598,7 @@ class LSMDiff(LSM):
         degree_list = []
         coefficient_list = []
         sd_coeff_list = []
+        coeff_unit_list = []
         tmp_idx = 0
         for survey_name, setup_df in self.setups.items():
             for degree in range(drift_pol_degree):
@@ -561,10 +606,12 @@ class LSMDiff(LSM):
                 degree_list.append(degree + 1)  # starts with 1
                 coefficient_list.append(drift_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
+                coeff_unit_list.append(f'µGal/h^{degree + 1}')
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
-                                                  sd_coeff_list)),
+                                                  sd_coeff_list,
+                                                  coeff_unit_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
 
         # TODO: Add content (estimation results and statistics) to self.setup_obs_df here:
@@ -578,6 +625,10 @@ class LSMDiff(LSM):
             filter_tmp = self.setup_obs_df['diff_obs_id'] == idx
             self.setup_obs_df.loc[filter_tmp, 'v_diff_mugal'] = v_diff_mugal
             self.setup_obs_df.loc[filter_tmp, 'sd_g_diff_est_mugal'] = sd_diff_obs_mugal[idx]
+            self.setup_obs_df.loc[filter_tmp, 'w_diff_mugal'] = w_diff_mugal[idx]  # standardized residuals
+            self.setup_obs_df.loc[filter_tmp, 'r_diff_obs'] = r_diff_obs[
+                idx]  # redundancy components
+            self.setup_obs_df.loc[filter_tmp, 'tau_test_result'] = tau_test_result_diff_obs[idx]  # str
 
         # Print results to terminal:
         if verbose or self.write_log:
@@ -601,9 +652,9 @@ class LSMDiff(LSM):
                                                                                        float_format=lambda x: '{:.1f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Pseudo observations at datum stations (constraints):\n'
-            tmp_str += f'Station name  sd [µGal]   v [µGal]\n'
+            tmp_str += f'Station name  sd [µGal]   v [µGal]   w [µGal]   r [0-1]    Tau test result\n'
             for idx, station_name in enumerate(datum_stations):
-                tmp_str += f'{station_name:10}   {sd_pseudo_obs_mugal[idx]:8.3}     {v_pseudo_obs_mugal[idx]:+8.3}\n'
+                tmp_str += f'{station_name:10}   {sd_pseudo_obs_mugal[idx]:8.3}     {v_pseudo_obs_mugal[idx]:+8.3}     {w_pseudo_obs_mugal[idx]:+5.3}     {r_pseudo_obs[idx]:+5.3}  {tau_test_result_pseudo_obs[idx]}\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:
@@ -637,22 +688,43 @@ class LSMDiff(LSM):
         return self.stat_obs_df
 
 
-def tau_criterion_test(diag_Qvv, mat_R, mat_V, ref_var, dof, sv):
-    std_res = []
-    tau_val = []
-    tsd_crt = stats.t.ppf(1 - sv / 2, dof - 1)  # calc. t-distribution crit. val.
-    tau_crt = (tsd_crt * np.sqrt(dof)) / np.sqrt(dof - 1 + tsd_crt ** 2)  # calc. tau-criterion crit. val.
-    for n in range(len(diag_Qvv)):
-        if diag_Qvv[n] == 0:
-            std_res.append(0)
+def tau_test(mat_w, dof, alpha, mat_r):
+    """Tau-criterion test for outlier detection.
+
+    See: Pope (1976): The statistics of residuals and the detection of outliers.
+    """
+    # Critical value:
+    tsd_crt = stats.t.ppf(1 - alpha / 2, dof - 1)  # calc. t-distribution crit. val.
+    tau_crt = (tsd_crt * np.sqrt(dof)) / np.sqrt(dof - 1 + tsd_crt ** 2)  # Critical value (Pope, 1976, Eq. (6))
+    tau_test_result = []
+    for idx, w in enumerate(mat_w):
+        # Check, if redancy component is larger than threshold:
+        if mat_r[idx] > settings.R_POPE_TEST_TRESHOLD:
+            if np.abs(w) > tau_crt:
+                tau_test_result.append('failed')
+            else:
+                tau_test_result.append('passed')
         else:
-            std_res.append(mat_V[n][0] / np.sqrt(abs(diag_Qvv[n])))  # standardized residual
-        if mat_R[n] > 1e-06:
-            tau_val.append(abs(std_res[n]) / np.sqrt(ref_var))  # value tested against tau-criterion crit. val.
-            # tau_val = abs(std_res)
-        else:
-            tau_val.append(0)  # if redundancy number is too small blunder won't be detected so why bother?
-    return std_res, tau_val, tau_crt
+            tau_test_result.append(f'r too small')  # Pope test not applied due to small redundancy component!
+    return tau_test_result, tau_crt
+
+
+# def tau_criterion_test(diag_Qvv, mat_R, mat_V, a_posteriori_variance_of_unit_weight, dof, sv):
+#     std_res = []  # Standardized residuals
+#     tau_val = []
+#     tsd_crt = stats.t.ppf(1 - sv / 2, dof - 1)  # calc. t-distribution crit. val.
+#     tau_crt = (tsd_crt * np.sqrt(dof)) / np.sqrt(dof - 1 + tsd_crt ** 2)  # calc. tau-criterion crit. val.
+#     for n in range(len(diag_Qvv)):
+#         if diag_Qvv[n] == 0:
+#             std_res.append(0)
+#         else:
+#             std_res.append(mat_V[n][0] / np.sqrt(abs(diag_Qvv[n])))  # standardized residual
+#         if mat_R[n] > 1e-06:
+#             tau_val.append(abs(std_res[n]) / np.sqrt(a_posteriori_variance_of_unit_weight))  # value tested against tau-criterion crit. val.
+#             # tau_val = abs(std_res)
+#         else:
+#             tau_val.append(0)  # if redundancy number is too small blunder won't be detected so why bother?
+#     return std_res, tau_val, tau_crt
 
 
 def create_hist(mat_v):
@@ -663,19 +735,73 @@ def create_hist(mat_v):
     return hist_residuals, bin_edges
 
 
-def goodness_of_fit_test(cf, dof, ref_var, apriori_var):
-    """Statistical testing using chi square."""
-    # apriori_var = 1
-    sv = 1 - cf
-    chi_crit_upper = stats.chi2.ppf(1 - sv / 2, dof)  # critical value
-    chi_crit_lower = stats.chi2.ppf(sv / 2, dof)  # critical value
-    chi_val = dof * ref_var / apriori_var  # tested value
+# def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
+#     """Statistical testing using chi square.
+#
+#     Notes
+#     -----
+#     This "global model test" is dewscribed by Caspari (1987): Concepts of network and deformation analysis.
+#     pp. 6-8 and pp.68-69.
+#
+#     Parameters
+#     ----------
+#     cf: float
+#         Confidence level for Chi²
+#     dof: int
+#         Degree of freedom.
+#     a_posteriori_variance_of_unit_weight: float
+#         A posteriori variance of unit weight (after adjustment).
+#     a_priori_variance_of_unit_weight: float
+#         A priori variance of unit weight (before adjustment).
+#
+#     Returns
+#     -------
+#     """
+#     # a_priori_variance_of_unit_weight = 1
+#     alpha = 1 - cf  # Significance level = Probability of commiting a type 1 error (H0 wrongly dismissed)
+#     chi_crit_upper = stats.chi2.ppf(1 - alpha, dof)  # critical value
+#     chi_val = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # tested value
+#     if chi_val > chi_crit_upper:
+#         chi_test_status = 'Failed'
+#     else:
+#         chi_test_status = 'Passed'
+#     return chi_crit_upper, chi_val, chi_test_status
+
+
+def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
+    """Statistical testing using chi square.
+
+    Notes
+    -----
+    This "global model test" is dewscribed by Caspari (1987): Concepts of network and deformation analysis.
+    pp. 6-8 and pp.68-69.
+
+    Parameters
+    ----------
+    cf: float
+        Confidence level for Chi²
+    dof: int
+        Degree of freedom.
+    a_posteriori_variance_of_unit_weight: float
+        A posteriori variance of unit weight (after adjustment).
+    a_priori_variance_of_unit_weight: float
+        A priori variance of unit weight (before adjustment).
+
+    Returns
+    -------
+    """
+    # a_priori_variance_of_unit_weight = 1
+    alpha = 1 - cf  # Significance level = Probability of commiting a type 1 error (H0 wrongly dismissed)
+    chi_crit_upper = stats.chi2.ppf(1 - alpha / 2, dof)  # critical value
+    chi_crit_lower = stats.chi2.ppf(alpha / 2, dof)  # critical value
+    chi_val = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # tested value
+    #TODO: Why is there an upper AND a lower critical value? In the literatur only an upper critical value ist defined!
     if chi_crit_lower < chi_val < chi_crit_upper:
-        chi_test = 'Passed'
+        chi_test_status = 'Passed'
     else:
-        chi_test = 'Not passed'
+        chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
-    return chi_crit, chi_val, chi_test
+    return chi_crit, chi_val, chi_test_status
 
 
 if __name__ == '__main__':
@@ -683,6 +809,7 @@ if __name__ == '__main__':
     pass
 
 # TODO: Save relevant estimation settings and matrices/vectors in LSM object for later analysis and documentation!
-# TODO: Check and handle the statistical tests properly!
-# TODO: Check the unit and the time-reference of the drift estimates
+# TODO: Global model test: Why is there an upper and lower critical value? => In literarture only upper!
+# TODO: Add information on tests (global model AND Tau-test) to log string!
 # TODO: Check the documentation/docstrings!
+# TODO: Add pseudo observation results to results df and label them as constraints!

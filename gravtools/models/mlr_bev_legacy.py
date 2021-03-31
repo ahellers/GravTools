@@ -59,6 +59,7 @@ class BEVLegacyProcessing(LSM):
         'degree',
         'coefficient',
         'sd_coeff',
+        'coeff_unit',
     )
 
     def __init__(self, stat_df, setups, comment='', write_log=True):
@@ -368,15 +369,18 @@ class BEVLegacyProcessing(LSM):
         degree_list = []
         coefficient_list = []
         sd_coeff_list = []
+        coeff_unit_list = []
         for degree, pol_coeff in pol_coef_dict.items():
             survey_name_list.append(None)  # One drift polynomial estimated for all surveys in campaign
             degree_list.append(degree)
             coefficient_list.append(pol_coeff)
             sd_coeff_list.append(None)  # No standard deviation available
+            coeff_unit_list.append(f'µGal/h^{degree}')
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
-                                                  sd_coeff_list)),
+                                                  sd_coeff_list,
+                                                  coeff_unit_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
 
         # Rename columns to be compatible with the table view model:

@@ -443,6 +443,8 @@ class ResultsObservationModel(QAbstractTableModel):
         'abw_mugal': 1,
         'delta_t_h': 3,
         'corr_drift_mugal': 1,
+        'w_diff_mugal': 3,
+        'r_diff_obs': 3,
     }
 
     # Colums that will be shown in the table view, if available in the data (Also defines the order of columns):
@@ -459,8 +461,11 @@ class ResultsObservationModel(QAbstractTableModel):
         'sd_g_diff_mugal',
         'sd_g_diff_est_mugal',
         'v_diff_mugal',
+        'w_diff_mugal',
+        'r_diff_obs',
         'corr_drift_mugal',  # MLR: Estimated drift correction
         'abw_mugal',  # MLLR: Difference between drift-corrected instrument reading and the estimated station gravity
+        'tau_test_result',
     ]
 
     # Columns that can be plotted. Column names (keys) and description (values):
@@ -473,6 +478,8 @@ class ResultsObservationModel(QAbstractTableModel):
         'sd_g_mugal': 'Standard deviation of the instrument reading [µGal]',  # MLR
         'corr_drift_mugal': 'Estimated drift correction [µGal]',  # MLR
         'abw_mugal': 'Drift-corrected reading minus estimated station gravity (not absolute) [µGal]',  # MLR
+        'r_diff_obs': 'Redundancy components []',
+        'w_diff_mugal': 'Standardized residuals of differential observations []'
     }
 
     def __init__(self, lsm_runs):
@@ -755,8 +762,8 @@ class ResultsDriftModel(QAbstractTableModel):
     """Model for displaying the drift-related results."""
 
     _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
-        'coefficient': 9,
-        'sd_coeff': 9,
+        'coefficient': 3,
+        'sd_coeff': 3,
     }
 
     _PLOT_COLUMNS = [
@@ -764,6 +771,7 @@ class ResultsDriftModel(QAbstractTableModel):
         'degree',
         'coefficient',
         'sd_coeff',
+        'coeff_unit',
     ]
 
     def __init__(self, lsm_runs):
