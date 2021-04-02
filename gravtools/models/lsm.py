@@ -108,7 +108,7 @@ class LSM:
 
         # Estimation settings:
         self.drift_polynomial_degree = None
-        self.sig02_a_priori = None
+        self.sig0_a_priori = None  # A priori standard deviation of unit weight
         self.scaling_factor_datum_observations = None
         self.confidence_level_chi_test = None
         self.confidence_level_tau_test = None
@@ -120,7 +120,10 @@ class LSM:
         self.degree_of_freedom = None
 
         # A posteriori statistics:
-        self.s02_a_posteriori = None
+        self.s02_a_posteriori = None  # A posteriori variance of unit weight
+
+        # Matrices:
+        self.Cxx = None # Co-variance matrix of estimated parameters
 
     @property
     def time_str(self):
@@ -335,7 +338,7 @@ class LSMDiff(LSM):
             tmp_str += f'Degree of freedom: {number_of_diff_obs - number_of_parameters}\n'
             tmp_str += f'\n'
             tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
-            tmp_str += f'A priori variance of unit weight: {sig0_mugal}\n'
+            tmp_str += f'A priori std. deviation of unit weight: {sig0_mugal}\n'
             tmp_str += f'Confidence level Chi-test: {confidence_level_chi_test:4.2f}\n'
             tmp_str += f'Confidence level Tau-test: {confidence_level_tau_test:4.2f}\n'
             tmp_str += f'\n'
@@ -460,16 +463,16 @@ class LSMDiff(LSM):
                 self.log_str += tmp_str
 
         # Solve equation system:
-        mat_N = mat_A.T @ mat_P @ mat_A
-        mat_Qxx = np.linalg.inv(mat_N)  # Eq. (19)
-        mat_x = mat_Qxx @ (mat_A.T @ mat_P @ mat_L)
-        mat_v = (mat_A @ mat_x) - mat_L  # a posteriori residuals
-        mat_Qldld = mat_A @ mat_Qxx @ mat_A.T
+        mat_N = mat_A.T @ mat_P @ mat_A  # Normal equation matrix
+        mat_Qxx = np.linalg.inv(mat_N)  # Co-factor matrix of estimates
+        mat_x = mat_Qxx @ (mat_A.T @ mat_P @ mat_L)  # Estimates
+        mat_v = (mat_A @ mat_x) - mat_L  # Post-fit residuals
+        mat_Qldld = mat_A @ mat_Qxx @ mat_A.T  # A posteriori Co-factor matrix of adjusted observations
         # mat_Qll = np.linalg.inv(mat_P)
-        mat_Qvv = mat_Qll - mat_Qldld
+        mat_Qvv = mat_Qll - mat_Qldld  # Co-factor matrix of post-fit residuals
 
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
-        u = np.sum(np.diag((mat_P @ mat_Qldld)))
+        u = np.sum(np.diag((mat_P @ mat_Qldld)))  # number of unknown parameters (estimates)
         tmp_diff = np.abs(number_of_parameters - u)
         if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_TRESHOLD:
             raise AssertionError(f'"Gewichtsreziprokenprobe nach Ansermet" failed! Difference = {tmp_diff}')
@@ -485,15 +488,16 @@ class LSMDiff(LSM):
         dof = mat_A.shape[0] - mat_A.shape[1]  # degree of freedom
         par_r = mat_v.T @ mat_P @ mat_v  # = v^T * P * v
         if dof == 0:
-            s02_a_posteriori_mugal2 = par_r[0][0]  # a_posteriori_variance_of_unit_weight
+            s02_a_posteriori_mugal2 = par_r[0][0]
+            # dof = 0 should not be the case here!
         else:
             s02_a_posteriori_mugal2 = par_r[0][0] / dof  # Eq. (20)
 
-        s0 = np.sqrt(s02_a_posteriori_mugal2)
+        s0_mugal = np.sqrt(s02_a_posteriori_mugal2)  # A posteriori std. deviation of unit weight
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'A posteriori variance (sd) of unit weight: ' \
-                       f'{s02_a_posteriori_mugal2:5.3f} ({s0:5.3f})\n'
+                       f'{s02_a_posteriori_mugal2:5.3f} ({s0_mugal:5.3f})\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:
@@ -502,14 +506,15 @@ class LSMDiff(LSM):
         # ### Statistics and tests ###
 
         # Convert co-factor matrices to covariance matrices (variances in diagonal vector)
-        mat_Cvv = s02_a_posteriori_mugal2 * mat_Qvv  # Residuals of observations
-        mat_Cxx = s02_a_posteriori_mugal2 * mat_Qxx  # Estimated parameters
-        mat_Cldld = s02_a_posteriori_mugal2 * mat_Qldld  # Adjusted observations
-        diag_Qxx = np.diag(mat_Qxx)
+        mat_Cvv = s02_a_posteriori_mugal2 * mat_Qvv  # A posteriori Covariance matrix of post-fit residuals
+        mat_Cxx = s02_a_posteriori_mugal2 * mat_Qxx  # A posteriori Covariance matrix of estimated paramaters
+        mat_Cldld = s02_a_posteriori_mugal2 * mat_Qldld  # A posteriori Covariance matrix of adjusted observations
+        # diag_Qxx = np.diag(mat_Qxx)
 
         # Calculate standard deviations:
-        mat_sd_xx = np.sqrt(np.diag(mat_Cxx))
-        mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))
+        mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
+        mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
+        mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
@@ -544,7 +549,7 @@ class LSMDiff(LSM):
         # Standardisierte Versesserungen (AG II, p. 66)
         # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
         # - Standardabweichung = 1 (standardisiert)
-        mat_w = mat_v / (s0 * np.sqrt(np.array([diag_Qvv]).T))
+        mat_w = mat_v[:,0] / mat_sd_vv
 
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
@@ -575,8 +580,8 @@ class LSMDiff(LSM):
         sd_pseudo_obs_mugal = mat_sd_ldld[number_of_diff_obs:]
         v_diff_obs_mugal = mat_v[:number_of_diff_obs, 0]
         v_pseudo_obs_mugal = mat_v[number_of_diff_obs:, 0]
-        w_diff_mugal = mat_w[:number_of_diff_obs, 0]
-        w_pseudo_obs_mugal = mat_w[number_of_diff_obs:, 0]
+        w_diff_mugal = mat_w[:number_of_diff_obs]
+        w_pseudo_obs_mugal = mat_w[number_of_diff_obs:]
         r_diff_obs = mat_r[:number_of_diff_obs]
         r_pseudo_obs = mat_r[number_of_diff_obs:]
         # TODO: Add Tau criterion data here
@@ -662,7 +667,7 @@ class LSMDiff(LSM):
 
         # Save data/infos to object for later use:
         self.drift_polynomial_degree = drift_pol_degree
-        self.sig02_a_priori = sig0_mugal
+        self.sig0_a_priori = sig0_mugal
         self.scaling_factor_datum_observations = scaling_factor_datum_observations
         self.confidence_level_chi_test = confidence_level_chi_test
         self.confidence_level_tau_test = confidence_level_chi_test
@@ -671,6 +676,7 @@ class LSMDiff(LSM):
         self.number_of_estimates = number_of_parameters
         self.degree_of_freedom = dof
         self.s02_a_posteriori = s02_a_posteriori_mugal2
+        self.Cxx = mat_Cxx
 
     @property
     def get_results_obs_df(self):
@@ -687,11 +693,41 @@ class LSMDiff(LSM):
         """Getter for the station-related results."""
         return self.stat_obs_df
 
+def bin_redundacy_components(mat_r):
+    """Bin redundancy components for easier interpretatzion.
+
+    See: Skriptum AG2 (Navratil, TU Wien), p. 70.
+    """
+    number_obs_r_equal_0 = 0  # No error control: Errors cannot be detected
+    number_obs_r_0_to_03 = 0  # Bad error control
+    number_obs_r_03_to_07 = 0  # Good error control
+    number_obs_r_07_1 = 0  # Very good error control, but observation may be redundant
+    number_obs_r_equal_1 = 0  # Observatiuon is redundant
+
+    results_dict = {}  # '': ''
+
+    return number_obs_r_equal_0, number_obs_r_0_to_03
+
+
+
+
 
 def tau_test(mat_w, dof, alpha, mat_r):
-    """Tau-criterion test for outlier detection.
+    """Tau-criterion test for outlier detection of a least-squares adjustment.
 
     See: Pope (1976): The statistics of residuals and the detection of outliers.
+
+    Parameters
+    ----------
+    mat_w: np.array of floats
+        Vector with standardized post-fit residuals of all observations in the least-squares adjustment.
+        They are computed as post-fit residuls divides by their standard deviations.
+    dof: int
+        Degree of freedom of the least-squares adjustment.
+    alpha: float (0 to 1)
+        Significance level.
+    mat_r: np.array of floats
+        Vector with redundancy components derived in the least-squares adjustment for each observation.
     """
     # Critical value:
     tsd_crt = stats.t.ppf(1 - alpha / 2, dof - 1)  # calc. t-distribution crit. val.
@@ -708,65 +744,12 @@ def tau_test(mat_w, dof, alpha, mat_r):
             tau_test_result.append(f'r too small')  # Pope test not applied due to small redundancy component!
     return tau_test_result, tau_crt
 
-
-# def tau_criterion_test(diag_Qvv, mat_R, mat_V, a_posteriori_variance_of_unit_weight, dof, sv):
-#     std_res = []  # Standardized residuals
-#     tau_val = []
-#     tsd_crt = stats.t.ppf(1 - sv / 2, dof - 1)  # calc. t-distribution crit. val.
-#     tau_crt = (tsd_crt * np.sqrt(dof)) / np.sqrt(dof - 1 + tsd_crt ** 2)  # calc. tau-criterion crit. val.
-#     for n in range(len(diag_Qvv)):
-#         if diag_Qvv[n] == 0:
-#             std_res.append(0)
-#         else:
-#             std_res.append(mat_V[n][0] / np.sqrt(abs(diag_Qvv[n])))  # standardized residual
-#         if mat_R[n] > 1e-06:
-#             tau_val.append(abs(std_res[n]) / np.sqrt(a_posteriori_variance_of_unit_weight))  # value tested against tau-criterion crit. val.
-#             # tau_val = abs(std_res)
-#         else:
-#             tau_val.append(0)  # if redundancy number is too small blunder won't be detected so why bother?
-#     return std_res, tau_val, tau_crt
-
-
 def create_hist(mat_v):
     """Create histogram."""
     residuals = np.ndarray.tolist(mat_v)
     residuals = [item for sublist in residuals for item in sublist]
     hist_residuals, bin_edges = np.histogram(residuals, bins=5)
     return hist_residuals, bin_edges
-
-
-# def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
-#     """Statistical testing using chi square.
-#
-#     Notes
-#     -----
-#     This "global model test" is dewscribed by Caspari (1987): Concepts of network and deformation analysis.
-#     pp. 6-8 and pp.68-69.
-#
-#     Parameters
-#     ----------
-#     cf: float
-#         Confidence level for Chi²
-#     dof: int
-#         Degree of freedom.
-#     a_posteriori_variance_of_unit_weight: float
-#         A posteriori variance of unit weight (after adjustment).
-#     a_priori_variance_of_unit_weight: float
-#         A priori variance of unit weight (before adjustment).
-#
-#     Returns
-#     -------
-#     """
-#     # a_priori_variance_of_unit_weight = 1
-#     alpha = 1 - cf  # Significance level = Probability of commiting a type 1 error (H0 wrongly dismissed)
-#     chi_crit_upper = stats.chi2.ppf(1 - alpha, dof)  # critical value
-#     chi_val = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # tested value
-#     if chi_val > chi_crit_upper:
-#         chi_test_status = 'Failed'
-#     else:
-#         chi_test_status = 'Passed'
-#     return chi_crit_upper, chi_val, chi_test_status
-
 
 def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
     """Statistical testing using chi square.
@@ -812,4 +795,16 @@ if __name__ == '__main__':
 # TODO: Global model test: Why is there an upper and lower critical value? => In literarture only upper!
 # TODO: Add information on tests (global model AND Tau-test) to log string!
 # TODO: Check the documentation/docstrings!
+
 # TODO: Add pseudo observation results to results df and label them as constraints!
+# - Problem: contriaints do not have a reference epoch.
+#   - Lösung:
+#     (1) Alle Resultate in results_df
+#     (2) Constraint-Beob mit col "is_constraint" flaggen
+#     (3) {get_model_data_df_for_plotting} verwenden, um plotable Daten zu bekommen!
+#     (4) contraint Beob. in observations results table farblich kennzeichnen!
+
+# TODO: Plot co-variance matrix for estimates
+
+# TODO: Treat redundancy components roperly and add determination of inner and outer reliability (AG2, pp. 70-72)
+# r: In obs results table die einzelnen obs nach der Kategorisierung (in settings definiert) auf p. 70 einteilen!

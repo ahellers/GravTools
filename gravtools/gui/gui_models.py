@@ -623,6 +623,19 @@ class ResultsObservationModel(QAbstractTableModel):
         """Returns the model data dataframe."""
         return self._data
 
+    @property
+    def get_model_data_df_for_plotting(self):
+        """Return all plotable rows on the model data dataframe.
+
+        Notes
+        -----
+        Data is plotable, if the data can be referred station(s) and to a specific reference epoch! E.g. pseudo
+        observations introduced for datum constraints are not plotable!
+        """
+        filter_tmp = self._data['is_constraint'] == False
+        # Add further options to thze filter series, is needed!
+        return self._data.loc[filter_tmp, :]
+
 
 class ResultsStationModel(QAbstractTableModel):
     """Model for displaying the stations-related results."""
