@@ -2262,7 +2262,7 @@ class Campaign:
 
         Returns
         -------
-        list : List of string stating the epochs of lsm adjustment runs that can be used to identify individual runs.
+        list : List of string stating the epochs of lsm adjustment runs that can be used to identifiterrowsy individual runs.
         """
         lsm_run_times = []
         for lsm_run in self.lsm_runs:
