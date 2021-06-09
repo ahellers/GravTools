@@ -28,7 +28,7 @@ def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):
     df_short = obs_df.loc[:,
                obs_df.columns.intersection(['punktnummer', 'dt_h', 'g_red_mugal'])]  # Only kep the listed columns
 
-    # Create obs_df with categorical dummy variables for each Pointname:
+    # Create obs_df with categorical dummy variables for each point name:
     prefix = 'is_pkt'
     df_dummy = pd.get_dummies(df_short, prefix=[prefix])
     categorical_variables = [prefix + '_' + str for str in stat_df.punktnummer]
@@ -47,7 +47,7 @@ def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):
     # mlr = LinearRegression()
     mlr.fit(df_dummy[selection_list], df_dummy['g_red_mugal'])
 
-    pol_coef_dict = {i+1: mlr.coef_[i] for i in range(0, pol_degree)}  # Create dict with polynomila coefficients
+    pol_coef_dict = {i+1: mlr.coef_[i] for i in range(0, pol_degree)}  # Create dict with polynomial coefficients
 
     # Store corrected reading (stat_df.g_est_mugal):
     tmp_list = mlr.coef_[-stat_df.shape[0]:]  #

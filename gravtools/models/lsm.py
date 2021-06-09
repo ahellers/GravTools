@@ -16,6 +16,7 @@ from scipy import stats
 import datetime as dt
 import pytz
 import copy
+import matplotlib.pyplot as plt
 # from abc import ABC
 from gravtools import settings
 
@@ -612,6 +613,7 @@ class LSMDiff(LSM):
                 coefficient_list.append(drift_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
                 coeff_unit_list.append(f'µGal/h^{degree + 1}')
+                tmp_idx += 1
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
@@ -678,6 +680,47 @@ class LSMDiff(LSM):
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
 
+    def create_drift_plot_matplotlib(self):
+        """Create a drift plot with matplotlib."""
+
+        # Prep data:
+        setup_df = self.setups['20200701a'].copy(deep=True)
+        stat_obs_df_short = self.stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
+        setup_df = pd.merge(setup_df, stat_obs_df_short, on="station_name")
+        setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
+        setup_df.sort_values(by='delta_t_h', inplace=True)
+
+        # Evaluate drift polynomial:
+        coeff_list = self.drift_pol_df['coefficient'].to_list()
+        coeff_list.reverse()
+        coeff_list.append(0)
+        t_min_h = 0
+        t_max_h = setup_df['delta_t_h'].max()
+        dt_h = np.linspace(t_min_h, t_max_h, 100)
+        drift_polynomial_mugal = np.polyval(coeff_list, dt_h)
+
+        # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
+        # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
+        # assessment of the drift function), the const. bias N0 is approximated, see below.
+        offset_mugal = setup_df['g_plot_mugal'].mean()
+        yy_mugal = drift_polynomial_mugal - drift_polynomial_mugal.mean() + offset_mugal
+
+        # plot
+        fig, ax = plt.subplots()
+        for station_name in setup_df['station_name'].unique():
+            label_str = station_name
+            delta_t_h = setup_df.loc[setup_df['station_name'] == station_name, 'delta_t_h']
+            g_plot_mugal = setup_df.loc[setup_df['station_name'] == station_name, 'g_plot_mugal']
+            ax.plot(delta_t_h, g_plot_mugal, 'o', label=label_str)
+
+        ax.plot(dt_h, yy_mugal, 'k--', label='drift function')
+        # - Legend and labels:
+        plt.legend(loc='best')
+        ax.grid()
+        plt.title(f'Drift Polynomial (unknown vertical offset!)')
+        plt.xlabel('time [h]')
+        plt.ylabel('gravity reading [µGal]')
+
     @property
     def get_results_obs_df(self):
         """Getter for the observation-related results."""
@@ -693,6 +736,7 @@ class LSMDiff(LSM):
         """Getter for the station-related results."""
         return self.stat_obs_df
 
+
 def bin_redundacy_components(mat_r):
     """Bin redundancy components for easier interpretatzion.
 
@@ -707,9 +751,6 @@ def bin_redundacy_components(mat_r):
     results_dict = {}  # '': ''
 
     return number_obs_r_equal_0, number_obs_r_0_to_03
-
-
-
 
 
 def tau_test(mat_w, dof, alpha, mat_r):
@@ -805,6 +846,9 @@ if __name__ == '__main__':
 #     (4) contraint Beob. in observations results table farblich kennzeichnen!
 
 # TODO: Plot co-variance matrix for estimates
+
+# TODO: Properly implement drift plot option (see comments above at method: create_drift_plot_matplotlib)
+# => A slier in the gui would be nice to adjust the unknown offset!
 
 # TODO: Treat redundancy components roperly and add determination of inner and outer reliability (AG2, pp. 70-72)
 # r: In obs results table die einzelnen obs nach der Kategorisierung (in settings definiert) auf p. 70 einteilen!
