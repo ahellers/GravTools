@@ -138,6 +138,7 @@ class SetupTableModel(QAbstractTableModel):
         'g_mugal': 1,
         'sd_g_mugal': 1,
         'epoch_unix': 1,
+        'delta_t_h': 3,
     }
 
     def __init__(self, surveys):
@@ -437,17 +438,34 @@ class ResultsObservationModel(QAbstractTableModel):
         'sd_g_diff_mugal': 1,
         'sd_g_diff_est_mugal': 1,
         'v_diff_mugal': 1,
+        'sd_g_mugal': 1,
+        'g_mugal': 1,
+        'abw_mugal': 1,
+        'delta_t_h': 3,
+        'corr_drift_mugal': 1,
+        'w_diff_mugal': 3,
+        'r_diff_obs': 3,
     }
 
+    # Colums that will be shown in the table view, if available in the data (Also defines the order of columns):
     _SHOW_COLUMNS_IN_TABLE = [
         'survey_name',
-        'ref_epoch_dt',
         'station_name_from',
         'station_name_to',
+        'station_name',  # MLR
+        'ref_epoch_dt',
+        'delta_t_h',
+        'g_mugal',  # MLR
+        'sd_g_mugal',  # MLR
         'g_diff_mugal',
         'sd_g_diff_mugal',
         'sd_g_diff_est_mugal',
         'v_diff_mugal',
+        'w_diff_mugal',
+        'r_diff_obs',
+        'corr_drift_mugal',  # MLR: Estimated drift correction
+        'abw_mugal',  # MLLR: Difference between drift-corrected instrument reading and the estimated station gravity
+        'tau_test_result',
     ]
 
     # Columns that can be plotted. Column names (keys) and description (values):
@@ -456,6 +474,12 @@ class ResultsObservationModel(QAbstractTableModel):
         'sd_g_diff_est_mugal': 'A posteriori SD of diff. obs. [µGal]',
         'g_diff_mugal': 'Differential observation [µGal]',
         'sd_g_diff_mugal': 'A priori SD of differential observation [µGal]',
+        'g_mugal': 'Instrument reading [µGal]',  # MLR
+        'sd_g_mugal': 'Standard deviation of the instrument reading [µGal]',  # MLR
+        'corr_drift_mugal': 'Estimated drift correction [µGal]',  # MLR
+        'abw_mugal': 'Drift-corrected reading minus estimated station gravity (not absolute) [µGal]',  # MLR
+        'r_diff_obs': 'Redundancy components []',
+        'w_diff_mugal': 'Standardized residuals of differential observations []'
     }
 
     def __init__(self, lsm_runs):
@@ -495,9 +519,14 @@ class ResultsObservationModel(QAbstractTableModel):
             else:
                 self._lsm_run_index = lsm_run_index
 
+                # Get list of columns to be depicted via the table model:
+                # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+                results_obs_df_columns_set = frozenset(results_obs_df.columns)
+                table_model_columns = [x for x in self._SHOW_COLUMNS_IN_TABLE if x in results_obs_df_columns_set]
+
                 # Apply filter:
                 if ((station_name is not None) or (survey_name is not None)) and (results_obs_df is not None):
-                    tmp_filter = pd.Series([False] * len(results_obs_df))  # Init boolean filter series
+                    tmp_filter = pd.Series([True] * len(results_obs_df))  # Init boolean filter series
                     column_names = results_obs_df.columns
 
                     if station_name is not None:  # Filer data for station names
@@ -505,18 +534,25 @@ class ResultsObservationModel(QAbstractTableModel):
 
                         # Differential observations => Check columns 'station_name_from' and 'station_name_to'
                         if flag_is_diff_obs:
-                            tmp_filter = tmp_filter | ((results_obs_df['station_name_from'] == station_name) |
+                            tmp_filter = tmp_filter & ((results_obs_df['station_name_from'] == station_name) |
                                                        (results_obs_df['station_name_to'] == station_name))
                         else:  # No differential observations => Check column 'station_name'
-                            tmp_filter = tmp_filter | (results_obs_df['station_name'] == station_name)
+                            tmp_filter = tmp_filter & (results_obs_df['station_name'] == station_name)
 
                     if survey_name is not None:  # Filer data for survey name
-                        tmp_filter = tmp_filter | (results_obs_df['survey_name'] == survey_name)
-
-                    self._data = results_obs_df.loc[tmp_filter, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
+                        tmp_filter = tmp_filter & (results_obs_df['survey_name'] == survey_name)
+                    try:
+                        self._data = results_obs_df.loc[tmp_filter, table_model_columns].copy(deep=True)
+                        # self._data = self._data.reindex(columns=table_model_columns)  # Reoorder columns
+                    except:  # Just in case any problem occurs...
+                        self._data = results_obs_df.loc[tmp_filter, :].copy(deep=True)  # Show all columns
                 else:  # No filter
-                    self._data = results_obs_df.loc[:, self._SHOW_COLUMNS_IN_TABLE].copy(deep=True)
-                self._data_column_names = self._data.columns.to_list()
+                    try:
+                        self._data = results_obs_df.loc[:, table_model_columns].copy(deep=True)
+                        # self._data = self._data.reindex(columns=table_model_columns)  # Reoorder columns
+                    except:  # Just in case any problem occurs...
+                        self._data = results_obs_df.copy(deep=True)
+                self._data_column_names = self._data.columns.to_list()  # Show all columns
 
     def rowCount(self, parent=None):
         if self._data is not None:
@@ -587,6 +623,19 @@ class ResultsObservationModel(QAbstractTableModel):
         """Returns the model data dataframe."""
         return self._data
 
+    @property
+    def get_model_data_df_for_plotting(self):
+        """Return all plotable rows on the model data dataframe.
+
+        Notes
+        -----
+        Data is plotable, if the data can be referred station(s) and to a specific reference epoch! E.g. pseudo
+        observations introduced for datum constraints are not plotable!
+        """
+        filter_tmp = self._data['is_constraint'] == False
+        # Add further options to thze filter series, is needed!
+        return self._data.loc[filter_tmp, :]
+
 
 class ResultsStationModel(QAbstractTableModel):
     """Model for displaying the stations-related results."""
@@ -602,9 +651,11 @@ class ResultsStationModel(QAbstractTableModel):
         'sd_g_est_mugal': 1,
         'diff_g_est_mugal': 1,
         'diff_sd_g_est_mugal': 1,
+        'g0_mugal': 1,
+        'sig_g0_mugal': 1,
     }
 
-    _PLOT_COLUMNS = [
+    _SHOW_COLUMNS_IN_TABLE = [
         'station_name',
         'g_mugal',
         'sd_g_mugal',
@@ -613,6 +664,8 @@ class ResultsStationModel(QAbstractTableModel):
         'sd_g_est_mugal',
         'diff_g_est_mugal',
         'diff_sd_g_est_mugal',
+        'g0_mugal',
+        'sig_g0_mugal',
     ]
 
     def __init__(self, lsm_runs):
@@ -643,7 +696,7 @@ class ResultsStationModel(QAbstractTableModel):
 
         Notes
         -----
-        Dat selection based on survey name (only display stations that were observed in the selected survey) is not
+        Data selection based on survey name (only display stations that were observed in the selected survey) is not
         implemented yet.
         """
         if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
@@ -658,11 +711,16 @@ class ResultsStationModel(QAbstractTableModel):
             else:
                 self._lsm_run_index = lsm_run_index
 
+                # Get list of columns to be depicted via the table model:
+                # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+                results_stat_df_columns_set = frozenset(results_stat_df.columns)
+                table_model_columns = [x for x in self._SHOW_COLUMNS_IN_TABLE if x in results_stat_df_columns_set]
+
                 if (station_name is not None) and (results_stat_df is not None):
                     tmp_filter = results_stat_df['station_name'] == station_name
-                    self._data = results_stat_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
+                    self._data = results_stat_df.loc[tmp_filter, table_model_columns].copy(deep=True)
                 else:  # No filter
-                    self._data = results_stat_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
+                    self._data = results_stat_df.loc[:, table_model_columns].copy(deep=True)
                 self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):
@@ -717,8 +775,8 @@ class ResultsDriftModel(QAbstractTableModel):
     """Model for displaying the drift-related results."""
 
     _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
-        'coefficient': 9,
-        'sd_coeff': 9,
+        'coefficient': 3,
+        'sd_coeff': 3,
     }
 
     _PLOT_COLUMNS = [
@@ -726,6 +784,7 @@ class ResultsDriftModel(QAbstractTableModel):
         'degree',
         'coefficient',
         'sd_coeff',
+        'coeff_unit',
     ]
 
     def __init__(self, lsm_runs):
@@ -768,8 +827,12 @@ class ResultsDriftModel(QAbstractTableModel):
                 if survey_name is None:  # No filter
                     self._data = results_drift_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
                 else:  # Filer data for survey name
-                    tmp_filter = results_drift_df['survey_name'] == survey_name
-                    self._data = results_drift_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
+                    if results_drift_df['survey_name'].isna().all():
+                        # On drift polynomial estimated for all surveys in campaign
+                        self._data = results_drift_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
+                    else:
+                        tmp_filter = results_drift_df['survey_name'] == survey_name
+                        self._data = results_drift_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
                 self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):
