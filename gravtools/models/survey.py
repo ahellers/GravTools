@@ -2204,7 +2204,7 @@ class Campaign:
                                             verbose=verbose)
 
     def get_epoch_of_first_observation(self, active_obs_only_for_ref_epoch=True):
-        """Returns the epoch of the frist observation in this campaign.
+        """Returns the epoch of the first (active) observation in this campaign.
 
         Parameters
         ----------
@@ -2226,12 +2226,13 @@ class Campaign:
             else:
                 filter_tmp = [True] * len(survey.obs_df)  # Select all observations
 
-            if flag_first_survey_in_campaign:
-                flag_first_survey_in_campaign = False
-                first_obs_epoch_dt = survey.obs_df.loc[filter_tmp, 'obs_epoch'].min()
-            else:
-                if survey.obs_df.loc[filter_tmp, 'obs_epoch'].min() < first_obs_epoch_dt:
+            if len(survey.obs_df.loc[filter_tmp, 'obs_epoch']) > 0:
+                if flag_first_survey_in_campaign:
+                    flag_first_survey_in_campaign = False
                     first_obs_epoch_dt = survey.obs_df.loc[filter_tmp, 'obs_epoch'].min()
+                else:
+                    if survey.obs_df.loc[filter_tmp, 'obs_epoch'].min() < first_obs_epoch_dt:
+                        first_obs_epoch_dt = survey.obs_df.loc[filter_tmp, 'obs_epoch'].min()
         return first_obs_epoch_dt
 
     def initialize_and_add_lsm_run(self, lsm_method, comment='', write_log=True):

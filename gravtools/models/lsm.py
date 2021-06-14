@@ -694,7 +694,7 @@ class LSMDiff(LSM):
         coeff_list = self.drift_pol_df['coefficient'].to_list()
         coeff_list.reverse()
         coeff_list.append(0)
-        t_min_h = 0
+        t_min_h = setup_df['delta_t_h'].min()  # = 0
         t_max_h = setup_df['delta_t_h'].max()
         dt_h = np.linspace(t_min_h, t_max_h, 100)
         drift_polynomial_mugal = np.polyval(coeff_list, dt_h)
@@ -702,8 +702,8 @@ class LSMDiff(LSM):
         # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
         # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
         # assessment of the drift function), the const. bias N0 is approximated, see below.
-        offset_mugal = setup_df['g_plot_mugal'].mean()
-        yy_mugal = drift_polynomial_mugal - drift_polynomial_mugal.mean() + offset_mugal
+        offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+        yy_mugal = drift_polynomial_mugal  + offset_mugal
 
         # plot
         fig, ax = plt.subplots()
@@ -717,7 +717,7 @@ class LSMDiff(LSM):
         # - Legend and labels:
         plt.legend(loc='best')
         ax.grid()
-        plt.title(f'Drift Polynomial (unknown vertical offset!)')
+        plt.title(f'Drift Polynomial (vertical offset: {offset_mugal:.1f} µGal)')
         plt.xlabel('time [h]')
         plt.ylabel('gravity reading [µGal]')
 

@@ -103,6 +103,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_survey_tree_widget()
         self.set_up_obseration_plots_widget()
         self.set_up_obseration_results_plots_widget()
+        self.set_up_drift_plot_widget()
         # self.observations_splitter.setSizes([1000, 10])
 
         # Initialize dialogs if necessary at the start of the application:
@@ -125,6 +126,49 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Set fonts:
         self.plainTextEdit_results_log.setFont(self.system_default_fixed_width_font)  # Monospace font
+
+    def set_up_drift_plot_widget(self):
+        """Set up `self.graphicsLayoutWidget_results_drift_plot`."""
+        self.glw_drift_plot = self.graphicsLayoutWidget_results_drift_plot
+        self.glw_drift_plot.setBackground('w')  # white background color
+        # Create sub-plots:
+        self.drift_plot = self.glw_drift_plot.addPlot(0, 0, name='drift_plot',
+                                                             axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+        self.drift_plot.setLabel(axis='left', text='')
+        self.drift_plot.addLegend()
+
+    def update_drift_plot(self):
+        """Update the drift plot in the results tab.
+
+        This method is used as slot. Hence, it will be invoked by signals from various GUI widgets that change the
+        drift plot in the according plotting widget.
+        """
+        pass
+        # Get GUI parameters:
+        # - Selected LSM run:
+        # - Selected station:
+        # - Selected Survey:
+        # - offset:
+
+        # ---- invoke lsm-method specific plotting method ---
+
+        # Get data from LSM object (selected LSM run):
+        # - LSM method: LSMdiff/bev_mlr/...
+        # - setup_df: pre-fit observations
+        # - stat_obs_df: estimated station gravity
+        # - drift_pol_df: drift polynomial coefficients
+
+        # Merge observation and station data:
+
+        # Filter data by surveys & stations (from GUI)
+
+    def plot_drift_lsm_diff(self, lsm_run, surveys=None, stations=None, offset=0):
+        """Create a drift plot for LSM runs based on differential observations (method: LSMdiff)"""
+        pass
+
+    def plot_drift_mlr_bev_legacy(self, lsm_run, surveys=None, stations=None):
+        """Create a drift plot for LSM runs using multiple linear regression (method: MLR BEV legacy)"""
+        pass
 
     def set_up_obseration_results_plots_widget(self):
         """Set up `self.graphicsLayoutWidget_results_observations_plots`."""
@@ -297,6 +341,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_results_observation_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_drift_table_view(idx, survey_name=survey_name)
             self.update_results_obs_plots()
+            self.update_drift_plot()
         else:  # invalid index => Reset results views
             self.label_results_comment.clear()
             self.label_results_adjustment_method.clear()
@@ -309,6 +354,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_comboBox_results_selection_station(observed_stations=[])
             self.update_comboBox_results_selection_surrvey(survey_names=[])
             self.update_results_obs_plots()
+            self.update_drift_plot()
 
     def update_comboBox_results_obs_plot_select_data_column_based_on_table_view(self):
         """Update the observaterion results data column selection combo box in the results tab."""
