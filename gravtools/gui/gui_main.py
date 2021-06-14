@@ -7,6 +7,7 @@ from PyQt5 import QtGui
 import datetime as dt
 import pyqtgraph as pg
 import numpy as np
+import pandas as pd
 import pytz
 
 from MainWindow import Ui_MainWindow
@@ -146,9 +147,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
         # Get GUI parameters:
         # - Selected LSM run:
+        lsm_run_idx, lsm_run_time_str = self.get_selected_lsm_run()
         # - Selected station:
+        idx_selected_station, selected_station_name = self.get_selected_station()
+        if selected_station_name == 'All stations':
+            selected_station_names = None
+        else:
+            selected_station_names = [selected_station_name]
         # - Selected Survey:
-        # - offset:
+        idx_selected_survey, selected_survey_name = self.get_selected_survey()
+        if selected_survey_name == 'All surveys':
+            selected_survey_names = None
+        else:
+            selected_survey_names = [selected_survey_name]
+
+        # Select lsm run:
+        lsm_run = self.campaign.lsm_runs[lsm_run_idx]
+
+        # - Enable/disable plot settings groupBox:
+        if lsm_run.lsm_method == 'LSM_diff':
+            self.groupBox_results_drift_plot.setEnabled(True)
+        else:
+            self.groupBox_results_drift_plot.setEnabled(False)
+
+        if lsm_run.lsm_method == 'LSM_diff':
+            offset_mugal = self.spinBox_results_drift_plot_v_offset.value()
+            self.plot_drift_lsm_diff(lsm_run, surveys=selected_survey_names, stations=selected_station_names,
+                                     offset=offset_mugal)
+        elif lsm_run.lsm_method  == 'MLR_BEV':
+            self.plot_drift_mlr_bev_legacy(lsm_run, surveys=selected_survey_names, stations=selected_station_names)
+        else:
+            self.drift_plot.clear()  # Clear drift plot
 
         # ---- invoke lsm-method specific plotting method ---
 
@@ -163,11 +192,88 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Filter data by surveys & stations (from GUI)
 
     def plot_drift_lsm_diff(self, lsm_run, surveys=None, stations=None, offset=0):
-        """Create a drift plot for LSM runs based on differential observations (method: LSMdiff)"""
-        pass
+        """Create a drift plot for LSM runs based on differential observations (method: LSMdiff)
+
+        Parameters:
+        -----------
+        surveys : `None` (default) or list of survey names (str)
+            To filter for surveys that will be displayed.
+        stations : `None` (default) or list of station names (str)
+            To filter for stations that will be displayed.
+        """
+        NUM_ITEMS_IN_DRIFT_FUNCTION = 100
+
+        self.drift_plot.clear()
+
+
+        stat_obs_df = lsm_run.stat_obs_df
+        drift_pol_df = lsm_run.drift_pol_df
+
+        # Loop over surveys (setup data) in the selectd lsm run object and plot data:
+        for survey_name, setup_df_orig in lsm_run.setups.items():
+            # print(survey_name, setup)
+            drift_pol_df_short = drift_pol_df.loc[drift_pol_df['survey_name'] == survey_name]
+
+            # Prep data:
+            setup_df = setup_df_orig.copy(deep=True)  # Make hard copy to protect original data!
+            stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
+            setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
+            setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
+            setup_df.sort_values(by='delta_t_h', inplace=True)
+
+            # Evaluate drift polynomial:
+            coeff_list = drift_pol_df_short['coefficient'].to_list()
+            coeff_list.reverse()
+            coeff_list.append(0)
+            delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
+            delta_t_max_h = setup_df['delta_t_h'].max()
+            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, NUM_ITEMS_IN_DRIFT_FUNCTION)
+            drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
+
+            # Drift function time reference as UNIX time (needed for plots):
+            epoch_unix_min = setup_df['epoch_unix'].min()
+            epoch_unix_max = setup_df['epoch_unix'].max()
+            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, NUM_ITEMS_IN_DRIFT_FUNCTION)
+
+            # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
+            # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
+            # assessment of the drift function), the const. bias N0 is approximated, see below.
+            offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+            yy_mugal = drift_polynomial_mugal + offset_mugal
+
+            # Plot drift function:
+            pen = pg.mkPen(color='b')
+            self.drift_plot.plot(delta_t_epoch_unix, yy_mugal, name=f'drift: {survey_name}', pen=pen, symbol='o',
+                                 symbolSize=10, symbolBrush=('b'))
+
+
+        # Adjust plot window:
+        self.drift_plot.showGrid(x=True, y=True)
+        self.drift_plot.setLabel(axis='left', text='g [µGal]')
+        self.drift_plot.setTitle(f'Drift function w.r.t. setup observations (arbitrary offset = {offset_mugal:0.1f} µGal)')
+        self.drift_plot.autoRange()
+
+
+
+        # EXAMPLE:
+        # data = results_obs_df[column_name].values
+        # obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,'s')
+        #
+        # self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=column_name, color='b',
+        #                   symbol='o', symbol_size=10)
+
 
     def plot_drift_mlr_bev_legacy(self, lsm_run, surveys=None, stations=None):
-        """Create a drift plot for LSM runs using multiple linear regression (method: MLR BEV legacy)"""
+        """Create a drift plot for LSM runs using multiple linear regression (method: MLR BEV legacy)
+
+        Parameters:
+        -----------
+        surveys : `None` (default) or list of survey names (str)
+            To filter for surveys that will be displayed.
+        stations : `None` (default) or list of station names (str)
+            To filter for stations that will be displayed.
+        """
+        self.drift_plot.clear()
         pass
 
     def set_up_obseration_results_plots_widget(self):
@@ -1458,6 +1564,8 @@ class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
 
         # Run the .setupUi() method to show the GUI
         self.setupUi(self)
+
+
 
 
 if __name__ == "__main__":
