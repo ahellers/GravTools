@@ -644,7 +644,7 @@
                 <item>
                  <layout class="QFormLayout" name="formLayout_4">
                   <item row="0" column="0">
-                   <widget class="QLabel" name="label_8">
+                   <widget class="QLabel" name="label_results_obs_plot_selec_data_column">
                     <property name="text">
                      <string>Select data column:</string>
                     </property>
@@ -687,16 +687,19 @@
                <item>
                 <widget class="QGroupBox" name="groupBox_results_drift_plot">
                  <property name="enabled">
-                  <bool>false</bool>
+                  <bool>true</bool>
                  </property>
                  <property name="title">
-                  <string>Plot settings</string>
+                  <string>Drift plot settings</string>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_26">
                   <item>
                    <layout class="QFormLayout" name="formLayout_5">
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_results_drift_plot_v_offset">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
                       <property name="toolTip">
                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add vertical offset to the drift function (polynomial) w.r.t. the setup observations. This is needed to when differential observations are used for prameter estimation. In this case the constant bias of the gravimeter reading cannot be estimated and is only determined approximately.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                       </property>
@@ -707,6 +710,9 @@
                     </item>
                     <item row="0" column="1">
                      <widget class="QSpinBox" name="spinBox_results_drift_plot_v_offset">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
                       <property name="toolTip">
                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add vertical offset to the drift function (polynomial) w.r.t. the setup observations. This is needed to when differential observations are used for prameter estimation. In this case the constant bias of the gravimeter reading cannot be estimated and is only determined approximately.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                       </property>
