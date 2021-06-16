@@ -140,7 +140,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
         """Invoked whenever the adjustment method changed in the estimation settings dialog."""
-        print(index)
+        # print(index)
         # enable/disable GUI elements in the estimation settings dialog according to the selected method:
         selected_method = self.dlg_estimation_settings.comboBox_adjustment_method.currentText()
         if selected_method == 'MLR (BEV legacy processing)':
@@ -906,6 +906,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Gravity g [µGal]
         # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
         self.plot_obs_g.clear()
+        self.plot_obs_g.setLabel(axis='left', text=f'g [µGal]')
+        self.plot_obs_g.setTitle(f'Observed gravity [µGal]')
         pen = pg.mkPen(color='b')
         flags_keep_obs = obs_df['keep_obs'].values
         symbol_brushes = []
@@ -915,16 +917,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 symbol_brushes.append(self.BRUSH_INACTIVE_OBS)
 
+        plot_offset_mgal = round(g_mugal.mean() / 1000)
+        plot_offset_mugal = plot_offset_mgal * 1000
+
         # setup data: g
         if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
-            self.plot_xy_data(self.plot_obs_g, setup_df['epoch_unix'].values, setup_df['g_mugal'].values,
+            self.plot_xy_data(self.plot_obs_g, setup_df['epoch_unix'].values,
+                              setup_df['g_mugal'].values - plot_offset_mugal,
                               plot_name='setup', color='k', symbol='x', symbol_size=25)
 
         # Type of 'self.plot_obs_g_data_item': PlotDataItem
-        self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal, name=f'Ref.: {ref_height_name}',
+        self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal - plot_offset_mugal,
+                                                         name=f'Ref.: {ref_height_name}',
                                                          pen=pen, symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
         self.plot_obs_g_data_item.sigPointsClicked.connect(self.on_observation_plot_data_item_clicked)
         self.plot_obs_g.showGrid(x=True, y=True)
+        self.plot_obs_g.setTitle(f'Observed gravity [µGal] + {plot_offset_mgal:.1f} mGal')
+        self.plot_obs_g.setLabel(axis='left', text=f'g [µGal] + {plot_offset_mgal:.0f} mGal')
         self.plot_obs_g.autoRange()
 
         # Standard deviation of gravity g [µGal]
