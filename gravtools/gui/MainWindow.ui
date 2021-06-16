@@ -889,6 +889,9 @@
    </property>
   </action>
   <action name="action_from_BEV_observation_file">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>from BEV observation file</string>
    </property>

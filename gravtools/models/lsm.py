@@ -365,6 +365,7 @@ class LSMDiff(LSM):
         # Populate matrices:
         diff_obs_id = -1  # Index of differential observations in vectors mat_L0, rows of mat_A0 and mat_p0
         pd_drift_col_offset = number_of_stations - 1  # Column offset for drift parameters in A-matrix
+        survey_count = -1  # Survey counter for indexing the drift parameters in the A-matrix
         g_diff_obs_mugal_list = []
         station_name_from_list = []
         station_name_to_list = []
@@ -377,6 +378,7 @@ class LSMDiff(LSM):
 
         for survey_name, setup_df in self.setups.items():
             previous_row = None
+            survey_count += 1
             for index, row in setup_df.iterrows():
                 if previous_row is None:  # First time the loop is entered
                     previous_row = row
@@ -402,7 +404,7 @@ class LSMDiff(LSM):
                     mat_A0[diff_obs_id, self.observed_stations.index(station_name_from)] = -1
                     # Partial derivative for drift polynomial:
                     for pd_drift_id in range(drift_pol_degree):
-                        mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1] = \
+                        mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count] = \
                             epoch_to ** (pd_drift_id + 1) - epoch_from ** (pd_drift_id + 1)
 
                     # Log data in DataFrame:
