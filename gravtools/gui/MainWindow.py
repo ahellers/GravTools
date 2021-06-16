@@ -467,10 +467,10 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuStations.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.tabWidget_Main.setCurrentIndex(0)
+        self.tabWidget_Main.setCurrentIndex(2)
         self.tab_Widget_Stations.setCurrentIndex(0)
         self.tabWidget_observations.setCurrentIndex(0)
-        self.tabWidget_results.setCurrentIndex(3)
+        self.tabWidget_results.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -518,7 +518,7 @@ class Ui_MainWindow(object):
         self.label_4.setText(_translate("MainWindow", "Time and Date:"))
         self.label_10.setText(_translate("MainWindow", "Comment: "))
         self.groupBox_results_statistics.setTitle(_translate("MainWindow", "Statistics and tests"))
-        self.label_9.setText(_translate("MainWindow", "sig0 = "))
+        self.label_9.setText(_translate("MainWindow", "sig0² = "))
         self.label_6.setText(_translate("MainWindow", "Goodness-of-fit test:"))
         self.label_7.setText(_translate("MainWindow", "Number of outliers:"))
         self.groupBox_results_lsm_run_log.setTitle(_translate("MainWindow", "LSM run log"))

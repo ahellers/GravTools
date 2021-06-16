@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -447,7 +447,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>3</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -540,7 +540,7 @@
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_9">
                       <property name="text">
-                       <string>sig0 = </string>
+                       <string>sig0² = </string>
                       </property>
                      </widget>
                     </item>

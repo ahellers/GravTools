@@ -88,7 +88,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
         self.checkBox_obs_plot_setup_data.stateChanged.connect(self.on_checkBox_obs_plot_setup_data_state_changed)
-        # Observations tree widget:
         self.treeWidget_observations.itemSelectionChanged.connect(self.on_obs_tree_widget_item_selected)
         self.treeWidget_observations.itemChanged.connect(self.on_tree_widget_item_changed)
         self.checkBox_obs_plot_reduced_observations.clicked.connect(self.on_obs_tree_widget_item_selected)
@@ -115,6 +114,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_autoselect_settings = DialogAutoselectSettings()
         self.dlg_estimation_settings = DialogEstimationSettings()
 
+        # Estimation settings GUI:
+        self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
+            self.on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed)
+
         # Overwrite/change setting from ui file, if necessary:
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
 
@@ -133,6 +136,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    @pyqtSlot(int)
+    def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
+        """Invoked whenever the adjustment method changed in the estimation settings dialog."""
+        print(index)
+        # enable/disable GUI elements in the estimation settings dialog according to the selected method:
+        selected_method = self.dlg_estimation_settings.comboBox_adjustment_method.currentText()
+        if selected_method == 'MLR (BEV legacy processing)':
+            self.dlg_estimation_settings.groupBox_constraints.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(False)
+            self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(False)
+            self.dlg_estimation_settings.label_sig0.setEnabled(False)
+        elif selected_method == 'LSM (differential observations)':
+            self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
+            self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
+            self.dlg_estimation_settings.label_sig0.setEnabled(True)
+        else:
+            # Enable all and show warning:
+            self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
+            self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
+            self.dlg_estimation_settings.label_sig0.setEnabled(True)
+            QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
+            self.statusBar().showMessage(f"Unknown estimation method selected!")
 
     @pyqtSlot()
     def on_spinBox_results_drift_plot_v_offset_value_changed(self):
