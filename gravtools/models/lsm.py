@@ -445,7 +445,7 @@ class LSMDiff(LSM):
             station_id = self.observed_stations.index(station_name)
             mat_Ac[datum_station_id, station_id] = 1  # Partial derivative
             mat_Lc[(datum_station_id, 0)] = row['g_mugal']  # g for datum definition
-            sd_mugal_for_weighting = row['sd_g_mugal'] * scaling_factor_datum_observations
+            sd_mugal_for_weighting = row['sd_g_mugal'] / scaling_factor_datum_observations
             mat_sig_llc[datum_station_id] = sd_mugal_for_weighting ** 2
 
         # Set up all required matrices:

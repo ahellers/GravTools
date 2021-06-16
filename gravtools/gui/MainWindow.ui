@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -60,6 +60,9 @@
                  </property>
                  <property name="text">
                   <string>Observed only</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
@@ -114,7 +117,7 @@
              </sizepolicy>
             </property>
             <property name="currentIndex">
-             <number>1</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="tab_Stations_Table">
              <attribute name="title">
@@ -444,7 +447,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>5</number>
+            <number>3</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">

@@ -39,6 +39,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.groupBox_filter_options)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
         self.checkBox_filter_observed_stat_only = QtWidgets.QCheckBox(self.groupBox_filter_options)
+        self.checkBox_filter_observed_stat_only.setChecked(True)
         self.checkBox_filter_observed_stat_only.setObjectName("checkBox_filter_observed_stat_only")
         self.verticalLayout_2.addWidget(self.checkBox_filter_observed_stat_only)
         self.label = QtWidgets.QLabel(self.groupBox_filter_options)
@@ -466,10 +467,10 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuStations.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.tabWidget_Main.setCurrentIndex(2)
-        self.tab_Widget_Stations.setCurrentIndex(1)
+        self.tabWidget_Main.setCurrentIndex(0)
+        self.tab_Widget_Stations.setCurrentIndex(0)
         self.tabWidget_observations.setCurrentIndex(0)
-        self.tabWidget_results.setCurrentIndex(5)
+        self.tabWidget_results.setCurrentIndex(3)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):

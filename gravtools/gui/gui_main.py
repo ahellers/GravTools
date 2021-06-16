@@ -680,7 +680,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                   confidence_level_chi_test=confidence_level_chi_test,
                                                   confidence_level_tau_test=confidence_level_tau_test,
                                                   verbose=IS_VERBOSE)
-                self.campaign.lsm_runs[-1].create_drift_plot_matplotlib()
+                # self.campaign.lsm_runs[-1].create_drift_plot_matplotlib()
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
                                                   verbose=IS_VERBOSE)
