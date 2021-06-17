@@ -20,9 +20,9 @@ import matplotlib.pyplot as plt
 # from abc import ABC
 from gravtools import settings
 
-from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYPES, GRAVIMETER_ID_BEV, \
-    TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_ID_CG5_SURVEY, REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
-    PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
+from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYPES, \
+    TIDE_CORRECTION_TYPES, REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
+    PATH_OBS_FILE_BEV, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
 from gravtools.const import VG_DEFAULT
 from gravtools.models.exceptions import FileTypeError
 from gravtools.CG5_utils.cg5_survey import CG5Survey
@@ -365,6 +365,7 @@ class LSMDiff(LSM):
         # Populate matrices:
         diff_obs_id = -1  # Index of differential observations in vectors mat_L0, rows of mat_A0 and mat_p0
         pd_drift_col_offset = number_of_stations - 1  # Column offset for drift parameters in A-matrix
+        survey_count = -1  # Survey counter for indexing the drift parameters in the A-matrix
         g_diff_obs_mugal_list = []
         station_name_from_list = []
         station_name_to_list = []
@@ -377,6 +378,7 @@ class LSMDiff(LSM):
 
         for survey_name, setup_df in self.setups.items():
             previous_row = None
+            survey_count += 1
             for index, row in setup_df.iterrows():
                 if previous_row is None:  # First time the loop is entered
                     previous_row = row
@@ -402,7 +404,7 @@ class LSMDiff(LSM):
                     mat_A0[diff_obs_id, self.observed_stations.index(station_name_from)] = -1
                     # Partial derivative for drift polynomial:
                     for pd_drift_id in range(drift_pol_degree):
-                        mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1] = \
+                        mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count] = \
                             epoch_to ** (pd_drift_id + 1) - epoch_from ** (pd_drift_id + 1)
 
                     # Log data in DataFrame:
@@ -445,7 +447,7 @@ class LSMDiff(LSM):
             station_id = self.observed_stations.index(station_name)
             mat_Ac[datum_station_id, station_id] = 1  # Partial derivative
             mat_Lc[(datum_station_id, 0)] = row['g_mugal']  # g for datum definition
-            sd_mugal_for_weighting = row['sd_g_mugal'] * scaling_factor_datum_observations
+            sd_mugal_for_weighting = row['sd_g_mugal'] / scaling_factor_datum_observations
             mat_sig_llc[datum_station_id] = sd_mugal_for_weighting ** 2
 
         # Set up all required matrices:
@@ -694,7 +696,7 @@ class LSMDiff(LSM):
         coeff_list = self.drift_pol_df['coefficient'].to_list()
         coeff_list.reverse()
         coeff_list.append(0)
-        t_min_h = 0
+        t_min_h = setup_df['delta_t_h'].min()  # = 0
         t_max_h = setup_df['delta_t_h'].max()
         dt_h = np.linspace(t_min_h, t_max_h, 100)
         drift_polynomial_mugal = np.polyval(coeff_list, dt_h)
@@ -702,8 +704,8 @@ class LSMDiff(LSM):
         # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
         # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
         # assessment of the drift function), the const. bias N0 is approximated, see below.
-        offset_mugal = setup_df['g_plot_mugal'].mean()
-        yy_mugal = drift_polynomial_mugal - drift_polynomial_mugal.mean() + offset_mugal
+        offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+        yy_mugal = drift_polynomial_mugal  + offset_mugal
 
         # plot
         fig, ax = plt.subplots()
@@ -717,7 +719,7 @@ class LSMDiff(LSM):
         # - Legend and labels:
         plt.legend(loc='best')
         ax.grid()
-        plt.title(f'Drift Polynomial (unknown vertical offset!)')
+        plt.title(f'Drift Polynomial (vertical offset: {offset_mugal:.1f} µGal)')
         plt.xlabel('time [h]')
         plt.ylabel('gravity reading [µGal]')
 

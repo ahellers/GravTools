@@ -33,10 +33,39 @@ REFERENCE_HEIGHT_TYPE = {
     'control_point': 'The gravity value refers to the control point at the station',
 }
 
+# Reference heights (sensor heights) of different gravimeter types:
 GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m = {
     'CG3': -0.211,
     'CG5': -0.211,
 }
+
+# Valid gravimeter types and description.
+GRAVIMETER_TYPES = {
+    'CG5': 'Sctintrex CG5',
+    'CG3': 'Sctintrex CG3',
+}
+
+# Default Gavimeter Type when loading data from an CG5 observation file
+DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY = 'CG5'
+
+# Lookuptable to convert gravimeter type to Kennzeichen used at BEV (in the database NSDB):
+GRAVIMETER_TYPES_KZG_LOOKUPTABLE = {
+    'CG5': 'C',
+    'CG3': 'C',
+}
+
+# Valid Gravimeter serial numbers (S/N and type)
+GRAVIMETER_SERIAL_NUMBERS = {
+    '40601': 'CG5'
+}
+
+# Lookuptable to convert the gravimeter S/N to the IDs written to the database NSDB:
+GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE = {
+    '40601': '5'
+}
+
+
+#--------------
 
 # Instrumenten-IDs in der Messdatei einem Instrument zuweisen:
 GRAVIMETER_ID_BEV = {
@@ -55,6 +84,8 @@ GRAVIMETER_KZ_BEV = {
     '510': 'D',
     '500': 'W',
 }
+
+#--------------------
 
 #  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
 #  observation files:
@@ -77,9 +108,7 @@ R_POPE_TEST_TRESHOLD = 1e-6
 # Only consider active observations for the determination of the reference epochs, e.g. for the drift polynomial. The
 # Reference epochs are determined based on the first (active only or active/inactive) observations in the campaign or
 # in each individual survey, depending on the settings.
-ACTIVE_OBS_ONLY_FOR_REF_EPOCH=True
-
-DEFAULT_GRAVIMETER_ID_CG5_SURVEY = '5'
+ACTIVE_OBS_ONLY_FOR_REF_EPOCH = True
 
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.

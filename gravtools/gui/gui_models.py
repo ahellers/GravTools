@@ -593,6 +593,15 @@ class ResultsObservationModel(QAbstractTableModel):
                 if isinstance(value, int) or isinstance(value, float):
                     # Align right, vertical middle.
                     return Qt.AlignVCenter + Qt.AlignRight
+
+            if role == Qt.BackgroundRole:
+                if 'tau_test_result' in self._data_column_names:
+                    if index.column() == self._data_column_names.index('tau_test_result'):
+                        value = self._data.iloc[index.row(), index.column()]
+                        if value == 'passed':
+                            return QtGui.QColor('green')
+                        elif value == 'failed':
+                            return QtGui.QColor('red')
         return None
 
     def headerData(self, section, orientation, role):

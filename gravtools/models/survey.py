@@ -15,9 +15,10 @@ import numpy as np
 import datetime as dt
 import os
 
-from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYPES, GRAVIMETER_ID_BEV, \
-    TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_ID_CG5_SURVEY, REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
-    PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
+from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYPES, \
+    TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
+    PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
+    GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE
 from gravtools.const import VG_DEFAULT
 from gravtools.models.exceptions import FileTypeError
 from gravtools.CG5_utils.cg5_survey import CG5Survey
@@ -491,9 +492,10 @@ class Survey:
         Date of te survey.
     operator : str, optional (default='')
         Name of the responsible operator that carried out the observations of this survey.
-    gravimeter_id : str, optional (default='')
-        ID of the used gravimeter. Valid gravimeter IDs have to be listed in
-        :py:obj:`gravtools.settings.GRAVIMETER_ID_BEV`.
+    gravimeter_serial_number : str, optional (default='')
+        Valid gravimeter types have to be listed in :py:obj:`gravtools.settings.GRAVIMETER_SERIAL_NUMBERS`.
+    gravimeter_type: str, optional (default='')
+        Valid gravimeter types have to be listed in :py:obj:`gravtools.settings.GRAVIMETER_TYPES`.
     data_file_name : str, optional (default='')
         Name of the data source file (observation file). Without file path!
     data_file_type : str, optional (default='')
@@ -665,7 +667,8 @@ class Survey:
                  date=None,
                  operator='',
                  institution='',
-                 gravimeter_id='',
+                 gravimeter_serial_number='',
+                 gravimeter_type='',
                  data_file_name='',
                  data_file_type='',
                  obs_df=None,
@@ -711,17 +714,29 @@ class Survey:
         else:
             raise TypeError('"institution" needs to be a string')
 
-        # gravimeter_id:
-        if isinstance(gravimeter_id, str):
-            if gravimeter_id:
-                if gravimeter_id in GRAVIMETER_ID_BEV.keys():
-                    self.gravimeter_id = gravimeter_id
+        # gravimeter_serial_number:
+        if isinstance(gravimeter_serial_number, str):
+            if gravimeter_serial_number:
+                if gravimeter_serial_number in GRAVIMETER_SERIAL_NUMBERS.keys():
+                    self.gravimeter_serial_number = gravimeter_serial_number
                 else:
-                    raise ValueError('"gravimeter_id" needs to be a key in GRAVIMETER_ID_BEV')
+                    raise ValueError('"gravimeter_serial_number" needs to be a key in GRAVIMETER_SERIAL_NUMBERS')
             else:
-                self.gravimeter_id = gravimeter_id  # None
+                self.gravimeter_serial_number = gravimeter_serial_number  # ''
         else:
-            raise TypeError('"gravimeter_id" needs to be a string')
+            raise TypeError('"gravimeter_serial_number" needs to be a string')
+
+        # gravimeter_type:
+        if isinstance(gravimeter_type, str):
+            if gravimeter_type:
+                if gravimeter_type in GRAVIMETER_TYPES.keys():
+                    self.gravimeter_type = gravimeter_type
+                else:
+                    raise ValueError('"gravimeter_type" needs to be a key in GRAVIMETER_TYPES')
+            else:
+                self.gravimeter_type = gravimeter_type  # ''
+        else:
+            raise TypeError('"gravimeter_type" needs to be a string')
 
         # data_file_name:
         if isinstance(data_file_name, str):
@@ -735,11 +750,10 @@ class Survey:
                 if data_file_type in SURVEY_DATA_SOURCE_TYPES.keys():
                     self.data_file_type = data_file_type
                 else:
-                    raise ValueError('"gravimeter_id" needs to be a key in GRAVIMETER_ID_BEV '
-                                     '({})'.format(', '.join(GRAVIMETER_ID_BEV.keys())))
+                    raise ValueError('"data_file_type" needs to be a key in SURVEY_DATA_SOURCE_TYPES')
             else:
                 if self.data_file_name:  # Not empty
-                    raise ValueError('If a data file is specified ("data_file_name" not empty, "data_file_type" has '
+                    raise ValueError('If a data file is specified ("data_file_name" not empty), "data_file_type" has '
                                      'to be specified also.')
                 self.data_file_type = data_file_type
         else:
@@ -924,7 +938,8 @@ class Survey:
                    date=survey_date,
                    operator=cg5_survey.survey_parameters.operator,
                    institution=cg5_survey.survey_parameters.client,
-                   gravimeter_id=DEFAULT_GRAVIMETER_ID_CG5_SURVEY,
+                   gravimeter_type=DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY,
+                   gravimeter_serial_number=cg5_survey.survey_parameters.instrument_sn,
                    data_file_name=os.path.split(cg5_survey.obs_filename)[1],  # Filename only, without path
                    data_file_type='cg5_obs_file_txt',
                    obs_df=obs_df,
@@ -1062,11 +1077,25 @@ class Survey:
                       f'(not specified in settings.BEV_GRAVIMETER_TIDE_CORR_LOOKUP). '
                       f'It is set to "{obs_tide_correction_type}".')
 
+        gravimeter_serial_number = ''
+        # Get gravimeter type and serial number from ID in obs file:
+        for serial_number, id_tmp in GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE.items():  # for name, age in dictionary.iteritems():  (for Python 2.x)
+            if id_tmp == gravimeter_id:
+                gravimeter_serial_number = serial_number
+                break
+        if not gravimeter_serial_number:
+            raise AssertionError(f'No serial number found that matches the gravimeter id "{gravimeter_id}"in GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE.')
+        try:
+            gravimeter_type = GRAVIMETER_SERIAL_NUMBERS[gravimeter_serial_number]
+        except KeyError:
+            raise AssertionError(f'serial number "{gravimeter_serial_number}" not found in the lookuptable "GRAVIMETER_SERIAL_NUMBERS".')
+
         return cls(name=os.path.split(filename)[1],
                    date=survey_date,
                    operator='',
                    institution=institution,
-                   gravimeter_id=gravimeter_id,
+                   gravimeter_type=gravimeter_type,
+                   gravimeter_serial_number=gravimeter_serial_number,
                    data_file_name=os.path.split(filename)[1],  # Filename only, without path
                    data_file_type='bev_obs_file',
                    obs_df=obs_df,
@@ -1374,7 +1403,8 @@ class Survey:
 
                 # Reduction:
                 # Distance between instrument top and sensor level:
-                dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[GRAVIMETER_ID_BEV[self.gravimeter_id]]
+                # dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[GRAVIMETER_ID_BEV[self.gravimeter_id]]
+                dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type]
                 if self.obs_reference_height_type == 'sensor_height':
                     if target_ref_height == 'control_point':
                         # + dst_m + dhf_m
@@ -2204,7 +2234,7 @@ class Campaign:
                                             verbose=verbose)
 
     def get_epoch_of_first_observation(self, active_obs_only_for_ref_epoch=True):
-        """Returns the epoch of the frist observation in this campaign.
+        """Returns the epoch of the first (active) observation in this campaign.
 
         Parameters
         ----------
@@ -2226,12 +2256,13 @@ class Campaign:
             else:
                 filter_tmp = [True] * len(survey.obs_df)  # Select all observations
 
-            if flag_first_survey_in_campaign:
-                flag_first_survey_in_campaign = False
-                first_obs_epoch_dt = survey.obs_df.loc[filter_tmp, 'obs_epoch'].min()
-            else:
-                if survey.obs_df.loc[filter_tmp, 'obs_epoch'].min() < first_obs_epoch_dt:
+            if len(survey.obs_df.loc[filter_tmp, 'obs_epoch']) > 0:
+                if flag_first_survey_in_campaign:
+                    flag_first_survey_in_campaign = False
                     first_obs_epoch_dt = survey.obs_df.loc[filter_tmp, 'obs_epoch'].min()
+                else:
+                    if survey.obs_df.loc[filter_tmp, 'obs_epoch'].min() < first_obs_epoch_dt:
+                        first_obs_epoch_dt = survey.obs_df.loc[filter_tmp, 'obs_epoch'].min()
         return first_obs_epoch_dt
 
     def initialize_and_add_lsm_run(self, lsm_method, comment='', write_log=True):

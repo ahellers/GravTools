@@ -241,7 +241,7 @@ class BEVLegacyProcessing(LSM):
 
         pol_coef_dict = {i + 1: mlr.coef_[i] for i in range(0, drift_pol_degree)}  # Dict with polynomial coefficients
 
-        # Store drift-corrected gravitymeter readings ("g_est_mugal"):
+        # Store drift-corrected gravitymeter readings ("g_drift_est_mugal"):
         tmp_list = mlr.coef_[-number_of_stations:]  #
         for idx, station_name in enumerate(observed_stations):
             filter_tmp = self.stat_obs_df['station_name'] == station_name
@@ -305,7 +305,7 @@ class BEVLegacyProcessing(LSM):
                 self.log_str += tmp_str
 
         # ##### 3.) Determination of absolute gravity values #####
-        sig_reading = 2  # [µGal], Assumption of the reading error, independet of the gravimeter type, etc.
+        sig_reading = 2  # [µGal], Assumption of the reading error, independent of the gravimeter type, etc.
 
         # Get datum stations:
         filter_tmp = self.stat_obs_df['is_datum'] == True
