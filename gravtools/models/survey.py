@@ -1403,7 +1403,6 @@ class Survey:
 
                 # Reduction:
                 # Distance between instrument top and sensor level:
-                # dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[GRAVIMETER_ID_BEV[self.gravimeter_id]]
                 dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type]
                 if self.obs_reference_height_type == 'sensor_height':
                     if target_ref_height == 'control_point':
