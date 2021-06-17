@@ -95,6 +95,7 @@ class CG5SurveyParameters:
             Keyword arguments that are parsed to class attributes.
         """
         self.survey_name = kwargs.get('survey_name', '')  # string
+        self.instrument_sn = kwargs.get('instrument_sn', '')  # string
         self.client = kwargs.get('client', '')  # string
         self.operator = kwargs.get('operator', '')  # string
         self.long_deg = kwargs.get('long_deg', np.nan)  # np.float
@@ -145,8 +146,10 @@ class CG5SurveyParameters:
             latitude_deg = np.float(survey_dict['lat_num'])
             if survey_dict['lat_dir'] == "S":
                 latitude_deg = -latitude_deg
+            instrument_sn = survey_dict['instrument_sn']  # instrument serial number
 
             return cls(survey_name=survey_dict['survey_name'],
+                       instrument_sn=instrument_sn,
                        client=survey_dict['client'],
                        operator=survey_dict['operator'],
                        long_deg=longitude_deg,
@@ -163,8 +166,8 @@ class CG5SurveyParameters:
         elif survey_count == 0:  # Not available
             return cls()  # Initialize with default values
         else:  # More than 1 block found => Error!
-            raise InvaliFileContentError('{} "CG-5 SURVEY" in observation file found, '
-                                         'but maximum one expected.'.format(survey_count))
+            raise InvaliFileContentError('{} "CG-5 SURVEY" bocks found in observation file, '
+                                         'but only one expected.'.format(survey_count))
 
         # Error Msg, wenn der Block mehr als einmal gefunden wird.
 

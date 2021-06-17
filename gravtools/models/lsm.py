@@ -20,9 +20,9 @@ import matplotlib.pyplot as plt
 # from abc import ABC
 from gravtools import settings
 
-from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYPES, GRAVIMETER_ID_BEV, \
-    TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_ID_CG5_SURVEY, REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
-    PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
+from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, STATION_DATA_SOURCE_TYPES, \
+    TIDE_CORRECTION_TYPES, REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
+    PATH_OBS_FILE_BEV, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
 from gravtools.const import VG_DEFAULT
 from gravtools.models.exceptions import FileTypeError
 from gravtools.CG5_utils.cg5_survey import CG5Survey
