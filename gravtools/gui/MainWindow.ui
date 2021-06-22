@@ -775,6 +775,9 @@
     <addaction name="menuAdd_Survey"/>
     <addaction name="action_Add_Stations"/>
     <addaction name="separator"/>
+    <addaction name="separator"/>
+    <addaction name="action_Export_Results"/>
+    <addaction name="separator"/>
     <addaction name="action_Exit"/>
    </widget>
    <widget class="QMenu" name="menu_Observations">
@@ -912,6 +915,14 @@
    </property>
    <property name="text">
     <string>Estimate long-term drift</string>
+   </property>
+  </action>
+  <action name="action_Export_Results">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Export Results</string>
    </property>
   </action>
  </widget>

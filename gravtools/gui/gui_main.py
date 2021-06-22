@@ -16,8 +16,11 @@ from dialog_load_stations import Ui_Dialog_load_stations
 from dialog_corrections import Ui_Dialog_corrections
 from dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 from dialog_estimation_settings import Ui_Dialog_estimation_settings
+from dialog_export_results import Ui_Dialog_export_results
 
-from gravtools.models.survey import Campaign, Survey, Station
+from gravtools.models.survey import Survey
+from gravtools.models.station import Station
+from gravtools.models.campaign import Campaign
 from gravtools import settings
 from gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
     ResultsObservationModel, ResultsDriftModel
@@ -1409,6 +1412,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Enable/disable main menu items:
             self.menuAdd_Survey.setEnabled(True)
             self.action_Add_Stations.setEnabled(True)
+            self.action_Export_Results.setEnabled(True)
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
                                          f"output directory: {self.campaign.output_directory})")
@@ -1728,6 +1732,66 @@ class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
         self.setupUi(self)
 
 
+class DialogExportResults(QDialog, Ui_Dialog_export_results):
+    """Dialog to define the estimation settings."""
+
+    def __init__(self, campaign, parent=None):
+        super().__init__(parent)
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+        # Populate the combo box to select an LSM run (enable/disable groupBoxes accordingly):
+        pass
+        # Set the lineEdit with the export path:
+
+
+        # connect signals and slots:
+        pass
+
+@pyqtSlot()
+def on_menu_file_export_results(self):
+    """Launch dialog for exporting results of an LSM run."""
+    dlg = DialogExportResults(campaign=self.campaign)
+
+
+    return_value = dlg.exec()
+    if return_value == QDialog.Accepted:
+        # Load Stations to campaign
+        number_of_stations_old = self.campaign.stations.get_number_of_stations
+        try:
+            # WARNING: The following line is required in order to prevent a memory error with
+            # "QSortFilterProxyModelPrivate::proxy_to_source()"
+            # => When adding stations to the model do the follwong steps:
+            # 1.) connect the station model ("self.station_model")
+            # 2.) Add station data
+            # 3.) Set up an connect the proxy model for sorting and filtering ("self.set_up_proxy_station_model")
+            self.connect_station_model_to_table_view()
+
+            # WARNING: Whenever new station data is loaded with "self.campaign.add_stations_from_oesgn_table_file",
+            # the reference between the "view model" () and the "campaign stations dataframe"
+            # (self.campaign.stations.stat_df) is broken!
+            # => Therefore, these two have to be reassigned in order to mirror the same data! This is done by
+            #    calling the method "self.station_model.load_stat_df(self.campaign.stations.stat_df)".
+            self.campaign.add_stations_from_oesgn_table_file(dlg.lineEdit_oesgn_table_file_path.text(),
+                                                             verbose=IS_VERBOSE)
+            self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
+            self.refresh_stations_table_model_and_view()
+            self.set_up_proxy_station_model()
+
+        except FileNotFoundError:
+            QMessageBox.critical(self, 'File not found error', f'"{dlg.lineEdit_oesgn_table_file_path.text()}" '
+                                                               f'not found.')
+            self.statusBar().showMessage(f"No stations added.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+            self.statusBar().showMessage(f"No exports.")
+        else:
+            pass
+            # self.enable_station_view_options_based_on_model()
+            # number_of_stations_added = self.campaign.stations.get_number_of_stations - number_of_stations_old
+            self.statusBar().showMessage(f"Export successfull!")
+    else:
+        self.statusBar().showMessage(f"No exports.")
+        pass
 
 
 if __name__ == "__main__":
