@@ -1,9 +1,12 @@
 import datetime as dt
+import numpy as np
 
 from gravtools.models.lsm import LSM, LSMDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
 from gravtools.models.station import Station
+from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
+    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
 
 
 class Campaign:
@@ -527,3 +530,79 @@ class Campaign:
             self.ref_delta_t_dt = ref_delta_t_dt
         else:
             raise ValueError('`ref_delta_t_dt` needs to be a datetime object.')
+
+    def write_nsb_file(self, filename: str, lsm_run_index, vertical_offset_mode: str = 'first', verbose=True):
+        """Write the results of an LSM run to an nsb file (input for NSDB database).
+
+        Parameters
+        ----------
+        filename : str
+            Name and path of the output nsb file (e.g. /home/johnny/example.nsb)
+        lsm_run_index : int
+            Index of the lsm run in `campaign.lsm_runs` of which the results are exported to the nsb file.
+        vertical_offset_mode : str, optional (default='first')
+            Defines how the vertical offsets between instrument top and ground (dhb) and reference marker (dhf),
+            respectively, are determined in the case of multiple measurements (setups) on the same point. In the nsb
+            file only one dhf/dhb pair per station is allowed. Two options: (1) 'first' indicates that dhb and dhf are
+            taken from the first setup at a station. (2) 'mean' indicates that mean values over all setups are taken.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Init.:
+        nsb_string = ''
+
+        # Get and prepare data:
+        # - lsm_run
+        lsm_run = self.lsm_runs[lsm_run_index]
+        results_stat_df = lsm_run.get_results_stat_df
+
+        # Loop over stations in results dataframe:
+        for index, row in results_stat_df.iterrows():
+            # print(row['station_name'])
+            station_name = row['station_name']
+            observed_in_surveys = []
+            dhb_list_m = []
+            dhf_list_m = []
+
+            # Get surveys at which the station was observed:
+            for survey_name, setup_df in lsm_run.setups.items():
+                if len(setup_df.loc[setup_df['station_name'] == station_name]) > 0:  # was observed in this setup!
+                    observed_in_surveys.append(survey_name)
+                    obs_df = self.surveys[survey_name].obs_df
+                    setup_ids = obs_df.loc[obs_df['station_name'] == station_name, 'setup_id'].unique()
+                    setup_ids = setup_df.loc[setup_df['station_name'] == station_name, 'setup_id'].to_list()
+                    # Get list of dhb and dhf:
+                    for setup_id in setup_ids:
+                        dhb_list_m.append(obs_df.loc[obs_df['setup_id'] == setup_id, 'dhb_m'].values[0])
+                        dhf_list_m.append(obs_df.loc[obs_df['setup_id'] == setup_id, 'dhf_m'].values[0])
+
+            if vertical_offset_mode == 'first':
+                dhb_m = dhb_list_m[0]
+                dhf_m = dhf_list_m[0]
+            elif vertical_offset_mode == 'mean':
+                dhb_m = np.mean(dhb_list_m)
+                dhf_m = np.mean(dhf_list_m)
+
+            # Get gravimeter S/N and gravimeter type of first survey in the list:
+            if verbose:
+                if len(observed_in_surveys) > 1:
+                    print(f'WARNING: station {station_name} was observed in {len(observed_in_surveys)} surveys! Hence, '
+                          f'the gravimeter serial number and type may be ambiguous in the nsb file!')
+            gravimeter_type = self.surveys[observed_in_surveys[0]].gravimeter_type
+            gravimeter_serial_number = self.surveys[observed_in_surveys[0]].gravimeter_serial_number
+            date_str = self.surveys[observed_in_surveys[0]].date.strftime('%Y%m%d')
+
+            nsb_string += '{:10s} {:8s}  {:9.0f}{:4.0f} {:1s} {:4s}{:5.0f}{:5.0f}\n'.format(
+                station_name,
+                date_str,
+                row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
+                row['sd_g_est_mugal'],
+                GRAVIMETER_TYPES_KZG_LOOKUPTABLE[gravimeter_type],
+                GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE[gravimeter_serial_number],
+                (dhb_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
+                (dhf_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
+            )
+
+        # Write file:
+        with open(filename, 'w') as out_file:
+            out_file.write(nsb_string)

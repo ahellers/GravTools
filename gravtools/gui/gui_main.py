@@ -6,6 +6,7 @@ from PyQt5 import QtGui
 
 import datetime as dt
 import pyqtgraph as pg
+import pyqtgraph.exporters
 import numpy as np
 import pandas as pd
 import pytz
@@ -82,6 +83,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
         self.action_Estimation_settings.triggered.connect(self.on_menu_estimation_settings)
+        self.action_Export_Results.triggered.connect(self.on_menu_file_export_results)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
@@ -921,6 +923,72 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return_value = self.dlg_estimation_settings.exec()
         pass
 
+    @pyqtSlot()
+    def on_menu_file_export_results(self):
+        """Launch dialog for exporting results of an LSM run."""
+        dlg = DialogExportResults(campaign=self.campaign)
+
+        return_value = dlg.exec()
+        if return_value == QDialog.Accepted:
+            # Load Stations to campaign
+            lsm_run_time_tag = dlg.comboBox_select_lsm_run.currentText()
+            lsm_run_idx = dlg.comboBox_select_lsm_run.currentIndex()
+            if lsm_run_idx != -1:  # LSM run selected?
+                try:
+                    # Get GUI settings and data:
+                    lsm_run = self.campaign.lsm_runs[lsm_run_idx]
+                    output_path = dlg.lineEdit_export_path.text()
+                    if dlg.checkBox_add_lsm_comment_to_filename.checkState() == Qt.Checked:
+                        append_lsm_run_comment_to_filenames = True
+                        if not lsm_run.comment:  # Empty string
+                            append_lsm_run_comment_to_filenames = False
+                    else:
+                        append_lsm_run_comment_to_filenames = False
+
+                    if append_lsm_run_comment_to_filenames:
+                        filename = self.campaign.campaign_name + '_' + lsm_run.comment
+                    else:
+                        filename = self.campaign.campaign_name
+
+                    # Write nsb file:
+                    if dlg.checkBox_write_nsb_file.checkState() == Qt.Checked:
+                        filename_nsb = filename + '.nsb'
+                        if dlg.radioButton_mean_dhb_dhf.isChecked():
+                            vertical_offset_mode = 'mean'
+                        elif dlg.radioButton_first_dhb_dhf.isChecked():
+                            vertical_offset_mode = 'first'
+                        else:
+                            raise AssertionError(f'Undefined vertical offset mode!')
+                        self.campaign.write_nsb_file(filename=os.path.join(output_path, filename_nsb),
+                                                     lsm_run_index=lsm_run_idx,
+                                                     vertical_offset_mode=vertical_offset_mode,
+                                                     verbose=IS_VERBOSE)
+
+                    # Write log file:
+                    if dlg.checkBox_write_log_file.checkState() == Qt.Checked:
+                        log_string = lsm_run.get_log_string
+                        filename_log = filename + '.log'
+                        with open(os.path.join(output_path, filename_log), 'w') as out_file:
+                            out_file.write(log_string)
+
+                    # Save drift plot to PNG file:
+                    if dlg.checkBox_save_drift_plot_png.checkState() == Qt.Checked:
+                        # Reference: https://pyqtgraph.readthedocs.io/en/latest/exporting.html
+                        filename_png = filename + '_drift_plot.png'
+                        exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_results_drift_plot.scene())
+                        flag_export_successful = exporter.export(os.path.join(output_path, filename_png))
+
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                    self.statusBar().showMessage(f"No exports.")
+                else:
+                    self.statusBar().showMessage(f"Export to {output_path} successful!")
+            else:
+                self.statusBar().showMessage(f"No LSM run selected => No exports.")
+        else:
+            self.statusBar().showMessage(f"No exports.")
+            pass
+
     def set_up_obseration_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
         l = self.GraphicsLayoutWidget_observations
@@ -1740,57 +1808,21 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         # Run the .setupUi() method to show the GUI
         self.setupUi(self)
         # Populate the combo box to select an LSM run (enable/disable groupBoxes accordingly):
-        pass
-        # Set the lineEdit with the export path:
-
-
-        # connect signals and slots:
-        pass
-
-@pyqtSlot()
-def on_menu_file_export_results(self):
-    """Launch dialog for exporting results of an LSM run."""
-    dlg = DialogExportResults(campaign=self.campaign)
-
-
-    return_value = dlg.exec()
-    if return_value == QDialog.Accepted:
-        # Load Stations to campaign
-        number_of_stations_old = self.campaign.stations.get_number_of_stations
-        try:
-            # WARNING: The following line is required in order to prevent a memory error with
-            # "QSortFilterProxyModelPrivate::proxy_to_source()"
-            # => When adding stations to the model do the follwong steps:
-            # 1.) connect the station model ("self.station_model")
-            # 2.) Add station data
-            # 3.) Set up an connect the proxy model for sorting and filtering ("self.set_up_proxy_station_model")
-            self.connect_station_model_to_table_view()
-
-            # WARNING: Whenever new station data is loaded with "self.campaign.add_stations_from_oesgn_table_file",
-            # the reference between the "view model" () and the "campaign stations dataframe"
-            # (self.campaign.stations.stat_df) is broken!
-            # => Therefore, these two have to be reassigned in order to mirror the same data! This is done by
-            #    calling the method "self.station_model.load_stat_df(self.campaign.stations.stat_df)".
-            self.campaign.add_stations_from_oesgn_table_file(dlg.lineEdit_oesgn_table_file_path.text(),
-                                                             verbose=IS_VERBOSE)
-            self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
-            self.refresh_stations_table_model_and_view()
-            self.set_up_proxy_station_model()
-
-        except FileNotFoundError:
-            QMessageBox.critical(self, 'File not found error', f'"{dlg.lineEdit_oesgn_table_file_path.text()}" '
-                                                               f'not found.')
-            self.statusBar().showMessage(f"No stations added.")
-        except Exception as e:
-            QMessageBox.critical(self, 'Error!', str(e))
-            self.statusBar().showMessage(f"No exports.")
+        self.comboBox_select_lsm_run.clear()
+        self.comboBox_select_lsm_run.addItems(campaign.lsm_run_times)
+        idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
+        self.comboBox_select_lsm_run.setCurrentIndex(idx)
+        if len(campaign.lsm_run_times) > 0:
+            self.groupBox_other_files.setEnabled(True)
+            self.groupBox_nsb_file.setEnabled(True)
+            self.buttonBox.buttons()[0].setEnabled(True)  # OK button in buttonBox
         else:
-            pass
-            # self.enable_station_view_options_based_on_model()
-            # number_of_stations_added = self.campaign.stations.get_number_of_stations - number_of_stations_old
-            self.statusBar().showMessage(f"Export successfull!")
-    else:
-        self.statusBar().showMessage(f"No exports.")
+            self.groupBox_other_files.setEnabled(False)
+            self.groupBox_nsb_file.setEnabled(False)
+            self.buttonBox.buttons()[0].setEnabled(False)  # OK button in buttonBox
+        # Set the lineEdit with the export path:
+        self.lineEdit_export_path.setText(campaign.output_directory)
+        # connect signals and slots:
         pass
 
 

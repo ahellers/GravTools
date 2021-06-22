@@ -131,6 +131,11 @@ class LSM:
         """Return time of lsm adjustment as formatted string."""
         return self.init_time.strftime("%Y-%m-%d, %H:%M:%S")
 
+    @property
+    def get_log_string(self):
+        """Returns the log string."""
+        return self.log_str
+
 
 class LSMDiff(LSM):
     """Least-squares adjustment of differential gravimeter observations with weighted constraints.

@@ -1,0 +1,72 @@
+#### Adjustment log ####
+
+---- Input data and settings ----
+Number of surveys: 1
+Number of stations: 5
+Number of differential observations: 12
+Number of estimated parameters: 6
+Number of datum stations: 2
+Degree of freedom: 6
+
+Degree of drift polynomial: 1
+A priori std. deviation of unit weight: 1.0
+Confidence level Chi-test: 0.95
+Confidence level Tau-test: 0.95
+
+---- Set up and populate matrices ----
+
+---- Solve equation system: Results and statistics ----
+# Gewichtsreziprokenprobe nach Ansermet (difference = 8.881784197001252e-16) => Passed!
+
+A posteriori variance (sd) of unit weight: 8.756 (2.959)
+
+# Goodness-of-fit test results:
+# Chi-val  Chi-crt-lower  Chi-crt-upper  Status
+   70.048          2.180         17.535  Not passed
+
+# Histogram of the residuals:
+# Lower-edge(mGal)  Upper-edge(mGal)  Frequency
+          -26.8483          -16.9579          3
+          -16.9579           -7.0676          3
+           -7.0676            2.8228          3
+            2.8228           12.7131          1
+           12.7131           22.6035          4
+
+# Tau-test results:
+Critical value: 1.885
+ - Number of detected outliers: 0
+ - Number low redundancy component: 0
+
+
+ - Station data:
+station_name is_datum  g_mugal  g_est_mugal diff_g_est_mugal sd_g_mugal  sd_g_est_mugal
+    1-040-13     True 828400.0     828399.3             -0.7        3.0             8.2
+    0-059-20     True 850424.0     850424.3              0.3        2.0             5.7
+   T   7  40    False     None     820111.6              NaN       None            19.6
+  T  10 40A3    False     None     787108.7              NaN       None            21.7
+   T2010  40    False     None     780198.3              NaN       None            24.7
+
+ - Drift polynomial coefficients:
+survey_name  degree  coefficient  sd_coeff coeff_unit
+  20200701a       1    -6.141966 10.859925   µGal/h^1
+
+ - Differential observations:
+   - Survey: 20200701a
+station_name_from station_name_to  g_diff_mugal  sd_g_diff_mugal sd_g_diff_est_mugal v_diff_mugal
+         0-059-20        1-040-13      -22019.8              9.3                14.7        -11.8
+         1-040-13       T   7  40       -8265.4              9.0                20.8        -26.8
+        T   7  40      T  10 40A3      -33027.1              8.1                12.0         19.9
+       T  10 40A3       T2010  40       -6919.9              9.0                12.1          8.0
+        T2010  40      T  10 40A3        6923.0              8.7                12.1        -13.7
+       T  10 40A3       T   7  40       32986.8              6.4                10.7         13.3
+        T   7  40      T  10 40A3      -33028.1              5.7                10.9         22.1
+       T  10 40A3       T2010  40       -6897.3              7.3                12.1        -14.6
+        T2010  40      T  10 40A3        6908.9              7.6                12.1          0.3
+       T  10 40A3       T   7  40       32977.3              5.9                10.9         22.6
+        T   7  40        1-040-13        8302.2              8.0                19.6        -21.1
+         1-040-13        0-059-20       22043.2             10.6                14.3        -24.0
+
+ - Pseudo observations at datum stations (constraints):
+Station name  sd [µGal]   v [µGal]   w [µGal]   r [0-1]    Tau test result
+1-040-13         8.22       -0.706     -0.21     +0.144  passed
+0-059-20         5.73       +0.314     +0.21     +0.0638  passed

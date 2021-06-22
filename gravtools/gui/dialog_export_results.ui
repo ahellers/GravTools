@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>433</width>
-    <height>384</height>
+    <height>459</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -58,11 +58,24 @@
         </item>
        </layout>
       </item>
+      <item>
+       <widget class="QCheckBox" name="checkBox_add_lsm_comment_to_filename">
+        <property name="toolTip">
+         <string>Append the LSM run comment to the name of the output file(s), e.g. &lt;campaign name&gt;_&lt;lsm run comment&gt;.nsb</string>
+        </property>
+        <property name="text">
+         <string>Append the LSM run comment to the filenames</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="groupBox_ndb_file">
+    <widget class="QGroupBox" name="groupBox_nsb_file">
      <property name="title">
       <string>nsb file</string>
      </property>
@@ -78,7 +91,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="radioButton">
+       <widget class="QRadioButton" name="radioButton_first_dhb_dhf">
         <property name="toolTip">
          <string>Take vertical offsets between instrument top and ground (dhb) and instrument top and reference point (dhf) at a station from the first setup at this station.</string>
         </property>
@@ -94,7 +107,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="radioButton_2">
+       <widget class="QRadioButton" name="radioButton_mean_dhb_dhf">
         <property name="toolTip">
          <string>Calculate mean values of the vertical offsets between instrument top and ground (dhb) and instrument top and reference point (dhf) from all setups at a station. Write these mean values to the nsb file.</string>
         </property>
@@ -116,7 +129,7 @@
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
-       <widget class="QCheckBox" name="checkBox_2">
+       <widget class="QCheckBox" name="checkBox_write_log_file">
         <property name="text">
          <string>write log file (text file)</string>
         </property>
@@ -126,12 +139,15 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="checkBox_3">
+       <widget class="QCheckBox" name="checkBox_save_drift_plot_png">
         <property name="enabled">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <property name="text">
-         <string>create drift plot (PDF)</string>
+         <string>create drift plot (PNG)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
         </property>
        </widget>
       </item>

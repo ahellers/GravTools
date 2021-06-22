@@ -16,7 +16,7 @@ import datetime as dt
 import os
 
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
-    REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, \
+    REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, VERBOSE, \
     PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
     GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE
 from gravtools.const import VG_DEFAULT
@@ -639,7 +639,7 @@ class Survey:
             obs_tide_correction_type = BEV_GRAVIMETER_TIDE_CORR_LOOKUP[gravimeter_id]
         except KeyError:
             obs_tide_correction_type = 'unknown'
-            if VERBOSE:
+            if verbose:
                 print(f'Warning: For gravimeter ID "{gravimeter_id}" the tide correction type is unknown '
                       f'(not specified in settings.BEV_GRAVIMETER_TIDE_CORR_LOOKUP). '
                       f'It is set to "{obs_tide_correction_type}".')
