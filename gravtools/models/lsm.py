@@ -131,6 +131,11 @@ class LSM:
         """Return time of lsm adjustment as formatted string."""
         return self.init_time.strftime("%Y-%m-%d, %H:%M:%S")
 
+    @property
+    def get_log_string(self):
+        """Returns the log string."""
+        return self.log_str
+
 
 class LSMDiff(LSM):
     """Least-squares adjustment of differential gravimeter observations with weighted constraints.
@@ -176,6 +181,12 @@ class LSMDiff(LSM):
         """
         Parameters
         ----------
+        stat_df : :py:obj:`gravtools.Station.stat_df`
+            The station dataframe contains all relevant station data.
+        setups : dict of pandas DataFrames
+            The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
+            are the survey names (str) and the items are pandas dataframes containing the observation data (see
+            :py:obj:`gravtool.Survey.setup_df`)
         comment : str, optional (default = '')
             Arbitrary comment on the LSM run.
         write_log : bool, optional (default=True)

@@ -6,6 +6,7 @@ from PyQt5 import QtGui
 
 import datetime as dt
 import pyqtgraph as pg
+import pyqtgraph.exporters
 import numpy as np
 import pandas as pd
 import pytz
@@ -16,8 +17,11 @@ from dialog_load_stations import Ui_Dialog_load_stations
 from dialog_corrections import Ui_Dialog_corrections
 from dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 from dialog_estimation_settings import Ui_Dialog_estimation_settings
+from dialog_export_results import Ui_Dialog_export_results
 
-from gravtools.models.survey import Campaign, Survey, Station
+from gravtools.models.survey import Survey
+from gravtools.models.station import Station
+from gravtools.models.campaign import Campaign
 from gravtools import settings
 from gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
     ResultsObservationModel, ResultsDriftModel
@@ -79,6 +83,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
         self.action_Estimation_settings.triggered.connect(self.on_menu_estimation_settings)
+        self.action_Export_Results.triggered.connect(self.on_menu_file_export_results)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
@@ -918,6 +923,72 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return_value = self.dlg_estimation_settings.exec()
         pass
 
+    @pyqtSlot()
+    def on_menu_file_export_results(self):
+        """Launch dialog for exporting results of an LSM run."""
+        dlg = DialogExportResults(campaign=self.campaign)
+
+        return_value = dlg.exec()
+        if return_value == QDialog.Accepted:
+            # Load Stations to campaign
+            lsm_run_time_tag = dlg.comboBox_select_lsm_run.currentText()
+            lsm_run_idx = dlg.comboBox_select_lsm_run.currentIndex()
+            if lsm_run_idx != -1:  # LSM run selected?
+                try:
+                    # Get GUI settings and data:
+                    lsm_run = self.campaign.lsm_runs[lsm_run_idx]
+                    output_path = dlg.lineEdit_export_path.text()
+                    if dlg.checkBox_add_lsm_comment_to_filename.checkState() == Qt.Checked:
+                        append_lsm_run_comment_to_filenames = True
+                        if not lsm_run.comment:  # Empty string
+                            append_lsm_run_comment_to_filenames = False
+                    else:
+                        append_lsm_run_comment_to_filenames = False
+
+                    if append_lsm_run_comment_to_filenames:
+                        filename = self.campaign.campaign_name + '_' + lsm_run.comment
+                    else:
+                        filename = self.campaign.campaign_name
+
+                    # Write nsb file:
+                    if dlg.checkBox_write_nsb_file.checkState() == Qt.Checked:
+                        filename_nsb = filename + '.nsb'
+                        if dlg.radioButton_mean_dhb_dhf.isChecked():
+                            vertical_offset_mode = 'mean'
+                        elif dlg.radioButton_first_dhb_dhf.isChecked():
+                            vertical_offset_mode = 'first'
+                        else:
+                            raise AssertionError(f'Undefined vertical offset mode!')
+                        self.campaign.write_nsb_file(filename=os.path.join(output_path, filename_nsb),
+                                                     lsm_run_index=lsm_run_idx,
+                                                     vertical_offset_mode=vertical_offset_mode,
+                                                     verbose=IS_VERBOSE)
+
+                    # Write log file:
+                    if dlg.checkBox_write_log_file.checkState() == Qt.Checked:
+                        log_string = lsm_run.get_log_string
+                        filename_log = filename + '.log'
+                        with open(os.path.join(output_path, filename_log), 'w') as out_file:
+                            out_file.write(log_string)
+
+                    # Save drift plot to PNG file:
+                    if dlg.checkBox_save_drift_plot_png.checkState() == Qt.Checked:
+                        # Reference: https://pyqtgraph.readthedocs.io/en/latest/exporting.html
+                        filename_png = filename + '_drift_plot.png'
+                        exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_results_drift_plot.scene())
+                        flag_export_successful = exporter.export(os.path.join(output_path, filename_png))
+
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                    self.statusBar().showMessage(f"No exports.")
+                else:
+                    self.statusBar().showMessage(f"Export to {output_path} successful!")
+            else:
+                self.statusBar().showMessage(f"No LSM run selected => No exports.")
+        else:
+            self.statusBar().showMessage(f"No exports.")
+            pass
+
     def set_up_obseration_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
         l = self.GraphicsLayoutWidget_observations
@@ -1409,6 +1480,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Enable/disable main menu items:
             self.menuAdd_Survey.setEnabled(True)
             self.action_Add_Stations.setEnabled(True)
+            self.action_Export_Results.setEnabled(True)
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
                                          f"output directory: {self.campaign.output_directory})")
@@ -1728,6 +1800,30 @@ class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
         self.setupUi(self)
 
 
+class DialogExportResults(QDialog, Ui_Dialog_export_results):
+    """Dialog to define the estimation settings."""
+
+    def __init__(self, campaign, parent=None):
+        super().__init__(parent)
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+        # Populate the combo box to select an LSM run (enable/disable groupBoxes accordingly):
+        self.comboBox_select_lsm_run.clear()
+        self.comboBox_select_lsm_run.addItems(campaign.lsm_run_times)
+        idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
+        self.comboBox_select_lsm_run.setCurrentIndex(idx)
+        if len(campaign.lsm_run_times) > 0:
+            self.groupBox_other_files.setEnabled(True)
+            self.groupBox_nsb_file.setEnabled(True)
+            self.buttonBox.buttons()[0].setEnabled(True)  # OK button in buttonBox
+        else:
+            self.groupBox_other_files.setEnabled(False)
+            self.groupBox_nsb_file.setEnabled(False)
+            self.buttonBox.buttons()[0].setEnabled(False)  # OK button in buttonBox
+        # Set the lineEdit with the export path:
+        self.lineEdit_export_path.setText(campaign.output_directory)
+        # connect signals and slots:
+        pass
 
 
 if __name__ == "__main__":

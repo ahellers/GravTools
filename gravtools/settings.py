@@ -10,6 +10,9 @@ Summary
 User-defined settings for gravtools.
 """
 
+# Additive constant for the determination of the full absolute gravity [µGal] from observed values:
+ADDITIVE_CONST_ABS_GRTAVITY = 9.8e8
+
 SURVEY_DATA_SOURCE_TYPES = {
     'cg5_obs_file_txt': 'Scintrex CG5 observation file (text format)',
     'bev_obs_file': 'Simple observation file format used by BEV',
