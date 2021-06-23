@@ -10,9 +10,9 @@ import pandas as pd
 import numpy as np
 
 # Imports from other gravtools modules:
-from gravtools import const
-from gravtools import settings
-from gravtools import utils
+from bev_legacy import const
+from bev_legacy import settings
+from bev_legacy import utils
 
 
 def read_oesgn_table(filename, filepath=''):

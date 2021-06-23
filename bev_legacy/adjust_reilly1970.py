@@ -6,18 +6,10 @@ Author: Andreas Hellerschmied
 
 import sys
 import numpy as np
-from scipy.linalg import block_diag
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
 
 # Imports from other gravtools modules:
-from gravtools import settings
-from gravtools import init
-from gravtools import utils
-from gravtools import output
-from gravtools import drift_mlr
-from gravtools import plots
-from gravtools import schwaus
+from bev_legacy import settings
+from bev_legacy import init
 
 
 def adjust_reilly1970(obs_df, stat_df):

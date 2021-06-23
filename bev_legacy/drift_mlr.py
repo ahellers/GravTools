@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 # Imports from other gravtools modules:
-from gravtools import utils
+from bev_legacy import utils
 
 
 def calc_drift_corr_mlr(obs_df, stat_df, pol_degree):

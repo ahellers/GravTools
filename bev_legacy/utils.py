@@ -5,7 +5,7 @@ Author: Andreas Hellerschmied
 """
 
 # Imports from other gravtools modules:
-from gravtools import settings
+from bev_legacy import settings
 
 
 def corr_instrument_ref_heights(obs_df):

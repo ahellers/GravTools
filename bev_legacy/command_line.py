@@ -17,10 +17,10 @@ References
 """
 
 
-from gravtools.schwaus import main as schwaus_main
+from bev_legacy.schwaus import main as schwaus_main
 import argparse
 import os
-from gravtools.settings import OUT_PATH, PATH_OESGN_TABLE, NAME_OESGN_TABLE
+from bev_legacy.settings import OUT_PATH, PATH_OESGN_TABLE, NAME_OESGN_TABLE
 
 
 def is_file(filename):

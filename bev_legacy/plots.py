@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Imports from other gravtools modules:
-from gravtools import utils
+from bev_legacy import utils
 
 
 def create_drift_plot(obs_df, stat_df, poly_coef_dict, save_pdf=True, session_name='', path_save_file=''):
