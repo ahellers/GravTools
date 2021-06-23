@@ -1,12 +1,22 @@
 alabaster==0.7.12
+altgraph==0.17
+auto-py-to-exe==2.9.0
 Babel==2.8.0
+bottle==0.12.19
+bottle-websocket==0.2.9
 certifi==2020.6.20
 chardet==3.0.4
 cycler==0.10.0
 docutils==0.16
--e git+git@gitlab.com:Heller182/grav.git@a31a62d010bb7b4e3327f4175862a26e25354472#egg=gravtools
+Eel==0.12.4
+future==0.18.2
+gevent==21.1.2
+gevent-websocket==0.10.1
+-e git+git@gitlab.com:Heller182/grav.git@fe528c0769502e84a06be67a742032cacfd386df#egg=gravtools
+greenlet==1.1.0
 idna==2.10
 imagesize==1.2.0
+importlib-metadata==4.5.0
 Jinja2==2.11.2
 joblib==0.17.0
 kiwisolver==1.3.1
@@ -18,6 +28,8 @@ pandas==1.1.4
 Pillow==8.0.1
 pkg-resources==0.0.0
 Pygments==2.7.2
+pyinstaller==4.3
+pyinstaller-hooks-contrib==2021.1
 pyparsing==2.4.7
 PyQt5==5.15.2
 PyQt5-sip==12.8.1
@@ -41,4 +53,9 @@ sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
 threadpoolctl==2.1.0
+typing-extensions==3.10.0.0
 urllib3==1.25.11
+whichcraft==0.6.1
+zipp==3.4.1
+zope.event==4.5.0
+zope.interface==5.4.0
