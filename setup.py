@@ -21,7 +21,8 @@ setuptools.setup(
     python_requires='>=3.6',
     entry_points={
         "console_scripts": [
-            "schwaus=gravtools.command_line:schwaus",
+            # "schwaus=bev_legacy.command_line:schwaus",
+            "gui=run_gui:run_gui",
         ]
     }
 )

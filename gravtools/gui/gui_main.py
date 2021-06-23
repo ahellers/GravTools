@@ -11,21 +11,21 @@ import numpy as np
 import pandas as pd
 import pytz
 
-from MainWindow import Ui_MainWindow
-from dialog_new_campaign import Ui_Dialog_new_Campaign
-from dialog_load_stations import Ui_Dialog_load_stations
-from dialog_corrections import Ui_Dialog_corrections
-from dialog_autoselection_settings import Ui_Dialog_autoselection_settings
-from dialog_estimation_settings import Ui_Dialog_estimation_settings
-from dialog_export_results import Ui_Dialog_export_results
+from gravtools.gui.MainWindow import Ui_MainWindow
+from gravtools.gui.dialog_new_campaign import Ui_Dialog_new_Campaign
+from gravtools.gui.dialog_load_stations import Ui_Dialog_load_stations
+from gravtools.gui.dialog_corrections import Ui_Dialog_corrections
+from gravtools.gui.dialog_autoselection_settings import Ui_Dialog_autoselection_settings
+from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settings
+from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
+from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
+    ResultsObservationModel, ResultsDriftModel
+from gravtools.gui.gui_misc import get_station_color_dict
 
 from gravtools.models.survey import Survey
-from gravtools.models.station import Station
 from gravtools.models.campaign import Campaign
 from gravtools import settings
-from gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
-    ResultsObservationModel, ResultsDriftModel
-from gui_misc import get_station_color_dict
+
 
 DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
 DEFAULT_CG5_OBS_FILE_PATH = os.path.abspath(os.getcwd())  # Current working directory
@@ -1826,8 +1826,8 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         pass
 
 
-if __name__ == "__main__":
-    """Main Program."""
+def main():
+    """Main program to start the GUI."""
     # Create the application
     app = QApplication(sys.argv)
 
@@ -1837,3 +1837,8 @@ if __name__ == "__main__":
     # Run the application's main loop:
     sys.exit(
         app.exec())  # exit or error code of Qt (app.exec_) is passed to sys.exit. Terminates pgm with standard python method
+
+
+if __name__ == "__main__":
+    """Main Program."""
+    main()
