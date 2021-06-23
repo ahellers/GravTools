@@ -31,6 +31,41 @@ With command line interface.
 ## Using make
 `python3 setup.py develop`
 
+# Run application on Windows and create a stand-alone Windows executable file:
+For creating a Windows executable (stand-alone application, without Python installation) the 
+package "auto-py-to-exe" is used (see: https://pypi.org/project/auto-py-to-exe/). This is a 
+simple graphical user interface (based on the chrome browser) that allows to define all settings 
+for the package "PyInstaller" (see: https://www.pyinstaller.org/). auto-py-to-exe and all 
+required dependencies are listet in this project's requirements.txt file. 
+Creating a Windows executable with the mentioned packages was tested on a Windows 10 computer. 
+On Linux (Ubuntu 16.x) it failed to create an executable file, although no obvious errors occured.
+Follow these steps to create an executable on a Windows machine:
+* **1. Install Python3**
+  * With installer from https://www.python.org/downloads/windows/
+  * Add python3.x to the Windows search path and install pip!
+* **2. Pull the project files from git as described above.**
+* **3. Install virtualenv and create a virtual environment** in CMD
+  * a. `pip install virtualenv`
+  * b. Change to project directory (`cd ..`)
+  * c. Create virtual environment: `virtualenv env`
+  * d. Activate it: `env\Scripts\activate.bat`
+    * Deactivate with `deactivate`
+  * e. Install dependencies with pip: `pip install -r requirements.txt` (see comments below!)
+* **4. Try and run the application**
+  * `python3 run_gui.py`
+* **5. Create exe with auto-py-to-exe**
+  * Run the CMD Window as administrator!
+  * a. Start auto-py-to-exe in CMD: `auto-py-to-exe`
+  * b. Select the script location (select: run_gui.py)
+  * c. Select "One File" and "Console based" (in addition to teh GUI a console will appear)
+  * d. Start conversion py pressing the big blue button on the GUI bottom
+  * e. The exe file will be save at a new "output" directory. Move the file to: "Windows_executables"
+ 
+# Comments on requirements.txt file:
+* Two entries can be deleted:
+  * -e git+git@gitlab.com:Heller182/grav.git@fe528c0769502e84a06be67a742032cacfd386df#egg=gravtools
+  * pkg-resources==0.0.0 (created due a bug when using Linux, see: https://stackoverflow.com/questions/39577984/what-is-pkg-resources-0-0-0-in-output-of-pip-freeze-command)
+
 
 # Create HTML documentation with sphinx:
 Run make in the gravtools/doc directory: 
