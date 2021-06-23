@@ -7,7 +7,7 @@ Author: Andreas Hellerschmied
 import datetime as dt
 
 # Imports from other gravtools modules:
-from gravtools import settings
+from bev_legacy import settings
 
 
 def write_nsb_file(stat_df, instrument_id, path_name_nsb_file):

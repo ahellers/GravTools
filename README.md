@@ -11,6 +11,11 @@ Collection of newly developed software for gravity surveys. Programmed with Pyth
   * `cd grav`
 * **4. Install required python packages using pip**
   * `pip install -r requirements.txt`
+  
+## Installation on Centos 8 (development machines at BEV):
+* **1. Carry out installation steps describes above** 
+* **2. Install QT5, if required**
+  * `sudo yum install qt5-qtbase-devel.x86_64`
 
 
 # Test installation with setuptools 
