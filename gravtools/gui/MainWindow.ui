@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -117,7 +117,7 @@
              </sizepolicy>
             </property>
             <property name="currentIndex">
-             <number>0</number>
+             <number>1</number>
             </property>
             <widget class="QWidget" name="tab_Stations_Table">
              <attribute name="title">
@@ -136,10 +136,15 @@
               </item>
              </layout>
             </widget>
-            <widget class="QWidget" name="tab_Stations_Plot">
+            <widget class="QWidget" name="tab_stations_map">
              <attribute name="title">
-              <string>Plot</string>
+              <string>Map</string>
              </attribute>
+             <layout class="QVBoxLayout" name="verticalLayout_30">
+              <item>
+               <widget class="GraphicsLayoutWidget" name="GraphicsLayoutWidget_stations_map"/>
+              </item>
+             </layout>
             </widget>
            </widget>
           </item>
@@ -305,7 +310,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -447,7 +452,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>5</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -803,10 +808,12 @@
     <addaction name="action_Estimation_settings"/>
    </widget>
    <widget class="QMenu" name="menuStations">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Stations</string>
     </property>
-    <addaction name="actionShow_Stations"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Observations"/>

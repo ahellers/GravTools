@@ -88,7 +88,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
         self.pushButton_results_delete_lsm_run.pressed.connect(self.on_pushbutton_results_delete_lsm_run)
-        # self.actionShow_Stations.triggered.connect(self.show_station_data)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
@@ -112,6 +111,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_obseration_plots_widget()
         self.set_up_obseration_results_plots_widget()
         self.set_up_drift_plot_widget()
+        self.set_up_stations_map()
         # self.observations_splitter.setSizes([1000, 10])
 
         # Initialize dialogs if necessary at the start of the application:
@@ -172,8 +172,93 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Invoked whenever the value of the spin box changed."""
         self.update_drift_plot()
 
+    def on_station_model_data_changed(self, topLeft, bottomRight, role):
+        """Invoked, whenever data in the station view model changed."""
+        # Did the "is_datum" flag change? => Update stations map!
+        is_datum_idx = self.station_model.get_data.columns.to_list().index('is_datum')
+        if bottomRight.column() >= is_datum_idx and topLeft.column() <= is_datum_idx:
+            self.update_stations_map()
+
+    def set_up_stations_map(self):
+        """Set up `self.GraphicsLayoutWidget_stations_map` widget."""
+        self.glw_stations_map = self.GraphicsLayoutWidget_stations_map
+        self.glw_stations_map.setBackground('w')  # white background color
+        # Create sub-plots:
+        self.stations_map = self.glw_stations_map.addPlot(0, 0, name='stations_map')
+        self.stations_map.setLabel(axis='left', text='Latitude [°]')
+        self.stations_map.setLabel(axis='bottom', text='Longitude [°]')
+        self.stations_map.setTitle('')
+        # self.stations_map.addLegend()
+
+    def update_stations_map(self):
+        """Update the stations map in the stations tab.
+
+        This method is used as slot. Hence, it will be invoked by signals from various GUI widgets that change the
+        stations.
+        """
+        SCATTER_PLOT_SYMBOL_SIZE = 10
+        SCATTER_PLOT_PEN_WIDTH = 3
+        SCATTER_PLOT_PEN_COLOR = 'k'
+        SCATTER_PLOT_PEN_COLOR_DATUM = 'r'
+        SCATTER_PLOT_BRUSH_COLOR_OBSERVED = QtGui.QColor('cyan')
+        SCATTER_PLOT_BRUSH_COLOR_NOT_OBSERVED = 'g'
+
+        self.stations_map.clear()
+        self.stations_map.setTitle('')
+        # self.stations_map.legend.clear()
+
+        # Get list of stations from filter proxy model:
+        station_name_list = []
+        col_idx_stat_name = self.station_model.get_data.columns.to_list().index('station_name')
+        for row_idx in range(self.proxy_station_model.rowCount()):
+            station_name_list.append(self.proxy_station_model.index(row_idx, col_idx_stat_name).data())
+
+        number_of_observed_stations = len(self.station_model.get_data.loc[self.station_model.get_data['is_observed']])
+        number_of_stations_total = len(self.station_model.get_data)
+
+        # Get stat_df from station view model and filter for stations in filter proxy model:
+        filter_tmp = self.station_model.get_data['station_name'].isin(station_name_list)
+        stat_df_filtered = self.station_model.get_data.loc[filter_tmp]
+
+        # TODO: Use symbol=QPainterPath() to create cumstom symbol with text label (station name)!
+        # See: https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/scatterplotitem.html (symbol)
+        # Example: https://www.geeksforgeeks.org/pyqtgraph-show-text-as-spots-on-scatter-plot-graph/
+        # from PyQt5.QtGui import QPainterPath, QFont
+        # symbol = QPainterPath()
+        # f = QFont()
+        # f.setPointSize(1000)
+        # symbol.addText(0, 0, f, 'testTXT')
+
+        # Plot all stations in filtered dataframe:
+        # - Example: https://www.geeksforgeeks.org/pyqtgraph-different-colored-spots-on-scatter-plot-graph/
+        scatter = pg.ScatterPlotItem()
+        spots = []
+        # - prep. data for scatterplot:
+        for index, row in stat_df_filtered.iterrows():
+            if row['is_observed']:
+                brush_color = SCATTER_PLOT_BRUSH_COLOR_OBSERVED
+            else:
+                brush_color = SCATTER_PLOT_BRUSH_COLOR_NOT_OBSERVED
+            if row['is_datum']:
+                pen_color = SCATTER_PLOT_PEN_COLOR_DATUM
+            else:
+                pen_color = SCATTER_PLOT_PEN_COLOR
+            spot_dic = {'pos': (row['long_deg'], row['lat_deg']),
+                        'size': SCATTER_PLOT_SYMBOL_SIZE,
+                        'pen': {'color': pen_color, 'width': SCATTER_PLOT_PEN_WIDTH},
+                        'brush': brush_color,
+                        'symbol': 'o'}
+            spots.append(spot_dic)
+        scatter.addPoints(spots)
+        self.stations_map.addItem(scatter)
+
+        # Title, grid, etc.:
+        self.stations_map.setTitle(
+            f'{len(station_name_list)} stations displayed ({number_of_observed_stations} observed; {number_of_stations_total} in total)')
+        self.stations_map.showGrid(x=True, y=True)
+
     def set_up_drift_plot_widget(self):
-        """Set up `self.graphicsLayoutWidget_results_drift_plot`."""
+        """Set up `self.graphicsLayoutWidget_results_drift_plot` widget."""
         self.glw_drift_plot = self.graphicsLayoutWidget_results_drift_plot
         self.glw_drift_plot.setBackground('w')  # white background color
         # Create sub-plots:
@@ -1396,6 +1481,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         except:
             if IS_VERBOSE:
                 print('No filter proxy model connected.')
+        self.update_stations_map()
 
     @pyqtSlot(int)  # Required, because 2 signals are emitted and one (int) has to be selected!
     def on_checkBox_filter_observed_stat_only_toggled(self, state):
@@ -1405,6 +1491,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.proxy_station_model.setFilterFixedString('True')
         else:
             self.proxy_station_model.setFilterFixedString('')
+        self.update_stations_map()
 
     @pyqtSlot()
     def exit_application(self):
@@ -1546,6 +1633,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.statusBar().showMessage(f"No stations added.")
             else:
                 self.enable_station_view_options_based_on_model()
+                # Show observed stations only based on Checkbox state:
+                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState())
+                # self.update_stations_map() => Called in self.on_checkBox_filter_observed_stat_only_toggled() above!
                 number_of_stations_added = self.campaign.stations.get_number_of_stations - number_of_stations_old
                 self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
         else:
@@ -1572,6 +1662,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Set model:
         try:
             self.station_model = StationTableModel(self.campaign.stations.stat_df)
+            self.station_model.dataChanged.connect(self.on_station_model_data_changed)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No stations available!')
             self.statusBar().showMessage(f"No stations available.")
@@ -1668,6 +1759,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             finally:
                 self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.
                 self.enable_station_view_options_based_on_model()
+                # Show observed stations only based on Checkbox state:
+                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState())
         else:
             self.statusBar().showMessage(f"No survey data added.")
 
