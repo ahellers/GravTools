@@ -430,7 +430,7 @@ class Ui_MainWindow(object):
         self.action_Save_Campaign.setEnabled(False)
         self.action_Save_Campaign.setObjectName("action_Save_Campaign")
         self.action_Load_Campaign = QtWidgets.QAction(MainWindow)
-        self.action_Load_Campaign.setEnabled(False)
+        self.action_Load_Campaign.setEnabled(True)
         self.action_Load_Campaign.setObjectName("action_Load_Campaign")
         self.action_Add_Stations = QtWidgets.QAction(MainWindow)
         self.action_Add_Stations.setEnabled(False)

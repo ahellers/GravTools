@@ -1,5 +1,7 @@
 import datetime as dt
 import numpy as np
+import pickle
+import os
 
 from gravtools.models.lsm import LSM, LSMDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
@@ -606,3 +608,56 @@ class Campaign:
         # Write file:
         with open(filename, 'w') as out_file:
             out_file.write(nsb_string)
+
+    def save_to_pickle(self, filename=None, verbose=True):
+        """Save the campaign object to a pickle file at the given path.
+
+        Parameters
+        ----------
+        filename : str, optional (default=`None`)
+            Path and name of the pickle file, e.g. /home/user1/data/camp1.pkl. `None` indicates that the campaign object
+            is saved to the default output directory past (`campaign.output_directory`). In this case the file is named
+            `<campaign_name>.pkl`.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        Returns
+        -------
+        str : Name and path of the saved file.
+        """
+        if filename is None:
+            filename = os.path.join(self.output_directory, f'{self.campaign_name}.pkl')
+        # Open file:
+        if verbose:
+            print(f'Export campaign data to {filename}.')
+        with open(filename, 'wb') as outfile:
+            pickle.dump(self, outfile, protocol=pickle.HIGHEST_PROTOCOL)
+        return filename
+
+    @classmethod
+    def from_pkl(cls, filename: str, verbose: bool = True):
+        """Loads a campaign object from a pickle file.
+
+        Parameters
+        ----------
+        filename : str
+            Name and path of the pickle file containing the campaign data.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        Returns
+        -------
+        `Campaign` object
+        """
+        with open(filename, 'rb') as handle:
+            campaign = pickle.load(handle)
+        if verbose:
+            print(
+                f'Loaded campaign "{campaign.campaign_name}" with {campaign.number_of_stations} station(s) and {campaign.number_of_surveys} survey(s).')
+        return campaign
+
+
+if __name__ == '__main__':
+    """Main function, primarily for debugging and testing."""
+    filename = '/home/heller/pyProjects/gravtools/out/test.pkl'
+    camp = Campaign.from_pkl(filename)

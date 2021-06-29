@@ -107,6 +107,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.on_spinBox_results_drift_plot_v_offset_value_changed)
         self.checkBox_stations_map_show_stat_name_labels.stateChanged.connect(
             self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
+        self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
@@ -129,6 +130,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
 
         # Init models:
+        self.station_model = None
         self.observation_model = None
         self.setup_model = None
         self.results_station_model = None
@@ -168,6 +170,86 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
             self.statusBar().showMessage(f"Unknown estimation method selected!")
+
+    @pyqtSlot()
+    def on_action_Load_Campaign_triggered(self):
+        """Invoked whenever the menu item save campaign is pressed."""
+        self.select_campaign_data_file_pickle()
+
+    def select_campaign_data_file_pickle(self):
+        """Launch file selection dialog to select a pickle file with saved campaign data."""
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        pkl_file_filename, _ = QFileDialog.getOpenFileName(self,
+                                                           'Select pkl file with campaign data',
+                                                           DEFAULT_CG5_OBS_FILE_PATH,
+                                                           "Pickle file (*.pkl)",
+                                                           options=options)
+        if pkl_file_filename:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            pkl_file_filename = QDir.toNativeSeparators(pkl_file_filename)
+            # Add survey data to Campaign:
+            try:
+                self.load_campaign_from_pickle(pkl_file_filename, verbose=IS_VERBOSE)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"No campaign data loaded.")
+            else:
+                # Update GUI:
+
+                # Enable/disable main menu items:
+                self.menuAdd_Survey.setEnabled(True)
+                self.action_Add_Stations.setEnabled(True)
+                self.action_Export_Results.setEnabled(True)
+                self.action_Save_Campaign.setEnabled(True)
+
+                # Set up view models and views for this campaign:
+                # - Stations tab:
+                self.set_up_station_view_model()
+                self.enable_station_view_options_based_on_model()
+                self.set_up_proxy_station_model()
+                self.update_stations_map(auto_range=True)
+                # - Observations tab
+                self.set_up_observation_view_model()
+                self.enable_menu_observations_based_on_campaign_data()
+                self.populate_survey_tree_widget()
+                self.set_up_setup_view_model()
+                self.treeWidget_observations.topLevelItem(0).setSelected(True)
+                # - Results tab:
+                self.set_up_results_stations_view_model()
+                self.set_up_results_observations_view_model()
+                self.set_up_results_drift_view_model()
+                self.update_results_tab(select_latest_item=True)
+
+                self.statusBar().showMessage(
+                    f"Previously saved campaign loaded rom pickle file (name: {self.campaign.campaign_name}, "
+                    f"output directory: {self.campaign.output_directory})")
+                self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
+        else:
+            self.statusBar().showMessage(f"No campaign data loaded.")
+
+    def load_campaign_from_pickle(self, filename, verbose):
+        """Load campaign data from pickle file."""
+        # Load campaign object and replace previous one:
+        if self.campaign is not None and verbose:
+            print(f'Data of current campaign "{self.campaign.campaign_name}" will be overwritten!')
+        self.campaign = Campaign.from_pkl(filename, verbose=verbose)
+
+    @pyqtSlot()
+    def on_action_Save_Campaign_triggered(self):
+        """Invoked whenever the menu item save campaign is pressed."""
+        self.save_campaign_to_pickle()
+
+    def save_campaign_to_pickle(self):
+        """Save campaign data (object) to a pickle file using the default path and filename."""
+        try:
+            filename = self.campaign.save_to_pickle(filename=None, verbose=IS_VERBOSE)
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            QMessageBox.information(self, 'Save Campaign Data', f'Campaign data saved as "{filename}".')
 
     @pyqtSlot()
     def on_spinBox_results_drift_plot_v_offset_value_changed(self):
@@ -1501,7 +1583,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     elif setup_keep_obs_flags.any():
                         child.setCheckState(0, Qt.PartiallyChecked)
                     else:
-                        child.setCheckState(0, Qt.Unhecked)
+                        child.setCheckState(0, Qt.Unchecked)
             parent.setExpanded(True)  # Expand the current parent
         self.treeWidget_observations.show()
         self.treeWidget_observations.blockSignals(False)
@@ -1608,6 +1690,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.menuAdd_Survey.setEnabled(True)
             self.action_Add_Stations.setEnabled(True)
             self.action_Export_Results.setEnabled(True)
+            self.action_Save_Campaign.setEnabled(True)
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
                                          f"output directory: {self.campaign.output_directory})")
