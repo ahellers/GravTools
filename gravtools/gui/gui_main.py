@@ -197,6 +197,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         This method is used as slot. Hence, it will be invoked by signals from various GUI widgets that change the
         stations.
+
+        Parameters
+        ----------
+        auto_range : bool, optional (deault = `True`)
+            `True` indicates that the stations map is auto-ranged in order to view all content items.
         """
         SCATTER_PLOT_SYMBOL_SIZE = 10
         SCATTER_PLOT_PEN_WIDTH = 3
@@ -209,7 +214,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.stations_map.clear()
         self.stations_map.setTitle('')
-        # self.stations_map.legend.clear()
 
         # Get list of stations from filter proxy model:
         station_name_list = []
