@@ -84,6 +84,28 @@
              </widget>
             </item>
             <item>
+             <widget class="QGroupBox" name="groupBox_stations_map_view_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Map view options</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_31">
+               <item>
+                <widget class="QCheckBox" name="checkBox_stations_map_show_stat_name_labels">
+                 <property name="text">
+                  <string>Show station name labels</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
              <widget class="QGroupBox" name="groupBox_edit_options">
               <property name="enabled">
                <bool>false</bool>
@@ -117,7 +139,7 @@
              </sizepolicy>
             </property>
             <property name="currentIndex">
-             <number>1</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="tab_Stations_Table">
              <attribute name="title">

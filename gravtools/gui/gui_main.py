@@ -105,6 +105,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.on_comboBox_results_obs_plot_select_data_column_current_index_changed)
         self.spinBox_results_drift_plot_v_offset.valueChanged.connect(
             self.on_spinBox_results_drift_plot_v_offset_value_changed)
+        self.checkBox_stations_map_show_stat_name_labels.stateChanged.connect(
+            self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
@@ -177,7 +179,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Did the "is_datum" flag change? => Update stations map!
         is_datum_idx = self.station_model.get_data.columns.to_list().index('is_datum')
         if bottomRight.column() >= is_datum_idx and topLeft.column() <= is_datum_idx:
-            self.update_stations_map()
+            self.update_stations_map(auto_range=False)
 
     def set_up_stations_map(self):
         """Set up `self.GraphicsLayoutWidget_stations_map` widget."""
@@ -190,7 +192,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.stations_map.setTitle('')
         # self.stations_map.addLegend()
 
-    def update_stations_map(self):
+    def update_stations_map(self, auto_range=True):
         """Update the stations map in the stations tab.
 
         This method is used as slot. Hence, it will be invoked by signals from various GUI widgets that change the
@@ -202,6 +204,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         SCATTER_PLOT_PEN_COLOR_DATUM = 'r'
         SCATTER_PLOT_BRUSH_COLOR_OBSERVED = QtGui.QColor('cyan')
         SCATTER_PLOT_BRUSH_COLOR_NOT_OBSERVED = 'g'
+        STATION_LABEL_TEXT_SIZE = 10
+        STATION_LABEL_TEXT_COLOR = 'k'
 
         self.stations_map.clear()
         self.stations_map.setTitle('')
@@ -219,15 +223,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Get stat_df from station view model and filter for stations in filter proxy model:
         filter_tmp = self.station_model.get_data['station_name'].isin(station_name_list)
         stat_df_filtered = self.station_model.get_data.loc[filter_tmp]
-
-        # TODO: Use symbol=QPainterPath() to create cumstom symbol with text label (station name)!
-        # See: https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/scatterplotitem.html (symbol)
-        # Example: https://www.geeksforgeeks.org/pyqtgraph-show-text-as-spots-on-scatter-plot-graph/
-        # from PyQt5.QtGui import QPainterPath, QFont
-        # symbol = QPainterPath()
-        # f = QFont()
-        # f.setPointSize(1000)
-        # symbol.addText(0, 0, f, 'testTXT')
 
         # Plot all stations in filtered dataframe:
         # - Example: https://www.geeksforgeeks.org/pyqtgraph-different-colored-spots-on-scatter-plot-graph/
@@ -252,10 +247,51 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         scatter.addPoints(spots)
         self.stations_map.addItem(scatter)
 
+        # Add statione name labels:
+        from PyQt5.QtGui import QPainterPath, QFont, QTransform
+
+        # Show station name labels next to the scatter plot symbols, if enabled via the GUI:
+        # See: https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/scatterplotitem.html (symbol)
+        # Example: https://www.geeksforgeeks.org/pyqtgraph-show-text-as-spots-on-scatter-plot-graph/
+        if self.checkBox_stations_map_show_stat_name_labels.checkState() == Qt.Checked:
+            spots = []
+            # self.stations_map.addItem(scatter)
+            for index, row in stat_df_filtered.iterrows():
+                symbol = QtGui.QPainterPath()
+                # creating QFont object
+                f = QtGui.QFont()
+                # setting font size
+                f.setPointSize(STATION_LABEL_TEXT_SIZE)
+                # adding text
+                symbol.addText(STATION_LABEL_TEXT_SIZE, 0, f, row['station_name'])
+                # getting bounding rectangle
+                br = symbol.boundingRect()
+                # getting scale
+                # scale = min(1. / (br.width()), 1. / br.height())
+                scale = 1. / (br.width()*3)
+                # getting transform object
+                tr = QtGui.QTransform()
+                # setting scale to transform object
+                tr.scale(scale, scale)
+                symbol_plot = tr.map(symbol)
+                spot_dic = {'pos': (row['long_deg'], row['lat_deg']),
+                            'size': STATION_LABEL_TEXT_SIZE/symbol_plot.boundingRect().height(),
+                            # 'pen': {'color': pen_color, 'width': SCATTER_PLOT_PEN_WIDTH},
+                            'brush': STATION_LABEL_TEXT_COLOR,
+                            'symbol': symbol_plot}
+                spots.append(spot_dic)
+            scatter.addPoints(spots)
+
         # Title, grid, etc.:
         self.stations_map.setTitle(
             f'{len(station_name_list)} stations displayed ({number_of_observed_stations} observed; {number_of_stations_total} in total)')
         self.stations_map.showGrid(x=True, y=True)
+        if auto_range:
+            self.stations_map.autoRange()
+
+    def on_checkBox_stations_map_show_stat_name_labels_state_changed(self):
+        """Invoke, whenever the state of the checkbox changes."""
+        self.update_stations_map(auto_range=False)
 
     def set_up_drift_plot_widget(self):
         """Set up `self.graphicsLayoutWidget_results_drift_plot` widget."""
@@ -1481,17 +1517,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         except:
             if IS_VERBOSE:
                 print('No filter proxy model connected.')
-        self.update_stations_map()
+        self.update_stations_map(auto_range=False)
 
     @pyqtSlot(int)  # Required, because 2 signals are emitted and one (int) has to be selected!
-    def on_checkBox_filter_observed_stat_only_toggled(self, state):
+    def on_checkBox_filter_observed_stat_only_toggled(self, state, auto_range_stations_plot=False):
         """Event handler for the filter observed stations only checkbox."""
         self.proxy_station_model.setFilterKeyColumn(self.campaign.stations._STAT_DF_COLUMNS.index('is_observed'))
         if state == Qt.Checked:
             self.proxy_station_model.setFilterFixedString('True')
         else:
             self.proxy_station_model.setFilterFixedString('')
-        self.update_stations_map()
+        self.update_stations_map(auto_range=auto_range_stations_plot)
 
     @pyqtSlot()
     def exit_application(self):
@@ -1634,7 +1670,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 self.enable_station_view_options_based_on_model()
                 # Show observed stations only based on Checkbox state:
-                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState())
+                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
+                                                                   auto_range_stations_plot=True)
                 # self.update_stations_map() => Called in self.on_checkBox_filter_observed_stat_only_toggled() above!
                 number_of_stations_added = self.campaign.stations.get_number_of_stations - number_of_stations_old
                 self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
@@ -1646,9 +1683,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if len(self.station_model._data) > 0:
             self.groupBox_filter_options.setEnabled(True)
             self.groupBox_edit_options.setEnabled(True)
+            self.groupBox_stations_map_view_options.setEnabled(True)
         else:
             self.groupBox_filter_options.setEnabled(False)
             self.groupBox_edit_options.setEnabled(False)
+            self.groupBox_stations_map_view_options.setEnabled(False)
 
     def refresh_stations_table_model_and_view(self):
         """Refrech the station table model and the respective table view."""
@@ -1760,7 +1799,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.
                 self.enable_station_view_options_based_on_model()
                 # Show observed stations only based on Checkbox state:
-                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState())
+                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
+                                                                   auto_range_stations_plot=True)
         else:
             self.statusBar().showMessage(f"No survey data added.")
 
