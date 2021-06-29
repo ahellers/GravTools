@@ -119,6 +119,10 @@ class StationTableModel(QAbstractTableModel):
             flags |= Qt.ItemIsEditable
         return flags
 
+    @property
+    def get_data(self):
+        return self._data
+
 
 class SetupTableModel(QAbstractTableModel):
     """Model for displaying the station data.

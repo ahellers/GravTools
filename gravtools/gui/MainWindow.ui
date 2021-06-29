@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -84,6 +84,28 @@
              </widget>
             </item>
             <item>
+             <widget class="QGroupBox" name="groupBox_stations_map_view_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Map view options</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_31">
+               <item>
+                <widget class="QCheckBox" name="checkBox_stations_map_show_stat_name_labels">
+                 <property name="text">
+                  <string>Show station name labels</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
              <widget class="QGroupBox" name="groupBox_edit_options">
               <property name="enabled">
                <bool>false</bool>
@@ -136,10 +158,15 @@
               </item>
              </layout>
             </widget>
-            <widget class="QWidget" name="tab_Stations_Plot">
+            <widget class="QWidget" name="tab_stations_map">
              <attribute name="title">
-              <string>Plot</string>
+              <string>Map</string>
              </attribute>
+             <layout class="QVBoxLayout" name="verticalLayout_30">
+              <item>
+               <widget class="GraphicsLayoutWidget" name="GraphicsLayoutWidget_stations_map"/>
+              </item>
+             </layout>
             </widget>
            </widget>
           </item>
@@ -305,7 +332,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>1</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -447,7 +474,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>5</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -803,10 +830,12 @@
     <addaction name="action_Estimation_settings"/>
    </widget>
    <widget class="QMenu" name="menuStations">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Stations</string>
     </property>
-    <addaction name="actionShow_Stations"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Observations"/>

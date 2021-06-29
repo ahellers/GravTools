@@ -17,3 +17,6 @@ if __name__ == "__main__":
     stat_list = ['stat1', 'stat2', 'stat3', 'stat4']
     station_color_dict = get_station_color_dict(stat_list)
     print(station_color_dict)
+
+
+
