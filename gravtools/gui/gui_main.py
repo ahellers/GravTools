@@ -98,6 +98,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.checkBox_stations_map_show_stat_name_labels.stateChanged.connect(
             self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
         # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
+        # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
@@ -135,6 +136,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    @pyqtSlot()
+    def on_action_Change_output_directory_triggered(self):
+        """Invoked whenever the menu item change output directory is pressed."""
+        self.change_campaign_output_directory()
+
+    def change_campaign_output_directory(self):
+        """Change the output directory of the current campaign."""
+        initial_folder_path = self.campaign.output_directory
+        output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path)
+        if output_dir_name:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            output_dir_name = QDir.toNativeSeparators(output_dir_name)
+            # Check, if path exists:
+            if os.path.isdir(output_dir_name):
+                try:
+                    self.campaign.set_output_directory(output_dir_name)
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                    self.statusBar().showMessage(f"No valid output directory selected.")
+                else:
+                    if IS_VERBOSE:
+                        print(f'New output directory: {output_dir_name}')
+                    self.statusBar().showMessage(f'New output directory: {output_dir_name}')
+            else:
+                self.statusBar().showMessage(f'Output directory "{output_dir_name}" does not exist!')
+                QMessageBox.critical(self, 'Error!', f'Directory "{output_dir_name}" does not exist!')
+        else:
+            self.statusBar().showMessage(f'No output directory selected.')
 
     @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
@@ -194,6 +226,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.action_Add_Stations.setEnabled(True)
                 self.action_Export_Results.setEnabled(True)
                 self.action_Save_Campaign.setEnabled(True)
+                self.action_Change_output_directory.setEnabled(True)
 
                 # Set up view models and views for this campaign:
                 # - Stations tab:
@@ -1690,6 +1723,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.action_Add_Stations.setEnabled(True)
             self.action_Export_Results.setEnabled(True)
             self.action_Save_Campaign.setEnabled(True)
+            self.action_Change_output_directory.setEnabled(True)
 
             # Set up GUI (models and widgets):
             # - Stations Tab:

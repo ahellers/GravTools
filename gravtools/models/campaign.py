@@ -656,6 +656,22 @@ class Campaign:
                 f'Loaded campaign "{campaign.campaign_name}" with {campaign.number_of_stations} station(s) and {campaign.number_of_surveys} survey(s).')
         return campaign
 
+    def set_output_directory(self, output_directory):
+        """Change the campaign's output directory.
+
+        Parameters
+        ----------
+        output_directory : str
+            New output directory. The specified directory has to exist on the computer/os!
+        """
+        # Check output directory:
+        if not isinstance(output_directory, str):
+            raise TypeError('The argument "output_directory" needs to be a string.')
+        else:
+            if not os.path.isdir(output_directory):
+                raise AssertionError(f'The directory "{output_directory}" does not exist!')
+        self.output_directory = output_directory
+
 
 if __name__ == '__main__':
     """Main function, primarily for debugging and testing."""
