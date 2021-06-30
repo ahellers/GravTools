@@ -1,0 +1,8 @@
+*
+!.gitignore
+!Makefile
+!index.rst
+!conf.py
+!_build
+!_static
+!_templates

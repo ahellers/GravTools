@@ -1,0 +1,52 @@
+# ### Anmerkung ###
+# - Ld (ausgeglichene Beobachtungen), mit Drift-Parameter auf Epoche T=0 gerechnet, entspricht genau den
+#   Drift-Ergebnissen der MLR mit Pgm DRIFT2011!!! EXAKT (wenn SD der Beob. als ident angenommen!)!
+#    - D.h.: Unteschiede in der berechneten absoluten ergeben sich durch die Lagerungs-Bedingung (und deren Gewichtung)!
+#  - Wenn nur ein Punkt zur Lagerung und SD der Beob. ident (gleiches Gewicht) => Drift gleich wie bei DRIFT2011!
+
+# ### To Do: ###
+#  - Vermittelnder Ausgleich mit Bedingungsgleichungen
+#    - Idente Erfebnisse wie mit fiktiven Beobachtungen?
+#  - "Datumsfestlgung" nach Thaller
+#    - Idente Ergebniss zu Vermittelnder Ausgeleich mit Bedingungsgleichungen?
+#  - Bedingungsgleichung definieren, um Ergebnis von SCHWAUS2016.FOR nachzubilden!
+#    - Zweck: Genauigkeitsinformation der Stationskooridnaten nutzen!
+#  - Wie a priori SD der Datumsstationen nutzen?
+#    - Gewichtung bei der Lagerung
+#    - Über "Fehlerfortpflanzung" Genauigkeit a posteriori bestimmen!
+#  - Drift-Plot erzeugen
+#  - Korrelationen visualisieren (Plots erstellen) und analysieren!
+#  - Recherche: Kondition einer Matrix, etc. ...
+
+
+### packaging ###
+# Development package installation in current virtual env.:
+# >python3 setup.py develop
+# - https://python-packaging.readthedocs.io/en/latest/command-line-scripts.html
+
+### argparse ###
+# For parsing terminal commands
+# See: https://docs.python.org/3/library/argparse.html#argparse.ArgumentParser
+
+### configparser ###
+# for parsing config files
+# See: https://docs.python.org/3/library/configparser.html#module-configparser
+
+##### QT #####
+# Book: https://www.learnpyqt.com/pyqt5-book/
+# - Also pySide2: https://www.learnpyqt.com/pyside2-book/
+#  - Tab view to shwo numpy arrays or pandas data structures!
+# Tree-view example: http://rowinggolfer.blogspot.com/2010/05/qtreeview-and-qabractitemmodel-example.html
+# Embed matplotlib:
+# - https://www.learnpyqt.com/tutorials/plotting-matplotlib/
+# - https://matplotlib.org/3.1.1/gallery/user_interfaces/embedding_in_qt_sgskip.html
+# - https://scipy-cookbook.readthedocs.io/items/Matplotlib_PySide.html
+# PySide2 Tutorial: https://doc.qt.io/qtforpython/tutorials/basictutorial/uifiles.html
+# PyQT Tutorial: https://www.learnpyqt.com/ => huge!
+# QT for python "decoupler"
+# - http://wiki.ros.org/python_qt_binding
+# - https://github.com/spyder-ide/qtpy
+# - See, e.g.: https://www.learnpyqt.com/tutorials/pyqt5-vs-pyside2/
+#
+# Integrating Qt Designer with PyQt
+# - Create python class from ui file with pyqt-distutils

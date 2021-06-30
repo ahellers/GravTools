@@ -1,0 +1,976 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1337</width>
+    <height>729</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>GravTools</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_28">
+    <item>
+     <widget class="QTabWidget" name="tabWidget_Main">
+      <property name="tabPosition">
+       <enum>QTabWidget::East</enum>
+      </property>
+      <property name="currentIndex">
+       <number>2</number>
+      </property>
+      <property name="movable">
+       <bool>true</bool>
+      </property>
+      <widget class="QWidget" name="tab_main_stations">
+       <attribute name="title">
+        <string>Stations</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="1,4">
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="QGroupBox" name="groupBox_filter_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="toolTip">
+               <string>Display options for stations</string>
+              </property>
+              <property name="title">
+               <string>Filter Options</string>
+              </property>
+              <property name="flat">
+               <bool>false</bool>
+              </property>
+              <property name="checkable">
+               <bool>false</bool>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_2">
+               <item>
+                <widget class="QCheckBox" name="checkBox_filter_observed_stat_only">
+                 <property name="toolTip">
+                  <string>Display only stations that were observed in this campaign. </string>
+                 </property>
+                 <property name="text">
+                  <string>Observed only</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label">
+                 <property name="text">
+                  <string>Station name filter (regex)</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="lineEdit_filter_stat_name">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_stations_map_view_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Map view options</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_31">
+               <item>
+                <widget class="QCheckBox" name="checkBox_stations_map_show_stat_name_labels">
+                 <property name="text">
+                  <string>Show station name labels</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_edit_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Edit Options</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QTabWidget" name="tab_Widget_Stations">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="currentIndex">
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="tab_Stations_Table">
+             <attribute name="title">
+              <string>Table</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="verticalLayout">
+              <item>
+               <widget class="QTableView" name="tableView_Stations">
+                <property name="sizeAdjustPolicy">
+                 <enum>QAbstractScrollArea::AdjustToContents</enum>
+                </property>
+                <attribute name="horizontalHeaderCascadingSectionResizes">
+                 <bool>true</bool>
+                </attribute>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_stations_map">
+             <attribute name="title">
+              <string>Map</string>
+             </attribute>
+             <layout class="QVBoxLayout" name="verticalLayout_30">
+              <item>
+               <widget class="GraphicsLayoutWidget" name="GraphicsLayoutWidget_stations_map"/>
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_main_observations">
+       <attribute name="title">
+        <string>Observations</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_7">
+        <item>
+         <widget class="QSplitter" name="splitter_obs">
+          <property name="toolTipDuration">
+           <number>1</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <widget class="QWidget" name="layoutWidget">
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <widget class="QTreeWidget" name="treeWidget_observations">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+              <property name="minimumSize">
+               <size>
+                <width>280</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="sortingEnabled">
+               <bool>false</bool>
+              </property>
+              <property name="headerHidden">
+               <bool>true</bool>
+              </property>
+              <attribute name="headerVisible">
+               <bool>false</bool>
+              </attribute>
+              <attribute name="headerStretchLastSection">
+               <bool>true</bool>
+              </attribute>
+              <column>
+               <property name="text">
+                <string>Survey</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>Station</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>#Obs</string>
+               </property>
+              </column>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_obs_data_manipulation">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>Data manipulation</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_10">
+               <item>
+                <widget class="QPushButton" name="pushButton_obs_apply_autoselect_current_data">
+                 <property name="toolTip">
+                  <string>Activate/deactivate observations of the current selected survey or setup according to the auto-selection options.</string>
+                 </property>
+                 <property name="text">
+                  <string>Apply Autoselection</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pushButton_obs_comp_setup_data">
+                 <property name="toolTip">
+                  <string>Compute variance-weighted mean of active observations for all setups in campaign.</string>
+                 </property>
+                 <property name="text">
+                  <string>Compute setup data for campaign</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pushButton_obs_run_estimation">
+                 <property name="toolTip">
+                  <string>Run parameter estimation according to the estimation settings.</string>
+                 </property>
+                 <property name="text">
+                  <string>Run estimation</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_obs_view_options">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="title">
+               <string>View Options</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_9">
+               <item>
+                <widget class="QCheckBox" name="checkBox_obs_show_all_columns">
+                 <property name="text">
+                  <string>Show all columns</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_obs_plot_reduced_observations">
+                 <property name="toolTip">
+                  <string>Plot reduced observatio data, if availble.</string>
+                 </property>
+                 <property name="text">
+                  <string>Plot reduced observations</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_obs_plot_setup_data">
+                 <property name="toolTip">
+                  <string>Plot variance-weighted mean of observation data for all setups.</string>
+                 </property>
+                 <property name="text">
+                  <string>Plot setup data</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QTabWidget" name="tabWidget_observations">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="currentIndex">
+            <number>1</number>
+           </property>
+           <widget class="QWidget" name="tab_observations_table">
+            <attribute name="title">
+             <string>Table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_6">
+             <item>
+              <widget class="QTableView" name="tableView_observations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_observations_plots">
+            <attribute name="title">
+             <string>Plots</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
+             <item>
+              <widget class="GraphicsLayoutWidget" name="GraphicsLayoutWidget_observations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_observations_setups">
+            <attribute name="title">
+             <string>Setups</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_11">
+             <item>
+              <widget class="QTableView" name="tableView_observations_setups"/>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_main_results">
+       <property name="toolTipDuration">
+        <number>2</number>
+       </property>
+       <attribute name="title">
+        <string>Results</string>
+       </attribute>
+       <attribute name="toolTip">
+        <string>Setup data: Corrected and reduces observation data accumulated for each instrument setup.</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_14">
+        <item>
+         <widget class="QSplitter" name="splitter_results">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <widget class="QWidget" name="verticalLayoutWidget">
+           <layout class="QVBoxLayout" name="verticalLayout_12">
+            <item>
+             <widget class="QGroupBox" name="groupBox_results_lsm_runs">
+              <property name="title">
+               <string>LSM runs</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_16">
+               <item>
+                <widget class="QComboBox" name="comboBox_results_lsm_run_selection"/>
+               </item>
+               <item>
+                <widget class="QPushButton" name="pushButton_results_delete_lsm_run">
+                 <property name="text">
+                  <string>Delete selected lsm run</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="groupBox_results_data_selection">
+              <property name="title">
+               <string>Data selection</string>
+              </property>
+              <layout class="QVBoxLayout" name="verticalLayout_17">
+               <item>
+                <layout class="QFormLayout" name="formLayout">
+                 <item row="0" column="0">
+                  <widget class="QLabel" name="label_2">
+                   <property name="text">
+                    <string>Station</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QComboBox" name="comboBox_results_selection_station">
+                   <item>
+                    <property name="text">
+                     <string>All stations</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item row="1" column="0">
+                  <widget class="QLabel" name="label_5">
+                   <property name="text">
+                    <string>Survey</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="1">
+                  <widget class="QComboBox" name="comboBox_results_selection_survey">
+                   <item>
+                    <property name="text">
+                     <string>All surveys</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <spacer name="verticalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QTabWidget" name="tabWidget_results">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="currentIndex">
+            <number>5</number>
+           </property>
+           <widget class="QWidget" name="tab_results_info">
+            <attribute name="title">
+             <string>Info</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_23">
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_22">
+               <item>
+                <widget class="QGroupBox" name="groupBox_results_info">
+                 <property name="title">
+                  <string>Info</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_21">
+                  <item>
+                   <layout class="QFormLayout" name="formLayout_2">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_3">
+                      <property name="text">
+                       <string>Adjustment method:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_results_adjustment_method">
+                      <property name="minimumSize">
+                       <size>
+                        <width>100</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_4">
+                      <property name="text">
+                       <string>Time and Date:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_results_time_and_date">
+                      <property name="minimumSize">
+                       <size>
+                        <width>100</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="label_10">
+                      <property name="text">
+                       <string>Comment: </string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_results_comment">
+                      <property name="minimumSize">
+                       <size>
+                        <width>100</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QGroupBox" name="groupBox_results_statistics">
+                 <property name="title">
+                  <string>Statistics and tests</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_24">
+                  <item>
+                   <layout class="QFormLayout" name="formLayout_3">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_9">
+                      <property name="text">
+                       <string>sig0² = </string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_results_sig0">
+                      <property name="minimumSize">
+                       <size>
+                        <width>100</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_6">
+                      <property name="text">
+                       <string>Goodness-of-fit test:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_results_goodness_of_fit_test_status">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="label_7">
+                      <property name="text">
+                       <string>Number of outliers:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_results_numbr_of_outliers">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QGroupBox" name="groupBox_results_lsm_run_log">
+                 <property name="title">
+                  <string>LSM run log</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_20">
+                  <item>
+                   <widget class="QPlainTextEdit" name="plainTextEdit_results_log">
+                    <property name="readOnly">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_obs_table">
+            <attribute name="title">
+             <string>Observations table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_15">
+             <item>
+              <widget class="QTableView" name="tableView_results_observations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_stat_table">
+            <attribute name="title">
+             <string> Stations table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_19">
+             <item>
+              <widget class="QTableView" name="tableView_results_stations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_obs_plots">
+            <attribute name="title">
+             <string>Observations Plots</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_13">
+             <item>
+              <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_results_observations_plots"/>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox_plot_settings">
+               <property name="title">
+                <string>Plot settings</string>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_25">
+                <item>
+                 <layout class="QFormLayout" name="formLayout_4">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_results_obs_plot_selec_data_column">
+                    <property name="text">
+                     <string>Select data column:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QComboBox" name="comboBox_results_obs_plot_select_data_column"/>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_drift">
+            <attribute name="title">
+             <string>Drift table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_18">
+             <item>
+              <widget class="QTableView" name="tableView_results_drift"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_driftplot">
+            <attribute name="title">
+             <string>Drift Plot</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_29">
+             <item>
+              <layout class="QVBoxLayout" name="verticalLayout_27">
+               <item>
+                <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_results_drift_plot">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;This plot depicts setup observations and the the drift function (polynomial of degree n) fitted to these observations.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QGroupBox" name="groupBox_results_drift_plot">
+                 <property name="enabled">
+                  <bool>true</bool>
+                 </property>
+                 <property name="title">
+                  <string>Drift plot settings</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_26">
+                  <item>
+                   <layout class="QFormLayout" name="formLayout_5">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_results_drift_plot_v_offset">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="toolTip">
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add vertical offset to the drift function (polynomial) w.r.t. the setup observations. This is needed to when differential observations are used for prameter estimation. In this case the constant bias of the gravimeter reading cannot be estimated and is only determined approximately.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      </property>
+                      <property name="text">
+                       <string>Vertical offset of drift polynomial w.r.t. setup observations [µGal]</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QSpinBox" name="spinBox_results_drift_plot_v_offset">
+                      <property name="enabled">
+                       <bool>false</bool>
+                      </property>
+                      <property name="toolTip">
+                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Add vertical offset to the drift function (polynomial) w.r.t. the setup observations. This is needed to when differential observations are used for prameter estimation. In this case the constant bias of the gravimeter reading cannot be estimated and is only determined approximately.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      </property>
+                      <property name="minimum">
+                       <number>-1000</number>
+                      </property>
+                      <property name="maximum">
+                       <number>1000</number>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1337</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuAdd_Survey">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Add Survey</string>
+     </property>
+     <addaction name="action_from_CG5_observation_file"/>
+     <addaction name="action_from_BEV_observation_file"/>
+    </widget>
+    <addaction name="action_New_Campaign"/>
+    <addaction name="action_Change_output_directory"/>
+    <addaction name="action_Save_Campaign"/>
+    <addaction name="action_Load_Campaign"/>
+    <addaction name="separator"/>
+    <addaction name="menuAdd_Survey"/>
+    <addaction name="action_Add_Stations"/>
+    <addaction name="separator"/>
+    <addaction name="separator"/>
+    <addaction name="action_Export_Results"/>
+    <addaction name="separator"/>
+    <addaction name="action_Exit"/>
+   </widget>
+   <widget class="QMenu" name="menu_Observations">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="tearOffEnabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Observations</string>
+    </property>
+    <addaction name="action_Edit_Observations"/>
+    <addaction name="separator"/>
+    <addaction name="action_Corrections"/>
+    <addaction name="action_Autoselection_settings"/>
+    <addaction name="actionEstimate_long_term_drift"/>
+   </widget>
+   <widget class="QMenu" name="menuEstimation_settings">
+    <property name="title">
+     <string>Estimation settings</string>
+    </property>
+    <addaction name="action_Estimation_settings"/>
+   </widget>
+   <widget class="QMenu" name="menuStations">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
+    <property name="title">
+     <string>Stations</string>
+    </property>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menu_Observations"/>
+   <addaction name="menuEstimation_settings"/>
+   <addaction name="menuStations"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar">
+   <property name="inputMethodHints">
+    <set>Qt::ImhNone</set>
+   </property>
+  </widget>
+  <action name="action_New_Campaign">
+   <property name="text">
+    <string>&amp;New Campaign</string>
+   </property>
+  </action>
+  <action name="action_Save_Campaign">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Save Campaign</string>
+   </property>
+  </action>
+  <action name="action_Load_Campaign">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Load Campaign</string>
+   </property>
+  </action>
+  <action name="action_Add_Stations">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Add Stations</string>
+   </property>
+  </action>
+  <action name="action_Exit">
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+   <property name="toolTip">
+    <string>Exit GravTools</string>
+   </property>
+  </action>
+  <action name="action_Edit_Observations">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Edit Observations</string>
+   </property>
+  </action>
+  <action name="actionResiduals">
+   <property name="text">
+    <string>Residuals</string>
+   </property>
+  </action>
+  <action name="actionEstimates">
+   <property name="text">
+    <string>Estimates</string>
+   </property>
+  </action>
+  <action name="action_Corrections">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Corrections</string>
+   </property>
+  </action>
+  <action name="actionShow_Stations">
+   <property name="text">
+    <string>Show Stations</string>
+   </property>
+  </action>
+  <action name="action_from_CG5_observation_file">
+   <property name="text">
+    <string>from CG5 observation file</string>
+   </property>
+  </action>
+  <action name="action_from_BEV_observation_file">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>from BEV observation file</string>
+   </property>
+  </action>
+  <action name="action_Autoselection_settings">
+   <property name="text">
+    <string>Autoselection settings</string>
+   </property>
+  </action>
+  <action name="action_Estimation_settings">
+   <property name="text">
+    <string>Settings</string>
+   </property>
+  </action>
+  <action name="actionEstimate_long_term_drift">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Estimate long-term drift</string>
+   </property>
+  </action>
+  <action name="action_Export_Results">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Export Results</string>
+   </property>
+  </action>
+  <action name="action_Change_output_directory">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Change output directory</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>GraphicsLayoutWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>
