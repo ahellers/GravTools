@@ -594,7 +594,7 @@ class Campaign:
             gravimeter_serial_number = self.surveys[observed_in_surveys[0]].gravimeter_serial_number
             date_str = self.surveys[observed_in_surveys[0]].date.strftime('%Y%m%d')
 
-            nsb_string += '{:10s} {:8s}  {:9.0f}{:4.0f} {:1s} {:4s}{:5.0f}{:5.0f}\n'.format(
+            nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s} {:>4s} {:4.0f} {:4.0f}\n'.format(
                 station_name,
                 date_str,
                 row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
