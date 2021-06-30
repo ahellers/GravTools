@@ -12,7 +12,6 @@ Eel==0.12.4
 future==0.18.2
 gevent==21.1.2
 gevent-websocket==0.10.1
--e git+git@gitlab.com:Heller182/grav.git@fe528c0769502e84a06be67a742032cacfd386df#egg=gravtools
 greenlet==1.1.0
 idna==2.10
 imagesize==1.2.0
@@ -26,7 +25,6 @@ numpy==1.19.4
 packaging==20.4
 pandas==1.1.4
 Pillow==8.0.1
-pkg-resources==0.0.0
 Pygments==2.7.2
 pyinstaller==4.3
 pyinstaller-hooks-contrib==2021.1
