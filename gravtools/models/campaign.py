@@ -1,5 +1,7 @@
 import datetime as dt
 import numpy as np
+import pickle
+import os
 
 from gravtools.models.lsm import LSM, LSMDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
@@ -592,7 +594,7 @@ class Campaign:
             gravimeter_serial_number = self.surveys[observed_in_surveys[0]].gravimeter_serial_number
             date_str = self.surveys[observed_in_surveys[0]].date.strftime('%Y%m%d')
 
-            nsb_string += '{:10s} {:8s}  {:9.0f}{:4.0f} {:1s} {:4s}{:5.0f}{:5.0f}\n'.format(
+            nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s} {:>4s} {:4.0f} {:4.0f}\n'.format(
                 station_name,
                 date_str,
                 row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
@@ -606,3 +608,72 @@ class Campaign:
         # Write file:
         with open(filename, 'w') as out_file:
             out_file.write(nsb_string)
+
+    def save_to_pickle(self, filename=None, verbose=True):
+        """Save the campaign object to a pickle file at the given path.
+
+        Parameters
+        ----------
+        filename : str, optional (default=`None`)
+            Path and name of the pickle file, e.g. /home/user1/data/camp1.pkl. `None` indicates that the campaign object
+            is saved to the default output directory past (`campaign.output_directory`). In this case the file is named
+            `<campaign_name>.pkl`.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        Returns
+        -------
+        str : Name and path of the saved file.
+        """
+        if filename is None:
+            filename = os.path.join(self.output_directory, f'{self.campaign_name}.pkl')
+        # Open file:
+        if verbose:
+            print(f'Export campaign data to {filename}.')
+        with open(filename, 'wb') as outfile:
+            pickle.dump(self, outfile, protocol=pickle.HIGHEST_PROTOCOL)
+        return filename
+
+    @classmethod
+    def from_pkl(cls, filename: str, verbose: bool = True):
+        """Loads a campaign object from a pickle file.
+
+        Parameters
+        ----------
+        filename : str
+            Name and path of the pickle file containing the campaign data.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        Returns
+        -------
+        `Campaign` object
+        """
+        with open(filename, 'rb') as handle:
+            campaign = pickle.load(handle)
+        if verbose:
+            print(
+                f'Loaded campaign "{campaign.campaign_name}" with {campaign.number_of_stations} station(s) and {campaign.number_of_surveys} survey(s).')
+        return campaign
+
+    def set_output_directory(self, output_directory):
+        """Change the campaign's output directory.
+
+        Parameters
+        ----------
+        output_directory : str
+            New output directory. The specified directory has to exist on the computer/os!
+        """
+        # Check output directory:
+        if not isinstance(output_directory, str):
+            raise TypeError('The argument "output_directory" needs to be a string.')
+        else:
+            if not os.path.isdir(output_directory):
+                raise AssertionError(f'The directory "{output_directory}" does not exist!')
+        self.output_directory = output_directory
+
+
+if __name__ == '__main__':
+    """Main function, primarily for debugging and testing."""
+    filename = '/home/heller/pyProjects/gravtools/out/test.pkl'
+    camp = Campaign.from_pkl(filename)

@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -796,6 +796,7 @@
      <addaction name="action_from_BEV_observation_file"/>
     </widget>
     <addaction name="action_New_Campaign"/>
+    <addaction name="action_Change_output_directory"/>
     <addaction name="action_Save_Campaign"/>
     <addaction name="action_Load_Campaign"/>
     <addaction name="separator"/>
@@ -862,7 +863,7 @@
   </action>
   <action name="action_Load_Campaign">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>&amp;Load Campaign</string>
@@ -952,6 +953,14 @@
    </property>
    <property name="text">
     <string>Export Results</string>
+   </property>
+  </action>
+  <action name="action_Change_output_directory">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Change output directory</string>
    </property>
   </action>
  </widget>

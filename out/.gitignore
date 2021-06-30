@@ -1,4 +1,6 @@
 # Output files:
-*.nsb
-*.pdf
-*.txt
+*
+!test.nsb
+!test_drift_plot.png
+!test.pkl
+!test.log

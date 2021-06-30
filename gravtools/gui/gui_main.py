@@ -20,7 +20,7 @@ from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settin
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
     ResultsObservationModel, ResultsDriftModel
-from gravtools.gui.gui_misc import get_station_color_dict
+from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 
 from gravtools.models.survey import Survey
 from gravtools.models.campaign import Campaign
@@ -33,16 +33,6 @@ IS_VERBOSE = True  # Define, whether screen output is enabled.
 
 MARKER_SYMBOL_ORDER = ('o', 't', 'x', 's', 'star', '+', 'd', 't1', 'p', 't2', 'h', 't3')
 MARKER_COLOR_ODER = ('b', 'r', 'g', 'c', 'm', 'y')
-
-
-def checked_state_to_bool(checked_state) -> bool:
-    """Converts Qt checked states to boolean values."""
-    if checked_state == Qt.Checked or checked_state == Qt.PartiallyChecked:
-        return True
-    elif checked_state == Qt.Unchecked:
-        return False
-    else:
-        raise AttributeError('Invalid input argument!')
 
 
 class TimeAxisItem(pg.AxisItem):
@@ -107,6 +97,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.on_spinBox_results_drift_plot_v_offset_value_changed)
         self.checkBox_stations_map_show_stat_name_labels.stateChanged.connect(
             self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
+        # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
+        # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
@@ -129,6 +121,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
 
         # Init models:
+        self.station_model = None
         self.observation_model = None
         self.setup_model = None
         self.results_station_model = None
@@ -143,6 +136,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    @pyqtSlot()
+    def on_action_Change_output_directory_triggered(self):
+        """Invoked whenever the menu item change output directory is pressed."""
+        self.change_campaign_output_directory()
+
+    def change_campaign_output_directory(self):
+        """Change the output directory of the current campaign."""
+        initial_folder_path = self.campaign.output_directory
+        output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path)
+        if output_dir_name:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            output_dir_name = QDir.toNativeSeparators(output_dir_name)
+            # Check, if path exists:
+            if os.path.isdir(output_dir_name):
+                try:
+                    self.campaign.set_output_directory(output_dir_name)
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                    self.statusBar().showMessage(f"No valid output directory selected.")
+                else:
+                    if IS_VERBOSE:
+                        print(f'New output directory: {output_dir_name}')
+                    self.statusBar().showMessage(f'New output directory: {output_dir_name}')
+            else:
+                self.statusBar().showMessage(f'Output directory "{output_dir_name}" does not exist!')
+                QMessageBox.critical(self, 'Error!', f'Directory "{output_dir_name}" does not exist!')
+        else:
+            self.statusBar().showMessage(f'No output directory selected.')
 
     @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
@@ -168,6 +192,88 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
             self.statusBar().showMessage(f"Unknown estimation method selected!")
+
+    @pyqtSlot()
+    def on_action_Load_Campaign_triggered(self):
+        """Invoked whenever the menu item load campaign is pressed."""
+        self.select_campaign_data_file_pickle()
+
+    def select_campaign_data_file_pickle(self):
+        """Launch file selection dialog to select a pickle file with saved campaign data."""
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        pkl_file_filename, _ = QFileDialog.getOpenFileName(self,
+                                                           'Select pkl file with campaign data',
+                                                           DEFAULT_CG5_OBS_FILE_PATH,
+                                                           "Pickle file (*.pkl)",
+                                                           options=options)
+        if pkl_file_filename:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            pkl_file_filename = QDir.toNativeSeparators(pkl_file_filename)
+            # Add survey data to Campaign:
+            try:
+                self.load_campaign_from_pickle(pkl_file_filename, verbose=IS_VERBOSE)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"No campaign data loaded.")
+            else:
+                # Update GUI:
+
+                # Enable/disable main menu items:
+                self.menuAdd_Survey.setEnabled(True)
+                self.action_Add_Stations.setEnabled(True)
+                self.action_Export_Results.setEnabled(True)
+                self.action_Save_Campaign.setEnabled(True)
+                self.action_Change_output_directory.setEnabled(True)
+
+                # Set up view models and views for this campaign:
+                # - Stations tab:
+                self.set_up_station_view_model()
+                self.enable_station_view_options_based_on_model()
+                self.set_up_proxy_station_model()
+                self.update_stations_map(auto_range=True)
+                # - Observations tab
+                self.set_up_observation_view_model()
+                self.enable_menu_observations_based_on_campaign_data()
+                self.populate_survey_tree_widget()
+                self.set_up_setup_view_model()
+                if self.treeWidget_observations.topLevelItemCount() > 0:
+                    self.treeWidget_observations.topLevelItem(0).setSelected(True)
+                # - Results tab:
+                self.set_up_results_stations_view_model()
+                self.set_up_results_observations_view_model()
+                self.set_up_results_drift_view_model()
+                self.update_results_tab(select_latest_item=True)
+
+                self.statusBar().showMessage(
+                    f"Previously saved campaign loaded rom pickle file (name: {self.campaign.campaign_name}, "
+                    f"output directory: {self.campaign.output_directory})")
+                self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
+        else:
+            self.statusBar().showMessage(f"No campaign data loaded.")
+
+    def load_campaign_from_pickle(self, filename, verbose):
+        """Load campaign data from pickle file."""
+        # Load campaign object and replace previous one:
+        if self.campaign is not None and verbose:
+            print(f'Data of current campaign "{self.campaign.campaign_name}" will be overwritten!')
+        self.campaign = Campaign.from_pkl(filename, verbose=verbose)
+
+    @pyqtSlot()
+    def on_action_Save_Campaign_triggered(self):
+        """Invoked whenever the menu item save campaign is pressed."""
+        self.save_campaign_to_pickle()
+
+    def save_campaign_to_pickle(self):
+        """Save campaign data (object) to a pickle file using the default path and filename."""
+        try:
+            filename = self.campaign.save_to_pickle(filename=None, verbose=IS_VERBOSE)
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            QMessageBox.information(self, 'Save Campaign Data', f'Campaign data saved as "{filename}".')
 
     @pyqtSlot()
     def on_spinBox_results_drift_plot_v_offset_value_changed(self):
@@ -197,6 +303,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         This method is used as slot. Hence, it will be invoked by signals from various GUI widgets that change the
         stations.
+
+        Parameters
+        ----------
+        auto_range : bool, optional (deault = `True`)
+            `True` indicates that the stations map is auto-ranged in order to view all content items.
         """
         SCATTER_PLOT_SYMBOL_SIZE = 10
         SCATTER_PLOT_PEN_WIDTH = 3
@@ -209,7 +320,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.stations_map.clear()
         self.stations_map.setTitle('')
-        # self.stations_map.legend.clear()
 
         # Get list of stations from filter proxy model:
         station_name_list = []
@@ -316,40 +426,41 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Get GUI parameters:
         # - Selected LSM run:
         lsm_run_idx, lsm_run_time_str = self.get_selected_lsm_run()
-        # - Selected station:
-        idx_selected_station, selected_station_name = self.get_selected_station()
-        if selected_station_name == 'All stations':
-            selected_station_names = None
-        else:
-            selected_station_names = [selected_station_name]
-        # - Selected Survey:
-        idx_selected_survey, selected_survey_name = self.get_selected_survey()
-        if selected_survey_name == 'All surveys':
-            selected_survey_names = None
-        else:
-            selected_survey_names = [selected_survey_name]
+        if lsm_run_idx != -1:
+            # - Selected station:
+            idx_selected_station, selected_station_name = self.get_selected_station()
+            if selected_station_name == 'All stations':
+                selected_station_names = None
+            else:
+                selected_station_names = [selected_station_name]
+            # - Selected Survey:
+            idx_selected_survey, selected_survey_name = self.get_selected_survey()
+            if selected_survey_name == 'All surveys':
+                selected_survey_names = None
+            else:
+                selected_survey_names = [selected_survey_name]
 
-        # Select lsm run:
-        lsm_run = self.campaign.lsm_runs[lsm_run_idx]
+            # Select lsm run:
+            lsm_run = self.campaign.lsm_runs[lsm_run_idx]
 
-        # - Enable/disable plot settings groupBox:
-        if lsm_run.lsm_method == 'LSM_diff':
-            # self.groupBox_results_drift_plot.setEnabled(True)
-            self.spinBox_results_drift_plot_v_offset.setEnabled(True)
-            self.label_results_drift_plot_v_offset.setEnabled(True)
-        else:
-            # self.groupBox_results_drift_plot.setEnabled(False)
-            self.spinBox_results_drift_plot_v_offset.setEnabled(False)
-            self.label_results_drift_plot_v_offset.setEnabled(False)
+            # - Enable/disable plot settings groupBox:
+            if lsm_run.lsm_method == 'LSM_diff':
+                # self.groupBox_results_drift_plot.setEnabled(True)
+                self.spinBox_results_drift_plot_v_offset.setEnabled(True)
+                self.label_results_drift_plot_v_offset.setEnabled(True)
+            else:
+                # self.groupBox_results_drift_plot.setEnabled(False)
+                self.spinBox_results_drift_plot_v_offset.setEnabled(False)
+                self.label_results_drift_plot_v_offset.setEnabled(False)
 
-        if lsm_run.lsm_method == 'LSM_diff':
-            offset_mugal = self.spinBox_results_drift_plot_v_offset.value()
-            self.plot_drift_lsm_diff(lsm_run, surveys=selected_survey_names, stations=selected_station_names,
-                                     offset_user_defined_mugal=offset_mugal)
-        elif lsm_run.lsm_method == 'MLR_BEV':
-            self.plot_drift_mlr_bev_legacy(lsm_run, surveys=selected_survey_names, stations=selected_station_names)
-        else:
-            self.drift_plot.clear()  # Clear drift plot
+            if lsm_run.lsm_method == 'LSM_diff':
+                offset_mugal = self.spinBox_results_drift_plot_v_offset.value()
+                self.plot_drift_lsm_diff(lsm_run, surveys=selected_survey_names, stations=selected_station_names,
+                                         offset_user_defined_mugal=offset_mugal)
+            elif lsm_run.lsm_method == 'MLR_BEV':
+                self.plot_drift_mlr_bev_legacy(lsm_run, surveys=selected_survey_names, stations=selected_station_names)
+            else:
+                self.drift_plot.clear()  # Clear drift plot
 
     def plot_drift_lsm_diff(self, lsm_run, surveys=None, stations=None, offset_user_defined_mugal=0):
         """Create a drift plot for LSM runs based on differential observations (method: LSMdiff)
@@ -850,7 +961,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def refresh_observation_plot(self):
         """Refresh the observation plot."""
         survey_name, setup_id = self.get_obs_tree_widget_selected_item()
-        self.plot_observations(survey_name, setup_id)
+        self.plot_observations(survey_name)
 
     def on_pushbutton_obs_comp_setup_data(self):
         """Invoked when pushing the button 'pushbutton_obs_comp_setup_data'."""
@@ -983,9 +1094,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Update data visualization in GUI
         self.update_obs_table_view(survey_name, setup_id)
-        self.plot_observations(survey_name, setup_id)
+        self.plot_observations(survey_name)
         self.update_obs_tree_widgget_from_observation_model()
-        pass
 
     def update_obs_tree_widgget_from_observation_model(self):
         """Update observation tree widget by checking data in the observation model."""
@@ -1026,7 +1136,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 survey_name = parent.text(0)  # Column 0 = Survey name
                 setup_id = int(item.text(0))
             self.update_obs_table_view(survey_name, setup_id)
-            self.plot_observations(survey_name, setup_id)
+            self.plot_observations(survey_name)
         else:
             if IS_VERBOSE:
                 print('No item or multiple items selected!')
@@ -1115,7 +1225,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         l = self.GraphicsLayoutWidget_observations
         l.setBackground('w')  # white background color
 
-        date_axis = TimeAxisItem(orientation='bottom')
+        # date_axis = TimeAxisItem(orientation='bottom')
 
         # Create sub-plots:
         # Gravity g [µGal]
@@ -1144,108 +1254,116 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plot_obs_corrections.addLegend()
         self.plot_obs_corrections.setXLink(self.plot_obs_g)
 
-    def plot_observations(self, survey_name, setup_id):
-        """Plots observation data to the GraphicsLayoutWidget."""
+    def plot_observations(self, survey_name=None):
+        """Plots observation data to the GraphicsLayoutWidget.
+
+        Parameters
+        ----------
+        survey_name : str, optional (default=None)
+            Specifies the survey for which the data should be plotted. `None` indicates, that the plots should be just
+            cleared (e.g. new campaign and no observation data available).
+        """
         obs_df = self.observation_model.get_data
-        setup_df = self.observation_model.get_setup_data
-        obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,
-                                                                                                                     's')
-        # Distinguish between survey and setup data here, in necessary!
-        # if setup_id is None:  # survey selected:
-        #     pass
-        # else:  # setup selected:
-        #     pass
-
-        # Plot reduced or unreduced observations:
-        flag_show_reduced_observations = False
-        if self.checkBox_obs_plot_reduced_observations.checkState() == Qt.Checked and not any(
-                obs_df['g_red_mugal'].isnull()):
-            # Reduced observations are available and will be shown:
-            flag_show_reduced_observations = True
-        elif self.checkBox_obs_plot_reduced_observations.checkState() == Qt.Checked and any(
-                obs_df['g_red_mugal'].isnull()):
-            flag_show_reduced_observations = False
-            QMessageBox.warning(self, 'Warning!', 'Reduced observations are not available!')
-            self.checkBox_obs_plot_reduced_observations.setChecked(Qt.Unchecked)
-
-            # Get data:
-        if flag_show_reduced_observations:
-            g_mugal = obs_df['g_red_mugal'].values
-            sd_g_mugal = obs_df['sd_g_red_mugal'].values
-            corr_tide = obs_df['corr_tide_red_mugal'].values
-            corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
-            ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
-        else:
-            g_mugal = obs_df['g_obs_mugal'].values
-            sd_g_mugal = obs_df['sd_g_obs_mugal'].values
-            corr_tide = obs_df['corr_tide_mugal'].values
-            corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
-            ref_height_name = self.campaign.surveys[survey_name].obs_reference_height_type
-
-        # Gravity g [µGal]
-        # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
+        # Wipe plots, if survey_name is Mone:
         self.plot_obs_g.clear()
-        self.plot_obs_g.setLabel(axis='left', text=f'g [µGal]')
-        self.plot_obs_g.setTitle(f'Observed gravity [µGal]')
-        pen = pg.mkPen(color='b')
-        flags_keep_obs = obs_df['keep_obs'].values
-        symbol_brushes = []
-        for flag in flags_keep_obs:
-            if flag:
-                symbol_brushes.append(self.BRUSH_ACTIVE_OBS)
-            else:
-                symbol_brushes.append(self.BRUSH_INACTIVE_OBS)
-
-        plot_offset_mgal = round(g_mugal.mean() / 1000)
-        plot_offset_mugal = plot_offset_mgal * 1000
-
-        # setup data: g
-        if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
-            self.plot_xy_data(self.plot_obs_g, setup_df['epoch_unix'].values,
-                              setup_df['g_mugal'].values - plot_offset_mugal,
-                              plot_name='setup', color='k', symbol='x', symbol_size=25)
-
-        # Type of 'self.plot_obs_g_data_item': PlotDataItem
-        self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal - plot_offset_mugal,
-                                                         name=f'Ref.: {ref_height_name}',
-                                                         pen=pen, symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
-        self.plot_obs_g_data_item.sigPointsClicked.connect(self.on_observation_plot_data_item_clicked)
-        self.plot_obs_g.showGrid(x=True, y=True)
-        self.plot_obs_g.setTitle(f'Observed gravity [µGal] + {plot_offset_mgal:.1f} mGal')
-        self.plot_obs_g.setLabel(axis='left', text=f'g [µGal] + {plot_offset_mgal:.0f} mGal')
-        self.plot_obs_g.autoRange()
-
-        # Standard deviation of gravity g [µGal]
         self.plot_obs_sd_g.clear()
-        # setup data: sd_g
-        if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
-            self.plot_xy_data(self.plot_obs_sd_g, setup_df['epoch_unix'].values, setup_df['sd_g_mugal'].values,
-                              plot_name='setup', color='k', symbol='x', symbol_size=25)
-        self.plot_xy_data(self.plot_obs_sd_g, obs_epoch_timestamps, sd_g_mugal, plot_name='sd_g_mugal',
-                          color='b', symbol='o', symbol_size=10)
-
-        self.plot_obs_sd_g.showGrid(x=True, y=True)
-        self.plot_obs_sd_g.autoRange()
-
-        # Instrument tilt in X and Y directions [arcsec]
-        self.plot_obs_tilt.clear()
-        tilt_x = obs_df['tiltx'].values
-        tilt_y = obs_df['tilty'].values
-        self.plot_xy_data(self.plot_obs_tilt, obs_epoch_timestamps, tilt_x, plot_name='X', color='b', symbol='o',
-                          symbol_size=10)
-        self.plot_xy_data(self.plot_obs_tilt, obs_epoch_timestamps, tilt_y, plot_name='Y', color='r', symbol='t',
-                          symbol_size=10)
-        self.plot_obs_tilt.showGrid(x=True, y=True)
-        self.plot_obs_tilt.autoRange()
-
-        # Observation corrections [µGal]
         self.plot_obs_corrections.clear()
-        self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_tide,
-                          plot_name=f'tides ({corr_tide_name})', color='b', symbol='o', symbol_size=10)
-        self.plot_obs_corrections.showGrid(x=True, y=True)
-        self.plot_obs_corrections.autoRange()
+        self.plot_obs_tilt.clear()
 
-        self.plot_obs_g.autoRange()  # Finally adjust data range to g values!
+        if obs_df is not None and survey_name is not None:
+            setup_df = self.observation_model.get_setup_data
+            obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,
+                                                                                                                         's')
+            # Plot reduced or unreduced observations:
+            flag_show_reduced_observations = False
+            if self.checkBox_obs_plot_reduced_observations.checkState() == Qt.Checked and not any(
+                    obs_df['g_red_mugal'].isnull()):
+                # Reduced observations are available and will be shown:
+                flag_show_reduced_observations = True
+            elif self.checkBox_obs_plot_reduced_observations.checkState() == Qt.Checked and any(
+                    obs_df['g_red_mugal'].isnull()):
+                flag_show_reduced_observations = False
+                QMessageBox.warning(self, 'Warning!', 'Reduced observations are not available!')
+                self.checkBox_obs_plot_reduced_observations.setChecked(Qt.Unchecked)
+
+                # Get data:
+            if flag_show_reduced_observations:
+                g_mugal = obs_df['g_red_mugal'].values
+                sd_g_mugal = obs_df['sd_g_red_mugal'].values
+                corr_tide = obs_df['corr_tide_red_mugal'].values
+                corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
+                ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
+            else:
+                g_mugal = obs_df['g_obs_mugal'].values
+                sd_g_mugal = obs_df['sd_g_obs_mugal'].values
+                corr_tide = obs_df['corr_tide_mugal'].values
+                corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
+                ref_height_name = self.campaign.surveys[survey_name].obs_reference_height_type
+
+            # Gravity g [µGal]
+            # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
+            self.plot_obs_g.clear()
+            self.plot_obs_g.setLabel(axis='left', text=f'g [µGal]')
+            self.plot_obs_g.setTitle(f'Observed gravity [µGal]')
+            pen = pg.mkPen(color='b')
+            flags_keep_obs = obs_df['keep_obs'].values
+            symbol_brushes = []
+            for flag in flags_keep_obs:
+                if flag:
+                    symbol_brushes.append(self.BRUSH_ACTIVE_OBS)
+                else:
+                    symbol_brushes.append(self.BRUSH_INACTIVE_OBS)
+
+            plot_offset_mgal = round(g_mugal.mean() / 1000)
+            plot_offset_mugal = plot_offset_mgal * 1000
+
+            # setup data: g
+            if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
+                self.plot_xy_data(self.plot_obs_g, setup_df['epoch_unix'].values,
+                                  setup_df['g_mugal'].values - plot_offset_mugal,
+                                  plot_name='setup', color='k', symbol='x', symbol_size=25)
+
+            # Type of 'self.plot_obs_g_data_item': PlotDataItem
+            self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal - plot_offset_mugal,
+                                                             name=f'Ref.: {ref_height_name}',
+                                                             pen=pen, symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
+            self.plot_obs_g_data_item.sigPointsClicked.connect(self.on_observation_plot_data_item_clicked)
+            self.plot_obs_g.showGrid(x=True, y=True)
+            self.plot_obs_g.setTitle(f'Observed gravity [µGal] + {plot_offset_mgal:.1f} mGal')
+            self.plot_obs_g.setLabel(axis='left', text=f'g [µGal] + {plot_offset_mgal:.0f} mGal')
+            self.plot_obs_g.autoRange()
+
+            # Standard deviation of gravity g [µGal]
+            self.plot_obs_sd_g.clear()
+            # setup data: sd_g
+            if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
+                self.plot_xy_data(self.plot_obs_sd_g, setup_df['epoch_unix'].values, setup_df['sd_g_mugal'].values,
+                                  plot_name='setup', color='k', symbol='x', symbol_size=25)
+            self.plot_xy_data(self.plot_obs_sd_g, obs_epoch_timestamps, sd_g_mugal, plot_name='sd_g_mugal',
+                              color='b', symbol='o', symbol_size=10)
+
+            self.plot_obs_sd_g.showGrid(x=True, y=True)
+            self.plot_obs_sd_g.autoRange()
+
+            # Instrument tilt in X and Y directions [arcsec]
+            self.plot_obs_tilt.clear()
+            tilt_x = obs_df['tiltx'].values
+            tilt_y = obs_df['tilty'].values
+            self.plot_xy_data(self.plot_obs_tilt, obs_epoch_timestamps, tilt_x, plot_name='X', color='b', symbol='o',
+                              symbol_size=10)
+            self.plot_xy_data(self.plot_obs_tilt, obs_epoch_timestamps, tilt_y, plot_name='Y', color='r', symbol='t',
+                              symbol_size=10)
+            self.plot_obs_tilt.showGrid(x=True, y=True)
+            self.plot_obs_tilt.autoRange()
+
+            # Observation corrections [µGal]
+            self.plot_obs_corrections.clear()
+            self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_tide,
+                              plot_name=f'tides ({corr_tide_name})', color='b', symbol='o', symbol_size=10)
+            self.plot_obs_corrections.showGrid(x=True, y=True)
+            self.plot_obs_corrections.autoRange()
+
+            self.plot_obs_g.autoRange()  # Finally adjust data range to g values!
 
     def plot_xy_data(self, plot_item, x, y, plot_name, color='k', symbol='o', symbol_size=10):
         """Plot XY-data."""
@@ -1388,7 +1506,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 setup_id = int(item.text(0))
             self.update_obs_table_view(survey_name, setup_id)
             self.update_setup_table_view(survey_name, setup_id)
-            self.plot_observations(survey_name, setup_id)
+            self.plot_observations(survey_name)
         else:
             if IS_VERBOSE:
                 print('No item or multiple items selected!')
@@ -1497,7 +1615,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     elif setup_keep_obs_flags.any():
                         child.setCheckState(0, Qt.PartiallyChecked)
                     else:
-                        child.setCheckState(0, Qt.Unhecked)
+                        child.setCheckState(0, Qt.Unchecked)
             parent.setExpanded(True)  # Expand the current parent
         self.treeWidget_observations.show()
         self.treeWidget_observations.blockSignals(False)
@@ -1604,19 +1722,30 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.menuAdd_Survey.setEnabled(True)
             self.action_Add_Stations.setEnabled(True)
             self.action_Export_Results.setEnabled(True)
+            self.action_Save_Campaign.setEnabled(True)
+            self.action_Change_output_directory.setEnabled(True)
+
+            # Set up GUI (models and widgets):
+            # - Stations Tab:
+            self.set_up_station_view_model()
+            self.enable_station_view_options_based_on_model()
+            self.set_up_proxy_station_model()
+            self.update_stations_map(auto_range=True)
+            # - Observations Tab:
+            self.set_up_observation_view_model()
+            self.enable_menu_observations_based_on_campaign_data()
+            self.populate_survey_tree_widget()
+            self.set_up_setup_view_model()
+            self.plot_observations(survey_name=None)  # wipe observbations plot
+            # - Results tab:
+            self.set_up_results_stations_view_model()
+            self.set_up_results_observations_view_model()
+            self.set_up_results_drift_view_model()
+            self.update_results_tab(select_latest_item=True)
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
                                          f"output directory: {self.campaign.output_directory})")
             self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
-            self.enable_menu_observations_based_on_campaign_data()  # Disable when starting a new campaign (no surveys).
-
-            # Set up view models and views for this campaign:
-            self.set_up_station_view_model()
-            self.set_up_observation_view_model()
-            self.set_up_setup_view_model()
-            self.set_up_results_stations_view_model()
-            self.set_up_results_observations_view_model()
-            self.set_up_results_drift_view_model()
 
         elif return_value == QDialog.Rejected:
             self.statusBar().showMessage(f"Canceled creating new campaign.")
@@ -1938,13 +2067,12 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
 
     def __init__(self, campaign, parent=None):
         super().__init__(parent)
+        self._lsm_runs = campaign.lsm_runs
         # Run the .setupUi() method to show the GUI
         self.setupUi(self)
         # Populate the combo box to select an LSM run (enable/disable groupBoxes accordingly):
         self.comboBox_select_lsm_run.clear()
         self.comboBox_select_lsm_run.addItems(campaign.lsm_run_times)
-        idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
-        self.comboBox_select_lsm_run.setCurrentIndex(idx)
         if len(campaign.lsm_run_times) > 0:
             self.groupBox_other_files.setEnabled(True)
             self.groupBox_nsb_file.setEnabled(True)
@@ -1956,7 +2084,29 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         # Set the lineEdit with the export path:
         self.lineEdit_export_path.setText(campaign.output_directory)
         # connect signals and slots:
-        pass
+        self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
+
+        # Select LSM run, etc.
+        idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
+        self.comboBox_select_lsm_run.setCurrentIndex(idx)
+        self.write_lsm_run_comment_to_gui(idx)
+
+
+    @pyqtSlot(int)
+    def on_comboBox_select_lsm_run_current_index_changed(self, index: int):
+        """Invoked whenever the index of the selected item in the combobox changed."""
+        self.write_lsm_run_comment_to_gui(index)
+
+    def write_lsm_run_comment_to_gui(self, lsm_run_idx):
+        """Writes the lsm run comment of the selected lsm run to the GUI line edit."""
+        self.lineEdit_export_comment.setText(self.get_lsm_run_comment(lsm_run_idx))
+
+    def get_lsm_run_comment(self, lsm_run_idx: int):
+        """Returns the lsm run comment of the run with the specified index."""
+        try:
+            return self._lsm_runs[lsm_run_idx].comment
+        except:
+            return ''
 
 
 def main():
