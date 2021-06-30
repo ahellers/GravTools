@@ -2067,13 +2067,12 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
 
     def __init__(self, campaign, parent=None):
         super().__init__(parent)
+        self._lsm_runs = campaign.lsm_runs
         # Run the .setupUi() method to show the GUI
         self.setupUi(self)
         # Populate the combo box to select an LSM run (enable/disable groupBoxes accordingly):
         self.comboBox_select_lsm_run.clear()
         self.comboBox_select_lsm_run.addItems(campaign.lsm_run_times)
-        idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
-        self.comboBox_select_lsm_run.setCurrentIndex(idx)
         if len(campaign.lsm_run_times) > 0:
             self.groupBox_other_files.setEnabled(True)
             self.groupBox_nsb_file.setEnabled(True)
@@ -2085,7 +2084,29 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         # Set the lineEdit with the export path:
         self.lineEdit_export_path.setText(campaign.output_directory)
         # connect signals and slots:
-        pass
+        self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
+
+        # Select LSM run, etc.
+        idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
+        self.comboBox_select_lsm_run.setCurrentIndex(idx)
+        self.write_lsm_run_comment_to_gui(idx)
+
+
+    @pyqtSlot(int)
+    def on_comboBox_select_lsm_run_current_index_changed(self, index: int):
+        """Invoked whenever the index of the selected item in the combobox changed."""
+        self.write_lsm_run_comment_to_gui(index)
+
+    def write_lsm_run_comment_to_gui(self, lsm_run_idx):
+        """Writes the lsm run comment of the selected lsm run to the GUI line edit."""
+        self.lineEdit_export_comment.setText(self.get_lsm_run_comment(lsm_run_idx))
+
+    def get_lsm_run_comment(self, lsm_run_idx: int):
+        """Returns the lsm run comment of the run with the specified index."""
+        try:
+            return self._lsm_runs[lsm_run_idx].comment
+        except:
+            return ''
 
 
 def main():
