@@ -268,6 +268,8 @@ class LSMDiff(LSM):
     def adjust(self, drift_pol_degree=1,
                sig0_mugal=1,
                scaling_factor_datum_observations=1.0,
+               add_const_to_sd_of_observations_mugal=0.0,
+               scaling_factor_for_sd_of_observations=1.0,
                confidence_level_chi_test=0.95,
                confidence_level_tau_test=0.95,
                verbose=False
@@ -285,6 +287,13 @@ class LSMDiff(LSM):
             Factor for scaling the standard deviation (SD) of g of datum stations. The scaled SD is is used for
             weighting the direct pseudo observations of g at the datum stations that are introduced as datum
             constraints.
+        add_const_to_sd_of_observations_mugal : float, optional (default=0.0)
+            The defined additive constant is added to the standard deviation (SD) of setup
+            observations in order to scale the SD and the resulting weights to realistic values. In µGal. The scaling
+            factor `scaling_factor_for_sd_of_observations` is applied before adding this constant!
+        scaling_factor_for_sd_of_observations : float, optional (default=1.0)
+            Scaling factor for the standard deviation of the setup observations. `add_const_to_sd_of_observations_mugal`
+            is applied after applying the scaling factor!
         confidence_level_chi_test : float, optional (default=0.95)
             Confidence level for the goodness-of-fit test. 
         confidence_level_tau_test : float, optional (default=0.95)
@@ -350,7 +359,10 @@ class LSMDiff(LSM):
             tmp_str += f'Degree of freedom: {number_of_diff_obs - number_of_parameters}\n'
             tmp_str += f'\n'
             tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
-            tmp_str += f'A priori std. deviation of unit weight: {sig0_mugal}\n'
+            tmp_str += f'A priori std. deviation of unit weight [µGal]: {sig0_mugal}\n'
+            tmp_str += f'Scaling factor for datum constraints: {scaling_factor_datum_observations}\n'
+            tmp_str += f'Scaling factor for SD of setup observations: {scaling_factor_for_sd_of_observations}\n'
+            tmp_str += f'Additive const. to SD of setup obs. [µGal]: {add_const_to_sd_of_observations_mugal}\n'
             tmp_str += f'Confidence level Chi-test: {confidence_level_chi_test:4.2f}\n'
             tmp_str += f'Confidence level Tau-test: {confidence_level_tau_test:4.2f}\n'
             tmp_str += f'\n'
@@ -386,6 +398,12 @@ class LSMDiff(LSM):
         diff_obs_id_list = []
         survey_names_list = []
         ref_epoch_dt_list = []  # Reference epochs (datetime objects) of differential observations
+
+        # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
+        # - Apply scaling factor to SD of setup observations:
+        setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
+        # - Add additive constant to standard deviation of setup observations in order to scale them to realistic values:
+        setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
 
         for survey_name, setup_df in self.setups.items():
             previous_row = None

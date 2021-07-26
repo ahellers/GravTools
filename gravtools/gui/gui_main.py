@@ -799,6 +799,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if idx != -1:  # Valid index
             lsm_run = self.campaign.lsm_runs[idx]
 
+            # Update the comment string in the line edit below the lsm run selection combo box:
+            self.label_results_lsm_run_comment_display.setText(lsm_run.comment)
+
             # Update the list in the combobox:
             self.update_comboBox_results_selection_station(observed_stations=lsm_run.observed_stations)
             self.update_comboBox_results_selection_surrvey(survey_names=list(lsm_run.setups.keys()))
@@ -844,6 +847,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.label_results_adjustment_method.clear()
             self.label_results_time_and_date.clear()
             self.label_results_sig0.clear()
+            self.label_results_lsm_run_comment_display.clear()
             self.plainTextEdit_results_log.clear()
             self.update_results_station_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
             self.update_results_observation_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
@@ -1020,6 +1024,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             weight_factor_datum = self.dlg_estimation_settings.doubleSpinBox_weight_factor_datum.value()
             confidence_level_chi_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_chi.value()
             confidence_level_tau_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_tau.value()
+            add_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_add_const_sd.value()
+            scaling_factor_obs_sd = self.dlg_estimation_settings.doubleSpinBox_mult_factor_sd.value()
 
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
@@ -1029,6 +1035,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
                                                   sig0_mugal=sig0,
                                                   scaling_factor_datum_observations=weight_factor_datum,
+                                                  add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                                                  scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
                                                   confidence_level_chi_test=confidence_level_chi_test,
                                                   confidence_level_tau_test=confidence_level_tau_test,
                                                   verbose=IS_VERBOSE)
