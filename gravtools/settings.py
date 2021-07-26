@@ -59,7 +59,8 @@ GRAVIMETER_TYPES_KZG_LOOKUPTABLE = {
 
 # Valid Gravimeter serial numbers (S/N and type)
 GRAVIMETER_SERIAL_NUMBERS = {
-    '40601': 'CG5'
+    '40601': 'CG5',
+    '40236': 'CG5',
 }
 
 # Lookuptable to convert the gravimeter S/N to the IDs written to the database NSDB:

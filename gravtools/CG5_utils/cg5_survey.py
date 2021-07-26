@@ -536,17 +536,42 @@ class CG5Survey:
     def read_obs_file(self, obs_filename):
         """Read CG-5 observation file (txt) and populate the object.
 
+        Notes
+        -----
+        Ignore comment lines that start with "#".
+
         Parameters
         ----------
         obs_filename : str
             Name (and path) to CG-5 observation file (txt format).
         """
+        COMMENT_MARKER = '#'
 
         self.obs_filename = obs_filename
-        with open(self.obs_filename, 'r') as content_file:
-            str_obs_file = content_file.read()
+        # with open(self.obs_filename, 'r') as content_file:
+        #     str_obs_file = content_file.read()
 
-        str_obs_file += '\n'  # Last character of string has to be a \n so that regex works correctly!
+        # Read in file and ignore comment lines:
+        file_handle = open(self.obs_filename, 'r')
+        lines = []
+        for line in file_handle:
+            line_tmp = line.strip()
+            if not line_tmp.startswith(COMMENT_MARKER):
+                lines.append(line_tmp)
+        file_handle.close()
+        str_obs_file = '\n'.join(lines)
+
+        # Remove all or add one end-of-line symbols from end of string:
+        # - Last character of string has to be a \n so that regex works correctly!
+        number_of_trailing_eol_symbols = 0
+        str_idx = -1
+        while str_obs_file[str_idx] == '\n':
+            number_of_trailing_eol_symbols += 1
+            str_idx -= 1
+        if number_of_trailing_eol_symbols == 0:
+            str_obs_file += '\n'
+        elif number_of_trailing_eol_symbols > 1:
+            str_obs_file = str_obs_file[0:str_idx+2]
 
         # ### Match blocks with regex ###
         # CG-5 SURVEY block:
