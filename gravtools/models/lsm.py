@@ -409,7 +409,7 @@ class LSMDiff(LSM):
 
                     # Populate matrices and vectors:
                     mat_L0[(diff_obs_id, 0)] = g_diff_mugal
-                    mat_sig_ll0[diff_obs_id]  = sd_g_diff_mugal ** 2
+                    mat_sig_ll0[diff_obs_id] = sd_g_diff_mugal ** 2
                     # Partial derivative for g at stations:
                     mat_A0[diff_obs_id, self.observed_stations.index(station_name_to)] = 1
                     mat_A0[diff_obs_id, self.observed_stations.index(station_name_from)] = -1

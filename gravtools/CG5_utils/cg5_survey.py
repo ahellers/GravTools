@@ -536,6 +536,10 @@ class CG5Survey:
     def read_obs_file(self, obs_filename):
         """Read CG-5 observation file (txt) and populate the object.
 
+        Notes
+        -----
+        Ignore comment lines that start with "#".
+
         Parameters
         ----------
         obs_filename : str
@@ -552,7 +556,7 @@ class CG5Survey:
         lines = []
         for line in file_handle:
             line_tmp = line.strip()
-            if not line_tmp.startswith("#"):
+            if not line_tmp.startswith(COMMENT_MARKER):
                 lines.append(line_tmp)
         file_handle.close()
         str_obs_file = '\n'.join(lines)
@@ -568,7 +572,6 @@ class CG5Survey:
             str_obs_file += '\n'
         elif number_of_trailing_eol_symbols > 1:
             str_obs_file = str_obs_file[0:str_idx+2]
-
 
         # ### Match blocks with regex ###
         # CG-5 SURVEY block:
