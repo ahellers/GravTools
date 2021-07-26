@@ -177,17 +177,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if selected_method == 'MLR (BEV legacy processing)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(False)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_observations.setEnabled(False)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(False)
             self.dlg_estimation_settings.label_sig0.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
