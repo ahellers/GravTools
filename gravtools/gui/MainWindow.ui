@@ -397,6 +397,13 @@
                 <widget class="QComboBox" name="comboBox_results_lsm_run_selection"/>
                </item>
                <item>
+                <widget class="QLabel" name="label_results_lsm_run_comment_display">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item>
                 <widget class="QPushButton" name="pushButton_results_delete_lsm_run">
                  <property name="text">
                   <string>Delete selected lsm run</string>
