@@ -449,15 +449,22 @@ class ResultsObservationModel(QAbstractTableModel):
         'corr_drift_mugal': 1,
         'w_diff_mugal': 3,
         'r_diff_obs': 3,
+        'ref_epoch_dt': 3,
+        'w_obs_est_mugal': 3,  # LSM_non_diff
+        'r_obs_est': 3,  # LSM_non_diff
+        'v_obs_est_mugal': 1,  # LSM_non_diff
+        'sd_g_obs_est_mugal': 1,  # LSM_non_diff
+        'g_obs_mugal': 1,  # LSM_non_diff
+        'sd_g_obs_mugal': 1,  # LSM_non_diff
     }
 
-    # Colums that will be shown in the table view, if available in the data (Also defines the order of columns):
+    # Columns that will be shown in the table view, if available in the data (Also defines the order of columns):
     _SHOW_COLUMNS_IN_TABLE = [
-        'survey_name',
+        'survey_name',  # LSM_non_diff
         'station_name_from',
         'station_name_to',
-        'station_name',  # MLR
-        'ref_epoch_dt',
+        'station_name',  # MLR, LSM_non_diff
+        'ref_epoch_dt',  # LSM_non_diff
         'delta_t_h',
         'g_mugal',  # MLR
         'sd_g_mugal',  # MLR
@@ -469,21 +476,36 @@ class ResultsObservationModel(QAbstractTableModel):
         'r_diff_obs',
         'corr_drift_mugal',  # MLR: Estimated drift correction
         'abw_mugal',  # MLLR: Difference between drift-corrected instrument reading and the estimated station gravity
-        'tau_test_result',
+        'tau_test_result',  # LSM_non_diff
+        'w_obs_est_mugal',  # LSM_non_diff
+        'r_obs_est',  # LSM_non_diff
+        'v_obs_est_mugal',  # LSM_non_diff
+        'sd_g_obs_est_mugal',  # LSM_non_diff
+        'g_obs_mugal',  # LSM_non_diff
+        'sd_g_obs_mugal',  # LSM_non_diff
     ]
 
     # Columns that can be plotted. Column names (keys) and description (values):
     _PLOTABLE_DATA_COLUMNS = {
+        # LSM_diff:
         'v_diff_mugal': 'Post-fit residuals [µGal]',
         'sd_g_diff_est_mugal': 'A posteriori SD of diff. obs. [µGal]',
         'g_diff_mugal': 'Differential observation [µGal]',
-        'sd_g_diff_mugal': 'A priori SD of differential observation [µGal]',
+        'sd_g_diff_mugal': 'SD of differential observation [µGal]',
+        # MLR:
         'g_mugal': 'Instrument reading [µGal]',  # MLR
         'sd_g_mugal': 'Standard deviation of the instrument reading [µGal]',  # MLR
         'corr_drift_mugal': 'Estimated drift correction [µGal]',  # MLR
         'abw_mugal': 'Drift-corrected reading minus estimated station gravity (not absolute) [µGal]',  # MLR
         'r_diff_obs': 'Redundancy components []',
-        'w_diff_mugal': 'Standardized residuals of differential observations []'
+        'w_diff_mugal': 'Standardized post-fit residuals []',
+        # LSM_non_diff:
+        'w_obs_est_mugal': 'Standardized post-fit residuals []',
+        'r_obs_est': 'Redundancy components []',
+        'v_obs_est_mugal': 'Post-fit residuals [µGal]',
+        'sd_g_obs_est_mugal': 'A posteriori SD of observation [µGal]',
+        'g_obs_mugal': 'Non-differential observation [µGal]',
+        'sd_g_obs_mugal': 'SD of non-differential observation [µGal]',
     }
 
     def __init__(self, lsm_runs):

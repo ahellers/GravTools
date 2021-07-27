@@ -15,6 +15,7 @@ import numpy as np
 import datetime as dt
 import os
 
+import gravtools.models.lsm_diff
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
     REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, VERBOSE, \
     PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
@@ -1437,7 +1438,7 @@ if __name__ == '__main__':
     # Test adjustment:
     from gravtools.models import lsm
 
-    lsm_diff = lsm.LSMDiff.from_campaign(camp)
+    lsm_diff = gravtools.models.lsm_diff.LSMDiff.from_campaign(camp)
     lsm_diff.adjust(drift_pol_degree=1, sig0_mugal=10, scaling_factor_datum_observations=1e-3, verbose=True)
 
     camp.initialize_and_add_lsm_run('LSM_diff', 'Test number one!')

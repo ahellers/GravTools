@@ -100,6 +100,7 @@ BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
 # Available adjustment methods
 ADJUSTMENT_METHODS = {
     'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
+    'LSM_non_diff': 'LSM (non-differential observations)',  # Least-squares adjustment of non-differential observations
     'MLR_BEV': 'MLR (BEV legacy processing)',  # Least-squares adjustment of differential observations
 }
 

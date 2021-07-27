@@ -186,6 +186,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
+        elif selected_method == 'LSM (non-differential observations)':
+            self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
+            self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
+            self.dlg_estimation_settings.label_sig0.setEnabled(True)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
@@ -462,6 +468,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                          offset_user_defined_mugal=offset_mugal)
             elif lsm_run.lsm_method == 'MLR_BEV':
                 self.plot_drift_mlr_bev_legacy(lsm_run, surveys=selected_survey_names, stations=selected_station_names)
+            elif lsm_run.lsm_method == 'LSM_non_diff':
+                # TODO: Add code for plotting here!
+                print('Drift plot for LSM_non_diff not implemented yet!')
             else:
                 self.drift_plot.clear()  # Clear drift plot
 
@@ -707,7 +716,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             filtered_results_obs_df = self.results_observation_model.get_model_data_df
         else:  # Invalid indices
             filtered_results_obs_df = None
-        self.plot_observation_results(filtered_results_obs_df, column_name)
+        try:
+            self.plot_observation_results(filtered_results_obs_df, column_name)
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
 
     def set_up_results_drift_view_model(self):
         """Set up the view model for the drift results table view."""
@@ -1044,6 +1056,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                   confidence_level_tau_test=confidence_level_tau_test,
                                                   verbose=IS_VERBOSE)
                 # self.campaign.lsm_runs[-1].create_drift_plot_matplotlib()
+            elif lsm_method == 'LSM_non_diff':
+                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
+                                                  sig0_mugal=sig0,
+                                                  scaling_factor_datum_observations=weight_factor_datum,
+                                                  add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                                                  scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                                                  confidence_level_chi_test=confidence_level_chi_test,
+                                                  confidence_level_tau_test=confidence_level_tau_test,
+                                                  verbose=IS_VERBOSE)
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
                                                   verbose=IS_VERBOSE)
