@@ -68,36 +68,13 @@ GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE = {
     '40601': '5'
 }
 
-
-#--------------
-
-# Instrumenten-IDs in der Messdatei einem Instrument zuweisen:
-GRAVIMETER_ID_BEV = {
-    '3': 'CG3',
-    '5': 'CG5',
-}
-
-# Instrumenten-IDs in der Messdatei einem Instrumenten-KZ zuweisen:
-GRAVIMETER_KZ_BEV = {
-    '3': 'C',
-    '5': 'C',
-    '9': 'D',
-    '90': 'D',
-    '900': 'D',
-    '51': 'D',
-    '510': 'D',
-    '500': 'W',
-}
-
-#--------------------
-
 #  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
 #  observation files:
 BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
     '5': 'cg5_longman1959'
 }
 
-# Available adjustment methods
+# Available adjustment methods:
 ADJUSTMENT_METHODS = {
     'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
     'LSM_non_diff': 'LSM (non-differential observations)',  # Least-squares adjustment of non-differential observations
@@ -118,7 +95,38 @@ ACTIVE_OBS_ONLY_FOR_REF_EPOCH = True
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
 
-# SCHWAUS and DRIFT settings:
+
+# ----- GUI appearance and plot settings -----
+
+# --- Drift plots in the results tab: ---
+# Number of plot items for plotting the drift function (polynomial):
+DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION = 100
+# Options for the observation data points in the drift plot:
+DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE = 10
+DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH = 1
+DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR = 'k'
+
+
+# ----- SCHWAUS and DRIFT settings (legacy code) -----
+
+# Instrumenten-IDs in der Messdatei einem Instrument zuweisen:
+GRAVIMETER_ID_BEV = {
+    '3': 'CG3',
+    '5': 'CG5',
+}
+
+# Instrumenten-IDs in der Messdatei einem Instrumenten-KZ zuweisen:
+GRAVIMETER_KZ_BEV = {
+    '3': 'C',
+    '5': 'C',
+    '9': 'D',
+    '90': 'D',
+    '900': 'D',
+    '51': 'D',
+    '510': 'D',
+    '500': 'W',
+}
+
 FLAG_SAVE_DRIFT_PLOT_PDF = True
 FLAG_CREATE_SCHWAUS_PROTOCOL = True
 VERBOSE = True

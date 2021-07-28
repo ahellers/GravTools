@@ -485,11 +485,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         stations : `None` (default) or list of station names (str)
             To filter for stations that will be displayed.
         """
-        NUM_ITEMS_IN_DRIFT_FUNCTION = 100
-        SCATTER_PLOT_SYMBOL_SIZE = 10
-        SCATTER_PLOT_PEN_WIDTH = 1
-        SCATTER_PLOT_PEN_COLOR = 'k'
-
         self.drift_plot.clear()
         self.drift_plot.legend.clear()
 
@@ -516,13 +511,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             coeff_list.reverse()
             delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
             delta_t_max_h = setup_df['delta_t_h'].max()
-            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, NUM_ITEMS_IN_DRIFT_FUNCTION)
+            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
             drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
             # Drift function time reference as UNIX time (needed for plots):
             epoch_unix_min = setup_df['epoch_unix'].min()
             epoch_unix_max = setup_df['epoch_unix'].max()
-            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, NUM_ITEMS_IN_DRIFT_FUNCTION)
+            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
             # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
             # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
@@ -553,8 +548,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     else:
                         brush_color = self.station_colors_dict_results[row['station_name']]
                 spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
-                            'size': SCATTER_PLOT_SYMBOL_SIZE,
-                            'pen': {'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH},
+                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                             'brush': brush_color}
                 spots.append(spot_dic)
 
@@ -566,8 +561,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for station, color in self.station_colors_dict_results.items():
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH})
-            s_item_tmp.setSize(SCATTER_PLOT_SYMBOL_SIZE)
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
             self.drift_plot.legend.addItem(s_item_tmp, station)
 
         # Adjust plot window:
@@ -588,11 +583,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         offset_user_defined_mugal : int, optional (default=0)
             User defined offset between the drift polynomial function and the observed data points.
         """
-        NUM_ITEMS_IN_DRIFT_FUNCTION = 100
-        SCATTER_PLOT_SYMBOL_SIZE = 10
-        SCATTER_PLOT_PEN_WIDTH = 1
-        SCATTER_PLOT_PEN_COLOR = 'k'
-
         self.drift_plot.clear()
         self.drift_plot.legend.clear()
 
@@ -620,13 +610,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             coeff_list.append(0)
             delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
             delta_t_max_h = setup_df['delta_t_h'].max()
-            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, NUM_ITEMS_IN_DRIFT_FUNCTION)
+            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
             drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
             # Drift function time reference as UNIX time (needed for plots):
             epoch_unix_min = setup_df['epoch_unix'].min()
             epoch_unix_max = setup_df['epoch_unix'].max()
-            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, NUM_ITEMS_IN_DRIFT_FUNCTION)
+            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
             # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
             # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
@@ -658,8 +648,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     else:
                         brush_color = self.station_colors_dict_results[row['station_name']]
                 spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
-                            'size': SCATTER_PLOT_SYMBOL_SIZE,
-                            'pen': {'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH},
+                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                             'brush': brush_color}
                 spots.append(spot_dic)
 
@@ -671,8 +661,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for station, color in self.station_colors_dict_results.items():
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH})
-            s_item_tmp.setSize(SCATTER_PLOT_SYMBOL_SIZE)
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
             self.drift_plot.legend.addItem(s_item_tmp, station)
 
         # Adjust plot window:
@@ -691,11 +681,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         stations : `None` (default) or list of station names (str)
             To filter for stations that will be displayed.
         """
-        NUM_ITEMS_IN_DRIFT_FUNCTION = 100
-        SCATTER_PLOT_SYMBOL_SIZE = 10
-        SCATTER_PLOT_PEN_WIDTH = 1
-        SCATTER_PLOT_PEN_COLOR = 'k'
-
         self.drift_plot.clear()
         self.drift_plot.legend.clear()
 
@@ -728,13 +713,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         coeff_list.append(0)
         delta_t_min_h = plot_setup_df['delta_t_h'].min()  # = 0
         delta_t_max_h = plot_setup_df['delta_t_h'].max()
-        delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, NUM_ITEMS_IN_DRIFT_FUNCTION)
+        delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
         drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
         # Drift function time reference as UNIX time (needed for plots):
         epoch_unix_min = plot_setup_df['epoch_unix'].min()
         epoch_unix_max = plot_setup_df['epoch_unix'].max()
-        delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, NUM_ITEMS_IN_DRIFT_FUNCTION)
+        delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
         # Plot drift function:
         pen = pg.mkPen(color='k', width=2)
@@ -756,8 +741,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 else:
                     brush_color = self.station_colors_dict_results[row['station_name']]
             spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']),
-                        'size': SCATTER_PLOT_SYMBOL_SIZE,
-                        'pen': {'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH},
+                        'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                        'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                         'brush': brush_color}
             spots.append(spot_dic)
 
@@ -769,8 +754,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for station, color in self.station_colors_dict_results.items():
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH})
-            s_item_tmp.setSize(SCATTER_PLOT_SYMBOL_SIZE)
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
             self.drift_plot.legend.addItem(s_item_tmp, station)
 
         # Adjust plot window:
