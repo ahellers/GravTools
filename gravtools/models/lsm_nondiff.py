@@ -32,29 +32,35 @@ class LSMNonDiff(LSM):
     """
 
     # Column names of self.setup_obs_df:
-    _SETUP_OBS_COLUMNS = (
-        'survey_name',
-        'ref_epoch_dt',
-        'obs_id',
-        'station_name',
-        'setup_id',
-        'g_obs_mugal',
-        'sd_g_obs_mugal',
-        'sd_g_obs_est_mugal',
-        'v_obs_est_mugal',
-        'w_obs_est_mugal',
-        'r_obs_est',
-        'tau_test_result',
-    )
+    # - keys: Column names of the pandas dataframe
+    # - values: Short description for table headers, etc., in the GUI
+    _SETUP_OBS_COLUMNS_DICT = {
+        'survey_name': 'Survey',
+        'ref_epoch_dt': 'Epoch',
+        'obs_id': 'Obs. ID',
+        'station_name': 'Station',
+        'setup_id': 'Setup ID',
+        'g_obs_mugal': 'g [µGal]',
+        'sd_g_obs_mugal': 'SD [µGal]',
+        'sd_g_obs_est_mugal': 'SD_est [µGal]',
+        'v_obs_est_mugal': 'Residuals [µGal]',  # Post fit residuals
+        'w_obs_est_mugal': 'Std. Residual []',
+        'r_obs_est': 'Redundancy []',
+        'tau_test_result': 'Outlier Test',
+    }
+    _SETUP_OBS_COLUMNS = list(_SETUP_OBS_COLUMNS_DICT.keys())
 
     # Column names of self.drift_pol_df:
-    _DRIFT_POL_DF_COLUMNS = (
-        'survey_name',
-        'degree',
-        'coefficient',
-        'sd_coeff',
-        'coeff_unit',
-    )
+    # - keys: Column names of the pandas dataframe
+    # - values: Short description for table headers, etc., in the GUI
+    _DRIFT_POL_DF_COLUMNS_DICT = {
+        'survey_name': 'Survey',
+        'degree': 'Degree',
+        'coefficient': 'Coefficient',
+        'sd_coeff': 'SD',
+        'coeff_unit': 'Unit',
+    }
+    _DRIFT_POL_DF_COLUMNS = list(_DRIFT_POL_DF_COLUMNS_DICT.keys())
 
     def __init__(self, stat_df, setups, comment='', write_log=True):
         """

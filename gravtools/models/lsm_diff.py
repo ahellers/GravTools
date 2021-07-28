@@ -32,31 +32,37 @@ class LSMDiff(LSM):
     """
 
     # Column names of self.setup_obs_df:
-    _SETUP_DIFF_COLUMNS = (
-        'survey_name',
-        'ref_epoch_dt',
-        'diff_obs_id',
-        'station_name_from',
-        'station_name_to',
-        'setup_id_from',
-        'setup_id_to',
-        'g_diff_mugal',
-        'sd_g_diff_mugal',
-        'sd_g_diff_est_mugal',
-        'v_diff_mugal',
-        'w_diff_mugal',
-        'r_diff_obs',
-        'tau_test_result',
-    )
+    # - keys: Column names of the pandas dataframe
+    # - values: Short description for table headers, etc., in the GUI
+    _SETUP_DIFF_COLUMNS_DICT = {
+        'survey_name': 'Survey',
+        'ref_epoch_dt': 'Epoch',
+        'diff_obs_id': 'Obs. ID',
+        'station_name_from': 'Station from',
+        'station_name_to': 'Station to',
+        'setup_id_from': 'Setup ID from',
+        'setup_id_to': 'Setup ID to',
+        'g_diff_mugal': 'g [µGal]',
+        'sd_g_diff_mugal': 'SD [µGal]',
+        'sd_g_diff_est_mugal': 'SD_est [µGal]',
+        'v_diff_mugal': 'Residuals [µGal]',  # Post fit residuals
+        'w_diff_mugal': 'Std. Residual []',
+        'r_diff_obs': 'Redundancy []',
+        'tau_test_result': 'Outlier Test',
+    }
+    _SETUP_DIFF_COLUMNS = list(_SETUP_DIFF_COLUMNS_DICT.keys())
 
     # Column names of self.drift_pol_df:
-    _DRIFT_POL_DF_COLUMNS = (
-        'survey_name',
-        'degree',
-        'coefficient',
-        'sd_coeff',
-        'coeff_unit',
-    )
+    # - keys: Column names of the pandas dataframe
+    # - values: Short description for table headers, etc., in the GUI
+    _DRIFT_POL_DF_COLUMNS_DICT = {
+        'survey_name': 'Survey',
+        'degree': 'Degree',
+        'coefficient': 'Coefficient',
+        'sd_coeff': 'SD',
+        'coeff_unit': 'Unit',
+    }
+    _DRIFT_POL_DF_COLUMNS = list(_DRIFT_POL_DF_COLUMNS_DICT.keys())
 
     def __init__(self, stat_df, setups, comment='', write_log=True):
         """

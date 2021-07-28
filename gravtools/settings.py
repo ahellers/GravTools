@@ -98,6 +98,8 @@ CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations
 
 # ----- GUI appearance and plot settings -----
 
+GUI_SIMPLE_MODE = True
+
 # --- Drift plots in the results tab: ---
 # Number of plot items for plotting the drift function (polynomial):
 DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION = 100

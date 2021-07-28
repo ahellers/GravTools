@@ -177,12 +177,14 @@ def tau_test(mat_w, dof, alpha, mat_r):
             tau_test_result.append(f'r too small')  # Pope test not applied due to small redundancy component!
     return tau_test_result, tau_crt
 
+
 def create_hist(mat_v):
     """Create histogram."""
     residuals = np.ndarray.tolist(mat_v)
     residuals = [item for sublist in residuals for item in sublist]
     hist_residuals, bin_edges = np.histogram(residuals, bins=5)
     return hist_residuals, bin_edges
+
 
 def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
     """Statistical testing using chi square.
@@ -218,7 +220,6 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
         chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
     return chi_crit, chi_val, chi_test_status
-
 
 
 # TODO: Save relevant estimation settings and matrices/vectors in LSM object for later analysis and documentation!

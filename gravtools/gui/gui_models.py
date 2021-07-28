@@ -6,7 +6,11 @@ from PyQt5.QtWidgets import QMessageBox
 import datetime as dt
 import pandas as pd
 
+from gravtools import settings
 from gravtools.models.survey import Survey
+from gravtools.models.lsm_diff import LSMDiff
+from gravtools.models.lsm_nondiff import LSMNonDiff
+from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 
 NONE_REPRESENTATION_IN_TABLE_VIEW = ''  # Representation of None values in table views in the GUI
 
@@ -437,6 +441,7 @@ class ObservationTableModel(QAbstractTableModel):
 class ResultsObservationModel(QAbstractTableModel):
     """Model for displaying the observations-related results."""
 
+    # Number of decimal pla
     _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
         'g_diff_mugal': 1,
         'sd_g_diff_mugal': 1,
@@ -459,53 +464,78 @@ class ResultsObservationModel(QAbstractTableModel):
     }
 
     # Columns that will be shown in the table view, if available in the data (Also defines the order of columns):
-    _SHOW_COLUMNS_IN_TABLE = [
-        'survey_name',  # LSM_non_diff
+    # - This is also e pre-selection for data columns that can be plotted in the observation plots in the results tab
+    # - keys: Actual names of the dataframe columns
+    # - items: Header names for the Table View Widget
+    _SHOW_COLUMNS_IN_TABLE_DICT = {
+        'survey_name': 'Survey',  # LSM_non_diff, LSM_diff
+        'station_name_from': 'Station from',  # LSM_diff
+        'station_name_to': 'Station to',  # LSM_diff
+        'station_name': 'Station',  # MLR, LSM_non_diff
+        'ref_epoch_dt': 'Epoch',  # LSM_non_diff, LSM_diff
+        'delta_t_h': 'd_t [h]',  # LSM_non_diff, LSM_diff
+        'g_mugal': 'g [µGal]',  # MLR
+        'g_diff_mugal': 'g [µGal]',  # LSM_diff
+        'g_obs_mugal': 'g [µGal]',  # LSM_non_diff
+        'sd_g_mugal': 'SD [µGal]',  # MLR
+        'sd_g_diff_mugal': 'SD [µGal]',  # LSM_diff
+        'sd_g_obs_mugal': 'SD [µGal]',  # LSM_non_diff
+        'sd_g_diff_est_mugal': 'SD_est [µGal]',  # LSM_diff
+        'sd_g_obs_est_mugal': 'SD_est [µGal]',  # LSM_non_diff
+        'v_diff_mugal': 'v [µGal]',  # LSM_diff
+        'v_obs_est_mugal': 'v [µGal]',  # LSM_non_diff
+        'w_diff_mugal': 'w [µGal]',  # LSM_diff
+        'w_obs_est_mugal': 'w [µGal]',  # LSM_non_diff
+        'r_diff_obs': 'r [µGal]',  # LSM_diff
+        'r_obs_est': 'r [µGal]',  # LSM_non_diff
+        'tau_test_result': 'Outlier test',  # LSM_non_diff, LSM_diff
+        'corr_drift_mugal': 'Drift corr. [µGal]',  # MLR: Estimated drift correction
+        'abw_mugal': 'abw [µGal]',  # MLR: Difference between drift-corrected instrument reading and the estimated station gravity
+    }
+    # List of
+    _SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI = [
+        'survey_name',
         'station_name_from',
         'station_name_to',
-        'station_name',  # MLR, LSM_non_diff
-        'ref_epoch_dt',  # LSM_non_diff
+        'station_name',
+        'ref_epoch_dt',
         'delta_t_h',
-        'g_mugal',  # MLR
-        'sd_g_mugal',  # MLR
+        'g_mugal',
         'g_diff_mugal',
+        'g_obs_mugal',
+        'sd_g_mugal',
         'sd_g_diff_mugal',
+        'sd_g_obs_mugal',
         'sd_g_diff_est_mugal',
+        'sd_g_obs_est_mugal',
         'v_diff_mugal',
-        'w_diff_mugal',
-        'r_diff_obs',
-        'corr_drift_mugal',  # MLR: Estimated drift correction
-        'abw_mugal',  # MLLR: Difference between drift-corrected instrument reading and the estimated station gravity
-        'tau_test_result',  # LSM_non_diff
-        'w_obs_est_mugal',  # LSM_non_diff
-        'r_obs_est',  # LSM_non_diff
-        'v_obs_est_mugal',  # LSM_non_diff
-        'sd_g_obs_est_mugal',  # LSM_non_diff
-        'g_obs_mugal',  # LSM_non_diff
-        'sd_g_obs_mugal',  # LSM_non_diff
+        'v_obs_est_mugal',
+        'tau_test_result',
     ]
+    _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
     # Columns that can be plotted. Column names (keys) and description (values):
+    # - numerical data only!
     _PLOTABLE_DATA_COLUMNS = {
         # LSM_diff:
-        'v_diff_mugal': 'Post-fit residuals [µGal]',
-        'sd_g_diff_est_mugal': 'A posteriori SD of diff. obs. [µGal]',
-        'g_diff_mugal': 'Differential observation [µGal]',
-        'sd_g_diff_mugal': 'SD of differential observation [µGal]',
+        'v_diff_mugal': 'Post-fit residuals [µGal]',  # LSM_diff
+        'sd_g_diff_est_mugal': 'A posteriori SD of diff. obs. [µGal]',  # LSM_diff
+        'g_diff_mugal': 'Differential observation [µGal]',  # LSM_diff
+        'sd_g_diff_mugal': 'SD of differential observation [µGal]',  # LSM_diff
         # MLR:
         'g_mugal': 'Instrument reading [µGal]',  # MLR
         'sd_g_mugal': 'Standard deviation of the instrument reading [µGal]',  # MLR
         'corr_drift_mugal': 'Estimated drift correction [µGal]',  # MLR
         'abw_mugal': 'Drift-corrected reading minus estimated station gravity (not absolute) [µGal]',  # MLR
-        'r_diff_obs': 'Redundancy components []',
-        'w_diff_mugal': 'Standardized post-fit residuals []',
+        'r_diff_obs': 'Redundancy components []',  # LSM_diff
+        'w_diff_mugal': 'Standardized post-fit residuals []',  # LSM_diff
         # LSM_non_diff:
-        'w_obs_est_mugal': 'Standardized post-fit residuals []',
-        'r_obs_est': 'Redundancy components []',
-        'v_obs_est_mugal': 'Post-fit residuals [µGal]',
-        'sd_g_obs_est_mugal': 'A posteriori SD of observation [µGal]',
-        'g_obs_mugal': 'Non-differential observation [µGal]',
-        'sd_g_obs_mugal': 'SD of non-differential observation [µGal]',
+        'w_obs_est_mugal': 'Standardized post-fit residuals []',  # LSM_non_diff
+        'r_obs_est': 'Redundancy components []',  # LSM_non_diff
+        'v_obs_est_mugal': 'Post-fit residuals [µGal]',  # LSM_non_diff
+        'sd_g_obs_est_mugal': 'A posteriori SD of observation [µGal]',  # LSM_non_diff
+        'g_obs_mugal': 'Non-differential observation [µGal]',  # LSM_non_diff
+        'sd_g_obs_mugal': 'SD of non-differential observation [µGal]',  # LSM_non_diff
     }
 
     def __init__(self, lsm_runs):
@@ -548,7 +578,7 @@ class ResultsObservationModel(QAbstractTableModel):
                 # Get list of columns to be depicted via the table model:
                 # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
                 results_obs_df_columns_set = frozenset(results_obs_df.columns)
-                table_model_columns = [x for x in self._SHOW_COLUMNS_IN_TABLE if x in results_obs_df_columns_set]
+                table_model_columns = [x for x in self.get_table_columns if x in results_obs_df_columns_set]
 
                 # Apply filter:
                 if ((station_name is not None) or (survey_name is not None)) and (results_obs_df is not None):
@@ -634,7 +664,7 @@ class ResultsObservationModel(QAbstractTableModel):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
-                return str(self._data.columns[section])
+                return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
 
@@ -670,6 +700,30 @@ class ResultsObservationModel(QAbstractTableModel):
         filter_tmp = self._data['is_constraint'] == False
         # Add further options to thze filter series, is needed!
         return self._data.loc[filter_tmp, :]
+
+    @property
+    def get_table_columns(self):
+        """Returns a list with all columns names of the dataframe that should be copied to the view model."""
+        if settings.GUI_SIMPLE_MODE:
+            return [value for value in self._SHOW_COLUMNS_IN_TABLE if value in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI]
+        else:
+            return self._SHOW_COLUMNS_IN_TABLE
+
+    def get_short_column_description(self, column_name: str) -> str:
+        """Returns the short description of the model column."""
+        try:
+            return self._SHOW_COLUMNS_IN_TABLE_DICT[column_name]
+        except AttributeError:
+            return ''
+
+    def get_column_name_from_short_description(self, short_description: str) -> str:
+        """Returns the dataframe column name associated with the input short description."""
+        col_name = ''
+        for key, item in self._SHOW_COLUMNS_IN_TABLE_DICT.items():
+            if item == short_description:
+                col_name = key
+                break
+        return col_name
 
 
 class ResultsStationModel(QAbstractTableModel):

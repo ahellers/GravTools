@@ -967,10 +967,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Get data columns with data that is plottable from the observations results table view model:
         data_columns_dict = self.results_observation_model.get_plotable_columns()
         data_columns = list(data_columns_dict.keys())
+        # Get table column names:
+        data_columns_short_description = []
+        for name in data_columns:
+            data_columns_short_description.append(self.results_observation_model.get_short_column_description(name))
         # Get current item:
         idx, current_column_name = self.get_selected_obs_data_column()
         self.comboBox_results_obs_plot_select_data_column.clear()
-        self.comboBox_results_obs_plot_select_data_column.addItems(data_columns)
+        self.comboBox_results_obs_plot_select_data_column.addItems(data_columns_short_description)
         # Try to select the previous item again:
         if idx != -1:  # Previous selection available
             try:
@@ -1057,9 +1061,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return idx, survey_name
 
     def get_selected_obs_data_column(self):
-        """Get the selected observation results data column."""
-        column_name = self.comboBox_results_obs_plot_select_data_column.currentText()
+        """Get the selected observation results data column (dataframe column name)."""
+        short_description = self.comboBox_results_obs_plot_select_data_column.currentText()
         idx = self.comboBox_results_obs_plot_select_data_column.currentIndex()
+        # Convert comboBox text to dataframe column name:
+        column_name = self.results_observation_model.get_column_name_from_short_description(short_description)
         return idx, column_name
 
     def on_checkBox_obs_plot_setup_data_state_changed(self):
