@@ -812,7 +812,7 @@
     <addaction name="separator"/>
     <addaction name="action_Export_Results"/>
     <addaction name="separator"/>
-    <addaction name="actionOptions"/>
+    <addaction name="action_Options"/>
     <addaction name="separator"/>
     <addaction name="action_Exit"/>
    </widget>
@@ -970,7 +970,7 @@
     <string>Change output directory</string>
    </property>
   </action>
-  <action name="actionOptions">
+  <action name="action_Options">
    <property name="text">
     <string>Options</string>
    </property>

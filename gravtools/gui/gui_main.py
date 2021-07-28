@@ -18,6 +18,7 @@ from gravtools.gui.dialog_corrections import Ui_Dialog_corrections
 from gravtools.gui.dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settings
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
+from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
     ResultsObservationModel, ResultsDriftModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
@@ -74,6 +75,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
         self.action_Estimation_settings.triggered.connect(self.on_menu_estimation_settings)
         self.action_Export_Results.triggered.connect(self.on_menu_file_export_results)
+        self.action_Options.triggered.connect(self.on_menu_file_options)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
@@ -112,6 +114,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_corrections = DialogCorrections()
         self.dlg_autoselect_settings = DialogAutoselectSettings()
         self.dlg_estimation_settings = DialogEstimationSettings()
+        self.dlg_options = DialogOptions()
 
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
@@ -789,8 +792,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Get data:
             data = results_obs_df[column_name].values
             obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,'s')
-
-            self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=column_name, color='b',
+            plot_name = self.results_observation_model.get_short_column_description(column_name)
+            self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=plot_name, color='b',
                               symbol='o', symbol_size=10)
             self.plot_obs_results.showGrid(x=True, y=True)
             column_description = self.results_observation_model.get_plotable_columns()[column_name]
@@ -846,7 +849,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Update the observation results table view after changing the table model."""
         self.results_observation_model.update_view_model(lsm_run_index,
                                                          station_name=station_name,
-                                                         survey_name=survey_name)
+                                                         survey_name=survey_name,
+                                                         gui_simple_mode=self.dlg_options.gui_simple_mode)
         self.results_observation_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_results_observations.resizeColumnsToContents()
         self.update_comboBox_results_obs_plot_select_data_column_based_on_table_view()
@@ -967,18 +971,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Get data columns with data that is plottable from the observations results table view model:
         data_columns_dict = self.results_observation_model.get_plotable_columns()
         data_columns = list(data_columns_dict.keys())
-        # Get table column names:
-        data_columns_short_description = []
-        for name in data_columns:
-            data_columns_short_description.append(self.results_observation_model.get_short_column_description(name))
         # Get current item:
         idx, current_column_name = self.get_selected_obs_data_column()
         self.comboBox_results_obs_plot_select_data_column.clear()
-        self.comboBox_results_obs_plot_select_data_column.addItems(data_columns_short_description)
+        # Add items (text and data items):
+        for col_name in data_columns:
+            # data_columns_short_description.append(self.results_observation_model.get_short_column_description(name))
+            short_description = self.results_observation_model.get_short_column_description(col_name)
+            self.comboBox_results_obs_plot_select_data_column.addItem(short_description, userData=col_name)
+
         # Try to select the previous item again:
         if idx != -1:  # Previous selection available
             try:
-                self.comboBox_results_obs_plot_select_data_column.setCurrentText(current_column_name)
+                current_short_description = self.results_observation_model.get_short_column_description(current_column_name)
+                self.comboBox_results_obs_plot_select_data_column.setCurrentText(current_short_description)
             except:
                 pass
         self.comboBox_results_obs_plot_select_data_column.blockSignals(False)
@@ -1062,10 +1068,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def get_selected_obs_data_column(self):
         """Get the selected observation results data column (dataframe column name)."""
-        short_description = self.comboBox_results_obs_plot_select_data_column.currentText()
+        # short_description = self.comboBox_results_obs_plot_select_data_column.currentText()
         idx = self.comboBox_results_obs_plot_select_data_column.currentIndex()
         # Convert comboBox text to dataframe column name:
-        column_name = self.results_observation_model.get_column_name_from_short_description(short_description)
+        # column_name = self.results_observation_model.get_column_name_from_short_description(short_description)
+        column_name = self.comboBox_results_obs_plot_select_data_column.currentData()
         return idx, column_name
 
     def on_checkBox_obs_plot_setup_data_state_changed(self):
@@ -1779,9 +1786,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Exit the application."""
         sys.exit()
 
+    def on_menu_file_options(self):
+        """Launch dialog with general program options."""
+        return_value = self.dlg_options.exec()
+        if return_value == QDialog.Accepted:
+            try:
+                self.apply_options()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+            else:
+                pass
+        else:
+            pass  # Do nothing
+            # self.statusBar().showMessage(f"Changes in options not applied.")
+
+    def apply_options(self):
+        """Apply options that are set in the options dialog."""
+        # Simple or advanced GUI appearance:
+        # - Update the results tab in order to change the appearance.
+        self.update_results_tab()
+
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
-        # dlg = DialogCorrections()
         return_value = self.dlg_corrections.exec()
         if return_value == QDialog.Accepted:
             flag_corrections_ok, error_msg = self.apply_observation_corrections()
@@ -2189,6 +2215,27 @@ class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
         self.setupUi(self)
 
 
+class DialogOptions(QDialog, Ui_Dialog_options):
+    """Dialog for setting general program options."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+
+    @property
+    def gui_simple_mode(self) -> bool:
+        """Returns flag whether to use the simple GUI mode."""
+        if self.radioButton_gui_mode_simple.isChecked():
+            return True
+        elif self.radioButton_gui_mode_advanced.isChecked():
+            return False
+        else:
+            raise AssertionError('Invalid GUI mode selected!')
+
+
+
 class DialogExportResults(QDialog, Ui_Dialog_export_results):
     """Dialog to define the estimation settings."""
 
@@ -2217,7 +2264,6 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
         self.comboBox_select_lsm_run.setCurrentIndex(idx)
         self.write_lsm_run_comment_to_gui(idx)
-
 
     @pyqtSlot(int)
     def on_comboBox_select_lsm_run_current_index_changed(self, index: int):

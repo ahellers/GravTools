@@ -6,7 +6,6 @@ from PyQt5.QtWidgets import QMessageBox
 import datetime as dt
 import pandas as pd
 
-from gravtools import settings
 from gravtools.models.survey import Survey
 from gravtools.models.lsm_diff import LSMDiff
 from gravtools.models.lsm_nondiff import LSMNonDiff
@@ -551,6 +550,7 @@ class ResultsObservationModel(QAbstractTableModel):
         self.load_lsm_runs(lsm_runs)
         self._lsm_run_index = None  # Name of the Survey that is currently represented by `self._data`
         self._data_column_names = None
+        self.flag_gui_simple_mode = False
 
     def load_lsm_runs(self, lsm_runs: list):
         """Load adjustment results.
@@ -561,8 +561,9 @@ class ResultsObservationModel(QAbstractTableModel):
         """
         self._lsm_runs = lsm_runs
 
-    def update_view_model(self, lsm_run_index: int, station_name=None, survey_name=None):
+    def update_view_model(self, lsm_run_index: int, station_name=None, survey_name=None, gui_simple_mode=False):
         """Update the `_data` DataFrame that hold the actual data that is displayed."""
+        self.flag_gui_simple_mode = gui_simple_mode
         if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
             self._data = None
             self._lsm_run_index = None
@@ -704,7 +705,7 @@ class ResultsObservationModel(QAbstractTableModel):
     @property
     def get_table_columns(self):
         """Returns a list with all columns names of the dataframe that should be copied to the view model."""
-        if settings.GUI_SIMPLE_MODE:
+        if self.flag_gui_simple_mode:
             return [value for value in self._SHOW_COLUMNS_IN_TABLE if value in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI]
         else:
             return self._SHOW_COLUMNS_IN_TABLE
@@ -716,14 +717,14 @@ class ResultsObservationModel(QAbstractTableModel):
         except AttributeError:
             return ''
 
-    def get_column_name_from_short_description(self, short_description: str) -> str:
-        """Returns the dataframe column name associated with the input short description."""
-        col_name = ''
-        for key, item in self._SHOW_COLUMNS_IN_TABLE_DICT.items():
-            if item == short_description:
-                col_name = key
-                break
-        return col_name
+    # def get_column_name_from_short_description(self, short_description: str) -> str:
+    #     """Returns the dataframe column name associated with the input short description."""
+    #     col_name = ''
+    #     for key, item in self._SHOW_COLUMNS_IN_TABLE_DICT.items():
+    #         if item == short_description:
+    #             col_name = key
+    #             break
+    #     return col_name
 
 
 class ResultsStationModel(QAbstractTableModel):
