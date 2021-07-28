@@ -491,6 +491,8 @@ class ResultsObservationModel(QAbstractTableModel):
         'corr_drift_mugal': 'Drift corr. [µGal]',  # MLR: Estimated drift correction
         'abw_mugal': 'abw [µGal]',  # MLR: Difference between drift-corrected instrument reading and the estimated station gravity
     }
+    _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
+
     # List of
     _SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI = [
         'survey_name',
@@ -511,7 +513,6 @@ class ResultsObservationModel(QAbstractTableModel):
         'v_obs_est_mugal',
         'tau_test_result',
     ]
-    _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
     # Columns that can be plotted. Column names (keys) and description (values):
     # - numerical data only!
@@ -717,15 +718,6 @@ class ResultsObservationModel(QAbstractTableModel):
         except AttributeError:
             return ''
 
-    # def get_column_name_from_short_description(self, short_description: str) -> str:
-    #     """Returns the dataframe column name associated with the input short description."""
-    #     col_name = ''
-    #     for key, item in self._SHOW_COLUMNS_IN_TABLE_DICT.items():
-    #         if item == short_description:
-    #             col_name = key
-    #             break
-    #     return col_name
-
 
 class ResultsStationModel(QAbstractTableModel):
     """Model for displaying the stations-related results."""
@@ -869,13 +861,15 @@ class ResultsDriftModel(QAbstractTableModel):
         'sd_coeff': 3,
     }
 
-    _PLOT_COLUMNS = [
-        'survey_name',
-        'degree',
-        'coefficient',
-        'sd_coeff',
-        'coeff_unit',
-    ]
+    # Column names (keys) and short description (values):
+    _PLOT_COLUMNS_DICT = {
+        'survey_name': 'Survey',
+        'degree': 'Degree',
+        'coefficient': 'Coefficient',
+        'sd_coeff': 'SD',
+        'coeff_unit': 'Unit',
+    }
+    _PLOT_COLUMNS = list(_PLOT_COLUMNS_DICT.keys())  # Actual list of columns to be shown
 
     def __init__(self, lsm_runs):
         """Initialize the drift-results table view model.
@@ -968,6 +962,13 @@ class ResultsDriftModel(QAbstractTableModel):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
-                return str(self._data.columns[section])
+                return self._PLOT_COLUMNS_DICT[str(self._data.columns[section])]
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
+
+    def get_short_column_description(self, column_name: str) -> str:
+        """Returns the short description of the model column."""
+        try:
+            return self._PLOT_COLUMNS_DICT[column_name]
+        except AttributeError:
+            return ''
