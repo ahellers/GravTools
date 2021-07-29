@@ -1805,6 +1805,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Simple or advanced GUI appearance:
         # - Update the results tab in order to change the appearance.
         self.update_results_tab()
+        # - Stations Tab:
+        self.set_up_station_view_model()
+        self.enable_station_view_options_based_on_model()
+        self.set_up_proxy_station_model()
 
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
@@ -1982,7 +1986,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Set up station data view model and show station data table view."""
         # Set model:
         try:
-            self.station_model = StationTableModel(self.campaign.stations.stat_df)
+            self.station_model = StationTableModel(self.campaign.stations.stat_df,
+                                                   gui_simple_mode=self.dlg_options.gui_simple_mode)
             self.station_model.dataChanged.connect(self.on_station_model_data_changed)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No stations available!')

@@ -17,14 +17,66 @@ NONE_REPRESENTATION_IN_TABLE_VIEW = ''  # Representation of None values in table
 class StationTableModel(QAbstractTableModel):
     """Model for displaying the station data in a table view (QTableView)."""
 
-    def __init__(self, stat_df):
+    # Columns that will be shown in the table view, if available in the data (Also defines the order of columns):
+    # - keys: Actual names of the dataframe columns
+    # - items: Header names for the Table View Widget
+    _SHOW_COLUMNS_IN_TABLE_DICT = {
+        'station_name': 'Station',
+        'long_deg': 'Lon [°]',
+        'lat_deg': 'Lat [°]',
+        'height_m': 'h [m]',
+        'g_mugal': 'g [µGal]',
+        'sd_g_mugal': 'SD [µGal]',
+        'vg_mugalm': 'VG [µGal/m]',
+        'is_observed': 'Observed',
+        'source_type': 'Source type',
+        'source_name': ' Source name',
+        'is_datum': 'Datum',
+        'in_survey': 'Surveys',
+    }
+    _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
+
+    # List of columns that are shown in the simple mode of the GUI
+    _SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI = [
+        'station_name',
+        'long_deg',
+        'lat_deg',
+        'height_m',
+        'g_mugal',
+        'sd_g_mugal',
+        'vg_mugalm',
+        'is_datum',
+    ]
+
+    # Number of decimal pla
+    _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
+        'long_deg': 3,
+        'lat_deg': 3,
+        'height_m': 3,
+        'g_mugal': 1,
+        'sd_g_mugal': 1,
+        'vg_mugalm': 1,
+    }
+
+    def __init__(self, stat_df, gui_simple_mode=False):
         QAbstractTableModel.__init__(self)
+        self._data_column_names = None
+        self._data = None
+        self.flag_gui_simple_mode = gui_simple_mode
         self.load_stat_df(stat_df)
 
     def load_stat_df(self, stat_df):
         """Load station data from pandas dataframe to table model."""
         # self._data = stat_df.copy()
-        self._data = stat_df
+        # Get list of columns to be depicted via the table model:
+        # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+        stat_df_columns_set = frozenset(stat_df.columns)
+        table_model_columns = [x for x in self.get_table_columns if x in stat_df_columns_set]
+        if self.flag_gui_simple_mode:
+            self._data = stat_df.loc[:, table_model_columns]
+        else:
+            self._data = stat_df.loc[:, table_model_columns]
+        self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):
         return self._data.shape[0]
@@ -37,6 +89,7 @@ class StationTableModel(QAbstractTableModel):
             if role == Qt.DisplayRole:
 
                 value = self._data.iloc[index.row(), index.column()]
+                column_name = self._data_column_names[index.column()]
                 # Custom formatter (string is expected as return type):
                 if value is None:  #
                     return NONE_REPRESENTATION_IN_TABLE_VIEW
@@ -44,17 +97,11 @@ class StationTableModel(QAbstractTableModel):
                     if value != value:  # True, if value is "NaN"
                         return NONE_REPRESENTATION_IN_TABLE_VIEW
                     else:
-                        number_of_decimal_places_per_column = {
-                            1: 3,
-                            2: 3,
-                            3: 3,
-                            4: 1,
-                            5: 1,
-                            6: 1,
-                        }
-                        if index.column() in number_of_decimal_places_per_column.keys():
-                            num_dec_places = number_of_decimal_places_per_column[index.column()]
+                        if column_name in self._DECIMAL_PLACES_PER_FLOAT_COLUMN.keys():
+                            num_dec_places = self._DECIMAL_PLACES_PER_FLOAT_COLUMN[column_name]
                             return '{1:.{0}f}'.format(num_dec_places, value)
+                        else:
+                            return str(value)
                 else:  # all other
                     return str(value)
 
@@ -74,7 +121,7 @@ class StationTableModel(QAbstractTableModel):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
-                return str(self._data.columns[section])
+                return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
 
@@ -118,13 +165,21 @@ class StationTableModel(QAbstractTableModel):
         flags |= Qt.ItemIsDragEnabled
         flags |= Qt.ItemIsDropEnabled
         # flags |= Qt.ItemIsUserCheckable
-        if index.column() == 10:  # Column: "is_datum"
+        if index.column() == self._data_column_names.index('is_datum'):  # Column: "is_datum"
             flags |= Qt.ItemIsEditable
         return flags
 
     @property
     def get_data(self):
         return self._data
+
+    @property
+    def get_table_columns(self):
+        """Returns a list with all columns names of the dataframe that should be copied to the view model."""
+        if self.flag_gui_simple_mode:
+            return [value for value in self._SHOW_COLUMNS_IN_TABLE if value in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI]
+        else:
+            return self._SHOW_COLUMNS_IN_TABLE
 
 
 class SetupTableModel(QAbstractTableModel):
@@ -493,7 +548,7 @@ class ResultsObservationModel(QAbstractTableModel):
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
-    # List of
+    # List of columns that are shown in the simple mode of the GUI
     _SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI = [
         'survey_name',
         'station_name_from',
@@ -737,18 +792,22 @@ class ResultsStationModel(QAbstractTableModel):
         'sig_g0_mugal': 1,
     }
 
-    _SHOW_COLUMNS_IN_TABLE = [
-        'station_name',
-        'g_mugal',
-        'sd_g_mugal',
-        'is_datum',
-        'g_est_mugal',
-        'sd_g_est_mugal',
-        'diff_g_est_mugal',
-        'diff_sd_g_est_mugal',
-        'g0_mugal',
-        'sig_g0_mugal',
-    ]
+    # Columns that will be shown in the table view, if available in the data (also defines the order of columns):
+    # - keys: Actual names of the dataframe columns
+    # - items: Header names for the Table View Widget
+    _SHOW_COLUMNS_IN_TABLE_DICT = {
+        'station_name': 'Station',
+        'g_mugal': 'g [µGal]',
+        'sd_g_mugal': 'SD [µGal]',
+        'is_datum': 'Datum',
+        'g_est_mugal': 'g_est [µGal]',
+        'sd_g_est_mugal': 'SD_est [µGal]',
+        'diff_g_est_mugal': 'delta_g [µGal]',
+        'diff_sd_g_est_mugal': 'delta_SD [µGal]',
+        'g0_mugal': 'g0 [µGal]',
+        'sig_g0_mugal': 'SD_g0 [µGal]',
+    }
+    _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
     def __init__(self, lsm_runs):
         """Initialize the station-results table view model.
@@ -848,7 +907,7 @@ class ResultsStationModel(QAbstractTableModel):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
-                return str(self._data.columns[section])
+                return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
 
