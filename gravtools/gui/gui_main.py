@@ -1088,13 +1088,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Invoked when pushing the button 'pushbutton_obs_comp_setup_data'."""
         self.compute_setup_data_for_campaign()
         survey_name, setup_id = self.get_obs_tree_widget_selected_item()
-        self.observation_model.update_view_model(survey_name, setup_id)
+        self.observation_model.update_view_model(survey_name,
+                                                 setup_id,
+                                                 gui_simple_mode=self.dlg_options.gui_simple_mode)
         self.refresh_observation_plot()
         self.update_setup_table_view(survey_name, setup_id)
 
     def update_setup_table_view(self, survey_name, setup_id):
         """Update the setups table view after changing the table model."""
-        self.setup_model.update_view_model(survey_name, setup_id)
+        self.setup_model.update_view_model(survey_name,
+                                           setup_id,
+                                           gui_simple_mode=self.dlg_options.gui_simple_mode)
         self.setup_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_observations_setups.resizeColumnsToContents()
 
@@ -1370,14 +1374,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Standard deviation of gravity g [µGal]
         self.plot_obs_sd_g = l.addPlot(1, 0, name='plot_obs_sd_g',
                                        axisItems={'bottom': TimeAxisItem(orientation='bottom')})
-        self.plot_obs_sd_g.setLabel(axis='left', text='sd_g [µGal]')
+        self.plot_obs_sd_g.setLabel(axis='left', text='SD [µGal]')
         self.plot_obs_sd_g.addLegend()
         self.plot_obs_sd_g.setXLink(self.plot_obs_g)
 
         # Instrument tilt in X and Y directions [arcsec]
         self.plot_obs_tilt = l.addPlot(2, 0, name='plot_obs_tilt',
                                        axisItems={'bottom': TimeAxisItem(orientation='bottom')})
-        self.plot_obs_tilt.setLabel(axis='left', text='tilt [arcsec]')
+        self.plot_obs_tilt.setLabel(axis='left', text='tilt [asec]')
         self.plot_obs_tilt.addLegend()
         self.plot_obs_tilt.setXLink(self.plot_obs_g)
 
@@ -1473,7 +1477,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
                 self.plot_xy_data(self.plot_obs_sd_g, setup_df['epoch_unix'].values, setup_df['sd_g_mugal'].values,
                                   plot_name='setup', color='k', symbol='x', symbol_size=25)
-            self.plot_xy_data(self.plot_obs_sd_g, obs_epoch_timestamps, sd_g_mugal, plot_name='sd_g_mugal',
+            self.plot_xy_data(self.plot_obs_sd_g, obs_epoch_timestamps, sd_g_mugal, plot_name='SD [µGal]',
                               color='b', symbol='o', symbol_size=10)
 
             self.plot_obs_sd_g.showGrid(x=True, y=True)
@@ -1650,7 +1654,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if IS_VERBOSE:
             print(f'survey name: {survey_name}; setup ID: {setup_id}')
         # Update the observation table view model according to the selected
-        self.observation_model.update_view_model(survey_name, setup_id)  # Show added survey in table
+        self.observation_model.update_view_model(survey_name,
+                                                 setup_id,
+                                                 gui_simple_mode=self.dlg_options.gui_simple_mode)  # Show added survey in table
         self.observation_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_observations.resizeColumnsToContents()
 
@@ -1809,6 +1815,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_station_view_model()
         self.enable_station_view_options_based_on_model()
         self.set_up_proxy_station_model()
+        # - Observations tab:
+        survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+        self.update_obs_table_view(survey_name, setup_id)
+        self.update_setup_table_view(survey_name, setup_id)
 
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
