@@ -3,7 +3,9 @@ import numpy as np
 import pickle
 import os
 
-from gravtools.models.lsm import LSM, LSMDiff
+from gravtools.models.lsm import LSM
+from gravtools.models.lsm_diff import LSMDiff
+from gravtools.models.lsm_nondiff import LSMNonDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
 from gravtools.models.station import Station
@@ -490,6 +492,8 @@ class Campaign:
         # Initialize LSM object:
         if lsm_method == 'LSM_diff':
             lsm_run = LSMDiff.from_campaign(self, comment, write_log)
+        elif lsm_method == 'LSM_non_diff':
+            lsm_run = LSMNonDiff.from_campaign(self, comment, write_log)
         elif lsm_method == 'MLR_BEV':
             lsm_run = BEVLegacyProcessing.from_campaign(self, comment, write_log)
         else:

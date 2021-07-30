@@ -29,3 +29,4 @@ py_gui:
 	pyuic5 -o gravtools/gui/dialog_autoselection_settings.py gravtools/gui/dialog_autoselection_settings.ui
 	pyuic5 -o gravtools/gui/dialog_estimation_settings.py gravtools/gui/dialog_estimation_settings.ui
 	pyuic5 -o gravtools/gui/dialog_export_results.py gravtools/gui/dialog_export_results.ui
+	pyuic5 -o gravtools/gui/dialog_options.py gravtools/gui/dialog_options.ui
