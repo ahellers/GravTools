@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -176,7 +176,7 @@
       </widget>
       <widget class="QWidget" name="tab_main_observations">
        <attribute name="title">
-        <string>Observations</string>
+        <string>Observations table</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_7">
         <item>
@@ -284,16 +284,6 @@
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_9">
                <item>
-                <widget class="QCheckBox" name="checkBox_obs_show_all_columns">
-                 <property name="text">
-                  <string>Show all columns</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item>
                 <widget class="QCheckBox" name="checkBox_obs_plot_reduced_observations">
                  <property name="toolTip">
                   <string>Plot reduced observatio data, if availble.</string>
@@ -332,15 +322,25 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>1</number>
+            <number>2</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
-             <string>Table</string>
+             <string>Observations table</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_6">
              <item>
               <widget class="QTableView" name="tableView_observations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_observations_setups">
+            <attribute name="title">
+             <string>Setups table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_11">
+             <item>
+              <widget class="QTableView" name="tableView_observations_setups"/>
              </item>
             </layout>
            </widget>
@@ -351,16 +351,6 @@
             <layout class="QVBoxLayout" name="verticalLayout_8">
              <item>
               <widget class="GraphicsLayoutWidget" name="GraphicsLayoutWidget_observations"/>
-             </item>
-            </layout>
-           </widget>
-           <widget class="QWidget" name="tab_observations_setups">
-            <attribute name="title">
-             <string>Setups</string>
-            </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_11">
-             <item>
-              <widget class="QTableView" name="tableView_observations_setups"/>
              </item>
             </layout>
            </widget>
@@ -481,7 +471,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>5</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -654,16 +644,6 @@
              </item>
             </layout>
            </widget>
-           <widget class="QWidget" name="tab_results_stat_table">
-            <attribute name="title">
-             <string> Stations table</string>
-            </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_19">
-             <item>
-              <widget class="QTableView" name="tableView_results_stations"/>
-             </item>
-            </layout>
-           </widget>
            <widget class="QWidget" name="tab_results_obs_plots">
             <attribute name="title">
              <string>Observations Plots</string>
@@ -770,6 +750,16 @@
              </item>
             </layout>
            </widget>
+           <widget class="QWidget" name="tab_results_stat_table">
+            <attribute name="title">
+             <string> Stations table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_19">
+             <item>
+              <widget class="QTableView" name="tableView_results_stations"/>
+             </item>
+            </layout>
+           </widget>
           </widget>
          </widget>
         </item>
@@ -810,8 +800,9 @@
     <addaction name="menuAdd_Survey"/>
     <addaction name="action_Add_Stations"/>
     <addaction name="separator"/>
-    <addaction name="separator"/>
     <addaction name="action_Export_Results"/>
+    <addaction name="separator"/>
+    <addaction name="action_Options"/>
     <addaction name="separator"/>
     <addaction name="action_Exit"/>
    </widget>
@@ -825,7 +816,6 @@
     <property name="title">
      <string>Observations</string>
     </property>
-    <addaction name="action_Edit_Observations"/>
     <addaction name="separator"/>
     <addaction name="action_Corrections"/>
     <addaction name="action_Autoselection_settings"/>
@@ -837,18 +827,9 @@
     </property>
     <addaction name="action_Estimation_settings"/>
    </widget>
-   <widget class="QMenu" name="menuStations">
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-    <property name="title">
-     <string>Stations</string>
-    </property>
-   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Observations"/>
    <addaction name="menuEstimation_settings"/>
-   <addaction name="menuStations"/>
   </widget>
   <widget class="QStatusBar" name="statusbar">
    <property name="inputMethodHints">
@@ -968,6 +949,11 @@
    </property>
    <property name="text">
     <string>Change output directory</string>
+   </property>
+  </action>
+  <action name="action_Options">
+   <property name="text">
+    <string>Options</string>
    </property>
   </action>
  </widget>

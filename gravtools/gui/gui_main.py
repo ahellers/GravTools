@@ -18,6 +18,7 @@ from gravtools.gui.dialog_corrections import Ui_Dialog_corrections
 from gravtools.gui.dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settings
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
+from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
     ResultsObservationModel, ResultsDriftModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
@@ -74,6 +75,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
         self.action_Estimation_settings.triggered.connect(self.on_menu_estimation_settings)
         self.action_Export_Results.triggered.connect(self.on_menu_file_export_results)
+        self.action_Options.triggered.connect(self.on_menu_file_options)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
@@ -112,6 +114,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_corrections = DialogCorrections()
         self.dlg_autoselect_settings = DialogAutoselectSettings()
         self.dlg_estimation_settings = DialogEstimationSettings()
+        self.dlg_options = DialogOptions()
 
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
@@ -181,6 +184,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(False)
             self.dlg_estimation_settings.label_sig0.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
+            self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
+            self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
+            self.dlg_estimation_settings.label_sig0.setEnabled(True)
+        elif selected_method == 'LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
@@ -458,15 +467,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             if lsm_run.lsm_method == 'LSM_diff':
                 offset_mugal = self.spinBox_results_drift_plot_v_offset.value()
-                self.plot_drift_lsm_diff(lsm_run, surveys=selected_survey_names, stations=selected_station_names,
+                self.plot_drift_lsm_diff(lsm_run, surveys=selected_survey_names,
+                                         stations=selected_station_names,
                                          offset_user_defined_mugal=offset_mugal)
             elif lsm_run.lsm_method == 'MLR_BEV':
                 self.plot_drift_mlr_bev_legacy(lsm_run, surveys=selected_survey_names, stations=selected_station_names)
+            elif lsm_run.lsm_method == 'LSM_non_diff':
+                self.plot_drift_lsm_non_diff(lsm_run, surveys=selected_survey_names,
+                                         stations=selected_station_names)
             else:
                 self.drift_plot.clear()  # Clear drift plot
 
-    def plot_drift_lsm_diff(self, lsm_run, surveys=None, stations=None, offset_user_defined_mugal=0):
-        """Create a drift plot for LSM runs based on differential observations (method: LSMdiff)
+    def plot_drift_lsm_non_diff(self, lsm_run, surveys=None, stations=None):
+        """Create a drift plot for LSM runs based on non-differential observations (method: LSM_non_diff)
 
         Parameters:
         -----------
@@ -475,11 +488,104 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         stations : `None` (default) or list of station names (str)
             To filter for stations that will be displayed.
         """
-        NUM_ITEMS_IN_DRIFT_FUNCTION = 100
-        SCATTER_PLOT_SYMBOL_SIZE = 10
-        SCATTER_PLOT_PEN_WIDTH = 1
-        SCATTER_PLOT_PEN_COLOR = 'k'
+        self.drift_plot.clear()
+        self.drift_plot.legend.clear()
 
+        stat_obs_df = lsm_run.stat_obs_df
+        drift_pol_df = lsm_run.drift_pol_df
+
+        # Loop over surveys (setup data) in the selected lsm run object and plot data:
+        for survey_name, setup_df_orig in lsm_run.setups.items():
+            # Filter for surveys:
+            if surveys is not None:
+                if survey_name not in surveys:
+                    continue
+
+            # Prep data:
+            drift_pol_df_short = drift_pol_df.loc[drift_pol_df['survey_name'] == survey_name]
+            setup_df = setup_df_orig.copy(deep=True)  # Make hard copy to protect original data!
+            stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
+            setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
+            setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
+            setup_df.sort_values(by='delta_t_h', inplace=True)
+
+            # Evaluate drift polynomial:
+            coeff_list = drift_pol_df_short['coefficient'].to_list()
+            coeff_list.reverse()
+            delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
+            delta_t_max_h = setup_df['delta_t_h'].max()
+            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+            drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
+
+            # Drift function time reference as UNIX time (needed for plots):
+            epoch_unix_min = setup_df['epoch_unix'].min()
+            epoch_unix_max = setup_df['epoch_unix'].max()
+            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+
+            # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
+            # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
+            # assessment of the drift function), the const. bias N0 is approximated, see below.
+            offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+            yy_mugal = drift_polynomial_mugal + offset_mugal
+
+            # Constant to be subtracted from y-axis:
+            subtr_const_mugal = round(setup_df['g_plot_mugal'].mean() / 1000) * 1000
+
+            # Plot drift function:
+            pen = pg.mkPen(color='k', width=2)
+            self.drift_plot.plot(delta_t_epoch_unix, yy_mugal-subtr_const_mugal,
+                                 name=f'drift: {survey_name}',
+                                 pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
+
+            # plot observation data (setup observations):
+            # - Example: https://www.geeksforgeeks.org/pyqtgraph-different-colored-spots-on-scatter-plot-graph/
+            scatter = pg.ScatterPlotItem()
+            spots = []
+            # - prep. data for scatterplot:
+            for index, row in setup_df.iterrows():
+                if stations is None:
+                    brush_color = self.station_colors_dict_results[row['station_name']]
+                else:
+                    if row['station_name'] not in stations:
+                        brush_color = 'w'
+                    else:
+                        brush_color = self.station_colors_dict_results[row['station_name']]
+                spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
+                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                            'brush': brush_color}
+                spots.append(spot_dic)
+
+            scatter.addPoints(spots)
+            self.drift_plot.addItem(scatter)
+
+        # Add station items to legend:
+        # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
+        for station, color in self.station_colors_dict_results.items():
+            s_item_tmp = pg.ScatterPlotItem()
+            s_item_tmp.setBrush(color)
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
+            self.drift_plot.legend.addItem(s_item_tmp, station)
+
+        # Adjust plot window:
+        self.drift_plot.showGrid(x=True, y=True)
+        self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal/1000:.1f} mGal')
+        self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
+        self.drift_plot.autoRange()
+
+    def plot_drift_lsm_diff(self, lsm_run, surveys=None, stations=None, offset_user_defined_mugal=0):
+        """Create a drift plot for LSM runs based on differential observations (method: LSM_diff)
+
+        Parameters:
+        -----------
+        surveys : `None` (default) or list of survey names (str)
+            To filter for surveys that will be displayed.
+        stations : `None` (default) or list of station names (str)
+            To filter for stations that will be displayed.
+        offset_user_defined_mugal : int, optional (default=0)
+            User defined offset between the drift polynomial function and the observed data points.
+        """
         self.drift_plot.clear()
         self.drift_plot.legend.clear()
 
@@ -507,13 +613,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             coeff_list.append(0)
             delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
             delta_t_max_h = setup_df['delta_t_h'].max()
-            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, NUM_ITEMS_IN_DRIFT_FUNCTION)
+            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
             drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
             # Drift function time reference as UNIX time (needed for plots):
             epoch_unix_min = setup_df['epoch_unix'].min()
             epoch_unix_max = setup_df['epoch_unix'].max()
-            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, NUM_ITEMS_IN_DRIFT_FUNCTION)
+            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
             # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
             # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
@@ -545,8 +651,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     else:
                         brush_color = self.station_colors_dict_results[row['station_name']]
                 spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
-                            'size': SCATTER_PLOT_SYMBOL_SIZE,
-                            'pen': {'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH},
+                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                             'brush': brush_color}
                 spots.append(spot_dic)
 
@@ -558,8 +664,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for station, color in self.station_colors_dict_results.items():
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH})
-            s_item_tmp.setSize(SCATTER_PLOT_SYMBOL_SIZE)
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
             self.drift_plot.legend.addItem(s_item_tmp, station)
 
         # Adjust plot window:
@@ -578,11 +684,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         stations : `None` (default) or list of station names (str)
             To filter for stations that will be displayed.
         """
-        NUM_ITEMS_IN_DRIFT_FUNCTION = 100
-        SCATTER_PLOT_SYMBOL_SIZE = 10
-        SCATTER_PLOT_PEN_WIDTH = 1
-        SCATTER_PLOT_PEN_COLOR = 'k'
-
         self.drift_plot.clear()
         self.drift_plot.legend.clear()
 
@@ -615,13 +716,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         coeff_list.append(0)
         delta_t_min_h = plot_setup_df['delta_t_h'].min()  # = 0
         delta_t_max_h = plot_setup_df['delta_t_h'].max()
-        delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, NUM_ITEMS_IN_DRIFT_FUNCTION)
+        delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
         drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
         # Drift function time reference as UNIX time (needed for plots):
         epoch_unix_min = plot_setup_df['epoch_unix'].min()
         epoch_unix_max = plot_setup_df['epoch_unix'].max()
-        delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, NUM_ITEMS_IN_DRIFT_FUNCTION)
+        delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
         # Plot drift function:
         pen = pg.mkPen(color='k', width=2)
@@ -643,8 +744,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 else:
                     brush_color = self.station_colors_dict_results[row['station_name']]
             spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']),
-                        'size': SCATTER_PLOT_SYMBOL_SIZE,
-                        'pen': {'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH},
+                        'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                        'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                         'brush': brush_color}
             spots.append(spot_dic)
 
@@ -656,8 +757,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for station, color in self.station_colors_dict_results.items():
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': SCATTER_PLOT_PEN_COLOR, 'width': SCATTER_PLOT_PEN_WIDTH})
-            s_item_tmp.setSize(SCATTER_PLOT_SYMBOL_SIZE)
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
             self.drift_plot.legend.addItem(s_item_tmp, station)
 
         # Adjust plot window:
@@ -691,8 +792,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Get data:
             data = results_obs_df[column_name].values
             obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,'s')
-
-            self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=column_name, color='b',
+            plot_name = self.results_observation_model.get_short_column_description(column_name)
+            self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=plot_name, color='b',
                               symbol='o', symbol_size=10)
             self.plot_obs_results.showGrid(x=True, y=True)
             column_description = self.results_observation_model.get_plotable_columns()[column_name]
@@ -707,7 +808,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             filtered_results_obs_df = self.results_observation_model.get_model_data_df
         else:  # Invalid indices
             filtered_results_obs_df = None
-        self.plot_observation_results(filtered_results_obs_df, column_name)
+        try:
+            self.plot_observation_results(filtered_results_obs_df, column_name)
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
 
     def set_up_results_drift_view_model(self):
         """Set up the view model for the drift results table view."""
@@ -745,7 +849,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Update the observation results table view after changing the table model."""
         self.results_observation_model.update_view_model(lsm_run_index,
                                                          station_name=station_name,
-                                                         survey_name=survey_name)
+                                                         survey_name=survey_name,
+                                                         gui_simple_mode=self.dlg_options.gui_simple_mode)
         self.results_observation_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_results_observations.resizeColumnsToContents()
         self.update_comboBox_results_obs_plot_select_data_column_based_on_table_view()
@@ -869,11 +974,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Get current item:
         idx, current_column_name = self.get_selected_obs_data_column()
         self.comboBox_results_obs_plot_select_data_column.clear()
-        self.comboBox_results_obs_plot_select_data_column.addItems(data_columns)
+        # Add items (text and data items):
+        for col_name in data_columns:
+            # data_columns_short_description.append(self.results_observation_model.get_short_column_description(name))
+            short_description = self.results_observation_model.get_short_column_description(col_name)
+            self.comboBox_results_obs_plot_select_data_column.addItem(short_description, userData=col_name)
+
         # Try to select the previous item again:
         if idx != -1:  # Previous selection available
             try:
-                self.comboBox_results_obs_plot_select_data_column.setCurrentText(current_column_name)
+                current_short_description = self.results_observation_model.get_short_column_description(current_column_name)
+                self.comboBox_results_obs_plot_select_data_column.setCurrentText(current_short_description)
             except:
                 pass
         self.comboBox_results_obs_plot_select_data_column.blockSignals(False)
@@ -956,9 +1067,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return idx, survey_name
 
     def get_selected_obs_data_column(self):
-        """Get the selected observation results data column."""
-        column_name = self.comboBox_results_obs_plot_select_data_column.currentText()
+        """Get the selected observation results data column (dataframe column name)."""
+        # short_description = self.comboBox_results_obs_plot_select_data_column.currentText()
         idx = self.comboBox_results_obs_plot_select_data_column.currentIndex()
+        # Convert comboBox text to dataframe column name:
+        # column_name = self.results_observation_model.get_column_name_from_short_description(short_description)
+        column_name = self.comboBox_results_obs_plot_select_data_column.currentData()
         return idx, column_name
 
     def on_checkBox_obs_plot_setup_data_state_changed(self):
@@ -974,13 +1088,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Invoked when pushing the button 'pushbutton_obs_comp_setup_data'."""
         self.compute_setup_data_for_campaign()
         survey_name, setup_id = self.get_obs_tree_widget_selected_item()
-        self.observation_model.update_view_model(survey_name, setup_id)
+        self.observation_model.update_view_model(survey_name,
+                                                 setup_id,
+                                                 gui_simple_mode=self.dlg_options.gui_simple_mode)
         self.refresh_observation_plot()
         self.update_setup_table_view(survey_name, setup_id)
 
     def update_setup_table_view(self, survey_name, setup_id):
         """Update the setups table view after changing the table model."""
-        self.setup_model.update_view_model(survey_name, setup_id)
+        self.setup_model.update_view_model(survey_name,
+                                           setup_id,
+                                           gui_simple_mode=self.dlg_options.gui_simple_mode)
         self.setup_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_observations_setups.resizeColumnsToContents()
 
@@ -1044,6 +1162,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                   confidence_level_tau_test=confidence_level_tau_test,
                                                   verbose=IS_VERBOSE)
                 # self.campaign.lsm_runs[-1].create_drift_plot_matplotlib()
+            elif lsm_method == 'LSM_non_diff':
+                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
+                                                  sig0_mugal=sig0,
+                                                  scaling_factor_datum_observations=weight_factor_datum,
+                                                  add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                                                  scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                                                  confidence_level_chi_test=confidence_level_chi_test,
+                                                  confidence_level_tau_test=confidence_level_tau_test,
+                                                  verbose=IS_VERBOSE)
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
                                                   verbose=IS_VERBOSE)
@@ -1247,14 +1374,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Standard deviation of gravity g [µGal]
         self.plot_obs_sd_g = l.addPlot(1, 0, name='plot_obs_sd_g',
                                        axisItems={'bottom': TimeAxisItem(orientation='bottom')})
-        self.plot_obs_sd_g.setLabel(axis='left', text='sd_g [µGal]')
+        self.plot_obs_sd_g.setLabel(axis='left', text='SD [µGal]')
         self.plot_obs_sd_g.addLegend()
         self.plot_obs_sd_g.setXLink(self.plot_obs_g)
 
         # Instrument tilt in X and Y directions [arcsec]
         self.plot_obs_tilt = l.addPlot(2, 0, name='plot_obs_tilt',
                                        axisItems={'bottom': TimeAxisItem(orientation='bottom')})
-        self.plot_obs_tilt.setLabel(axis='left', text='tilt [arcsec]')
+        self.plot_obs_tilt.setLabel(axis='left', text='tilt [asec]')
         self.plot_obs_tilt.addLegend()
         self.plot_obs_tilt.setXLink(self.plot_obs_g)
 
@@ -1350,7 +1477,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if setup_df is not None and self.checkBox_obs_plot_setup_data.isChecked():
                 self.plot_xy_data(self.plot_obs_sd_g, setup_df['epoch_unix'].values, setup_df['sd_g_mugal'].values,
                                   plot_name='setup', color='k', symbol='x', symbol_size=25)
-            self.plot_xy_data(self.plot_obs_sd_g, obs_epoch_timestamps, sd_g_mugal, plot_name='sd_g_mugal',
+            self.plot_xy_data(self.plot_obs_sd_g, obs_epoch_timestamps, sd_g_mugal, plot_name='SD [µGal]',
                               color='b', symbol='o', symbol_size=10)
 
             self.plot_obs_sd_g.showGrid(x=True, y=True)
@@ -1527,7 +1654,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if IS_VERBOSE:
             print(f'survey name: {survey_name}; setup ID: {setup_id}')
         # Update the observation table view model according to the selected
-        self.observation_model.update_view_model(survey_name, setup_id)  # Show added survey in table
+        self.observation_model.update_view_model(survey_name,
+                                                 setup_id,
+                                                 gui_simple_mode=self.dlg_options.gui_simple_mode)  # Show added survey in table
         self.observation_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_observations.resizeColumnsToContents()
 
@@ -1663,9 +1792,36 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Exit the application."""
         sys.exit()
 
+    def on_menu_file_options(self):
+        """Launch dialog with general program options."""
+        return_value = self.dlg_options.exec()
+        if return_value == QDialog.Accepted:
+            try:
+                self.apply_options()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+            else:
+                pass
+        else:
+            pass  # Do nothing
+            # self.statusBar().showMessage(f"Changes in options not applied.")
+
+    def apply_options(self):
+        """Apply options that are set in the options dialog."""
+        # Simple or advanced GUI appearance:
+        # - Update the results tab in order to change the appearance.
+        self.update_results_tab()
+        # - Stations Tab:
+        self.set_up_station_view_model()
+        self.enable_station_view_options_based_on_model()
+        self.set_up_proxy_station_model()
+        # - Observations tab:
+        survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+        self.update_obs_table_view(survey_name, setup_id)
+        self.update_setup_table_view(survey_name, setup_id)
+
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
-        # dlg = DialogCorrections()
         return_value = self.dlg_corrections.exec()
         if return_value == QDialog.Accepted:
             flag_corrections_ok, error_msg = self.apply_observation_corrections()
@@ -1840,7 +1996,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Set up station data view model and show station data table view."""
         # Set model:
         try:
-            self.station_model = StationTableModel(self.campaign.stations.stat_df)
+            self.station_model = StationTableModel(self.campaign.stations.stat_df,
+                                                   gui_simple_mode=self.dlg_options.gui_simple_mode)
             self.station_model.dataChanged.connect(self.on_station_model_data_changed)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No stations available!')
@@ -2073,6 +2230,27 @@ class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
         self.setupUi(self)
 
 
+class DialogOptions(QDialog, Ui_Dialog_options):
+    """Dialog for setting general program options."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+
+    @property
+    def gui_simple_mode(self) -> bool:
+        """Returns flag whether to use the simple GUI mode."""
+        if self.radioButton_gui_mode_simple.isChecked():
+            return True
+        elif self.radioButton_gui_mode_advanced.isChecked():
+            return False
+        else:
+            raise AssertionError('Invalid GUI mode selected!')
+
+
+
 class DialogExportResults(QDialog, Ui_Dialog_export_results):
     """Dialog to define the estimation settings."""
 
@@ -2101,7 +2279,6 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
         self.comboBox_select_lsm_run.setCurrentIndex(idx)
         self.write_lsm_run_comment_to_gui(idx)
-
 
     @pyqtSlot(int)
     def on_comboBox_select_lsm_run_current_index_changed(self, index: int):

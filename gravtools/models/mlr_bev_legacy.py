@@ -54,13 +54,16 @@ class BEVLegacyProcessing(LSM):
     """
 
     # Column names of self.drift_pol_df:
-    _DRIFT_POL_DF_COLUMNS = (
-        'survey_name',
-        'degree',
-        'coefficient',
-        'sd_coeff',
-        'coeff_unit',
-    )
+    # - keys: Column names of the pandas dataframe
+    # - values: Short description for table headers, etc., in the GUI
+    _DRIFT_POL_DF_COLUMNS_DICT = {
+        'survey_name': 'Survey',
+        'degree': 'Degree',
+        'coefficient': 'Coefficient',
+        'sd_coeff': 'SD',
+        'coeff_unit': 'Unit',
+    }
+    _DRIFT_POL_DF_COLUMNS = list(_DRIFT_POL_DF_COLUMNS_DICT.keys())
 
     def __init__(self, stat_df, setups, comment='', write_log=True):
         """

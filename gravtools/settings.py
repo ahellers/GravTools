@@ -68,8 +68,46 @@ GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE = {
     '40601': '5'
 }
 
+#  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
+#  observation files:
+BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
+    '5': 'cg5_longman1959'
+}
 
-#--------------
+# Available adjustment methods:
+ADJUSTMENT_METHODS = {
+    'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
+    'LSM_non_diff': 'LSM (non-differential observations)',  # Least-squares adjustment of non-differential observations
+    'MLR_BEV': 'MLR (BEV legacy processing)',  # Least-squares adjustment of differential observations
+}
+
+# Treshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
+ANSERMET_DIFF_TRESHOLD = 1e-3
+
+# Treshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
+R_POPE_TEST_TRESHOLD = 1e-6
+
+# Only consider active observations for the determination of the reference epochs, e.g. for the drift polynomial. The
+# Reference epochs are determined based on the first (active only or active/inactive) observations in the campaign or
+# in each individual survey, depending on the settings.
+ACTIVE_OBS_ONLY_FOR_REF_EPOCH = True
+
+# GUI and Program options:
+CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
+
+
+# ----- GUI appearance and plot settings -----
+
+# --- Drift plots in the results tab: ---
+# Number of plot items for plotting the drift function (polynomial):
+DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION = 100
+# Options for the observation data points in the drift plot:
+DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE = 10
+DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH = 1
+DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR = 'k'
+
+
+# ----- SCHWAUS and DRIFT settings (legacy code) -----
 
 # Instrumenten-IDs in der Messdatei einem Instrument zuweisen:
 GRAVIMETER_ID_BEV = {
@@ -89,35 +127,6 @@ GRAVIMETER_KZ_BEV = {
     '500': 'W',
 }
 
-#--------------------
-
-#  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
-#  observation files:
-BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
-    '5': 'cg5_longman1959'
-}
-
-# Available adjustment methods
-ADJUSTMENT_METHODS = {
-    'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
-    'MLR_BEV': 'MLR (BEV legacy processing)',  # Least-squares adjustment of differential observations
-}
-
-# Treshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
-ANSERMET_DIFF_TRESHOLD = 1e-3
-
-# Treshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
-R_POPE_TEST_TRESHOLD = 1e-6
-
-# Only consider active observations for the determination of the reference epochs, e.g. for the drift polynomial. The
-# Reference epochs are determined based on the first (active only or active/inactive) observations in the campaign or
-# in each individual survey, depending on the settings.
-ACTIVE_OBS_ONLY_FOR_REF_EPOCH = True
-
-# GUI and Program options:
-CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
-
-# SCHWAUS and DRIFT settings:
 FLAG_SAVE_DRIFT_PLOT_PDF = True
 FLAG_CREATE_SCHWAUS_PROTOCOL = True
 VERBOSE = True
