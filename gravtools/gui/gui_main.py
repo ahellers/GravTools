@@ -1557,7 +1557,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.observation_model.get_data.at[row, 'keep_obs'] = True
             # Handled in `self.on_observation_model_data_changed` with `self.set_keep_obs_markers_in_obs_plot` instead:
             # spot_item.setBrush(self.BRUSH_ACTIVE_OBS)
-        index = self.tableView_observations.model().index(spot_item._index, Survey.get_obs_df_column_index('keep_obs'))
+        index = self.tableView_observations.model().index(spot_item._index,
+                                                          self.observation_model._data_column_names.index('keep_obs'))
         self.observation_model.dataChanged.emit(index, index)  # Triggers all following events...
 
     def on_observation_model_data_changed(self, topLeft, bottomRight, role):
