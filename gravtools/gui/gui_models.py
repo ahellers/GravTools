@@ -263,22 +263,26 @@ class SetupTableModel(QAbstractTableModel):
 
             # Get list of columns to be depicted via the table model:
             # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
-            setup_df_columns_set = frozenset(setup_df.columns)
-            table_model_columns = [x for x in self.get_table_columns if x in setup_df_columns_set]
+            if setup_df is not None:
+                setup_df_columns_set = frozenset(setup_df.columns)
+                table_model_columns = [x for x in self.get_table_columns if x in setup_df_columns_set]
 
             if setup_id is None:  # No setup ID provided => Take all observations in survey
                 if setup_df is None:
                     self._data = None
+                    self._data_column_names = None
                 else:
                     # self._data = setup_df.copy(deep=True)
                     self._data = setup_df.loc[:, table_model_columns].copy(deep=True)
+                    self._data_column_names = self._data.columns.to_list()
             else:  # Only take observations of the specified setup
                 if setup_df is None:
                     self._data = None
+                    self._data_column_names = None
                 else:
                     # self._data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
                     self._data = setup_df.loc[setup_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
-            self._data_column_names = self._data.columns.to_list()
+                    self._data_column_names = self._data.columns.to_list()
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
@@ -764,13 +768,11 @@ class ResultsObservationModel(QAbstractTableModel):
                         tmp_filter = tmp_filter & (results_obs_df['survey_name'] == survey_name)
                     try:
                         self._data = results_obs_df.loc[tmp_filter, table_model_columns].copy(deep=True)
-                        # self._data = self._data.reindex(columns=table_model_columns)  # Reoorder columns
                     except:  # Just in case any problem occurs...
                         self._data = results_obs_df.loc[tmp_filter, :].copy(deep=True)  # Show all columns
                 else:  # No filter
                     try:
                         self._data = results_obs_df.loc[:, table_model_columns].copy(deep=True)
-                        # self._data = self._data.reindex(columns=table_model_columns)  # Reoorder columns
                     except:  # Just in case any problem occurs...
                         self._data = results_obs_df.copy(deep=True)
                 self._data_column_names = self._data.columns.to_list()  # Show all columns
