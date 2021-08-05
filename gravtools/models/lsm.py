@@ -49,6 +49,7 @@ class LSM:
         Pandas Dataframes for logging (differential or absolute) setup observations, the related metadata, estimation
         results and statistics. The columns of the dataframe may differ between adjustment methods.
         """
+
     def __init__(self, lsm_method, stat_df, setups, comment='', write_log=True):
         """
         Parameters
@@ -116,7 +117,122 @@ class LSM:
         self.s02_a_posteriori = None  # A posteriori variance of unit weight
 
         # Matrices:
-        self.Cxx = None # Co-variance matrix of estimated parameters
+        self.Cxx = None  # Co-variance matrix of estimated parameters
+
+    def adjust_autoscale_s0(self,
+                            s0_target=1,
+                            s0_target_delta=0.1,
+                            max_number_iterations=10,
+                            add_const_to_sd_of_observations_step_size_mugal=5,
+                            max_total_additive_const_to_sd_mugal=20,
+                            drift_pol_degree=1,
+                            sig0_mugal=1,
+                            scaling_factor_datum_observations=1.0,
+                            add_const_to_sd_of_observations_mugal=0.0,
+                            scaling_factor_for_sd_of_observations=1.0,
+                            confidence_level_chi_test=0.95,
+                            confidence_level_tau_test=0.95,
+                            verbose=False,
+                            ):  # Confidence level):
+        """Run the adjustment iteratively in order to adjust s0 to the target value by adapting the SD of observations.
+
+        Parameters
+        ----------
+
+
+        """
+
+        # Init.:
+        flag_s0_within_threshold = False
+        scale_factor = scaling_factor_for_sd_of_observations
+        add_const = add_const_to_sd_of_observations_mugal  # initial
+        add_const_step_size = add_const_to_sd_of_observations_step_size_mugal  # [mugal]
+        last_iteration_step_action = ''  # 'increase' or 'decrease'
+        iteration_log_str = ''
+        complete_log_str = ''
+        add_const_total_mugal = 0
+
+        # Run iteration:
+        for i_iteration in range(1, max_number_iterations + 1):
+
+            add_const_total_mugal += add_const  # Log total additive constant
+
+            self.adjust(drift_pol_degree=drift_pol_degree,
+                        sig0_mugal=sig0_mugal,
+                        scaling_factor_datum_observations=scaling_factor_datum_observations,
+                        add_const_to_sd_of_observations_mugal=add_const,
+                        scaling_factor_for_sd_of_observations=scale_factor,
+                        confidence_level_chi_test=confidence_level_chi_test,
+                        confidence_level_tau_test=confidence_level_tau_test,
+                        verbose=False
+                        )
+
+            iteration_log_str_tmp = f'########## Iteration {i_iteration} #########################\n'
+            iteration_log_str_tmp += f'Total additive const. to SD: {add_const_total_mugal} µGal\n'
+            iteration_log_str_tmp += f's0 a posteriori: {self.s02_a_posteriori}\n'
+            iteration_log_str_tmp += f'Current step size: {add_const}\n'
+            iteration_log_str_tmp += f'\n'
+            if verbose:
+                print(iteration_log_str_tmp)
+                print(self.log_str)
+            if self.write_log:
+                complete_log_str = iteration_log_str_tmp + self.log_str + '\n'
+            iteration_log_str += iteration_log_str_tmp
+
+            if (np.sqrt(self.s02_a_posteriori) < (s0_target + s0_target_delta)) and (
+                    np.sqrt(self.s02_a_posteriori) > (s0_target - s0_target_delta)):
+                flag_s0_within_threshold = True
+            elif np.sqrt(self.s02_a_posteriori) > (s0_target + s0_target_delta):  # Too large => Increase SD of obs.
+                if last_iteration_step_action == 'decrease':
+                    add_const_step_size = add_const_step_size / 2
+                last_iteration_step_action = 'increase'
+                # add_const = add_const + add_const_step_size
+                add_const = add_const_step_size
+            elif np.sqrt(self.s02_a_posteriori) < (s0_target - s0_target_delta):  # Too small => Decrease SD of obs.
+                if last_iteration_step_action == 'increase':
+                    add_const_step_size = add_const_step_size / 2
+                last_iteration_step_action = 'decrease'
+                # add_const = add_const - add_const_step_size
+                add_const = -add_const_step_size
+
+            if flag_s0_within_threshold:  # Exit loop and stop iteration
+                break
+
+        if flag_s0_within_threshold and (add_const_total_mugal < max_total_additive_const_to_sd_mugal):
+            iteration_log_str_tmp = f' => Iteration successful!\n'
+            iteration_log_str_tmp += f' => s0 a posteriori of {self.s02_a_posteriori:1.3f} within [{s0_target - s0_target_delta:1.3f}, {s0_target + s0_target_delta:1.3f}]\n'
+            iteration_log_str_tmp += f' => Total additive constant to SD of observations ({add_const_total_mugal:1.3f}) ' \
+                                     f'is smaller than the user defined threshold ' \
+                                     f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n'
+            iteration_log_str_tmp += f'\n'
+        else:
+            iteration_log_str_tmp = f' => ERROR: Iteration failed!\n'
+            if not flag_s0_within_threshold:
+                iteration_log_str_tmp += f' => s0 a posteriori of {self.s02_a_posteriori:1.3f} not within ' \
+                                         f'[{s0_target - s0_target_delta:1.3f}, {s0_target + s0_target_delta:1.3f}]\n'
+            if (add_const_total_mugal > max_total_additive_const_to_sd_mugal):
+                iteration_log_str_tmp += f' => Total additive constant to SD  ({add_const_total_mugal:1.3f}) ' \
+                                         f'exceeds the the user defined threshold ' \
+                                         f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n'
+            iteration_log_str_tmp += f'\n'
+        iteration_log_str += iteration_log_str_tmp
+
+        if verbose:
+            print(iteration_log_str_tmp)
+
+        # Append iteration log to the log string of the last iteration:
+        if self.write_log:
+            self.log_str = complete_log_str + '\n########## Iteration log #########################' + iteration_log_str
+
+        if not flag_s0_within_threshold:
+            raise AssertionError(f'Iteration Error: s0 a posteriori of {self.s02_a_posteriori:1.3f} not within '
+                                 f'[{s0_target - s0_target_delta:1.3f}, {s0_target + s0_target_delta:1.3f}] after '
+                                 f'{i_iteration} iterations!')
+
+        if add_const_total_mugal > max_total_additive_const_to_sd_mugal:
+            raise AssertionError(f'Total additive constant to SD  ({add_const_total_mugal:1.3f}) '
+                                 f'exceeds the the user defined threshold '
+                                 f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n')
 
     @property
     def time_str(self):
@@ -213,14 +329,13 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
     chi_crit_upper = stats.chi2.ppf(1 - alpha / 2, dof)  # critical value
     chi_crit_lower = stats.chi2.ppf(alpha / 2, dof)  # critical value
     chi_val = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # tested value
-    #TODO: Why is there an upper AND a lower critical value? In the literatur only an upper critical value ist defined!
+    # TODO: Why is there an upper AND a lower critical value? In the literatur only an upper critical value ist defined!
     if chi_crit_lower < chi_val < chi_crit_upper:
         chi_test_status = 'Passed'
     else:
         chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
     return chi_crit, chi_val, chi_test_status
-
 
 # TODO: Save relevant estimation settings and matrices/vectors in LSM object for later analysis and documentation!
 # TODO: Global model test: Why is there an upper and lower critical value? => In literarture only upper!
@@ -247,3 +362,8 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
 #     - The P matirx is th inverse Qll matrix. Hence, multiplicative factors are actually squared!
 #     - Try what works best!
 #   - Implement for both lsm methods.
+
+# TODO: Log info from iterative scaling
+# number of iterations
+#  - 0 => No iteration
+#  - 0 to 99999999 => iterative approach

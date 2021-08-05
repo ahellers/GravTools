@@ -1147,39 +1147,83 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             confidence_level_tau_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_tau.value()
             add_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_add_const_sd.value()
             scaling_factor_obs_sd = self.dlg_estimation_settings.doubleSpinBox_mult_factor_sd.value()
+            # Autoscale settings:
+            autoscale_s0_a_posteriori = True  # TODO: Get from GUI
+            s0_target = 1
+            s0_target_delta = 0.01
+            max_number_iterations = 20
+            add_const_to_sd_of_observations_step_size_mugal = 5
+            max_total_additive_const_to_sd_mugal = 20
 
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
 
             # Run the estimation:
             if lsm_method == 'LSM_diff':
-                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
-                                                  sig0_mugal=sig0,
-                                                  scaling_factor_datum_observations=weight_factor_datum,
-                                                  add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
-                                                  scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
-                                                  confidence_level_chi_test=confidence_level_chi_test,
-                                                  confidence_level_tau_test=confidence_level_tau_test,
-                                                  verbose=IS_VERBOSE)
+                if autoscale_s0_a_posteriori:
+                    self.campaign.lsm_runs[-1].adjust_autoscale_s0(
+                        s0_target=s0_target,
+                        s0_target_delta=s0_target_delta,
+                        max_number_iterations=max_number_iterations,
+                        add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
+                        max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
+                        drift_pol_degree=degree_drift_polynomial,
+                        sig0_mugal=sig0,
+                        scaling_factor_datum_observations=weight_factor_datum,
+                        add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                        scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                        confidence_level_chi_test=confidence_level_chi_test,
+                        confidence_level_tau_test=confidence_level_tau_test,
+                        verbose=IS_VERBOSE,
+                    )
+                else:  # no autoscale
+                    self.campaign.lsm_runs[-1].adjust(
+                        drift_pol_degree=degree_drift_polynomial,
+                        sig0_mugal=sig0,
+                        scaling_factor_datum_observations=weight_factor_datum,
+                        add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                        scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                        confidence_level_chi_test=confidence_level_chi_test,
+                        confidence_level_tau_test=confidence_level_tau_test,
+                        verbose=IS_VERBOSE
+                    )
                 # self.campaign.lsm_runs[-1].create_drift_plot_matplotlib()
             elif lsm_method == 'LSM_non_diff':
-                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
-                                                  sig0_mugal=sig0,
-                                                  scaling_factor_datum_observations=weight_factor_datum,
-                                                  add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
-                                                  scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
-                                                  confidence_level_chi_test=confidence_level_chi_test,
-                                                  confidence_level_tau_test=confidence_level_tau_test,
-                                                  verbose=IS_VERBOSE)
+                if autoscale_s0_a_posteriori:
+                    self.campaign.lsm_runs[-1].adjust_autoscale_s0(
+                        s0_target=s0_target,
+                        s0_target_delta=s0_target_delta,
+                        max_number_iterations=max_number_iterations,
+                        add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
+                        drift_pol_degree=degree_drift_polynomial,
+                        sig0_mugal=sig0,
+                        scaling_factor_datum_observations=weight_factor_datum,
+                        add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                        scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                        confidence_level_chi_test=confidence_level_chi_test,
+                        confidence_level_tau_test=confidence_level_tau_test,
+                        verbose=IS_VERBOSE,
+                    )
+                else:
+                    self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
+                                                      sig0_mugal=sig0,
+                                                      scaling_factor_datum_observations=weight_factor_datum,
+                                                      add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                                                      scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                                                      confidence_level_chi_test=confidence_level_chi_test,
+                                                      confidence_level_tau_test=confidence_level_tau_test,
+                                                      verbose=IS_VERBOSE)
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
                                                   verbose=IS_VERBOSE)
 
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
+            self.campaign.delete_lsm_run(-1)  # Delete failed lsm run object
             self.statusBar().showMessage(f"Error! No parameters estimated.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
+            self.campaign.delete_lsm_run(-1)  # Delete failed lsm run object
             self.statusBar().showMessage(f"Error! No parameters estimated.")
         else:
             # No errors when computing the setup data:
