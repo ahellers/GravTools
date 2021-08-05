@@ -231,3 +231,19 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
 
 # TODO: Treat redundancy components roperly and add determination of inner and outer reliability (AG2, pp. 70-72)
 # r: In obs results table die einzelnen obs nach der Kategorisierung (in settings definiert) auf p. 70 einteilen!
+
+# TODO: autoscale SD to get an Chi² of 1
+# - input:
+#   - target Chi² (settings.py?)
+#   - delta target Chi² (GUI)
+#   - max. number of iterations (GUI)
+#   - max. value addditive constant (GUI)
+# - Iteratively solve the equation system to get the target Chi² +- the defined delta
+#   - Scale the SD of all individual observations (before differentiating them!)
+#     - By adopting a additive constant with each iteration
+#     - Raise warning if max. number of iterations and/or max. additive constand is violated
+# - comments:
+#   - Additive vs. multiplicative factor for SD scaling:
+#     - The P matirx is th inverse Qll matrix. Hence, multiplicative factors are actually squared!
+#     - Try what works best!
+#   - Implement for both lsm methods.
