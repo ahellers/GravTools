@@ -48,6 +48,9 @@ class LSM:
     setup_obs_df : Pandas DataFrame
         Pandas Dataframes for logging (differential or absolute) setup observations, the related metadata, estimation
         results and statistics. The columns of the dataframe may differ between adjustment methods.
+    number_of_iterations : int (default=0)
+        Indicates the number of iterations if iterative adjustment was applied. `0` indicated the a non-iterative
+        adjustment was applied.
         """
 
     def __init__(self, lsm_method, stat_df, setups, comment='', write_log=True):
@@ -119,12 +122,15 @@ class LSM:
         # Matrices:
         self.Cxx = None  # Co-variance matrix of estimated parameters
 
+        # Iterative adjustment:
+        self.number_of_iterations = 0  # `0` indicates no iterations.
+
     def adjust_autoscale_s0(self,
                             s0_target=1,
                             s0_target_delta=0.1,
                             max_number_iterations=10,
-                            add_const_to_sd_of_observations_step_size_mugal=5,
-                            max_total_additive_const_to_sd_mugal=20,
+                            add_const_to_sd_of_observations_step_size_mugal=5.0,
+                            max_total_additive_const_to_sd_mugal=20.0,
                             drift_pol_degree=1,
                             sig0_mugal=1,
                             scaling_factor_datum_observations=1.0,
@@ -136,8 +142,49 @@ class LSM:
                             ):  # Confidence level):
         """Run the adjustment iteratively in order to adjust s0 to the target value by adapting the SD of observations.
 
+        Notes
+        -----
+        Iterative adjustment works for differential and non-differential LSM adjustment.
+
         Parameters
-        ----------
+        ---------
+        s0_target : float, optional (default=1.0)
+            Target a posteriori s0 for the iteration.
+        s0_target_delta : float, optional (default=0.1)
+            Permissible deviation of the target a posteriori s0. As soon as the a posteriori s0 of the current lsm run
+            lies withing the threshold of `s0_target` +- `s0_target_delta` the iteration was successful and stops.
+        max_number_iterations : int, optional (default=10)
+            Maximum allowed number of iterations. If the a posteriori s0 does not lie within the defined threshold
+            (`s0_target` +- `s0_target_delta`) after `max_number_iterations` iterations an assertion error is raised.
+        add_const_to_sd_of_observations_step_size_mugal : float, optional (default=5.0)
+            Initial iteration step size for the additive constant that is added to the standard deviation of all
+            observations.
+        max_total_additive_const_to_sd_mugal : float, optional (default=20.0)
+            If the additive factor for the SD of observations that is determined iteratively in order to reach the
+            defined target s0 is larger than `max_total_additive_const_to_sd_mugal`, the iteration procedure
+            failed and an assertion error is raised.
+        drift_pol_degree : int, optional (default=1)
+            Degree of estimated drift polynomial.
+        sig0_mugal : int, optional (default=1)
+            A priori standard deviation of unit weight of observations [µGal] for the stochastic model of the
+            least-squares adjustment.
+        scaling_factor_datum_observations : float, optional (default=1.0)
+            Factor for scaling the standard deviation (SD) of g of datum stations. The scaled SD is is used for
+            weighting the direct pseudo observations of g at the datum stations that are introduced as datum
+            constraints.
+        add_const_to_sd_of_observations_mugal : float, optional (default=0.0)
+            The defined additive constant is added to the standard deviation (SD) of setup
+            observations in order to scale the SD and the resulting weights to realistic values. In µGal. The scaling
+            factor `scaling_factor_for_sd_of_observations` is applied before adding this constant!
+        scaling_factor_for_sd_of_observations : float, optional (default=1.0)
+            Scaling factor for the standard deviation of the setup observations. `add_const_to_sd_of_observations_mugal`
+            is applied after applying the scaling factor!
+        confidence_level_chi_test : float, optional (default=0.95)
+            Confidence level for the goodness-of-fit test.
+        confidence_level_tau_test : float, optional (default=0.95)
+            Confidence level for the tau test.
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line, e.g. for debugging and testing
 
 
         """
@@ -233,6 +280,8 @@ class LSM:
             raise AssertionError(f'Total additive constant to SD  ({add_const_total_mugal:1.3f}) '
                                  f'exceeds the the user defined threshold '
                                  f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n')
+
+        self.number_of_iterations = i_iteration
 
     @property
     def time_str(self):
@@ -352,14 +401,14 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
 #   - target Chi² (settings.py?)
 #   - delta target Chi² (GUI)
 #   - max. number of iterations (GUI)
-#   - max. value addditive constant (GUI)
+#   - max. value additive constant (GUI)
 # - Iteratively solve the equation system to get the target Chi² +- the defined delta
 #   - Scale the SD of all individual observations (before differentiating them!)
 #     - By adopting a additive constant with each iteration
 #     - Raise warning if max. number of iterations and/or max. additive constand is violated
 # - comments:
 #   - Additive vs. multiplicative factor for SD scaling:
-#     - The P matirx is th inverse Qll matrix. Hence, multiplicative factors are actually squared!
+#     - The P matrix is th inverse Qll matrix. Hence, multiplicative factors are actually squared!
 #     - Try what works best!
 #   - Implement for both lsm methods.
 
@@ -367,3 +416,5 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
 # number of iterations
 #  - 0 => No iteration
 #  - 0 to 99999999 => iterative approach
+#  - new attribute: lsm_run.number_of_iterations
+#  - Show in GUI (results - info)

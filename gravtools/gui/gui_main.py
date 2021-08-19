@@ -1233,7 +1233,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
 
     def on_apply_autoselection(self):
-        """Appply autoselection on the currently selected setup or survey according to the predefined setttings."""
+        """Appply autoselection on the currently selected setup or survey according to the predefined settings."""
 
         # Get autoselect parameters from settings dialog
         flag_apply_tilt = self.dlg_autoselect_settings.checkBox_tilt.isChecked()
