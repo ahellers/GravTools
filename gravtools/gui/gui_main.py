@@ -183,18 +183,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_observations.setEnabled(False)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(False)
             self.dlg_estimation_settings.label_sig0.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
         elif selected_method == 'LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
@@ -202,6 +205,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
             self.statusBar().showMessage(f"Unknown estimation method selected!")
 
@@ -919,6 +923,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.label_results_comment.setText(lsm_run.comment)
             self.label_results_adjustment_method.setText(settings.ADJUSTMENT_METHODS[lsm_run.lsm_method])
             self.label_results_time_and_date.setText(lsm_run.init_time.strftime("%Y-%m-%d, %H:%M:%S"))
+            try:
+                number_of_iterations = lsm_run.number_of_iterations
+                if number_of_iterations == 0:
+                    number_of_iterations_str = 'No iteration'
+                else:
+                    number_of_iterations_str = str(number_of_iterations)
+            except:
+                number_of_iterations_str = 'No iteration'
+            self.label_results_number_of_iterations.setText(number_of_iterations_str)
             if lsm_run.s02_a_posteriori is not None:
                 self.label_results_sig0.setText(f'{lsm_run.s02_a_posteriori:1.3f}')
             else:
@@ -926,7 +939,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if lsm_run.write_log:
                 self.plainTextEdit_results_log.setPlainText(lsm_run.log_str)
 
-            # TODO: Add further assignments for displaying data here!
+            try:
+                if lsm_run.number_of_outliers is not None:
+                    self.label_results_number_of_outliers.setText(str(lsm_run.number_of_outliers))
+                else:
+                    self.label_results_number_of_outliers.clear()
+            except:
+                self.label_results_number_of_outliers.clear()
+            try:
+                self.label_results_goodness_of_fit_test_status.setText(lsm_run.goodness_of_fit_test_status)
+            except:
+                self.label_results_goodness_of_fit_test_status.clear()
 
             # Get station and/or survey names for filtering the displayed data:
             stat_idx, current_station_name = self.get_selected_station()
@@ -953,9 +976,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.station_colors_dict_results = {}
             self.label_results_comment.clear()
             self.label_results_adjustment_method.clear()
+            self.label_results_number_of_iterations.clear()
             self.label_results_time_and_date.clear()
             self.label_results_sig0.clear()
             self.label_results_lsm_run_comment_display.clear()
+            self.label_results_goodness_of_fit_test_status.clear()
+            self.label_results_number_of_outliers.clear()
             self.plainTextEdit_results_log.clear()
             self.update_results_station_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
             self.update_results_observation_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
@@ -1147,13 +1173,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             confidence_level_tau_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_tau.value()
             add_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_add_const_sd.value()
             scaling_factor_obs_sd = self.dlg_estimation_settings.doubleSpinBox_mult_factor_sd.value()
+
             # Autoscale settings:
-            autoscale_s0_a_posteriori = True  # TODO: Get from GUI
-            s0_target = 1
-            s0_target_delta = 0.01
-            max_number_iterations = 20
-            add_const_to_sd_of_observations_step_size_mugal = 5
-            max_total_additive_const_to_sd_mugal = 20
+            autoscale_s0_a_posteriori = self.dlg_estimation_settings.checkBox_iterative_s0_scaling.checkState() == Qt.Checked
+            s02_target = self.dlg_estimation_settings.doubleSpinBox_target_s02.value()
+            s02_target_delta = self.dlg_estimation_settings.doubleSpinBox_delta_target_s02.value()
+            max_number_iterations = self.dlg_estimation_settings.spinBox_max_number_of_iterations.value()
+            add_const_to_sd_of_observations_step_size_mugal = self.dlg_estimation_settings.doubleSpinBox_initial_step_size.value()
+            max_total_additive_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_max_additive_const_to_sd.value()
 
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
@@ -1162,8 +1189,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if lsm_method == 'LSM_diff':
                 if autoscale_s0_a_posteriori:
                     self.campaign.lsm_runs[-1].adjust_autoscale_s0(
-                        s0_target=s0_target,
-                        s0_target_delta=s0_target_delta,
+                        s02_target=s02_target,
+                        s02_target_delta=s02_target_delta,
                         max_number_iterations=max_number_iterations,
                         add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
                         max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
@@ -1191,8 +1218,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             elif lsm_method == 'LSM_non_diff':
                 if autoscale_s0_a_posteriori:
                     self.campaign.lsm_runs[-1].adjust_autoscale_s0(
-                        s0_target=s0_target,
-                        s0_target_delta=s0_target_delta,
+                        s02_target=s02_target,
+                        s02_target_delta=s02_target_delta,
                         max_number_iterations=max_number_iterations,
                         add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
                         drift_pol_degree=degree_drift_polynomial,

@@ -125,9 +125,13 @@ class LSM:
         # Iterative adjustment:
         self.number_of_iterations = 0  # `0` indicates no iterations.
 
+        # Statistical tests:
+        self.number_of_outliers = None
+        self.goodness_of_fit_test_status = ''  # str
+
     def adjust_autoscale_s0(self,
-                            s0_target=1,
-                            s0_target_delta=0.1,
+                            s02_target=1,
+                            s02_target_delta=0.1,
                             max_number_iterations=10,
                             add_const_to_sd_of_observations_step_size_mugal=5.0,
                             max_total_additive_const_to_sd_mugal=20.0,
@@ -148,14 +152,14 @@ class LSM:
 
         Parameters
         ---------
-        s0_target : float, optional (default=1.0)
-            Target a posteriori s0 for the iteration.
-        s0_target_delta : float, optional (default=0.1)
-            Permissible deviation of the target a posteriori s0. As soon as the a posteriori s0 of the current lsm run
-            lies withing the threshold of `s0_target` +- `s0_target_delta` the iteration was successful and stops.
+        s02_target : float, optional (default=1.0)
+            Target a posteriori s0² (variance of unit weight) for the iteration.
+        s02_target_delta : float, optional (default=0.1)
+            Permissible deviation of the target a posteriori s0². As soon as the a posteriori s0 of the current lsm run
+            lies withing the threshold of `s02_target` +- `s02_target_delta` the iteration was successful and stops.
         max_number_iterations : int, optional (default=10)
             Maximum allowed number of iterations. If the a posteriori s0 does not lie within the defined threshold
-            (`s0_target` +- `s0_target_delta`) after `max_number_iterations` iterations an assertion error is raised.
+            (`s02_target` +- `s02_target_delta`) after `max_number_iterations` iterations an assertion error is raised.
         add_const_to_sd_of_observations_step_size_mugal : float, optional (default=5.0)
             Initial iteration step size for the additive constant that is added to the standard deviation of all
             observations.
@@ -203,6 +207,7 @@ class LSM:
         for i_iteration in range(1, max_number_iterations + 1):
 
             add_const_total_mugal += add_const  # Log total additive constant
+            self.log_str = ''  # Reset log string of the previous run
 
             self.adjust(drift_pol_degree=drift_pol_degree,
                         sig0_mugal=sig0_mugal,
@@ -215,27 +220,27 @@ class LSM:
                         )
 
             iteration_log_str_tmp = f'########## Iteration {i_iteration} #########################\n'
-            iteration_log_str_tmp += f'Total additive const. to SD: {add_const_total_mugal} µGal\n'
-            iteration_log_str_tmp += f's0 a posteriori: {self.s02_a_posteriori}\n'
-            iteration_log_str_tmp += f'Current step size: {add_const}\n'
+            iteration_log_str_tmp += f'Total additive const. to SD: {add_const_total_mugal:5.3f} µGal\n'
+            iteration_log_str_tmp += f'Current additive const. to SD: {add_const:5.3f} µGal\n'
+            iteration_log_str_tmp += f's0² a posteriori: {self.s02_a_posteriori:5.3f} µGal²\n'
             iteration_log_str_tmp += f'\n'
             if verbose:
                 print(iteration_log_str_tmp)
                 print(self.log_str)
             if self.write_log:
-                complete_log_str = iteration_log_str_tmp + self.log_str + '\n'
+                complete_log_str = complete_log_str + iteration_log_str_tmp + self.log_str + '\n\n'
             iteration_log_str += iteration_log_str_tmp
 
-            if (np.sqrt(self.s02_a_posteriori) < (s0_target + s0_target_delta)) and (
-                    np.sqrt(self.s02_a_posteriori) > (s0_target - s0_target_delta)):
+            if (self.s02_a_posteriori < (s02_target + s02_target_delta)) and (
+                    self.s02_a_posteriori > (s02_target - s02_target_delta)):
                 flag_s0_within_threshold = True
-            elif np.sqrt(self.s02_a_posteriori) > (s0_target + s0_target_delta):  # Too large => Increase SD of obs.
+            elif self.s02_a_posteriori > (s02_target + s02_target_delta):  # Too large => Increase SD of obs.
                 if last_iteration_step_action == 'decrease':
                     add_const_step_size = add_const_step_size / 2
                 last_iteration_step_action = 'increase'
                 # add_const = add_const + add_const_step_size
                 add_const = add_const_step_size
-            elif np.sqrt(self.s02_a_posteriori) < (s0_target - s0_target_delta):  # Too small => Decrease SD of obs.
+            elif self.s02_a_posteriori < (s02_target - s02_target_delta):  # Too small => Decrease SD of obs.
                 if last_iteration_step_action == 'increase':
                     add_const_step_size = add_const_step_size / 2
                 last_iteration_step_action = 'decrease'
@@ -247,7 +252,7 @@ class LSM:
 
         if flag_s0_within_threshold and (add_const_total_mugal < max_total_additive_const_to_sd_mugal):
             iteration_log_str_tmp = f' => Iteration successful!\n'
-            iteration_log_str_tmp += f' => s0 a posteriori of {self.s02_a_posteriori:1.3f} within [{s0_target - s0_target_delta:1.3f}, {s0_target + s0_target_delta:1.3f}]\n'
+            iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
             iteration_log_str_tmp += f' => Total additive constant to SD of observations ({add_const_total_mugal:1.3f}) ' \
                                      f'is smaller than the user defined threshold ' \
                                      f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n'
@@ -255,8 +260,8 @@ class LSM:
         else:
             iteration_log_str_tmp = f' => ERROR: Iteration failed!\n'
             if not flag_s0_within_threshold:
-                iteration_log_str_tmp += f' => s0 a posteriori of {self.s02_a_posteriori:1.3f} not within ' \
-                                         f'[{s0_target - s0_target_delta:1.3f}, {s0_target + s0_target_delta:1.3f}]\n'
+                iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} not within ' \
+                                         f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
             if (add_const_total_mugal > max_total_additive_const_to_sd_mugal):
                 iteration_log_str_tmp += f' => Total additive constant to SD  ({add_const_total_mugal:1.3f}) ' \
                                          f'exceeds the the user defined threshold ' \
@@ -269,11 +274,11 @@ class LSM:
 
         # Append iteration log to the log string of the last iteration:
         if self.write_log:
-            self.log_str = complete_log_str + '\n########## Iteration log #########################' + iteration_log_str
+            self.log_str = complete_log_str + '\n########## Iteration log #########################\n\n' + iteration_log_str
 
         if not flag_s0_within_threshold:
-            raise AssertionError(f'Iteration Error: s0 a posteriori of {self.s02_a_posteriori:1.3f} not within '
-                                 f'[{s0_target - s0_target_delta:1.3f}, {s0_target + s0_target_delta:1.3f}] after '
+            raise AssertionError(f'Iteration Error: s0² a posteriori of {self.s02_a_posteriori:1.3f} not within '
+                                 f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}] after '
                                  f'{i_iteration} iterations!')
 
         if add_const_total_mugal > max_total_additive_const_to_sd_mugal:
@@ -396,9 +401,9 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
 # TODO: Treat redundancy components roperly and add determination of inner and outer reliability (AG2, pp. 70-72)
 # r: In obs results table die einzelnen obs nach der Kategorisierung (in settings definiert) auf p. 70 einteilen!
 
-# TODO: autoscale SD to get an Chi² of 1
+# TODO: auto-scale SD to get an Chi² of 1
 # - input:
-#   - target Chi² (settings.py?)
+#   - target Chi² (GUI)
 #   - delta target Chi² (GUI)
 #   - max. number of iterations (GUI)
 #   - max. value additive constant (GUI)
@@ -411,10 +416,3 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
 #     - The P matrix is th inverse Qll matrix. Hence, multiplicative factors are actually squared!
 #     - Try what works best!
 #   - Implement for both lsm methods.
-
-# TODO: Log info from iterative scaling
-# number of iterations
-#  - 0 => No iteration
-#  - 0 to 99999999 => iterative approach
-#  - new attribute: lsm_run.number_of_iterations
-#  - Show in GUI (results - info)

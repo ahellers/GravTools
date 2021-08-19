@@ -472,12 +472,13 @@ class LSMDiff(LSM):
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
         tau_test_result, tau_critical_value = tau_test(mat_w=mat_w, dof=dof, alpha=alpha_tau, mat_r=mat_r)
+        number_of_outliers = tau_test_result.count("failed")
 
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'# Tau-test results:\n'
             tmp_str += f'Critical value: {tau_critical_value:1.3f}\n'
-            tmp_str += f' - Number of detected outliers: {tau_test_result.count("failed")}\n'
+            tmp_str += f' - Number of detected outliers: {number_of_outliers}\n'
             tmp_str += f' - Number low redundancy component: {tau_test_result.count("r too small")}\n'
             tmp_str += f'\n'
             if verbose:
@@ -589,6 +590,8 @@ class LSMDiff(LSM):
         self.degree_of_freedom = dof
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
+        self.goodness_of_fit_test_status = chi_test
+        self.number_of_outliers = number_of_outliers
 
     def create_drift_plot_matplotlib(self):
         """Create a drift plot with matplotlib."""
