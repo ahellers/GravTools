@@ -16,7 +16,11 @@ Collection of newly developed software for gravity surveys. Programmed with Pyth
 * **1. Carry out installation steps describes above** 
 * **2. Install QT5, if required**
   * `sudo yum install qt5-qtbase-devel.x86_64`
-
+  
+## Installation issues on Ubuntu (20.04):
+After just installing PyQt5 with pip3 the following error occured when trying to actually run a PyQt GUI: qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This issue was resolved by installing the QT dev tools (Designer, etc.): 
+sudo apt-get install qttools5-dev-tools
 
 # Test installation with setuptools 
 With command line interface.
