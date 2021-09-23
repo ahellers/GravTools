@@ -119,10 +119,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
             self.on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed)
+        self.dlg_estimation_settings.comboBox_iteration_approach.currentIndexChanged.connect(
+            self.on_dlg_estimation_settings_comboBox_iteration_approach_current_index_changed)
 
         # Overwrite/change setting from ui file, if necessary:
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
-        self.dlg_estimation_settings.comboBox_iteration_approach.addItems(settings.ITERATION_APPROACHES.values())
+        self.dlg_estimation_settings.comboBox_iteration_approach.addItems(settings.ITERATION_APPROACHES.keys())
 
         # Init models:
         self.station_model = None
@@ -171,6 +173,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 QMessageBox.critical(self, 'Error!', f'Directory "{output_dir_name}" does not exist!')
         else:
             self.statusBar().showMessage(f'No output directory selected.')
+
+    @pyqtSlot(int)
+    def on_dlg_estimation_settings_comboBox_iteration_approach_current_index_changed(self, index: int):
+        """Invoked whenever the iteration approach in the estimation settings dialog changed."""
+        selected_iteration_approach = self.dlg_estimation_settings.comboBox_iteration_approach.currentText()
+        if selected_iteration_approach == 'Multiplicative':
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(True)
+        elif selected_iteration_approach == 'Additive':
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(False)
+        else:
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(False)
+            QMessageBox.warning(self, 'Warning!', 'Unknown iteration approach selected!')
+            self.statusBar().showMessage(f"Unknown iteration approach selected!")
 
     @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
@@ -1178,11 +1196,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Autoscale settings:
             autoscale_s0_a_posteriori = self.dlg_estimation_settings.checkBox_iterative_s0_scaling.checkState() == Qt.Checked
 
-            iteration_approach_value = self.dlg_estimation_settings.comboBox_iteration_approach.currentText()
-            for key, value in settings.ITERATION_APPROACHES.items():
-                if value == iteration_approach_value:
-                    iteration_approach = key
-
+            iteration_approach = self.dlg_estimation_settings.comboBox_iteration_approach.currentText()
             s02_target = self.dlg_estimation_settings.doubleSpinBox_target_s02.value()
             s02_target_delta = self.dlg_estimation_settings.doubleSpinBox_delta_target_s02.value()
             max_number_iterations = self.dlg_estimation_settings.spinBox_max_number_of_iterations.value()

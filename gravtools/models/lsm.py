@@ -137,7 +137,7 @@ class LSM:
                             add_const_to_sd_of_observations_step_size_mugal=5.0,
                             max_total_additive_const_to_sd_mugal=20.0,
                             multiplicative_factor_step_size_percent=10.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
-                            max_multiplicative_factor_to_sd_percent=50.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
+                            max_multiplicative_factor_to_sd_percent=150.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
                             drift_pol_degree=1,
                             sig0_mugal=1,
                             scaling_factor_datum_observations=1.0,
@@ -176,9 +176,9 @@ class LSM:
         multiplicative_factor_step_size_percent : float, optional (default=10.0)
             Initial iteration step size for the multiplicative factor that is used to scale all setup
             observations. This parameter is only considered when using the `multiplicative` iteration approach.
-        max_multiplicative_factor_to_sd_percent : float, optional (default=50.0)
+        max_multiplicative_factor_to_sd_percent : float, optional (default=150.0)
             Maximum scaling factor when using the `multiplicative` iteration approach for scaling the SD of setup
-            observations.
+            observations. Minimum = 100%.
         drift_pol_degree : int, optional (default=1)
             Degree of estimated drift polynomial.
         sig0_mugal : int, optional (default=1)
@@ -207,33 +207,49 @@ class LSM:
 
         # Init.:
         flag_s0_within_threshold = False
-        scale_factor = scaling_factor_for_sd_of_observations
+        # scale_factor = scaling_factor_for_sd_of_observations
         add_const = add_const_to_sd_of_observations_mugal  # initial
         add_const_step_size = add_const_to_sd_of_observations_step_size_mugal  # [mugal]
+        mult_factor = scaling_factor_for_sd_of_observations  # initial
+        mult_factor_step_size = multiplicative_factor_step_size_percent / 100  # [%] => factor
         last_iteration_step_action = ''  # 'increase' or 'decrease'
         iteration_log_str = ''
         complete_log_str = ''
         add_const_total_mugal = 0
+        mult_factor_total = 1.0
 
         # Run iteration:
         for i_iteration in range(1, max_number_iterations + 1):
 
+            # Only apply multiplicative facot or additive constant in the first iteration, depending on the iteration
+            # approach:
+            if i_iteration > 1:
+                if iteration_approach == 'Additive':
+                    mult_factor = 1.0
+                elif iteration_approach == 'Multiplicative':
+                    add_const = 0.0
+
             add_const_total_mugal += add_const  # Log total additive constant
+            mult_factor_total *= mult_factor  # Log total multiplicative factor
             self.log_str = ''  # Reset log string of the previous run
 
             self.adjust(drift_pol_degree=drift_pol_degree,
                         sig0_mugal=sig0_mugal,
                         scaling_factor_datum_observations=scaling_factor_datum_observations,
-                        add_const_to_sd_of_observations_mugal=add_const,
-                        scaling_factor_for_sd_of_observations=scale_factor,
+                        add_const_to_sd_of_observations_mugal=add_const,  # Adjusted iteratively
+                        scaling_factor_for_sd_of_observations=mult_factor,  # Adjusted iteratively
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         verbose=False
                         )
 
             iteration_log_str_tmp = f'########## Iteration {i_iteration} #########################\n'
+            # if iteration_approach == 'Additive':
             iteration_log_str_tmp += f'Total additive const. to SD: {add_const_total_mugal:5.3f} µGal\n'
             iteration_log_str_tmp += f'Current additive const. to SD: {add_const:5.3f} µGal\n'
+            # elif iteration_approach == 'Multiplicative':
+            iteration_log_str_tmp += f'Total mult. factor for SD: {mult_factor_total:5.3f}\n'
+            iteration_log_str_tmp += f'Current mult. factor for SD: {mult_factor:5.3f}\n'
             iteration_log_str_tmp += f's0² a posteriori: {self.s02_a_posteriori:5.3f} µGal²\n'
             iteration_log_str_tmp += f'\n'
             if verbose:
@@ -249,36 +265,58 @@ class LSM:
             elif self.s02_a_posteriori > (s02_target + s02_target_delta):  # Too large => Increase SD of obs.
                 if last_iteration_step_action == 'decrease':
                     add_const_step_size = add_const_step_size / 2
+                    mult_factor_step_size = mult_factor_step_size / 2
                 last_iteration_step_action = 'increase'
-                # add_const = add_const + add_const_step_size
                 add_const = add_const_step_size
+                mult_factor = 1.0 + mult_factor_step_size
             elif self.s02_a_posteriori < (s02_target - s02_target_delta):  # Too small => Decrease SD of obs.
                 if last_iteration_step_action == 'increase':
                     add_const_step_size = add_const_step_size / 2
+                    mult_factor_step_size = mult_factor_step_size / 2
                 last_iteration_step_action = 'decrease'
-                # add_const = add_const - add_const_step_size
                 add_const = -add_const_step_size
+                mult_factor = 1.0 - mult_factor_step_size
 
             if flag_s0_within_threshold:  # Exit loop and stop iteration
                 break
 
-        if flag_s0_within_threshold and (add_const_total_mugal <= max_total_additive_const_to_sd_mugal):
-            iteration_log_str_tmp = f' => Iteration successful!\n'
-            iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
-            iteration_log_str_tmp += f' => Total additive constant to SD of observations ({add_const_total_mugal:1.3f}) ' \
-                                     f'is smaller than the user defined threshold ' \
-                                     f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n'
-            iteration_log_str_tmp += f'\n'
-        else:
-            iteration_log_str_tmp = f' => ERROR: Iteration failed!\n'
-            if not flag_s0_within_threshold:
-                iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} not within ' \
-                                         f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
-            if (add_const_total_mugal > max_total_additive_const_to_sd_mugal):
-                iteration_log_str_tmp += f' => Total additive constant to SD  ({add_const_total_mugal:1.3f}) ' \
-                                         f'exceeds the the user defined threshold ' \
+        # Write status message to log according to iteration result:
+        if iteration_approach == 'Additive':
+            if flag_s0_within_threshold and (add_const_total_mugal <= max_total_additive_const_to_sd_mugal):
+                iteration_log_str_tmp = f' => Iteration successful!\n'
+                iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
+                iteration_log_str_tmp += f' => Total additive constant to SD of observations ({add_const_total_mugal:1.3f}) ' + \
+                                         f'is smaller than the user defined threshold ' + \
                                          f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n'
+            else:
+                iteration_log_str_tmp = f' => ERROR: Iteration failed!\n'
+                if not flag_s0_within_threshold:
+                    iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} not within ' + \
+                                             f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
+                if (add_const_total_mugal > max_total_additive_const_to_sd_mugal):
+                    iteration_log_str_tmp += f' => Total additive constant to SD  ({add_const_total_mugal:1.3f}) ' + \
+                                             f'exceeds the the user defined threshold ' + \
+                                             f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n'
             iteration_log_str_tmp += f'\n'
+
+        elif iteration_approach == 'Multiplicative':
+            if flag_s0_within_threshold and (mult_factor_total <= (max_multiplicative_factor_to_sd_percent/100)):
+                iteration_log_str_tmp = f' => Iteration successful!\n'
+                iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n '
+                iteration_log_str_tmp += f' => Total multiplicative factor for SD of observations ({mult_factor_total*100:1.3f}%) ' + \
+                                         f'is smaller than the user defined threshold ' + \
+                                         f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
+            else:
+                iteration_log_str_tmp = f' => ERROR: Iteration failed!\n'
+                if not flag_s0_within_threshold:
+                    iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} not within ' + \
+                                             f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
+                if (mult_factor_total > (max_multiplicative_factor_to_sd_percent/100)):
+                    iteration_log_str_tmp += f' => Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) ' + \
+                                             f'exceeds the the user defined threshold ' + \
+                                             f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
+            iteration_log_str_tmp += f'\n'
+
         iteration_log_str += iteration_log_str_tmp
 
         if verbose:
@@ -286,17 +324,26 @@ class LSM:
 
         # Append iteration log to the log string of the last iteration:
         if self.write_log:
-            self.log_str = complete_log_str + '\n########## Iteration log #########################\n\n' + iteration_log_str
+            self.log_str = complete_log_str + \
+                           '\n########## Iteration log #########################\n\n' + \
+                           f' - Iteration approach: {iteration_approach}\n\n' + \
+                           iteration_log_str
 
         if not flag_s0_within_threshold:
             raise AssertionError(f'Iteration Error: s0² a posteriori of {self.s02_a_posteriori:1.3f} not within '
                                  f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}] after '
                                  f'{i_iteration} iterations!')
 
-        if abs(add_const_total_mugal) > max_total_additive_const_to_sd_mugal:
-            raise AssertionError(f'Total additive constant to SD  ({add_const_total_mugal:1.3f}) '
-                                 f'exceeds the the user defined threshold '
-                                 f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n')
+        if iteration_approach == 'Additive':
+            if abs(add_const_total_mugal) > max_total_additive_const_to_sd_mugal:
+                raise AssertionError(f'Total additive constant to SD  ({add_const_total_mugal:1.3f}) '
+                                     f'exceeds the the user defined threshold '
+                                     f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n')
+        elif iteration_approach == 'Multiplicative':
+            if mult_factor_total > (max_multiplicative_factor_to_sd_percent/100):
+                raise AssertionError(f'Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) '
+                                     f'exceeds the the user defined threshold '
+                                     f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n')
 
         self.number_of_iterations = i_iteration
 

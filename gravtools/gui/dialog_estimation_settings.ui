@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget_estimation_settings">
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab_general_settings">
       <attribute name="title">
@@ -368,13 +368,20 @@
            <layout class="QFormLayout" name="formLayout_4">
             <item row="0" column="0">
              <widget class="QLabel" name="label_9">
+              <property name="toolTip">
+               <string>Iteration approach.</string>
+              </property>
               <property name="text">
                <string>Iteration approach</string>
               </property>
              </widget>
             </item>
             <item row="0" column="1">
-             <widget class="QComboBox" name="comboBox_iteration_approach"/>
+             <widget class="QComboBox" name="comboBox_iteration_approach">
+              <property name="toolTip">
+               <string>Iteration approach.</string>
+              </property>
+             </widget>
             </item>
             <item row="1" column="0">
              <widget class="QLabel" name="label_target_s02">
@@ -452,6 +459,9 @@
           </item>
           <item>
            <widget class="QGroupBox" name="groupBox_iterative_scaling_multiplicative">
+            <property name="toolTip">
+             <string>Settings for the multiplicative iteration approach.</string>
+            </property>
             <property name="title">
              <string>Multiplicative approach</string>
             </property>
@@ -460,6 +470,9 @@
               <layout class="QFormLayout" name="formLayout_8">
                <item row="0" column="0">
                 <widget class="QLabel" name="label_initial_step_size_percent">
+                 <property name="toolTip">
+                  <string>Intial step size [%] for the iterative scaling of the SD of all setup observations when applying the multiplicative iteration approach.</string>
+                 </property>
                  <property name="text">
                   <string>Initial iteration step size [%]</string>
                  </property>
@@ -467,6 +480,9 @@
                </item>
                <item row="0" column="1">
                 <widget class="QDoubleSpinBox" name="doubleSpinBox_initial_step_size_percent">
+                 <property name="toolTip">
+                  <string>Intial step size [%] for the iterative scaling of the SD of all setup observations when applying the multiplicative iteration approach.</string>
+                 </property>
                  <property name="decimals">
                   <number>1</number>
                  </property>
@@ -474,22 +490,34 @@
                   <double>0.000000000000000</double>
                  </property>
                  <property name="value">
-                  <double>10.000000000000000</double>
+                  <double>20.000000000000000</double>
                  </property>
                 </widget>
                </item>
                <item row="1" column="1">
                 <widget class="QDoubleSpinBox" name="doubleSpinBox_max_multiplicative_factor_to_sd_percent">
+                 <property name="toolTip">
+                  <string>Maximum multiplicative factor when scaling the SD of all setup observations wehen using the multiplicative iteration approach.</string>
+                 </property>
                  <property name="decimals">
                   <number>1</number>
                  </property>
+                 <property name="minimum">
+                  <double>100.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>900.000000000000000</double>
+                 </property>
                  <property name="value">
-                  <double>50.000000000000000</double>
+                  <double>200.000000000000000</double>
                  </property>
                 </widget>
                </item>
                <item row="1" column="0">
                 <widget class="QLabel" name="label_max_multiplicative_factor_to_sd_percent">
+                 <property name="toolTip">
+                  <string>Maximum multiplicative factor when scaling the SD of all setup observations wehen using the multiplicative iteration approach.</string>
+                 </property>
                  <property name="text">
                   <string>Max. multiplicative factor to SD [%]</string>
                  </property>
@@ -502,6 +530,9 @@
           </item>
           <item>
            <widget class="QGroupBox" name="groupBox_iterative_scaling_additive">
+            <property name="toolTip">
+             <string>Settings for the additive iteration approach.</string>
+            </property>
             <property name="title">
              <string>Additive approach</string>
             </property>
@@ -524,7 +555,7 @@
                   <string>The initial iteration setp size defines how much the SD of all setup observationa is changed initially. Within the iteration process this step size may become smaller in order to reach the s0² target.</string>
                  </property>
                  <property name="minimum">
-                  <double>0.100000000000000</double>
+                  <double>0.000000000000000</double>
                  </property>
                  <property name="maximum">
                   <double>100.000000000000000</double>
@@ -540,7 +571,7 @@
                   <string>Definines the maximim permitted additive constant to the standard deviations of the setup observations at the end of the iteration process.</string>
                  </property>
                  <property name="maximum">
-                  <double>100.000000000000000</double>
+                  <double>900.000000000000000</double>
                  </property>
                  <property name="value">
                   <double>20.000000000000000</double>
