@@ -1222,6 +1222,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         s02_target_delta=s02_target_delta,
                         max_number_iterations=max_number_iterations,
                         add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
+                        max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
                         drift_pol_degree=degree_drift_polynomial,
                         sig0_mugal=sig0,
                         scaling_factor_datum_observations=weight_factor_datum,

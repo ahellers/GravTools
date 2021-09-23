@@ -243,6 +243,7 @@ class LSMDiff(LSM):
             tmp_str += f'Number of estimated parameters: {number_of_parameters}\n'
             tmp_str += f'Number of datum stations: {number_of_datum_stations}\n'
             tmp_str += f'Degree of freedom (w/o datum constraints): {number_of_diff_obs - number_of_parameters}\n'
+            tmp_str += f'Degree of freedom (with datum constraints): {number_of_diff_obs - number_of_parameters + number_of_datum_stations}\n'
             tmp_str += f'\n'
             tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
             tmp_str += f'A priori std. deviation of unit weight [µGal]: {sig0_mugal}\n'
@@ -406,8 +407,8 @@ class LSMDiff(LSM):
         dof = mat_A.shape[0] - mat_A.shape[1]  # degree of freedom
         par_r = mat_v.T @ mat_P @ mat_v  # = v^T * P * v
         if dof == 0:
-            s02_a_posteriori_mugal2 = par_r[0][0]
-            # dof = 0 should not be the case here!
+            # s02_a_posteriori_mugal2 = par_r[0][0]
+            raise AssertionError('Degree of freedom has to be larger than 0!')
         else:
             s02_a_posteriori_mugal2 = par_r[0][0] / dof  # Eq. (20)
 
@@ -432,7 +433,8 @@ class LSMDiff(LSM):
         # Calculate standard deviations:
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
-        mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
+        # mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
+        mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occure!
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram

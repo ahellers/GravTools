@@ -50,3 +50,7 @@
 #
 # Integrating Qt Designer with PyQt
 # - Create python class from ui file with pyqt-distutils
+
+
+##### Install QT designer #####
+# sudo apt-get install qttools5-dev-tools

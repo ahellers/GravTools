@@ -250,7 +250,7 @@ class LSM:
             if flag_s0_within_threshold:  # Exit loop and stop iteration
                 break
 
-        if flag_s0_within_threshold and (add_const_total_mugal < max_total_additive_const_to_sd_mugal):
+        if flag_s0_within_threshold and (add_const_total_mugal <= max_total_additive_const_to_sd_mugal):
             iteration_log_str_tmp = f' => Iteration successful!\n'
             iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
             iteration_log_str_tmp += f' => Total additive constant to SD of observations ({add_const_total_mugal:1.3f}) ' \
@@ -281,7 +281,7 @@ class LSM:
                                  f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}] after '
                                  f'{i_iteration} iterations!')
 
-        if add_const_total_mugal > max_total_additive_const_to_sd_mugal:
+        if abs(add_const_total_mugal) > max_total_additive_const_to_sd_mugal:
             raise AssertionError(f'Total additive constant to SD  ({add_const_total_mugal:1.3f}) '
                                  f'exceeds the the user defined threshold '
                                  f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n')
