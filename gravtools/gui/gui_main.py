@@ -119,9 +119,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
             self.on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed)
+        self.dlg_estimation_settings.comboBox_iteration_approach.currentIndexChanged.connect(
+            self.on_dlg_estimation_settings_comboBox_iteration_approach_current_index_changed)
 
         # Overwrite/change setting from ui file, if necessary:
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
+        self.dlg_estimation_settings.comboBox_iteration_approach.addItems(settings.ITERATION_APPROACHES.keys())
 
         # Init models:
         self.station_model = None
@@ -170,6 +173,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 QMessageBox.critical(self, 'Error!', f'Directory "{output_dir_name}" does not exist!')
         else:
             self.statusBar().showMessage(f'No output directory selected.')
+
+    @pyqtSlot(int)
+    def on_dlg_estimation_settings_comboBox_iteration_approach_current_index_changed(self, index: int):
+        """Invoked whenever the iteration approach in the estimation settings dialog changed."""
+        selected_iteration_approach = self.dlg_estimation_settings.comboBox_iteration_approach.currentText()
+        if selected_iteration_approach == 'Multiplicative':
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(True)
+        elif selected_iteration_approach == 'Additive':
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(False)
+        else:
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(False)
+            QMessageBox.warning(self, 'Warning!', 'Unknown iteration approach selected!')
+            self.statusBar().showMessage(f"Unknown iteration approach selected!")
 
     @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
@@ -1176,11 +1195,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Autoscale settings:
             autoscale_s0_a_posteriori = self.dlg_estimation_settings.checkBox_iterative_s0_scaling.checkState() == Qt.Checked
+
+            iteration_approach = self.dlg_estimation_settings.comboBox_iteration_approach.currentText()
             s02_target = self.dlg_estimation_settings.doubleSpinBox_target_s02.value()
             s02_target_delta = self.dlg_estimation_settings.doubleSpinBox_delta_target_s02.value()
             max_number_iterations = self.dlg_estimation_settings.spinBox_max_number_of_iterations.value()
             add_const_to_sd_of_observations_step_size_mugal = self.dlg_estimation_settings.doubleSpinBox_initial_step_size.value()
             max_total_additive_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_max_additive_const_to_sd.value()
+            max_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_max_multiplicative_factor_to_sd_percent.value()
+            initial_step_size_percent = self.dlg_estimation_settings.doubleSpinBox_initial_step_size_percent.value()
 
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
@@ -1189,11 +1212,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if lsm_method == 'LSM_diff':
                 if autoscale_s0_a_posteriori:
                     self.campaign.lsm_runs[-1].adjust_autoscale_s0(
+                        iteration_approach=iteration_approach,
                         s02_target=s02_target,
                         s02_target_delta=s02_target_delta,
                         max_number_iterations=max_number_iterations,
                         add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
                         max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
+                        multiplicative_factor_step_size_percent=initial_step_size_percent,
+                        max_multiplicative_factor_to_sd_percent=max_multiplicative_factor_to_sd_percent,
                         drift_pol_degree=degree_drift_polynomial,
                         sig0_mugal=sig0,
                         scaling_factor_datum_observations=weight_factor_datum,
@@ -1218,11 +1244,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             elif lsm_method == 'LSM_non_diff':
                 if autoscale_s0_a_posteriori:
                     self.campaign.lsm_runs[-1].adjust_autoscale_s0(
+                        iteration_approach=iteration_approach,
                         s02_target=s02_target,
                         s02_target_delta=s02_target_delta,
                         max_number_iterations=max_number_iterations,
                         add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
                         max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
+                        multiplicative_factor_step_size_percent=initial_step_size_percent,
+                        max_multiplicative_factor_to_sd_percent=max_multiplicative_factor_to_sd_percent,
                         drift_pol_degree=degree_drift_polynomial,
                         sig0_mugal=sig0,
                         scaling_factor_datum_observations=weight_factor_datum,

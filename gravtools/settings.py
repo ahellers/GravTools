@@ -81,6 +81,12 @@ ADJUSTMENT_METHODS = {
     'MLR_BEV': 'MLR (BEV legacy processing)',  # Least-squares adjustment of differential observations
 }
 
+# Available iteration approaches for scaling the SD of setup observations:
+ITERATION_APPROACHES = {
+    'Multiplicative': 'Multiplicative iteration approach',
+    'Additive': 'Additive iteration approach'
+}
+
 # Treshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
 ANSERMET_DIFF_TRESHOLD = 1e-3
 
