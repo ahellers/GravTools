@@ -130,11 +130,14 @@ class LSM:
         self.goodness_of_fit_test_status = ''  # str
 
     def adjust_autoscale_s0(self,
+                            iteration_approach='Multiplicative',  # !!!!!!!!!!! NEW !!!!!!!!!
                             s02_target=1,
                             s02_target_delta=0.1,
                             max_number_iterations=10,
                             add_const_to_sd_of_observations_step_size_mugal=5.0,
                             max_total_additive_const_to_sd_mugal=20.0,
+                            multiplicative_factor_step_size_percent=10.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
+                            max_multiplicative_factor_to_sd_percent=50.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
                             drift_pol_degree=1,
                             sig0_mugal=1,
                             scaling_factor_datum_observations=1.0,
@@ -152,6 +155,8 @@ class LSM:
 
         Parameters
         ---------
+        iteration_approach : str, optional (default='Multiplicative')
+            Defines the iteration approach (Multiplicative od Additive)
         s02_target : float, optional (default=1.0)
             Target a posteriori s0² (variance of unit weight) for the iteration.
         s02_target_delta : float, optional (default=0.1)
@@ -162,11 +167,18 @@ class LSM:
             (`s02_target` +- `s02_target_delta`) after `max_number_iterations` iterations an assertion error is raised.
         add_const_to_sd_of_observations_step_size_mugal : float, optional (default=5.0)
             Initial iteration step size for the additive constant that is added to the standard deviation of all
-            observations.
+            observations. This parameter is only considered when using the `additive` iteration approach.
         max_total_additive_const_to_sd_mugal : float, optional (default=20.0)
             If the additive factor for the SD of observations that is determined iteratively in order to reach the
             defined target s0 is larger than `max_total_additive_const_to_sd_mugal`, the iteration procedure
-            failed and an assertion error is raised.
+            failed and an assertion error is raised. This parameter is only considered when using the `additive`
+            iteration approach.
+        multiplicative_factor_step_size_percent : float, optional (default=10.0)
+            Initial iteration step size for the multiplicative factor that is used to scale all setup
+            observations. This parameter is only considered when using the `multiplicative` iteration approach.
+        max_multiplicative_factor_to_sd_percent : float, optional (default=50.0)
+            Maximum scaling factor when using the `multiplicative` iteration approach for scaling the SD of setup
+            observations.
         drift_pol_degree : int, optional (default=1)
             Degree of estimated drift polynomial.
         sig0_mugal : int, optional (default=1)

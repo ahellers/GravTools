@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget_estimation_settings">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab_general_settings">
       <attribute name="title">
@@ -339,6 +339,26 @@
         </widget>
        </item>
        <item>
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_iterativ_scaling">
+      <attribute name="title">
+       <string>Iterative Scaling</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_10">
+       <item>
         <widget class="QGroupBox" name="groupBox_iterative_scaling">
          <property name="title">
           <string>Iterative scaling of SD of setup observations</string>
@@ -347,6 +367,16 @@
           <item>
            <layout class="QFormLayout" name="formLayout_4">
             <item row="0" column="0">
+             <widget class="QLabel" name="label_9">
+              <property name="text">
+               <string>Iteration approach</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="comboBox_iteration_approach"/>
+            </item>
+            <item row="1" column="0">
              <widget class="QLabel" name="label_target_s02">
               <property name="toolTip">
                <string>Target variance of unit weight for the iteration.</string>
@@ -356,7 +386,7 @@
               </property>
              </widget>
             </item>
-            <item row="0" column="1">
+            <item row="1" column="1">
              <widget class="QDoubleSpinBox" name="doubleSpinBox_target_s02">
               <property name="toolTip">
                <string>Target variance of unit weight for the iteration.</string>
@@ -366,7 +396,7 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="0">
+            <item row="2" column="0">
              <widget class="QLabel" name="label_delta_target_s02">
               <property name="toolTip">
                <string>Permitted deviation of the target variance of unit weight.</string>
@@ -376,7 +406,7 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
+            <item row="2" column="1">
              <widget class="QDoubleSpinBox" name="doubleSpinBox_delta_target_s02">
               <property name="toolTip">
                <string>Permitted deviation of the target variance of unit weight.</string>
@@ -392,7 +422,17 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
+            <item row="3" column="0">
+             <widget class="QLabel" name="label_max_number_of_iterations">
+              <property name="toolTip">
+               <string>Maximum number of iterations.</string>
+              </property>
+              <property name="text">
+               <string>Max. number of iterations</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
              <widget class="QSpinBox" name="spinBox_max_number_of_iterations">
               <property name="toolTip">
                <string>Maximum number of iterations.</string>
@@ -408,69 +448,135 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_max_number_of_iterations">
-              <property name="toolTip">
-               <string>Maximum number of iterations.</string>
-              </property>
-              <property name="text">
-               <string>Max. number of iterations</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_max_additive_const_to_sd">
-              <property name="toolTip">
-               <string>Definines the maximim permitted additive constant to the standard deviations of the setup observations at the end of the iteration process.</string>
-              </property>
-              <property name="text">
-               <string>Max. additive const. to SD [µGal]</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_max_additive_const_to_sd">
-              <property name="toolTip">
-               <string>Definines the maximim permitted additive constant to the standard deviations of the setup observations at the end of the iteration process.</string>
-              </property>
-              <property name="maximum">
-               <double>100.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>20.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_initial_step_size">
-              <property name="toolTip">
-               <string>The initial iteration setp size defines how much the SD of all setup observationa is changed initially. Within the iteration process this step size may become smaller in order to reach the s0² target.</string>
-              </property>
-              <property name="minimum">
-               <double>0.100000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>100.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>5.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_initial_setp_size">
-              <property name="toolTip">
-               <string>The initial iteration setp size defines how much the SD of all setup observationa is changed initially. Within the iteration process this step size may become smaller in order to reach the s0² target.</string>
-              </property>
-              <property name="text">
-               <string>Initial iteration step size [µGal]</string>
-              </property>
-             </widget>
-            </item>
            </layout>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_iterative_scaling_multiplicative">
+            <property name="title">
+             <string>Multiplicative approach</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_12">
+             <item>
+              <layout class="QFormLayout" name="formLayout_8">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_initial_step_size_percent">
+                 <property name="text">
+                  <string>Initial iteration step size [%]</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_initial_step_size_percent">
+                 <property name="decimals">
+                  <number>1</number>
+                 </property>
+                 <property name="minimum">
+                  <double>0.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>10.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_max_multiplicative_factor_to_sd_percent">
+                 <property name="decimals">
+                  <number>1</number>
+                 </property>
+                 <property name="value">
+                  <double>50.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_max_multiplicative_factor_to_sd_percent">
+                 <property name="text">
+                  <string>Max. multiplicative factor to SD [%]</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_iterative_scaling_additive">
+            <property name="title">
+             <string>Additive approach</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_11">
+             <item>
+              <layout class="QFormLayout" name="formLayout_7">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_initial_setp_size">
+                 <property name="toolTip">
+                  <string>The initial iteration setp size defines how much the SD of all setup observationa is changed initially. Within the iteration process this step size may become smaller in order to reach the s0² target.</string>
+                 </property>
+                 <property name="text">
+                  <string>Initial iteration step size [µGal]</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_initial_step_size">
+                 <property name="toolTip">
+                  <string>The initial iteration setp size defines how much the SD of all setup observationa is changed initially. Within the iteration process this step size may become smaller in order to reach the s0² target.</string>
+                 </property>
+                 <property name="minimum">
+                  <double>0.100000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>100.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>5.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_max_additive_const_to_sd">
+                 <property name="toolTip">
+                  <string>Definines the maximim permitted additive constant to the standard deviations of the setup observations at the end of the iteration process.</string>
+                 </property>
+                 <property name="maximum">
+                  <double>100.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>20.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_max_additive_const_to_sd">
+                 <property name="toolTip">
+                  <string>Definines the maximim permitted additive constant to the standard deviations of the setup observations at the end of the iteration process.</string>
+                 </property>
+                 <property name="text">
+                  <string>Max. additive const. to SD [µGal]</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
           </item>
          </layout>
         </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
