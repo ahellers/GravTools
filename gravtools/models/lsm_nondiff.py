@@ -509,6 +509,7 @@ class LSMNonDiff(LSM):
         sd_coeff_list = []
         coeff_unit_list = []
         tmp_idx = 0
+        x_estimate_drift_coeff_names = []
         for survey_name, setup_df in self.setups.items():
             for degree in range(drift_pol_degree + 1):
                 survey_name_list.append(survey_name)
@@ -520,6 +521,7 @@ class LSMNonDiff(LSM):
                 else:
                     coeff_unit_list.append(f'µGal/h^{degree}')
                 tmp_idx += 1
+                x_estimate_drift_coeff_names.append(f'{survey_name}-{degree}')
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
@@ -577,6 +579,7 @@ class LSMNonDiff(LSM):
         self.degree_of_freedom = dof
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
+        self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
         self.goodness_of_fit_test_status = chi_test
         self.number_of_outliers = number_of_outliers
 
