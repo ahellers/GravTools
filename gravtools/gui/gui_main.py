@@ -20,7 +20,7 @@ from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settin
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
-    ResultsObservationModel, ResultsDriftModel
+    ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 
 from gravtools.models.survey import Survey
@@ -278,6 +278,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.treeWidget_observations.topLevelItem(0).setSelected(True)
                 # - Results tab:
                 self.set_up_results_stations_view_model()
+                self.set_up_results_correlation_matrix_view_model()
                 self.set_up_results_observations_view_model()
                 self.set_up_results_drift_view_model()
                 self.update_results_tab(select_latest_item=True)
@@ -899,6 +900,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.results_station_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_results_stations.resizeColumnsToContents()
 
+    def set_up_results_correlation_matrix_view_model(self):
+        """Set up the view model for the correlation matrix table view."""
+        try:
+            self.results_correlation_matrix_model = ResultsCorrelationMatrixModel(self.campaign.lsm_runs)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No LSM-adjustment results available!')
+            self.statusBar().showMessage(f"No LSM-adjustment results available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.tableView_results_correlation_matrix.setModel(self.results_correlation_matrix_model)
+            self.tableView_results_correlation_matrix.resizeColumnsToContents()
+
+    def update_results_correlation_matrix_table_view(self, lsm_run_index: int, station_name=None, survey_name=None):
+        """Update the correlation matrix table view after changing the table model.
+
+        Notes
+        -----
+        `idx = -1` indicates that no valid lsm run was selected. In this case the table view should be cleared.
+        """
+        self.results_correlation_matrix_model.update_view_model(lsm_run_index,
+                                                     station_name=station_name,
+                                                     survey_name=survey_name)
+        self.results_correlation_matrix_model.layoutChanged.emit()  # Show changes in table view
+        self.tableView_results_correlation_matrix.resizeColumnsToContents()
+
     @pyqtSlot(int)
     def on_comboBox_results_lsm_run_selection_current_index_changed(self, index: int):
         """Invoked whenever the index of the selected item in the combobox changed."""
@@ -987,6 +1014,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Update widgets:
             self.update_results_station_table_view(idx, station_name=station_name, survey_name=survey_name)
+            self.update_results_correlation_matrix_table_view(idx)
             self.update_results_observation_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_drift_table_view(idx, survey_name=survey_name)
             self.update_results_obs_plots()
@@ -1003,6 +1031,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.label_results_number_of_outliers.clear()
             self.plainTextEdit_results_log.clear()
             self.update_results_station_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
+            self.update_results_correlation_matrix_table_view(idx)  # Can handle idx=-1
             self.update_results_observation_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
             self.update_results_drift_table_view(idx, survey_name=None)
             self.update_comboBox_results_selection_station(observed_stations=[])
@@ -2008,6 +2037,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.plot_observations(survey_name=None)  # wipe observbations plot
             # - Results tab:
             self.set_up_results_stations_view_model()
+            self.set_up_results_correlation_matrix_view_model()
             self.set_up_results_observations_view_model()
             self.set_up_results_drift_view_model()
             self.update_results_tab(select_latest_item=True)

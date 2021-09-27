@@ -112,6 +112,15 @@ DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE = 10
 DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH = 1
 DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR = 'k'
 
+# --- Correlation matrix in the results tab: ---
+# Background color scheme for the correlation coefficient [0 - 1]
+# - Get HEX colors from here: https://colorbrewer2.org/
+# - https://www.pythonguis.com/tutorials/qtableview-modelviews-numpy-pandas/
+# green (low correlation) => red (high correlation)
+CORRELATION_COEF_COLORS = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']
+# Background color for diagonal elements (=1):
+CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
+
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----
 

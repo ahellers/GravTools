@@ -121,6 +121,8 @@ class LSM:
 
         # Matrices:
         self.Cxx = None  # Co-variance matrix of estimated parameters
+        self.Rxx = None  # Correlation matrix of estimates parameters
+        self.x_estimate_names = []  # List of items in the Cxx matrix (index 0 to n)
 
         # Iterative adjustment:
         self.number_of_iterations = 0  # `0` indicates no iterations.
@@ -356,6 +358,30 @@ class LSM:
     def get_log_string(self):
         """Returns the log string."""
         return self.log_str
+
+    @property
+    def get_correlation_matrix(self):
+        """Calculates und returns the correlation matrix based on the Co-Variance matrix of the LSM run.
+
+        Returns
+        -------
+        numpy array : Correlation matrix (n, n)
+
+        Notes
+        -----
+        The co-variance matrix `self.Cxx` needs to exist.
+        """
+        if self.Cxx is None:
+            # raise AssertionError('Correlation matrix cannot be calculated due to missing co-variance matrix.')
+            return None
+
+        mat_Rxx = np.zeros([self.Cxx.shape[0], self.Cxx.shape[1]])
+        for i_row in range(mat_Rxx.shape[0]):
+            for i_col in range(mat_Rxx.shape[1]):
+                print(i_row, i_col)
+                mat_Rxx[i_row, i_col] = self.Cxx[i_row, i_col] / (
+                            np.sqrt(self.Cxx[i_row, i_row]) * np.sqrt(self.Cxx[i_col, i_col]))
+        return mat_Rxx
 
 
 def bin_redundacy_components(mat_r):

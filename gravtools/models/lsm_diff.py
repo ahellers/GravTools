@@ -526,6 +526,7 @@ class LSMDiff(LSM):
         sd_coeff_list = []
         coeff_unit_list = []
         tmp_idx = 0
+        x_estimate_drift_coeff_names = []
         for survey_name, setup_df in self.setups.items():
             for degree in range(drift_pol_degree):
                 survey_name_list.append(survey_name)
@@ -534,6 +535,7 @@ class LSMDiff(LSM):
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
                 coeff_unit_list.append(f'µGal/h^{degree + 1}')
                 tmp_idx += 1
+                x_estimate_drift_coeff_names.append(f'{survey_name}-{degree+1}')
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
@@ -580,6 +582,9 @@ class LSMDiff(LSM):
             if self.write_log:
                 self.log_str += tmp_str
 
+        # Calculate correlation matrix:
+
+
         # Save data/infos to object for later use:
         self.drift_polynomial_degree = drift_pol_degree
         self.sig0_a_priori = sig0_mugal
@@ -592,6 +597,7 @@ class LSMDiff(LSM):
         self.degree_of_freedom = dof
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
+        self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
         self.goodness_of_fit_test_status = chi_test
         self.number_of_outliers = number_of_outliers
 
