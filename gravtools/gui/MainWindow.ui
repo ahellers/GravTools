@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -471,7 +471,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>6</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -792,6 +792,16 @@
             <layout class="QVBoxLayout" name="verticalLayout_19">
              <item>
               <widget class="QTableView" name="tableView_results_stations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_correlation_matrix">
+            <attribute name="title">
+             <string>Correlation Matrix</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_32">
+             <item>
+              <widget class="QTableView" name="tableView_results_correlation_matrix"/>
              </item>
             </layout>
            </widget>

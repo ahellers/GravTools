@@ -372,7 +372,8 @@ class LSM:
         The co-variance matrix `self.Cxx` needs to exist.
         """
         if self.Cxx is None:
-            raise AssertionError('Correlation matrix cannot be calculated due to missing co-variance matrix.')
+            # raise AssertionError('Correlation matrix cannot be calculated due to missing co-variance matrix.')
+            return None
 
         mat_Rxx = np.zeros([self.Cxx.shape[0], self.Cxx.shape[1]])
         for i_row in range(mat_Rxx.shape[0]):
