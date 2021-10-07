@@ -16,6 +16,7 @@ from matplotlib import pyplot as plt
 
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test
+from gravtools.models import misc
 
 
 class LSMDiff(LSM):
@@ -207,8 +208,7 @@ class LSMDiff(LSM):
             number_of_observations = number_of_observations + len(setup_df)
             survey_names.append(survey_name)
             setup_ids = setup_ids + setup_df['setup_id'].to_list()
-        self.observed_stations = list(
-            set(self.observed_stations))  # Unique list of stations => order of stations in matrices!
+        self.observed_stations = misc.unique_ordered_list(self.observed_stations)  # Unique list of stations => order of stations in matrices!
         number_of_stations = len(self.observed_stations)
         number_of_surveys = len(self.setups)
         number_of_parameters = number_of_stations + drift_pol_degree * number_of_surveys  # Total number of parameters to be estimated
@@ -286,15 +286,22 @@ class LSMDiff(LSM):
         survey_names_list = []
         ref_epoch_dt_list = []  # Reference epochs (datetime objects) of differential observations
 
-        # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
-        # - Apply scaling factor to SD of setup observations:
-        setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
-        # - Add additive constant to standard deviation of setup observations in order to scale them to realistic values:
-        setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
+        # # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
+        # # - Apply scaling factor to SD of setup observations:
+        # setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
+        # # - Add additive constant to standard deviation of setup observations in order to scale them to realistic values:
+        # setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
 
         for survey_name, setup_df in self.setups.items():
             previous_row = None
             survey_count += 1
+
+            # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
+            # - Apply scaling factor to SD of setup observations:
+            setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
+            # - Add additive constant to standard deviation of setup observations in order to scale them to realistic values:
+            setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
+
             for index, row in setup_df.iterrows():
                 if previous_row is None:  # First time the loop is entered
                     previous_row = row
