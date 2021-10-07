@@ -1187,12 +1187,19 @@ class ResultsCorrelationMatrixModel(QAbstractTableModel):
         else:
             try:
                 self._data = self._lsm_runs[lsm_run_index].get_correlation_matrix  # Rxx matrix (np.array)
-                self._data_column_names = self._lsm_runs[
-                    lsm_run_index].x_estimate_names  # Names of estimates in same order as in Rxx
+                if hasattr(self._lsm_runs[lsm_run_index], 'x_estimate_names'):
+                    self._data_column_names = self._lsm_runs[
+                        lsm_run_index].x_estimate_names  # Names of estimates in same order as in Rxx
+                else:
+                    self._data_column_names = None
             except KeyError:
                 self._data = None
                 self._data_column_names = None
                 QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
+            except AttributeError as e:
+                print(e)
+                if e == "'BEVLegacyProcessing' object has no attribute 'x_estimate_names'":
+                    print('test')
             except Exception as e:
                 QMessageBox.critical(self.parent(), 'Error!', str(e))
                 self._data = None
@@ -1216,7 +1223,7 @@ class ResultsCorrelationMatrixModel(QAbstractTableModel):
         if index.isValid():
             if role == Qt.DisplayRole:
                 value = self._data[index.row(), index.column()]  # np.array
-                column_name = self._data_column_names[index.column()]
+                # column_name = self._data_column_names[index.column()]
                 # Custom formatter (string is expected as return type):
                 if value is None:  #
                     return NONE_REPRESENTATION_IN_TABLE_VIEW
@@ -1251,10 +1258,13 @@ class ResultsCorrelationMatrixModel(QAbstractTableModel):
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
-                # return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
-                return str(self._data_column_names[section])
-            if orientation == Qt.Vertical:
-                # return str(self._data.index[section])
-                return str(self._data_column_names[section])
+            if self._data_column_names is None:
+                return str(section)
+            else:
+                if orientation == Qt.Horizontal:
+                    # return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
+                    return str(self._data_column_names[section])
+                if orientation == Qt.Vertical:
+                    # return str(self._data.index[section])
+                    return str(self._data_column_names[section])
 

@@ -16,6 +16,7 @@ from matplotlib import pyplot as plt
 
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test
+from gravtools.models import misc
 
 
 class LSMNonDiff(LSM):
@@ -201,8 +202,8 @@ class LSMNonDiff(LSM):
             number_of_observations = number_of_observations + len(setup_df)
             survey_names.append(survey_name)
             setup_ids = setup_ids + setup_df['setup_id'].to_list()
-        self.observed_stations = list(
-            set(self.observed_stations))  # Unique list of stations => order of stations in matrices!
+        self.observed_stations = misc.unique_ordered_list(
+            self.observed_stations)  # Unique list of stations => order of stations in matrices!
         number_of_stations = len(self.observed_stations)
         number_of_surveys = len(self.setups)
         # Total number of parameters to be estimated:
@@ -269,16 +270,6 @@ class LSMNonDiff(LSM):
         #  => Convert to diagonal matrix: P0 = np.diag(np.array([1,2,3,4])) = np.diag(mat_p0)
         mat_sig_llc = np.zeros(number_of_datum_stations)
 
-        # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
-        # - Apply scaling factor to SD of setup observations:
-        setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
-        # - Add additive constant to SD of setup observations in order to scale them to realistic values:
-        setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
-        if (setup_df['sd_g_mugal'] < 0).any():
-            raise AssertionError('ERROR: SD of observations ("sd_g_mugal") <= 0 are not allowed! This may be due to '
-                                 'the scaling of the SD of observations with additive factors.')
-        # TODO: Change the iteration process in order to prevent cases of SD <= 0!
-
         # Populate matrices:
         obs_id = -1  # Index of differential observations in vectors mat_L0, rows of mat_A0 and mat_p0
         pd_drift_col_offset = number_of_stations - 1  # Column offset for drift parameters in A-matrix
@@ -293,6 +284,17 @@ class LSMNonDiff(LSM):
 
         for survey_name, setup_df in self.setups.items():
             survey_count += 1
+
+            # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
+            # - Apply scaling factor to SD of setup observations:
+            setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
+            # - Add additive constant to SD of setup observations in order to scale them to realistic values:
+            setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
+            if (setup_df['sd_g_mugal'] < 0).any():
+                raise AssertionError(
+                    f'ERROR: SD of observations ("sd_g_mugal") 8in survey {survey_name} <= 0 are not allowed! This '
+                    f'may be due to the scaling of the SD of observations with additive factors.')
+
             for index, row in setup_df.iterrows():
 
                 obs_id += 1  # Increment diff. observation ID
