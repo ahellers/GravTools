@@ -225,14 +225,14 @@ class Station:
         #     print(f"{number_of_new_stations} stations loaded from {filename}. "
         #           f"{stations_added} stations added ({number_of_new_stations - stations_added} already existed).")
 
-    def delete_station(self, station_names, verbose=False):
+    def delete_station(self, station_names: list, verbose=False):
         """
-        Deletes all rows with the observed station's name occurs in the `station_names` list.
+        Deletes all rows where the station name occurs in the `station_names` list.
 
         Parameters
         ----------
         station_names : list of str
-            List of station names. The related station records will be deleted from `self.stat_df`.
+            List of station names. The according station records will be deleted from `self.stat_df`.
         verbose : bool
             If `True`, print notification on deleted items.
         """
@@ -434,3 +434,28 @@ class Station:
             stations_added = number_of_stations - number_of_existing_stations
             print(f"{number_of_new_stations} stations loaded. "
                   f"{stations_added} stations added ({number_of_new_stations - stations_added} already listed).")
+
+    def set_datum_stations(self, station_names: list, is_datum: bool, verbose=False):
+        """
+        Dependent on the `is_datum` flag set the datum status of all stations in the list
+
+        Parameters
+        ----------
+        station_names : list of str
+            List of station names. The according station records will be deleted from `self.stat_df`.
+        is_datum : bool
+            `True` implies that all stations in the `station_names` list are set to datum stations. `False` implies
+            that all stations in the list are no datum stations.
+        verbose : bool
+            If `True`, print notification to command line.
+        """
+        idx_series = self.stat_df.station_name.isin(station_names)
+        if verbose:
+            station_list = self.stat_df.loc[idx_series, 'station_name'].to_list()
+            if is_datum:
+                print(f'The following stations are defined as datum stations:')
+            else:
+                print(f'The following stations are NO datum stations:')
+            for station_name in station_list:
+                print(f' - {station_name}')
+        self.stat_df.loc[idx_series, 'is_datum'] = is_datum

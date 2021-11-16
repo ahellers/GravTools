@@ -319,9 +319,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_station_model_data_changed(self, topLeft, bottomRight, role):
         """Invoked, whenever data in the station view model changed."""
         # Did the "is_datum" flag change? => Update stations map!
-        is_datum_idx = self.station_model.get_data.columns.to_list().index('is_datum')
-        if bottomRight.column() >= is_datum_idx and topLeft.column() <= is_datum_idx:
-            self.update_stations_map(auto_range=False)
+        if not topLeft == bottomRight:
+            QMessageBox.critical(self, 'Error!', 'Selection of multiple stations is not allowed!')
+        else:
+            is_datum_idx = self.station_model.get_data.columns.to_list().index('is_datum')
+            if bottomRight.column() >= is_datum_idx and topLeft.column() <= is_datum_idx:
+                self.update_stations_map(auto_range=False)
+                # Set datum status ind the campaign data:
+                station_record = self.station_model._data.iloc[topLeft.row()]
+                if not isinstance(station_record.is_datum, bool):
+                    QMessageBox.critical(self, 'Error!', 'The is_datum flag is not a bool type!')
+                else:
+                    self.campaign.stations.set_datum_stations([station_record.station_name], is_datum=station_record.is_datum, verbose=IS_VERBOSE)
+
 
     def set_up_stations_map(self):
         """Set up `self.GraphicsLayoutWidget_stations_map` widget."""
@@ -615,88 +625,88 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         stat_obs_df = lsm_run.stat_obs_df
         drift_pol_df = lsm_run.drift_pol_df
+        if stat_obs_df is not None and drift_pol_df is not None:
+            # Loop over surveys (setup data) in the selected lsm run object and plot data:
+            for survey_name, setup_df_orig in lsm_run.setups.items():
+                # Filter for surveys:
+                if surveys is not None:
+                    if survey_name not in surveys:
+                        continue
 
-        # Loop over surveys (setup data) in the selected lsm run object and plot data:
-        for survey_name, setup_df_orig in lsm_run.setups.items():
-            # Filter for surveys:
-            if surveys is not None:
-                if survey_name not in surveys:
-                    continue
+                # Prep data:
+                drift_pol_df_short = drift_pol_df.loc[drift_pol_df['survey_name'] == survey_name]
+                setup_df = setup_df_orig.copy(deep=True)  # Make hard copy to protect original data!
+                stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
+                setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
+                setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
+                setup_df.sort_values(by='delta_t_h', inplace=True)
 
-            # Prep data:
-            drift_pol_df_short = drift_pol_df.loc[drift_pol_df['survey_name'] == survey_name]
-            setup_df = setup_df_orig.copy(deep=True)  # Make hard copy to protect original data!
-            stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
-            setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
-            setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
-            setup_df.sort_values(by='delta_t_h', inplace=True)
+                # Evaluate drift polynomial:
+                coeff_list = drift_pol_df_short['coefficient'].to_list()
+                coeff_list.reverse()
+                coeff_list.append(0)
+                delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
+                delta_t_max_h = setup_df['delta_t_h'].max()
+                delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+                drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
-            # Evaluate drift polynomial:
-            coeff_list = drift_pol_df_short['coefficient'].to_list()
-            coeff_list.reverse()
-            coeff_list.append(0)
-            delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
-            delta_t_max_h = setup_df['delta_t_h'].max()
-            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
-            drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
+                # Drift function time reference as UNIX time (needed for plots):
+                epoch_unix_min = setup_df['epoch_unix'].min()
+                epoch_unix_max = setup_df['epoch_unix'].max()
+                delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
-            # Drift function time reference as UNIX time (needed for plots):
-            epoch_unix_min = setup_df['epoch_unix'].min()
-            epoch_unix_max = setup_df['epoch_unix'].max()
-            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+                # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
+                # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
+                # assessment of the drift function), the const. bias N0 is approximated, see below.
+                offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+                offset_mugal = offset_mugal + offset_user_defined_mugal
+                yy_mugal = drift_polynomial_mugal + offset_mugal
 
-            # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
-            # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
-            # assessment of the drift function), the const. bias N0 is approximated, see below.
-            offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
-            offset_mugal = offset_mugal + offset_user_defined_mugal
-            yy_mugal = drift_polynomial_mugal + offset_mugal
+                # Constant to be subtracted from y-axis:
+                subtr_const_mugal = round(setup_df['g_plot_mugal'].mean() / 1000) * 1000
 
-            # Constant to be subtracted from y-axis:
-            subtr_const_mugal = round(setup_df['g_plot_mugal'].mean() / 1000) * 1000
+                # Plot drift function:
+                pen = pg.mkPen(color='k', width=2)
+                self.drift_plot.plot(delta_t_epoch_unix, yy_mugal-subtr_const_mugal,
+                                     name=f'drift: {survey_name} (offset: {offset_mugal:.1f} µGal)',
+                                     pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
 
-            # Plot drift function:
-            pen = pg.mkPen(color='k', width=2)
-            self.drift_plot.plot(delta_t_epoch_unix, yy_mugal-subtr_const_mugal,
-                                 name=f'drift: {survey_name} (offset: {offset_mugal:.1f} µGal)',
-                                 pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
-
-            # plot observation data (setup observations):
-            # - Example: https://www.geeksforgeeks.org/pyqtgraph-different-colored-spots-on-scatter-plot-graph/
-            scatter = pg.ScatterPlotItem()
-            spots = []
-            # - prep. data for scatterplot:
-            for index, row in setup_df.iterrows():
-                if stations is None:
-                    brush_color = self.station_colors_dict_results[row['station_name']]
-                else:
-                    if row['station_name'] not in stations:
-                        brush_color = 'w'
-                    else:
+                # plot observation data (setup observations):
+                # - Example: https://www.geeksforgeeks.org/pyqtgraph-different-colored-spots-on-scatter-plot-graph/
+                scatter = pg.ScatterPlotItem()
+                spots = []
+                # - prep. data for scatterplot:
+                for index, row in setup_df.iterrows():
+                    if stations is None:
                         brush_color = self.station_colors_dict_results[row['station_name']]
-                spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
-                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
-                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
-                            'brush': brush_color}
-                spots.append(spot_dic)
+                    else:
+                        if row['station_name'] not in stations:
+                            brush_color = 'w'
+                        else:
+                            brush_color = self.station_colors_dict_results[row['station_name']]
+                    spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
+                                'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                                'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                                'brush': brush_color}
+                    spots.append(spot_dic)
 
-            scatter.addPoints(spots)
-            self.drift_plot.addItem(scatter)
+                scatter.addPoints(spots)
+                self.drift_plot.addItem(scatter)
 
-        # Add station items to legend:
-        # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
-        for station, color in self.station_colors_dict_results.items():
-            s_item_tmp = pg.ScatterPlotItem()
-            s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
-            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
-            self.drift_plot.legend.addItem(s_item_tmp, station)
+            # Add station items to legend:
+            # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
+            for station, color in self.station_colors_dict_results.items():
+                s_item_tmp = pg.ScatterPlotItem()
+                s_item_tmp.setBrush(color)
+                s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+                s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
+                self.drift_plot.legend.addItem(s_item_tmp, station)
 
-        # Adjust plot window:
-        self.drift_plot.showGrid(x=True, y=True)
-        self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal/1000:.1f} mGal')
-        self.drift_plot.setTitle(f'Drift function w.r.t. setup observations (with arbitrary offset!)')
-        self.drift_plot.autoRange()
+            # Adjust plot window:
+            self.drift_plot.showGrid(x=True, y=True)
+            self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal/1000:.1f} mGal')
+            self.drift_plot.setTitle(f'Drift function w.r.t. setup observations (with arbitrary offset!)')
+            self.drift_plot.autoRange()
 
     def plot_drift_mlr_bev_legacy(self, lsm_run, surveys=None, stations=None):
         """Create a drift plot for LSM runs using multiple linear regression (method: MLR BEV legacy)
@@ -2138,7 +2148,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.critical(self, 'Error!', str(e))
         else:
             self.connect_station_model_to_table_view()  # Set view
-            self.tableView_Stations.resizeColumnsToContents()
+            self.tableView_Stations.resizeColumnsToContents()  # TODO This line takes a lot of time!!
             self.statusBar().showMessage(f"{self.campaign.number_of_stations} stations in current campaign.")
 
     def connect_station_model_to_table_view(self):

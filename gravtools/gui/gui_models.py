@@ -73,10 +73,11 @@ class StationTableModel(QAbstractTableModel):
         # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
         stat_df_columns_set = frozenset(stat_df.columns)
         table_model_columns = [x for x in self.get_table_columns if x in stat_df_columns_set]
-        if self.flag_gui_simple_mode:
-            self._data = stat_df.loc[:, table_model_columns]
-        else:
-            self._data = stat_df.loc[:, table_model_columns]
+        # if self.flag_gui_simple_mode:
+        #     self._data = stat_df.loc[:, table_model_columns]
+        # else:
+        #     self._data = stat_df.loc[:, table_model_columns]
+        self._data = stat_df.loc[:, table_model_columns]
         self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):
@@ -208,6 +209,8 @@ class SetupTableModel(QAbstractTableModel):
         'sd_g_mugal': 'SD [µGal]',
         'epoch_unix': 'Epoch Unix',
         'delta_t_h': 'delta_t [h]',
+        'sd_setup_mugal': 'SD of obs [µGal]',
+        'number_obs': 'Number of obs.',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -225,6 +228,7 @@ class SetupTableModel(QAbstractTableModel):
         'sd_g_mugal': 1,
         'epoch_unix': 1,
         'delta_t_h': 3,
+        'sd_setup_mugal': 1,
     }
 
     def __init__(self, surveys):
@@ -349,7 +353,7 @@ class ObservationTableModel(QAbstractTableModel):
     Attributes
     ----------
     _surveys : dict of py.obj:`gravtools.survey.Survey`
-        Dict of survey object that are assigne by reference to the campaing data object
+        Dict of survey object that are assigned by reference to the campaign data object
         (py.obj:`gravtools.survey.Campaign`).
     _data : pandas dataframe
         Data frame that holds the observation data of a specific setup or survey to be displayed in the table view.
@@ -732,50 +736,56 @@ class ResultsObservationModel(QAbstractTableModel):
     def update_view_model(self, lsm_run_index: int, station_name=None, survey_name=None, gui_simple_mode=False):
         """Update the `_data` DataFrame that hold the actual data that is displayed."""
         self.flag_gui_simple_mode = gui_simple_mode
+        flag_error_init = False
         if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
-            self._data = None
-            self._lsm_run_index = None
-            self._data_column_names = None
+            flag_error_init = True
         else:
             try:
                 results_obs_df = self._lsm_runs[lsm_run_index].get_results_obs_df
             except KeyError:
                 QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
             else:
-                self._lsm_run_index = lsm_run_index
+                if results_obs_df is None:  # E.g. no results in campaign yet
+                    flag_error_init = True
+                else:
+                    self._lsm_run_index = lsm_run_index
 
-                # Get list of columns to be depicted via the table model:
-                # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
-                results_obs_df_columns_set = frozenset(results_obs_df.columns)
-                table_model_columns = [x for x in self.get_table_columns if x in results_obs_df_columns_set]
+                    # Get list of columns to be depicted via the table model:
+                    # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+                    results_obs_df_columns_set = frozenset(results_obs_df.columns)
+                    table_model_columns = [x for x in self.get_table_columns if x in results_obs_df_columns_set]
 
-                # Apply filter:
-                if ((station_name is not None) or (survey_name is not None)) and (results_obs_df is not None):
-                    tmp_filter = pd.Series([True] * len(results_obs_df))  # Init boolean filter series
-                    column_names = results_obs_df.columns
+                    # Apply filter:
+                    if ((station_name is not None) or (survey_name is not None)) and (results_obs_df is not None):
+                        tmp_filter = pd.Series([True] * len(results_obs_df))  # Init boolean filter series
+                        column_names = results_obs_df.columns
 
-                    if station_name is not None:  # Filer data for station names
-                        flag_is_diff_obs = ('station_name_from' in column_names) and ('station_name_to' in column_names)
+                        if station_name is not None:  # Filer data for station names
+                            flag_is_diff_obs = ('station_name_from' in column_names) and ('station_name_to' in column_names)
 
-                        # Differential observations => Check columns 'station_name_from' and 'station_name_to'
-                        if flag_is_diff_obs:
-                            tmp_filter = tmp_filter & ((results_obs_df['station_name_from'] == station_name) |
-                                                       (results_obs_df['station_name_to'] == station_name))
-                        else:  # No differential observations => Check column 'station_name'
-                            tmp_filter = tmp_filter & (results_obs_df['station_name'] == station_name)
+                            # Differential observations => Check columns 'station_name_from' and 'station_name_to'
+                            if flag_is_diff_obs:
+                                tmp_filter = tmp_filter & ((results_obs_df['station_name_from'] == station_name) |
+                                                           (results_obs_df['station_name_to'] == station_name))
+                            else:  # No differential observations => Check column 'station_name'
+                                tmp_filter = tmp_filter & (results_obs_df['station_name'] == station_name)
 
-                    if survey_name is not None:  # Filer data for survey name
-                        tmp_filter = tmp_filter & (results_obs_df['survey_name'] == survey_name)
-                    try:
-                        self._data = results_obs_df.loc[tmp_filter, table_model_columns].copy(deep=True)
-                    except:  # Just in case any problem occurs...
-                        self._data = results_obs_df.loc[tmp_filter, :].copy(deep=True)  # Show all columns
-                else:  # No filter
-                    try:
-                        self._data = results_obs_df.loc[:, table_model_columns].copy(deep=True)
-                    except:  # Just in case any problem occurs...
-                        self._data = results_obs_df.copy(deep=True)
-                self._data_column_names = self._data.columns.to_list()  # Show all columns
+                        if survey_name is not None:  # Filer data for survey name
+                            tmp_filter = tmp_filter & (results_obs_df['survey_name'] == survey_name)
+                        try:
+                            self._data = results_obs_df.loc[tmp_filter, table_model_columns].copy(deep=True)
+                        except:  # Just in case any problem occurs...
+                            self._data = results_obs_df.loc[tmp_filter, :].copy(deep=True)  # Show all columns
+                    else:  # No filter
+                        try:
+                            self._data = results_obs_df.loc[:, table_model_columns].copy(deep=True)
+                        except:  # Just in case any problem occurs...
+                            self._data = results_obs_df.copy(deep=True)
+                    self._data_column_names = self._data.columns.to_list()  # Show all columns
+        if flag_error_init:
+            self._data = None
+            self._lsm_run_index = None
+            self._data_column_names = None
 
     def rowCount(self, parent=None):
         if self._data is not None:
@@ -1065,28 +1075,34 @@ class ResultsDriftModel(QAbstractTableModel):
 
     def update_view_model(self, lsm_run_index: int, survey_name=None):
         """Update the `_data` DataFrame that hold the actual data that is displayed."""
+        flag_error_init = False
         if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
-            self._data = None
-            self._lsm_run_index = None
-            self._data_column_names = None
+            flag_error_init = True
         else:
             try:
                 results_drift_df = self._lsm_runs[lsm_run_index].get_results_drift_df
             except KeyError:
                 QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
             else:
-                self._lsm_run_index = lsm_run_index
-
-                if survey_name is None:  # No filter
-                    self._data = results_drift_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
-                else:  # Filer data for survey name
-                    if results_drift_df['survey_name'].isna().all():
-                        # On drift polynomial estimated for all surveys in campaign
+                if results_drift_df is None:  # E.g. no results in campaign yet
+                    flag_error_init = True
+                else:
+                    self._lsm_run_index = lsm_run_index
+                    if survey_name is None:  # No filter
                         self._data = results_drift_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
-                    else:
-                        tmp_filter = results_drift_df['survey_name'] == survey_name
-                        self._data = results_drift_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
-                self._data_column_names = self._data.columns.to_list()
+                    else:  # Filer data for survey name
+                        if results_drift_df['survey_name'].isna().all():
+                            # On drift polynomial estimated for all surveys in campaign
+                            self._data = results_drift_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
+                        else:
+                            tmp_filter = results_drift_df['survey_name'] == survey_name
+                            self._data = results_drift_df.loc[tmp_filter, self._PLOT_COLUMNS].copy(deep=True)
+                    self._data_column_names = self._data.columns.to_list()
+        if flag_error_init:
+            self._data = None
+            self._lsm_run_index = None
+            self._data_column_names = None
+
 
     def rowCount(self, parent=None):
         if self._data is not None:
