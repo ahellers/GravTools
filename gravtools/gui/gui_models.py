@@ -209,6 +209,8 @@ class SetupTableModel(QAbstractTableModel):
         'sd_g_mugal': 'SD [µGal]',
         'epoch_unix': 'Epoch Unix',
         'delta_t_h': 'delta_t [h]',
+        'sd_setup_mugal': 'SD of obs [µGal]',
+        'number_obs': 'Number of obs.',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -226,6 +228,7 @@ class SetupTableModel(QAbstractTableModel):
         'sd_g_mugal': 1,
         'epoch_unix': 1,
         'delta_t_h': 3,
+        'sd_setup_mugal': 1,
     }
 
     def __init__(self, surveys):
