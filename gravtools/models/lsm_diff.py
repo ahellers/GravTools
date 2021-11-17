@@ -12,10 +12,11 @@ Contains classes for least-squares adjustment of differential relative gravimete
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test
+from gravtools.models import misc
 
 
 class LSMDiff(LSM):
@@ -207,8 +208,8 @@ class LSMDiff(LSM):
             number_of_observations = number_of_observations + len(setup_df)
             survey_names.append(survey_name)
             setup_ids = setup_ids + setup_df['setup_id'].to_list()
-        self.observed_stations = list(
-            set(self.observed_stations))  # Unique list of stations => order of stations in matrices!
+        self.observed_stations = misc.unique_ordered_list(
+            self.observed_stations)  # Unique list of stations => order of stations in matrices!
         number_of_stations = len(self.observed_stations)
         number_of_surveys = len(self.setups)
         number_of_parameters = number_of_stations + drift_pol_degree * number_of_surveys  # Total number of parameters to be estimated
@@ -243,6 +244,7 @@ class LSMDiff(LSM):
             tmp_str += f'Number of estimated parameters: {number_of_parameters}\n'
             tmp_str += f'Number of datum stations: {number_of_datum_stations}\n'
             tmp_str += f'Degree of freedom (w/o datum constraints): {number_of_diff_obs - number_of_parameters}\n'
+            tmp_str += f'Degree of freedom (with datum constraints): {number_of_diff_obs - number_of_parameters + number_of_datum_stations}\n'
             tmp_str += f'\n'
             tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
             tmp_str += f'A priori std. deviation of unit weight [µGal]: {sig0_mugal}\n'
@@ -257,7 +259,6 @@ class LSMDiff(LSM):
                 print(tmp_str)
             if self.write_log:
                 self.log_str += tmp_str
-
 
         # Initialize matrices:
         # => Initialize complete matrices first and then populate them. This is most efficient!
@@ -285,15 +286,22 @@ class LSMDiff(LSM):
         survey_names_list = []
         ref_epoch_dt_list = []  # Reference epochs (datetime objects) of differential observations
 
-        # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
-        # - Apply scaling factor to SD of setup observations:
-        setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
-        # - Add additive constant to standard deviation of setup observations in order to scale them to realistic values:
-        setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
+        # # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
+        # # - Apply scaling factor to SD of setup observations:
+        # setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
+        # # - Add additive constant to standard deviation of setup observations in order to scale them to realistic values:
+        # setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
 
         for survey_name, setup_df in self.setups.items():
             previous_row = None
             survey_count += 1
+
+            # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
+            # - Apply scaling factor to SD of setup observations:
+            setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
+            # - Add additive constant to standard deviation of setup observations in order to scale them to realistic values:
+            setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
+
             for index, row in setup_df.iterrows():
                 if previous_row is None:  # First time the loop is entered
                     previous_row = row
@@ -369,7 +377,7 @@ class LSMDiff(LSM):
         mat_A = np.vstack((mat_A0, mat_Ac))  # Eq. (16)
         mat_L = np.vstack((mat_L0, mat_Lc))  # Eq. (16)
         mat_sig_ll = np.diag(np.hstack((mat_sig_ll0, mat_sig_llc)))
-        mat_Qll = mat_sig_ll / (sig0_mugal**2)
+        mat_Qll = mat_sig_ll / (sig0_mugal ** 2)
         mat_P = np.linalg.inv(mat_Qll)
 
         if verbose or self.write_log:
@@ -406,8 +414,8 @@ class LSMDiff(LSM):
         dof = mat_A.shape[0] - mat_A.shape[1]  # degree of freedom
         par_r = mat_v.T @ mat_P @ mat_v  # = v^T * P * v
         if dof == 0:
-            s02_a_posteriori_mugal2 = par_r[0][0]
-            # dof = 0 should not be the case here!
+            # s02_a_posteriori_mugal2 = par_r[0][0]
+            raise AssertionError('Degree of freedom has to be larger than 0!')
         else:
             s02_a_posteriori_mugal2 = par_r[0][0] / dof  # Eq. (20)
 
@@ -432,7 +440,9 @@ class LSMDiff(LSM):
         # Calculate standard deviations:
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
-        mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
+        # mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
+        mat_sd_vv = np.sqrt(
+            np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occure!
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
@@ -467,17 +477,18 @@ class LSMDiff(LSM):
         # Standardisierte Versesserungen (AG II, p. 66)
         # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
         # - Standardabweichung = 1 (standardisiert)
-        mat_w = mat_v[:,0] / mat_sd_vv
+        mat_w = mat_v[:, 0] / mat_sd_vv
 
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
         tau_test_result, tau_critical_value = tau_test(mat_w=mat_w, dof=dof, alpha=alpha_tau, mat_r=mat_r)
+        number_of_outliers = tau_test_result.count("failed")
 
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'# Tau-test results:\n'
             tmp_str += f'Critical value: {tau_critical_value:1.3f}\n'
-            tmp_str += f' - Number of detected outliers: {tau_test_result.count("failed")}\n'
+            tmp_str += f' - Number of detected outliers: {number_of_outliers}\n'
             tmp_str += f' - Number low redundancy component: {tau_test_result.count("r too small")}\n'
             tmp_str += f'\n'
             if verbose:
@@ -506,7 +517,6 @@ class LSMDiff(LSM):
         tau_test_result_diff_obs = tau_test_result[:number_of_diff_obs]
         tau_test_result_pseudo_obs = tau_test_result[number_of_diff_obs:]
 
-
         # Station related results:
         for idx, stat_name in enumerate(self.observed_stations):
             filter_tmp = self.stat_obs_df['station_name'] == stat_name
@@ -523,6 +533,7 @@ class LSMDiff(LSM):
         sd_coeff_list = []
         coeff_unit_list = []
         tmp_idx = 0
+        x_estimate_drift_coeff_names = []
         for survey_name, setup_df in self.setups.items():
             for degree in range(drift_pol_degree):
                 survey_name_list.append(survey_name)
@@ -531,6 +542,7 @@ class LSMDiff(LSM):
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
                 coeff_unit_list.append(f'µGal/h^{degree + 1}')
                 tmp_idx += 1
+                x_estimate_drift_coeff_names.append(f'{survey_name}-{degree + 1}')
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
@@ -552,9 +564,9 @@ class LSMDiff(LSM):
             tmp_str = f'\n'
             tmp_str += f' - Station data:\n'
             tmp_str += self.stat_obs_df[['station_name', 'is_datum', 'g_mugal', 'g_est_mugal',
-                                                'diff_g_est_mugal', 'sd_g_mugal',
-                                                'sd_g_est_mugal']].to_string(index=False,
-                                                                             float_format=lambda x: '{:.1f}'.format(x))
+                                         'diff_g_est_mugal', 'sd_g_mugal',
+                                         'sd_g_est_mugal']].to_string(index=False,
+                                                                      float_format=lambda x: '{:.1f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Drift polynomial coefficients:\n'
             tmp_str += self.drift_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
@@ -563,11 +575,12 @@ class LSMDiff(LSM):
             for survey_name in survey_names:
                 filter_tmp = self.setup_obs_df['survey_name'] == survey_name
                 tmp_str += f'   - Survey: {survey_name}\n'
-            tmp_str += self.setup_obs_df.loc[filter_tmp, ['station_name_from', 'station_name_to', 'g_diff_mugal',
-                                                            'sd_g_diff_mugal', 'sd_g_diff_est_mugal',
-                                                            'v_diff_mugal']].to_string(index=False,
-                                                                                       float_format=lambda x: '{:.1f}'.format(x))
-            tmp_str += f'\n\n'
+                tmp_str += self.setup_obs_df.loc[filter_tmp, ['station_name_from', 'station_name_to', 'g_diff_mugal',
+                                                              'sd_g_diff_mugal', 'sd_g_diff_est_mugal',
+                                                              'v_diff_mugal', 'r_diff_obs']].to_string(index=False,
+                                                                                         float_format=lambda
+                                                                                         x: '{:.2f}'.format(x))
+                tmp_str += f'\n\n'
             tmp_str += f' - Pseudo observations at datum stations (constraints):\n'
             tmp_str += f'Station name  sd [µGal]   v [µGal]   w [µGal]   r [0-1]    Tau test result\n'
             for idx, station_name in enumerate(datum_stations):
@@ -576,6 +589,8 @@ class LSMDiff(LSM):
                 print(tmp_str)
             if self.write_log:
                 self.log_str += tmp_str
+
+        # Calculate correlation matrix:
 
         # Save data/infos to object for later use:
         self.drift_polynomial_degree = drift_pol_degree
@@ -589,47 +604,50 @@ class LSMDiff(LSM):
         self.degree_of_freedom = dof
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
+        self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
+        self.goodness_of_fit_test_status = chi_test
+        self.number_of_outliers = number_of_outliers
 
-    def create_drift_plot_matplotlib(self):
-        """Create a drift plot with matplotlib."""
-
-        # Prep data:
-        setup_df = self.setups['20200701a'].copy(deep=True)
-        stat_obs_df_short = self.stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
-        setup_df = pd.merge(setup_df, stat_obs_df_short, on="station_name")
-        setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
-        setup_df.sort_values(by='delta_t_h', inplace=True)
-
-        # Evaluate drift polynomial:
-        coeff_list = self.drift_pol_df['coefficient'].to_list()
-        coeff_list.reverse()
-        coeff_list.append(0)
-        t_min_h = setup_df['delta_t_h'].min()  # = 0
-        t_max_h = setup_df['delta_t_h'].max()
-        dt_h = np.linspace(t_min_h, t_max_h, 100)
-        drift_polynomial_mugal = np.polyval(coeff_list, dt_h)
-
-        # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
-        # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
-        # assessment of the drift function), the const. bias N0 is approximated, see below.
-        offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
-        yy_mugal = drift_polynomial_mugal  + offset_mugal
-
-        # plot
-        fig, ax = plt.subplots()
-        for station_name in setup_df['station_name'].unique():
-            label_str = station_name
-            delta_t_h = setup_df.loc[setup_df['station_name'] == station_name, 'delta_t_h']
-            g_plot_mugal = setup_df.loc[setup_df['station_name'] == station_name, 'g_plot_mugal']
-            ax.plot(delta_t_h, g_plot_mugal, 'o', label=label_str)
-
-        ax.plot(dt_h, yy_mugal, 'k--', label='drift function')
-        # - Legend and labels:
-        plt.legend(loc='best')
-        ax.grid()
-        plt.title(f'Drift Polynomial (vertical offset: {offset_mugal:.1f} µGal)')
-        plt.xlabel('time [h]')
-        plt.ylabel('gravity reading [µGal]')
+    # def create_drift_plot_matplotlib(self):
+    #     """Create a drift plot with matplotlib."""
+    #
+    #     # Prep data:
+    #     setup_df = self.setups['20200701a'].copy(deep=True)
+    #     stat_obs_df_short = self.stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
+    #     setup_df = pd.merge(setup_df, stat_obs_df_short, on="station_name")
+    #     setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
+    #     setup_df.sort_values(by='delta_t_h', inplace=True)
+    #
+    #     # Evaluate drift polynomial:
+    #     coeff_list = self.drift_pol_df['coefficient'].to_list()
+    #     coeff_list.reverse()
+    #     coeff_list.append(0)
+    #     t_min_h = setup_df['delta_t_h'].min()  # = 0
+    #     t_max_h = setup_df['delta_t_h'].max()
+    #     dt_h = np.linspace(t_min_h, t_max_h, 100)
+    #     drift_polynomial_mugal = np.polyval(coeff_list, dt_h)
+    #
+    #     # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
+    #     # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
+    #     # assessment of the drift function), the const. bias N0 is approximated, see below.
+    #     offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+    #     yy_mugal = drift_polynomial_mugal + offset_mugal
+    #
+    #     # plot
+    #     fig, ax = plt.subplots()
+    #     for station_name in setup_df['station_name'].unique():
+    #         label_str = station_name
+    #         delta_t_h = setup_df.loc[setup_df['station_name'] == station_name, 'delta_t_h']
+    #         g_plot_mugal = setup_df.loc[setup_df['station_name'] == station_name, 'g_plot_mugal']
+    #         ax.plot(delta_t_h, g_plot_mugal, 'o', label=label_str)
+    #
+    #     ax.plot(dt_h, yy_mugal, 'k--', label='drift function')
+    #     # - Legend and labels:
+    #     plt.legend(loc='best')
+    #     ax.grid()
+    #     plt.title(f'Drift Polynomial (vertical offset: {offset_mugal:.1f} µGal)')
+    #     plt.xlabel('time [h]')
+    #     plt.ylabel('gravity reading [µGal]')
 
     @property
     def get_results_obs_df(self):

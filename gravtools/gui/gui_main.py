@@ -20,7 +20,7 @@ from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settin
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
-    ResultsObservationModel, ResultsDriftModel
+    ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 
 from gravtools.models.survey import Survey
@@ -119,9 +119,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
             self.on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed)
+        self.dlg_estimation_settings.comboBox_iteration_approach.currentIndexChanged.connect(
+            self.on_dlg_estimation_settings_comboBox_iteration_approach_current_index_changed)
 
         # Overwrite/change setting from ui file, if necessary:
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
+        self.dlg_estimation_settings.comboBox_iteration_approach.addItems(settings.ITERATION_APPROACHES.keys())
 
         # Init models:
         self.station_model = None
@@ -172,6 +175,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.statusBar().showMessage(f'No output directory selected.')
 
     @pyqtSlot(int)
+    def on_dlg_estimation_settings_comboBox_iteration_approach_current_index_changed(self, index: int):
+        """Invoked whenever the iteration approach in the estimation settings dialog changed."""
+        selected_iteration_approach = self.dlg_estimation_settings.comboBox_iteration_approach.currentText()
+        if selected_iteration_approach == 'Multiplicative':
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(True)
+        elif selected_iteration_approach == 'Additive':
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(False)
+        else:
+            self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(False)
+            QMessageBox.warning(self, 'Warning!', 'Unknown iteration approach selected!')
+            self.statusBar().showMessage(f"Unknown iteration approach selected!")
+
+    @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
         """Invoked whenever the adjustment method changed in the estimation settings dialog."""
         # print(index)
@@ -183,18 +202,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_observations.setEnabled(False)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(False)
             self.dlg_estimation_settings.label_sig0.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
         elif selected_method == 'LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
@@ -202,6 +224,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
             self.statusBar().showMessage(f"Unknown estimation method selected!")
 
@@ -255,6 +278,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.treeWidget_observations.topLevelItem(0).setSelected(True)
                 # - Results tab:
                 self.set_up_results_stations_view_model()
+                self.set_up_results_correlation_matrix_view_model()
                 self.set_up_results_observations_view_model()
                 self.set_up_results_drift_view_model()
                 self.update_results_tab(select_latest_item=True)
@@ -295,9 +319,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_station_model_data_changed(self, topLeft, bottomRight, role):
         """Invoked, whenever data in the station view model changed."""
         # Did the "is_datum" flag change? => Update stations map!
-        is_datum_idx = self.station_model.get_data.columns.to_list().index('is_datum')
-        if bottomRight.column() >= is_datum_idx and topLeft.column() <= is_datum_idx:
-            self.update_stations_map(auto_range=False)
+        if not topLeft == bottomRight:
+            QMessageBox.critical(self, 'Error!', 'Selection of multiple stations is not allowed!')
+        else:
+            is_datum_idx = self.station_model.get_data.columns.to_list().index('is_datum')
+            if bottomRight.column() >= is_datum_idx and topLeft.column() <= is_datum_idx:
+                self.update_stations_map(auto_range=False)
+                # Set datum status ind the campaign data:
+                station_record = self.station_model._data.iloc[topLeft.row()]
+                if not isinstance(station_record.is_datum, bool):
+                    QMessageBox.critical(self, 'Error!', 'The is_datum flag is not a bool type!')
+                else:
+                    self.campaign.stations.set_datum_stations([station_record.station_name], is_datum=station_record.is_datum, verbose=IS_VERBOSE)
+
 
     def set_up_stations_map(self):
         """Set up `self.GraphicsLayoutWidget_stations_map` widget."""
@@ -481,7 +515,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def plot_drift_lsm_non_diff(self, lsm_run, surveys=None, stations=None):
         """Create a drift plot for LSM runs based on non-differential observations (method: LSM_non_diff)
 
-        Parameters:
+        Parameters
         -----------
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
@@ -577,7 +611,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def plot_drift_lsm_diff(self, lsm_run, surveys=None, stations=None, offset_user_defined_mugal=0):
         """Create a drift plot for LSM runs based on differential observations (method: LSM_diff)
 
-        Parameters:
+        Parameters
         -----------
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
@@ -591,93 +625,93 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         stat_obs_df = lsm_run.stat_obs_df
         drift_pol_df = lsm_run.drift_pol_df
+        if stat_obs_df is not None and drift_pol_df is not None:
+            # Loop over surveys (setup data) in the selected lsm run object and plot data:
+            for survey_name, setup_df_orig in lsm_run.setups.items():
+                # Filter for surveys:
+                if surveys is not None:
+                    if survey_name not in surveys:
+                        continue
 
-        # Loop over surveys (setup data) in the selected lsm run object and plot data:
-        for survey_name, setup_df_orig in lsm_run.setups.items():
-            # Filter for surveys:
-            if surveys is not None:
-                if survey_name not in surveys:
-                    continue
+                # Prep data:
+                drift_pol_df_short = drift_pol_df.loc[drift_pol_df['survey_name'] == survey_name]
+                setup_df = setup_df_orig.copy(deep=True)  # Make hard copy to protect original data!
+                stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
+                setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
+                setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
+                setup_df.sort_values(by='delta_t_h', inplace=True)
 
-            # Prep data:
-            drift_pol_df_short = drift_pol_df.loc[drift_pol_df['survey_name'] == survey_name]
-            setup_df = setup_df_orig.copy(deep=True)  # Make hard copy to protect original data!
-            stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
-            setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
-            setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
-            setup_df.sort_values(by='delta_t_h', inplace=True)
+                # Evaluate drift polynomial:
+                coeff_list = drift_pol_df_short['coefficient'].to_list()
+                coeff_list.reverse()
+                coeff_list.append(0)
+                delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
+                delta_t_max_h = setup_df['delta_t_h'].max()
+                delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+                drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
-            # Evaluate drift polynomial:
-            coeff_list = drift_pol_df_short['coefficient'].to_list()
-            coeff_list.reverse()
-            coeff_list.append(0)
-            delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
-            delta_t_max_h = setup_df['delta_t_h'].max()
-            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
-            drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
+                # Drift function time reference as UNIX time (needed for plots):
+                epoch_unix_min = setup_df['epoch_unix'].min()
+                epoch_unix_max = setup_df['epoch_unix'].max()
+                delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
-            # Drift function time reference as UNIX time (needed for plots):
-            epoch_unix_min = setup_df['epoch_unix'].min()
-            epoch_unix_max = setup_df['epoch_unix'].max()
-            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+                # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
+                # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
+                # assessment of the drift function), the const. bias N0 is approximated, see below.
+                offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+                offset_mugal = offset_mugal + offset_user_defined_mugal
+                yy_mugal = drift_polynomial_mugal + offset_mugal
 
-            # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
-            # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
-            # assessment of the drift function), the const. bias N0 is approximated, see below.
-            offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
-            offset_mugal = offset_mugal + offset_user_defined_mugal
-            yy_mugal = drift_polynomial_mugal + offset_mugal
+                # Constant to be subtracted from y-axis:
+                subtr_const_mugal = round(setup_df['g_plot_mugal'].mean() / 1000) * 1000
 
-            # Constant to be subtracted from y-axis:
-            subtr_const_mugal = round(setup_df['g_plot_mugal'].mean() / 1000) * 1000
+                # Plot drift function:
+                pen = pg.mkPen(color='k', width=2)
+                self.drift_plot.plot(delta_t_epoch_unix, yy_mugal-subtr_const_mugal,
+                                     name=f'drift: {survey_name} (offset: {offset_mugal:.1f} µGal)',
+                                     pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
 
-            # Plot drift function:
-            pen = pg.mkPen(color='k', width=2)
-            self.drift_plot.plot(delta_t_epoch_unix, yy_mugal-subtr_const_mugal,
-                                 name=f'drift: {survey_name} (offset: {offset_mugal:.1f} µGal)',
-                                 pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
-
-            # plot observation data (setup observations):
-            # - Example: https://www.geeksforgeeks.org/pyqtgraph-different-colored-spots-on-scatter-plot-graph/
-            scatter = pg.ScatterPlotItem()
-            spots = []
-            # - prep. data for scatterplot:
-            for index, row in setup_df.iterrows():
-                if stations is None:
-                    brush_color = self.station_colors_dict_results[row['station_name']]
-                else:
-                    if row['station_name'] not in stations:
-                        brush_color = 'w'
-                    else:
+                # plot observation data (setup observations):
+                # - Example: https://www.geeksforgeeks.org/pyqtgraph-different-colored-spots-on-scatter-plot-graph/
+                scatter = pg.ScatterPlotItem()
+                spots = []
+                # - prep. data for scatterplot:
+                for index, row in setup_df.iterrows():
+                    if stations is None:
                         brush_color = self.station_colors_dict_results[row['station_name']]
-                spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
-                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
-                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
-                            'brush': brush_color}
-                spots.append(spot_dic)
+                    else:
+                        if row['station_name'] not in stations:
+                            brush_color = 'w'
+                        else:
+                            brush_color = self.station_colors_dict_results[row['station_name']]
+                    spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
+                                'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                                'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                                'brush': brush_color}
+                    spots.append(spot_dic)
 
-            scatter.addPoints(spots)
-            self.drift_plot.addItem(scatter)
+                scatter.addPoints(spots)
+                self.drift_plot.addItem(scatter)
 
-        # Add station items to legend:
-        # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
-        for station, color in self.station_colors_dict_results.items():
-            s_item_tmp = pg.ScatterPlotItem()
-            s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
-            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
-            self.drift_plot.legend.addItem(s_item_tmp, station)
+            # Add station items to legend:
+            # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
+            for station, color in self.station_colors_dict_results.items():
+                s_item_tmp = pg.ScatterPlotItem()
+                s_item_tmp.setBrush(color)
+                s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+                s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
+                self.drift_plot.legend.addItem(s_item_tmp, station)
 
-        # Adjust plot window:
-        self.drift_plot.showGrid(x=True, y=True)
-        self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal/1000:.1f} mGal')
-        self.drift_plot.setTitle(f'Drift function w.r.t. setup observations (with arbitrary offset!)')
-        self.drift_plot.autoRange()
+            # Adjust plot window:
+            self.drift_plot.showGrid(x=True, y=True)
+            self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal/1000:.1f} mGal')
+            self.drift_plot.setTitle(f'Drift function w.r.t. setup observations (with arbitrary offset!)')
+            self.drift_plot.autoRange()
 
     def plot_drift_mlr_bev_legacy(self, lsm_run, surveys=None, stations=None):
         """Create a drift plot for LSM runs using multiple linear regression (method: MLR BEV legacy)
 
-        Parameters:
+        Parameters
         -----------
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
@@ -876,6 +910,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.results_station_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_results_stations.resizeColumnsToContents()
 
+    def set_up_results_correlation_matrix_view_model(self):
+        """Set up the view model for the correlation matrix table view."""
+        try:
+            self.results_correlation_matrix_model = ResultsCorrelationMatrixModel(self.campaign.lsm_runs)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No LSM-adjustment results available!')
+            self.statusBar().showMessage(f"No LSM-adjustment results available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.tableView_results_correlation_matrix.setModel(self.results_correlation_matrix_model)
+            self.tableView_results_correlation_matrix.resizeColumnsToContents()
+
+    def update_results_correlation_matrix_table_view(self, lsm_run_index: int, station_name=None, survey_name=None):
+        """Update the correlation matrix table view after changing the table model.
+
+        Notes
+        -----
+        `idx = -1` indicates that no valid lsm run was selected. In this case the table view should be cleared.
+        """
+        self.results_correlation_matrix_model.update_view_model(lsm_run_index,
+                                                     station_name=station_name,
+                                                     survey_name=survey_name)
+        self.results_correlation_matrix_model.layoutChanged.emit()  # Show changes in table view
+        self.tableView_results_correlation_matrix.resizeColumnsToContents()
+
     @pyqtSlot(int)
     def on_comboBox_results_lsm_run_selection_current_index_changed(self, index: int):
         """Invoked whenever the index of the selected item in the combobox changed."""
@@ -919,6 +979,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.label_results_comment.setText(lsm_run.comment)
             self.label_results_adjustment_method.setText(settings.ADJUSTMENT_METHODS[lsm_run.lsm_method])
             self.label_results_time_and_date.setText(lsm_run.init_time.strftime("%Y-%m-%d, %H:%M:%S"))
+            try:
+                number_of_iterations = lsm_run.number_of_iterations
+                if number_of_iterations == 0:
+                    number_of_iterations_str = 'No iteration'
+                else:
+                    number_of_iterations_str = str(number_of_iterations)
+            except:
+                number_of_iterations_str = 'No iteration'
+            self.label_results_number_of_iterations.setText(number_of_iterations_str)
             if lsm_run.s02_a_posteriori is not None:
                 self.label_results_sig0.setText(f'{lsm_run.s02_a_posteriori:1.3f}')
             else:
@@ -926,7 +995,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if lsm_run.write_log:
                 self.plainTextEdit_results_log.setPlainText(lsm_run.log_str)
 
-            # TODO: Add further assignments for displaying data here!
+            try:
+                if lsm_run.number_of_outliers is not None:
+                    self.label_results_number_of_outliers.setText(str(lsm_run.number_of_outliers))
+                else:
+                    self.label_results_number_of_outliers.clear()
+            except:
+                self.label_results_number_of_outliers.clear()
+            try:
+                self.label_results_goodness_of_fit_test_status.setText(lsm_run.goodness_of_fit_test_status)
+            except:
+                self.label_results_goodness_of_fit_test_status.clear()
 
             # Get station and/or survey names for filtering the displayed data:
             stat_idx, current_station_name = self.get_selected_station()
@@ -945,6 +1024,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Update widgets:
             self.update_results_station_table_view(idx, station_name=station_name, survey_name=survey_name)
+            self.update_results_correlation_matrix_table_view(idx)
             self.update_results_observation_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_drift_table_view(idx, survey_name=survey_name)
             self.update_results_obs_plots()
@@ -953,11 +1033,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.station_colors_dict_results = {}
             self.label_results_comment.clear()
             self.label_results_adjustment_method.clear()
+            self.label_results_number_of_iterations.clear()
             self.label_results_time_and_date.clear()
             self.label_results_sig0.clear()
             self.label_results_lsm_run_comment_display.clear()
+            self.label_results_goodness_of_fit_test_status.clear()
+            self.label_results_number_of_outliers.clear()
             self.plainTextEdit_results_log.clear()
             self.update_results_station_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
+            self.update_results_correlation_matrix_table_view(idx)  # Can handle idx=-1
             self.update_results_observation_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
             self.update_results_drift_table_view(idx, survey_name=None)
             self.update_comboBox_results_selection_station(observed_stations=[])
@@ -1148,38 +1232,94 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             add_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_add_const_sd.value()
             scaling_factor_obs_sd = self.dlg_estimation_settings.doubleSpinBox_mult_factor_sd.value()
 
+            # Autoscale settings:
+            autoscale_s0_a_posteriori = self.dlg_estimation_settings.checkBox_iterative_s0_scaling.checkState() == Qt.Checked
+
+            iteration_approach = self.dlg_estimation_settings.comboBox_iteration_approach.currentText()
+            s02_target = self.dlg_estimation_settings.doubleSpinBox_target_s02.value()
+            s02_target_delta = self.dlg_estimation_settings.doubleSpinBox_delta_target_s02.value()
+            max_number_iterations = self.dlg_estimation_settings.spinBox_max_number_of_iterations.value()
+            add_const_to_sd_of_observations_step_size_mugal = self.dlg_estimation_settings.doubleSpinBox_initial_step_size.value()
+            max_total_additive_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_max_additive_const_to_sd.value()
+            max_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_max_multiplicative_factor_to_sd_percent.value()
+            initial_step_size_percent = self.dlg_estimation_settings.doubleSpinBox_initial_step_size_percent.value()
+
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
 
             # Run the estimation:
             if lsm_method == 'LSM_diff':
-                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
-                                                  sig0_mugal=sig0,
-                                                  scaling_factor_datum_observations=weight_factor_datum,
-                                                  add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
-                                                  scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
-                                                  confidence_level_chi_test=confidence_level_chi_test,
-                                                  confidence_level_tau_test=confidence_level_tau_test,
-                                                  verbose=IS_VERBOSE)
+                if autoscale_s0_a_posteriori:
+                    self.campaign.lsm_runs[-1].adjust_autoscale_s0(
+                        iteration_approach=iteration_approach,
+                        s02_target=s02_target,
+                        s02_target_delta=s02_target_delta,
+                        max_number_iterations=max_number_iterations,
+                        add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
+                        max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
+                        multiplicative_factor_step_size_percent=initial_step_size_percent,
+                        max_multiplicative_factor_to_sd_percent=max_multiplicative_factor_to_sd_percent,
+                        drift_pol_degree=degree_drift_polynomial,
+                        sig0_mugal=sig0,
+                        scaling_factor_datum_observations=weight_factor_datum,
+                        add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                        scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                        confidence_level_chi_test=confidence_level_chi_test,
+                        confidence_level_tau_test=confidence_level_tau_test,
+                        verbose=IS_VERBOSE,
+                    )
+                else:  # no autoscale
+                    self.campaign.lsm_runs[-1].adjust(
+                        drift_pol_degree=degree_drift_polynomial,
+                        sig0_mugal=sig0,
+                        scaling_factor_datum_observations=weight_factor_datum,
+                        add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                        scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                        confidence_level_chi_test=confidence_level_chi_test,
+                        confidence_level_tau_test=confidence_level_tau_test,
+                        verbose=IS_VERBOSE
+                    )
                 # self.campaign.lsm_runs[-1].create_drift_plot_matplotlib()
             elif lsm_method == 'LSM_non_diff':
-                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
-                                                  sig0_mugal=sig0,
-                                                  scaling_factor_datum_observations=weight_factor_datum,
-                                                  add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
-                                                  scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
-                                                  confidence_level_chi_test=confidence_level_chi_test,
-                                                  confidence_level_tau_test=confidence_level_tau_test,
-                                                  verbose=IS_VERBOSE)
+                if autoscale_s0_a_posteriori:
+                    self.campaign.lsm_runs[-1].adjust_autoscale_s0(
+                        iteration_approach=iteration_approach,
+                        s02_target=s02_target,
+                        s02_target_delta=s02_target_delta,
+                        max_number_iterations=max_number_iterations,
+                        add_const_to_sd_of_observations_step_size_mugal=add_const_to_sd_of_observations_step_size_mugal,
+                        max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
+                        multiplicative_factor_step_size_percent=initial_step_size_percent,
+                        max_multiplicative_factor_to_sd_percent=max_multiplicative_factor_to_sd_percent,
+                        drift_pol_degree=degree_drift_polynomial,
+                        sig0_mugal=sig0,
+                        scaling_factor_datum_observations=weight_factor_datum,
+                        add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                        scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                        confidence_level_chi_test=confidence_level_chi_test,
+                        confidence_level_tau_test=confidence_level_tau_test,
+                        verbose=IS_VERBOSE,
+                    )
+                else:
+                    self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
+                                                      sig0_mugal=sig0,
+                                                      scaling_factor_datum_observations=weight_factor_datum,
+                                                      add_const_to_sd_of_observations_mugal=add_const_to_sd_mugal,
+                                                      scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
+                                                      confidence_level_chi_test=confidence_level_chi_test,
+                                                      confidence_level_tau_test=confidence_level_tau_test,
+                                                      verbose=IS_VERBOSE)
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
                                                   verbose=IS_VERBOSE)
 
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
+            self.campaign.delete_lsm_run(-1)  # Delete failed lsm run object
             self.statusBar().showMessage(f"Error! No parameters estimated.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
+            self.campaign.delete_lsm_run(-1)  # Delete failed lsm run object
             self.statusBar().showMessage(f"Error! No parameters estimated.")
         else:
             # No errors when computing the setup data:
@@ -1189,7 +1329,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
 
     def on_apply_autoselection(self):
-        """Appply autoselection on the currently selected setup or survey according to the predefined setttings."""
+        """Appply autoselection on the currently selected setup or survey according to the predefined settings."""
 
         # Get autoselect parameters from settings dialog
         flag_apply_tilt = self.dlg_autoselect_settings.checkBox_tilt.isChecked()
@@ -1907,6 +2047,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.plot_observations(survey_name=None)  # wipe observbations plot
             # - Results tab:
             self.set_up_results_stations_view_model()
+            self.set_up_results_correlation_matrix_view_model()
             self.set_up_results_observations_view_model()
             self.set_up_results_drift_view_model()
             self.update_results_tab(select_latest_item=True)
@@ -2007,7 +2148,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.critical(self, 'Error!', str(e))
         else:
             self.connect_station_model_to_table_view()  # Set view
-            self.tableView_Stations.resizeColumnsToContents()
+            self.tableView_Stations.resizeColumnsToContents()  # TODO This line takes a lot of time!!
             self.statusBar().showMessage(f"{self.campaign.number_of_stations} stations in current campaign.")
 
     def connect_station_model_to_table_view(self):

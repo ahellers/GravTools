@@ -522,7 +522,8 @@ class Campaign:
         idx : int
             Index of the LSM object in the list.
         """
-        del self.lsm_runs[idx]
+        if idx != -1:
+            del self.lsm_runs[idx]
 
     def set_reference_time(self, ref_delta_t_dt):
         """Set refernce time for the determination of relative time spans, e.g. for the drift polynomial.

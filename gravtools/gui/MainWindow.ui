@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1337</width>
-    <height>729</height>
+    <height>746</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,7 +21,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -471,7 +471,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>6</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -490,6 +490,9 @@
                    <layout class="QFormLayout" name="formLayout_2">
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_3">
+                      <property name="toolTip">
+                       <string>Adjustment method.</string>
+                      </property>
                       <property name="text">
                        <string>Adjustment method:</string>
                       </property>
@@ -508,13 +511,6 @@
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="0">
-                     <widget class="QLabel" name="label_4">
-                      <property name="text">
-                       <string>Time and Date:</string>
-                      </property>
-                     </widget>
-                    </item>
                     <item row="1" column="1">
                      <widget class="QLabel" name="label_results_time_and_date">
                       <property name="minimumSize">
@@ -529,13 +525,33 @@
                      </widget>
                     </item>
                     <item row="2" column="0">
+                     <widget class="QLabel" name="label_8">
+                      <property name="toolTip">
+                       <string>Number of iterations in case the iterative adjustemnt of s0² was selected.</string>
+                      </property>
+                      <property name="text">
+                       <string>Number of iterations:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_results_number_of_iterations">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0">
                      <widget class="QLabel" name="label_10">
+                      <property name="toolTip">
+                       <string>Optional comment on the lsm run.</string>
+                      </property>
                       <property name="text">
                        <string>Comment: </string>
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="1">
+                    <item row="3" column="1">
                      <widget class="QLabel" name="label_results_comment">
                       <property name="minimumSize">
                        <size>
@@ -545,6 +561,16 @@
                       </property>
                       <property name="text">
                        <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_4">
+                      <property name="toolTip">
+                       <string>Time and date the adjustment was carried out.</string>
+                      </property>
+                      <property name="text">
+                       <string>Time and Date:</string>
                       </property>
                      </widget>
                     </item>
@@ -563,8 +589,11 @@
                    <layout class="QFormLayout" name="formLayout_3">
                     <item row="0" column="0">
                      <widget class="QLabel" name="label_9">
+                      <property name="toolTip">
+                       <string>A posteriori variance of unit weight.</string>
+                      </property>
                       <property name="text">
-                       <string>sig0² = </string>
+                       <string>s0²:</string>
                       </property>
                      </widget>
                     </item>
@@ -583,6 +612,9 @@
                     </item>
                     <item row="1" column="0">
                      <widget class="QLabel" name="label_6">
+                      <property name="toolTip">
+                       <string>Outcome of the global model test.</string>
+                      </property>
                       <property name="text">
                        <string>Goodness-of-fit test:</string>
                       </property>
@@ -597,13 +629,16 @@
                     </item>
                     <item row="2" column="0">
                      <widget class="QLabel" name="label_7">
+                      <property name="toolTip">
+                       <string>Number of detected outliers.</string>
+                      </property>
                       <property name="text">
                        <string>Number of outliers:</string>
                       </property>
                      </widget>
                     </item>
                     <item row="2" column="1">
-                     <widget class="QLabel" name="label_results_numbr_of_outliers">
+                     <widget class="QLabel" name="label_results_number_of_outliers">
                       <property name="text">
                        <string/>
                       </property>
@@ -757,6 +792,16 @@
             <layout class="QVBoxLayout" name="verticalLayout_19">
              <item>
               <widget class="QTableView" name="tableView_results_stations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_results_correlation_matrix">
+            <attribute name="title">
+             <string>Correlation Matrix</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_32">
+             <item>
+              <widget class="QTableView" name="tableView_results_correlation_matrix"/>
              </item>
             </layout>
            </widget>

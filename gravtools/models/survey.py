@@ -9,6 +9,7 @@ Summary
 -------
 Contains classes for modeling gravity campaigns.
 """
+from typing import Tuple
 
 import pandas as pd
 import numpy as np
@@ -222,6 +223,8 @@ class Survey:
         'epoch_unix',  # Reference epoch of `g_mugal` (unix time [sec])
         'epoch_dt',  # Reference epoch of `g_mugal` (datetime obj)
         'delta_t_h',  # Time span since reference time [hours]
+        'sd_setup_mugal',  # Standard deviation of active observations in this setup [µGal]
+        'number_obs',  # Number of observations in a setup
     )
 
     # TODO: Get missing infos on columns in CG5 obs file!
@@ -469,7 +472,7 @@ class Survey:
             if obs_df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
                 obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_localize('UTC')
             else:
-                if obs_df['obs_epoch'].dt.tz.zone is not 'UTC':  # Change TZ to <UTC>
+                if obs_df['obs_epoch'].dt.tz.zone != 'UTC':  # Change TZ to <UTC>
                     obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_convert('UTC')
 
             # Rename columns:
@@ -614,7 +617,7 @@ class Survey:
         if df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
             df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_localize('UTC')
         else:
-            if df['obs_epoch'].dt.tz.zone is not 'UTC':  # Change TZ to <UTC>
+            if df['obs_epoch'].dt.tz.zone != 'UTC':  # Change TZ to <UTC>
                 df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_convert('UTC')
 
         # Timestamp: https://stackoverflow.com/questions/40881876/python-pandas-convert-datetime-to-timestamp-effectively-through-dt-accessor
@@ -652,11 +655,13 @@ class Survey:
                 gravimeter_serial_number = serial_number
                 break
         if not gravimeter_serial_number:
-            raise AssertionError(f'No serial number found that matches the gravimeter id "{gravimeter_id}"in GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE.')
+            raise AssertionError(
+                f'No serial number found that matches the gravimeter id "{gravimeter_id}"in GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE.')
         try:
             gravimeter_type = GRAVIMETER_SERIAL_NUMBERS[gravimeter_serial_number]
         except KeyError:
-            raise AssertionError(f'serial number "{gravimeter_serial_number}" not found in the lookuptable "GRAVIMETER_SERIAL_NUMBERS".')
+            raise AssertionError(
+                f'serial number "{gravimeter_serial_number}" not found in the lookuptable "GRAVIMETER_SERIAL_NUMBERS".')
 
         return cls(name=os.path.split(filename)[1],
                    date=survey_date,
@@ -1325,6 +1330,8 @@ class Survey:
             obs_epoch_list_unix = []
             obs_epoch_list_dt = []
             delta_t_h_list = []
+            sd_setup_mugal_list = []
+            number_obs_list = []
 
             # Loop over setups:
             setup_ids = active_obs_df['setup_id'].unique()
@@ -1344,6 +1351,16 @@ class Survey:
                         f'Setup with ID "{setup_id}" in survey "{self.name}" contains '
                         f'{len(active_obs_df.loc[tmp_filter, "station_name"].unique())} stations (only 1 allowed)!'
                     )
+
+                # Standard deviation of active observations within setup:
+                # - If less then 2 active observations in setup => Calculation not possible => NaN
+                if len(g_mugal) >= 2:
+                    sd_setup_mugal_list.append(g_mugal.std(ddof=1))  # degree of freedom = (len(g_mugal) - 1)
+                else:
+                    sd_setup_mugal_list.append(np.nan)
+
+                number_obs_list.append(len(g_mugal))  # Number of observations
+
                 # observation epoch (UNIX timestamps in full seconds):
                 obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
                 unix_obs_epochs = obs_epochs_series.values.astype(np.int64) / 10 ** 9
@@ -1359,11 +1376,12 @@ class Survey:
                 sd_g_red_mugal_list.append(sd_g_setup_mugal)
                 obs_epoch_list_unix.append(unix_setup_epoch)
                 obs_epoch_list_dt.append(dt_setup_epoch)
-                delta_t_h_list.append((unix_setup_epoch - (ref_delta_t_dt.value/ 10 ** 9)) / 3600.0)
+                delta_t_h_list.append((unix_setup_epoch - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
 
             # convert to pd dataframe:
             self.setup_df = pd.DataFrame(list(zip(station_name_list, setup_id_list, g_mugal_list, sd_g_red_mugal_list,
-                                                  obs_epoch_list_unix, obs_epoch_list_dt, delta_t_h_list)),
+                                                  obs_epoch_list_unix, obs_epoch_list_dt, delta_t_h_list,
+                                                  sd_setup_mugal_list, number_obs_list)),
                                          columns=self._SETUP_DF_COLUMNS)
             self.set_reference_time(ref_delta_t_dt)  # Save reference time for `delta_t_h`
 
@@ -1449,4 +1467,3 @@ if __name__ == '__main__':
     pass
 
 # TODO: Use pickle to serialize campaign objects: https://www.youtube.com/watch?v=BbRY9gsKA7Q
-

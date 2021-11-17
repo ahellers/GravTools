@@ -48,7 +48,11 @@ class LSM:
     setup_obs_df : Pandas DataFrame
         Pandas Dataframes for logging (differential or absolute) setup observations, the related metadata, estimation
         results and statistics. The columns of the dataframe may differ between adjustment methods.
+    number_of_iterations : int (default=0)
+        Indicates the number of iterations if iterative adjustment was applied. `0` indicated the a non-iterative
+        adjustment was applied.
         """
+
     def __init__(self, lsm_method, stat_df, setups, comment='', write_log=True):
         """
         Parameters
@@ -116,7 +120,234 @@ class LSM:
         self.s02_a_posteriori = None  # A posteriori variance of unit weight
 
         # Matrices:
-        self.Cxx = None # Co-variance matrix of estimated parameters
+        self.Cxx = None  # Co-variance matrix of estimated parameters
+        self.Rxx = None  # Correlation matrix of estimates parameters
+        self.x_estimate_names = []  # List of items in the Cxx matrix (index 0 to n)
+
+        # Iterative adjustment:
+        self.number_of_iterations = 0  # `0` indicates no iterations.
+
+        # Statistical tests:
+        self.number_of_outliers = None
+        self.goodness_of_fit_test_status = ''  # str
+
+    def adjust_autoscale_s0(self,
+                            iteration_approach='Multiplicative',  # !!!!!!!!!!! NEW !!!!!!!!!
+                            s02_target=1,
+                            s02_target_delta=0.1,
+                            max_number_iterations=10,
+                            add_const_to_sd_of_observations_step_size_mugal=5.0,
+                            max_total_additive_const_to_sd_mugal=20.0,
+                            multiplicative_factor_step_size_percent=10.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
+                            max_multiplicative_factor_to_sd_percent=150.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
+                            drift_pol_degree=1,
+                            sig0_mugal=1,
+                            scaling_factor_datum_observations=1.0,
+                            add_const_to_sd_of_observations_mugal=0.0,
+                            scaling_factor_for_sd_of_observations=1.0,
+                            confidence_level_chi_test=0.95,
+                            confidence_level_tau_test=0.95,
+                            verbose=False,
+                            ):  # Confidence level):
+        """Run the adjustment iteratively in order to adjust s0 to the target value by adapting the SD of observations.
+
+        Notes
+        -----
+        Iterative adjustment works for differential and non-differential LSM adjustment.
+
+        Parameters
+        ---------
+        iteration_approach : str, optional (default='Multiplicative')
+            Defines the iteration approach (Multiplicative od Additive)
+        s02_target : float, optional (default=1.0)
+            Target a posteriori s0² (variance of unit weight) for the iteration.
+        s02_target_delta : float, optional (default=0.1)
+            Permissible deviation of the target a posteriori s0². As soon as the a posteriori s0 of the current lsm run
+            lies withing the threshold of `s02_target` +- `s02_target_delta` the iteration was successful and stops.
+        max_number_iterations : int, optional (default=10)
+            Maximum allowed number of iterations. If the a posteriori s0 does not lie within the defined threshold
+            (`s02_target` +- `s02_target_delta`) after `max_number_iterations` iterations an assertion error is raised.
+        add_const_to_sd_of_observations_step_size_mugal : float, optional (default=5.0)
+            Initial iteration step size for the additive constant that is added to the standard deviation of all
+            observations. This parameter is only considered when using the `additive` iteration approach.
+        max_total_additive_const_to_sd_mugal : float, optional (default=20.0)
+            If the additive factor for the SD of observations that is determined iteratively in order to reach the
+            defined target s0 is larger than `max_total_additive_const_to_sd_mugal`, the iteration procedure
+            failed and an assertion error is raised. This parameter is only considered when using the `additive`
+            iteration approach.
+        multiplicative_factor_step_size_percent : float, optional (default=10.0)
+            Initial iteration step size for the multiplicative factor that is used to scale all setup
+            observations. This parameter is only considered when using the `multiplicative` iteration approach.
+        max_multiplicative_factor_to_sd_percent : float, optional (default=150.0)
+            Maximum scaling factor when using the `multiplicative` iteration approach for scaling the SD of setup
+            observations. Minimum = 100%.
+        drift_pol_degree : int, optional (default=1)
+            Degree of estimated drift polynomial.
+        sig0_mugal : int, optional (default=1)
+            A priori standard deviation of unit weight of observations [µGal] for the stochastic model of the
+            least-squares adjustment.
+        scaling_factor_datum_observations : float, optional (default=1.0)
+            Factor for scaling the standard deviation (SD) of g of datum stations. The scaled SD is is used for
+            weighting the direct pseudo observations of g at the datum stations that are introduced as datum
+            constraints.
+        add_const_to_sd_of_observations_mugal : float, optional (default=0.0)
+            The defined additive constant is added to the standard deviation (SD) of setup
+            observations in order to scale the SD and the resulting weights to realistic values. In µGal. The scaling
+            factor `scaling_factor_for_sd_of_observations` is applied before adding this constant!
+        scaling_factor_for_sd_of_observations : float, optional (default=1.0)
+            Scaling factor for the standard deviation of the setup observations. `add_const_to_sd_of_observations_mugal`
+            is applied after applying the scaling factor!
+        confidence_level_chi_test : float, optional (default=0.95)
+            Confidence level for the goodness-of-fit test.
+        confidence_level_tau_test : float, optional (default=0.95)
+            Confidence level for the tau test.
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line, e.g. for debugging and testing
+
+
+        """
+
+        # Init.:
+        flag_s0_within_threshold = False
+        # scale_factor = scaling_factor_for_sd_of_observations
+        add_const = add_const_to_sd_of_observations_mugal  # initial
+        add_const_step_size = add_const_to_sd_of_observations_step_size_mugal  # [mugal]
+        mult_factor = scaling_factor_for_sd_of_observations  # initial
+        mult_factor_step_size = multiplicative_factor_step_size_percent / 100  # [%] => factor
+        last_iteration_step_action = ''  # 'increase' or 'decrease'
+        iteration_log_str = ''
+        complete_log_str = ''
+        add_const_total_mugal = 0
+        mult_factor_total = 1.0
+
+        # Run iteration:
+        for i_iteration in range(1, max_number_iterations + 1):
+
+            # Only apply multiplicative facot or additive constant in the first iteration, depending on the iteration
+            # approach:
+            if i_iteration > 1:
+                if iteration_approach == 'Additive':
+                    mult_factor = 1.0
+                elif iteration_approach == 'Multiplicative':
+                    add_const = 0.0
+
+            add_const_total_mugal += add_const  # Log total additive constant
+            mult_factor_total *= mult_factor  # Log total multiplicative factor
+            self.log_str = ''  # Reset log string of the previous run
+
+            self.adjust(drift_pol_degree=drift_pol_degree,
+                        sig0_mugal=sig0_mugal,
+                        scaling_factor_datum_observations=scaling_factor_datum_observations,
+                        add_const_to_sd_of_observations_mugal=add_const,  # Adjusted iteratively
+                        scaling_factor_for_sd_of_observations=mult_factor,  # Adjusted iteratively
+                        confidence_level_chi_test=confidence_level_chi_test,
+                        confidence_level_tau_test=confidence_level_tau_test,
+                        verbose=False
+                        )
+
+            iteration_log_str_tmp = f'########## Iteration {i_iteration} #########################\n'
+            # if iteration_approach == 'Additive':
+            iteration_log_str_tmp += f'Total additive const. to SD: {add_const_total_mugal:5.3f} µGal\n'
+            iteration_log_str_tmp += f'Current additive const. to SD: {add_const:5.3f} µGal\n'
+            # elif iteration_approach == 'Multiplicative':
+            iteration_log_str_tmp += f'Total mult. factor for SD: {mult_factor_total:5.3f}\n'
+            iteration_log_str_tmp += f'Current mult. factor for SD: {mult_factor:5.3f}\n'
+            iteration_log_str_tmp += f's0² a posteriori: {self.s02_a_posteriori:5.3f} µGal²\n'
+            iteration_log_str_tmp += f'\n'
+            if verbose:
+                print(iteration_log_str_tmp)
+                print(self.log_str)
+            if self.write_log:
+                complete_log_str = complete_log_str + iteration_log_str_tmp + self.log_str + '\n\n'
+            iteration_log_str += iteration_log_str_tmp
+
+            if (self.s02_a_posteriori < (s02_target + s02_target_delta)) and (
+                    self.s02_a_posteriori > (s02_target - s02_target_delta)):
+                flag_s0_within_threshold = True
+            elif self.s02_a_posteriori > (s02_target + s02_target_delta):  # Too large => Increase SD of obs.
+                if last_iteration_step_action == 'decrease':
+                    add_const_step_size = add_const_step_size / 2
+                    mult_factor_step_size = mult_factor_step_size / 2
+                last_iteration_step_action = 'increase'
+                add_const = add_const_step_size
+                mult_factor = 1.0 + mult_factor_step_size
+            elif self.s02_a_posteriori < (s02_target - s02_target_delta):  # Too small => Decrease SD of obs.
+                if last_iteration_step_action == 'increase':
+                    add_const_step_size = add_const_step_size / 2
+                    mult_factor_step_size = mult_factor_step_size / 2
+                last_iteration_step_action = 'decrease'
+                add_const = -add_const_step_size
+                mult_factor = 1.0 - mult_factor_step_size
+
+            if flag_s0_within_threshold:  # Exit loop and stop iteration
+                break
+
+        # Write status message to log according to iteration result:
+        if iteration_approach == 'Additive':
+            if flag_s0_within_threshold and (add_const_total_mugal <= max_total_additive_const_to_sd_mugal):
+                iteration_log_str_tmp = f' => Iteration successful!\n'
+                iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
+                iteration_log_str_tmp += f' => Total additive constant to SD of observations ({add_const_total_mugal:1.3f}) ' + \
+                                         f'is smaller than the user defined threshold ' + \
+                                         f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n'
+            else:
+                iteration_log_str_tmp = f' => ERROR: Iteration failed!\n'
+                if not flag_s0_within_threshold:
+                    iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} not within ' + \
+                                             f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
+                if (add_const_total_mugal > max_total_additive_const_to_sd_mugal):
+                    iteration_log_str_tmp += f' => Total additive constant to SD  ({add_const_total_mugal:1.3f}) ' + \
+                                             f'exceeds the the user defined threshold ' + \
+                                             f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n'
+            iteration_log_str_tmp += f'\n'
+
+        elif iteration_approach == 'Multiplicative':
+            if flag_s0_within_threshold and (mult_factor_total <= (max_multiplicative_factor_to_sd_percent/100)):
+                iteration_log_str_tmp = f' => Iteration successful!\n'
+                iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n '
+                iteration_log_str_tmp += f' => Total multiplicative factor for SD of observations ({mult_factor_total*100:1.3f}%) ' + \
+                                         f'is smaller than the user defined threshold ' + \
+                                         f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
+            else:
+                iteration_log_str_tmp = f' => ERROR: Iteration failed!\n'
+                if not flag_s0_within_threshold:
+                    iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} not within ' + \
+                                             f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
+                if (mult_factor_total > (max_multiplicative_factor_to_sd_percent/100)):
+                    iteration_log_str_tmp += f' => Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) ' + \
+                                             f'exceeds the the user defined threshold ' + \
+                                             f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
+            iteration_log_str_tmp += f'\n'
+
+        iteration_log_str += iteration_log_str_tmp
+
+        if verbose:
+            print(iteration_log_str_tmp)
+
+        # Append iteration log to the log string of the last iteration:
+        if self.write_log:
+            self.log_str = complete_log_str + \
+                           '\n########## Iteration log #########################\n\n' + \
+                           f' - Iteration approach: {iteration_approach}\n\n' + \
+                           iteration_log_str
+
+        if not flag_s0_within_threshold:
+            raise AssertionError(f'Iteration Error: s0² a posteriori of {self.s02_a_posteriori:1.3f} not within '
+                                 f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}] after '
+                                 f'{i_iteration} iterations!')
+
+        if iteration_approach == 'Additive':
+            if abs(add_const_total_mugal) > max_total_additive_const_to_sd_mugal:
+                raise AssertionError(f'Total additive constant to SD  ({add_const_total_mugal:1.3f}) '
+                                     f'exceeds the the user defined threshold '
+                                     f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n')
+        elif iteration_approach == 'Multiplicative':
+            if mult_factor_total > (max_multiplicative_factor_to_sd_percent/100):
+                raise AssertionError(f'Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) '
+                                     f'exceeds the the user defined threshold '
+                                     f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n')
+
+        self.number_of_iterations = i_iteration
 
     @property
     def time_str(self):
@@ -127,6 +358,30 @@ class LSM:
     def get_log_string(self):
         """Returns the log string."""
         return self.log_str
+
+    @property
+    def get_correlation_matrix(self):
+        """Calculates und returns the correlation matrix based on the Co-Variance matrix of the LSM run.
+
+        Returns
+        -------
+        numpy array : Correlation matrix (n, n)
+
+        Notes
+        -----
+        The co-variance matrix `self.Cxx` needs to exist.
+        """
+        if self.Cxx is None:
+            # raise AssertionError('Correlation matrix cannot be calculated due to missing co-variance matrix.')
+            return None
+
+        mat_Rxx = np.zeros([self.Cxx.shape[0], self.Cxx.shape[1]])
+        for i_row in range(mat_Rxx.shape[0]):
+            for i_col in range(mat_Rxx.shape[1]):
+                print(i_row, i_col)
+                mat_Rxx[i_row, i_col] = self.Cxx[i_row, i_col] / (
+                            np.sqrt(self.Cxx[i_row, i_row]) * np.sqrt(self.Cxx[i_col, i_col]))
+        return mat_Rxx
 
 
 def bin_redundacy_components(mat_r):
@@ -213,14 +468,13 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
     chi_crit_upper = stats.chi2.ppf(1 - alpha / 2, dof)  # critical value
     chi_crit_lower = stats.chi2.ppf(alpha / 2, dof)  # critical value
     chi_val = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # tested value
-    #TODO: Why is there an upper AND a lower critical value? In the literatur only an upper critical value ist defined!
+    # TODO: Why is there an upper AND a lower critical value? In the literatur only an upper critical value ist defined!
     if chi_crit_lower < chi_val < chi_crit_upper:
         chi_test_status = 'Passed'
     else:
         chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
     return chi_crit, chi_val, chi_test_status
-
 
 # TODO: Save relevant estimation settings and matrices/vectors in LSM object for later analysis and documentation!
 # TODO: Global model test: Why is there an upper and lower critical value? => In literarture only upper!
@@ -231,3 +485,19 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
 
 # TODO: Treat redundancy components roperly and add determination of inner and outer reliability (AG2, pp. 70-72)
 # r: In obs results table die einzelnen obs nach der Kategorisierung (in settings definiert) auf p. 70 einteilen!
+
+# TODO: auto-scale SD to get an Chi² of 1
+# - input:
+#   - target Chi² (GUI)
+#   - delta target Chi² (GUI)
+#   - max. number of iterations (GUI)
+#   - max. value additive constant (GUI)
+# - Iteratively solve the equation system to get the target Chi² +- the defined delta
+#   - Scale the SD of all individual observations (before differentiating them!)
+#     - By adopting a additive constant with each iteration
+#     - Raise warning if max. number of iterations and/or max. additive constand is violated
+# - comments:
+#   - Additive vs. multiplicative factor for SD scaling:
+#     - The P matrix is th inverse Qll matrix. Hence, multiplicative factors are actually squared!
+#     - Try what works best!
+#   - Implement for both lsm methods.

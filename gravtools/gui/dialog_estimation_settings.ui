@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>433</width>
-    <height>574</height>
+    <width>513</width>
+    <height>599</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,300 +15,602 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
-    <widget class="QGroupBox" name="groupBox_misc">
-     <property name="title">
-      <string>Misc</string>
+    <widget class="QTabWidget" name="tabWidget_estimation_settings">
+     <property name="currentIndex">
+      <number>0</number>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_5">
-      <item>
-       <layout class="QFormLayout" name="formLayout_4">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_5">
-          <property name="toolTip">
-           <string>Optional comment on the LSM run.</string>
-          </property>
-          <property name="text">
-           <string>Comment</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QLineEdit" name="lineEdit_comment">
-          <property name="toolTip">
-           <string>Optional comment on the LSM run.</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBox_adjustment_settings">
-     <property name="title">
-      <string>Adjustment settings</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout">
-      <item>
-       <layout class="QFormLayout" name="formLayout">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label">
-          <property name="toolTip">
-           <string>Adjustment method.</string>
-          </property>
-          <property name="text">
-           <string>Method</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="comboBox_adjustment_method">
-          <property name="toolTip">
-           <string>Adjustment method.</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_sig0">
-          <property name="toolTip">
-           <string>A priori standard deviation of the unit weight. The covariance matrix of observations including constraints (Sig_ll) will be divided by sig0²!</string>
-          </property>
-          <property name="text">
-           <string>Sig0</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_sig0">
-          <property name="toolTip">
-           <string>A priori standard deviation of the unit weight. The covariance matrix of observations including constraints (Sig_ll) will be divided by sig0²!</string>
-          </property>
-          <property name="maximum">
-           <double>1000000.000000000000000</double>
-          </property>
-          <property name="value">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBox_parameters">
-     <property name="title">
-      <string>Estimated parameters</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_2">
-      <item>
-       <layout class="QFormLayout" name="formLayout_2">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_4">
-          <property name="toolTip">
-           <string>Degree of the drift polynomial estimated for each survey.</string>
-          </property>
-          <property name="text">
-           <string>Degree of drift Polynomials</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QSpinBox" name="spinBox_degree_drift_polynomial">
-          <property name="toolTip">
-           <string>Degree of the drift polynomial estimated for each survey.</string>
-          </property>
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <number>3</number>
-          </property>
-          <property name="value">
-           <number>1</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBox_constraints">
-     <property name="title">
-      <string>Constraints</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_4">
-      <item>
-       <layout class="QFormLayout" name="formLayout_3">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_3">
-          <property name="toolTip">
-           <string>Weight factor for datum constraints: The standard deviation of g at datum stations is divided by this factr in order to adjust the weights of the pseudo observations introduced as datum constraints.</string>
-          </property>
-          <property name="text">
-           <string>Weight factor for datum</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_weight_factor_datum">
-          <property name="toolTip">
-           <string>Weight factor for datum constraints: The standard deviation of g at datum stations is divided by this factr in order to adjust the weights of the pseudo observations introduced as datum constraints.</string>
-          </property>
-          <property name="decimals">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <double>1000000.000000000000000</double>
-          </property>
-          <property name="value">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBox_observations">
-     <property name="title">
-      <string>Observations (setup)</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_7">
-      <item>
-       <layout class="QFormLayout" name="formLayout_6">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_2">
-          <property name="toolTip">
-           <string>The defined additive constant is added to the standard deviation (SD) of setup observations in order to scale the SD and the resulting weights to realistic values. The multiplicative scaling factor is applied first!</string>
-          </property>
-          <property name="text">
-           <string>Additive const. to SD [µGal]</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_add_const_sd">
-          <property name="toolTip">
-           <string>The defined additive constant is added to the standard deviation (SD) of setup observations in order to scale the SD and the resulting weights to realistic values. The multiplicative scaling factor is applied first!</string>
-          </property>
-          <property name="decimals">
-           <number>1</number>
-          </property>
-          <property name="minimum">
-           <double>-100.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_8">
-          <property name="toolTip">
-           <string>Multiplicative factor for scaling the standard deviation (SD) of setup observations.</string>
-          </property>
-          <property name="text">
-           <string>Multiplicative factor for SD</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_mult_factor_sd">
-          <property name="toolTip">
-           <string>Multiplicative factor for scaling the standard deviation (SD) of setup observations.</string>
-          </property>
-          <property name="decimals">
-           <number>1</number>
-          </property>
-          <property name="value">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QGroupBox" name="groupBox_statistical_tests">
-     <property name="title">
-      <string>Statistical tests</string>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_6">
-      <item>
-       <layout class="QFormLayout" name="formLayout_5">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label_6">
-          <property name="toolTip">
-           <string>Confidence level for the goodness-of-fit test (Chi²).</string>
-          </property>
-          <property name="text">
-           <string>Confidence level Chi²-test</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_conf_level_chi">
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="toolTip">
-           <string>Confidence level for the goodness-of-fit test (Chi²).</string>
-          </property>
-          <property name="maximum">
-           <double>1.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>0.010000000000000</double>
-          </property>
-          <property name="value">
-           <double>0.950000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_7">
-          <property name="toolTip">
-           <string>Confidence level for the outlier detection test (tau-test).</string>
-          </property>
-          <property name="text">
-           <string>Confidence level tau-test</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QDoubleSpinBox" name="doubleSpinBox_conf_level_tau">
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="toolTip">
-           <string>Confidence level for the outlier detection test (tau-test).</string>
-          </property>
-          <property name="maximum">
-           <double>1.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>0.010000000000000</double>
-          </property>
-          <property name="value">
-           <double>0.950000000000000</double>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
+     <widget class="QWidget" name="tab_general_settings">
+      <attribute name="title">
+       <string>General settings</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_8">
+       <item>
+        <widget class="QGroupBox" name="groupBox_adjustment_settings">
+         <property name="title">
+          <string>Adjustment settings</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <item>
+           <layout class="QFormLayout" name="formLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label">
+              <property name="toolTip">
+               <string>Adjustment method.</string>
+              </property>
+              <property name="text">
+               <string>Method</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="comboBox_adjustment_method">
+              <property name="toolTip">
+               <string>Adjustment method.</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_5">
+              <property name="toolTip">
+               <string>Optional comment on the LSM run.</string>
+              </property>
+              <property name="text">
+               <string>Comment</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QLineEdit" name="lineEdit_comment">
+              <property name="toolTip">
+               <string>Optional comment on the LSM run.</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="checkBox_iterative_s0_scaling">
+            <property name="text">
+             <string>Adjust SD of setup observations to scale a posteriori s0</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_parameters">
+         <property name="title">
+          <string>Estimated parameters</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <layout class="QFormLayout" name="formLayout_2">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_4">
+              <property name="toolTip">
+               <string>Degree of the drift polynomial estimated for each survey.</string>
+              </property>
+              <property name="text">
+               <string>Degree of drift Polynomials</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QSpinBox" name="spinBox_degree_drift_polynomial">
+              <property name="toolTip">
+               <string>Degree of the drift polynomial estimated for each survey.</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>3</number>
+              </property>
+              <property name="value">
+               <number>1</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_advanced_settings">
+      <attribute name="title">
+       <string>Advanced  settings</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_9">
+       <item>
+        <widget class="QGroupBox" name="groupBox_constraints">
+         <property name="title">
+          <string>Datum constraints and weighting</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <layout class="QFormLayout" name="formLayout_3">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_3">
+              <property name="toolTip">
+               <string>Weight factor for datum constraints: The standard deviation of g at datum stations is divided by this factr in order to adjust the weights of the pseudo observations introduced as datum constraints.</string>
+              </property>
+              <property name="text">
+               <string>Weight factor for datum</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_weight_factor_datum">
+              <property name="toolTip">
+               <string>Weight factor for datum constraints: The standard deviation of g at datum stations is divided by this factr in order to adjust the weights of the pseudo observations introduced as datum constraints.</string>
+              </property>
+              <property name="decimals">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <double>1000000.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>1.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_sig0">
+              <property name="toolTip">
+               <string>A priori standard deviation of the unit weight. The covariance matrix of observations including constraints (Sig_ll) will be divided by sig0²!</string>
+              </property>
+              <property name="maximum">
+               <double>1000000.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>1.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_sig0">
+              <property name="toolTip">
+               <string>A priori standard deviation of the unit weight. The covariance matrix of observations including constraints (Sig_ll) will be divided by sig0²!</string>
+              </property>
+              <property name="text">
+               <string>A priori Sig0 [µGal]</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_observations">
+         <property name="title">
+          <string>Manipulation of a priori SD of setup observations</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_7">
+          <item>
+           <layout class="QFormLayout" name="formLayout_6">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_2">
+              <property name="toolTip">
+               <string>The defined additive constant is added to the standard deviation (SD) of setup observations in order to scale the SD and the resulting weights to realistic values. The multiplicative scaling factor is applied first!</string>
+              </property>
+              <property name="text">
+               <string>Additive const. to SD [µGal]</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_add_const_sd">
+              <property name="toolTip">
+               <string>The defined additive constant is added to the standard deviation (SD) of setup observations in order to scale the SD and the resulting weights to realistic values. The multiplicative scaling factor is applied first!</string>
+              </property>
+              <property name="decimals">
+               <number>1</number>
+              </property>
+              <property name="minimum">
+               <double>-100.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_8">
+              <property name="toolTip">
+               <string>Multiplicative factor for scaling the standard deviation (SD) of setup observations.</string>
+              </property>
+              <property name="text">
+               <string>Multiplicative factor for SD</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_mult_factor_sd">
+              <property name="toolTip">
+               <string>Multiplicative factor for scaling the standard deviation (SD) of setup observations.</string>
+              </property>
+              <property name="decimals">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <double>1.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_statistical_tests">
+         <property name="title">
+          <string>Statistical tests</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_6">
+          <item>
+           <layout class="QFormLayout" name="formLayout_5">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_6">
+              <property name="toolTip">
+               <string>Confidence level for the goodness-of-fit test (Chi²).</string>
+              </property>
+              <property name="text">
+               <string>Confidence level Chi²-test</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_conf_level_chi">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Confidence level for the goodness-of-fit test (Chi²).</string>
+              </property>
+              <property name="maximum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.010000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.950000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_7">
+              <property name="toolTip">
+               <string>Confidence level for the outlier detection test (tau-test).</string>
+              </property>
+              <property name="text">
+               <string>Confidence level tau-test</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_conf_level_tau">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="toolTip">
+               <string>Confidence level for the outlier detection test (tau-test).</string>
+              </property>
+              <property name="maximum">
+               <double>1.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.010000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.950000000000000</double>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_iterativ_scaling">
+      <attribute name="title">
+       <string>Iterative Scaling</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_10">
+       <item>
+        <widget class="QGroupBox" name="groupBox_iterative_scaling">
+         <property name="title">
+          <string>Iterative scaling of SD of setup observations</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_5">
+          <item>
+           <layout class="QFormLayout" name="formLayout_4">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_9">
+              <property name="toolTip">
+               <string>Iteration approach.</string>
+              </property>
+              <property name="text">
+               <string>Iteration approach</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="comboBox_iteration_approach">
+              <property name="toolTip">
+               <string>Iteration approach.</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_target_s02">
+              <property name="toolTip">
+               <string>Target variance of unit weight for the iteration.</string>
+              </property>
+              <property name="text">
+               <string>Target s0² [ µGal²]</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_target_s02">
+              <property name="toolTip">
+               <string>Target variance of unit weight for the iteration.</string>
+              </property>
+              <property name="value">
+               <double>1.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_delta_target_s02">
+              <property name="toolTip">
+               <string>Permitted deviation of the target variance of unit weight.</string>
+              </property>
+              <property name="text">
+               <string>Delta target s0² [ µGal²]</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_delta_target_s02">
+              <property name="toolTip">
+               <string>Permitted deviation of the target variance of unit weight.</string>
+              </property>
+              <property name="maximum">
+               <double>10.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.100000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="label_max_number_of_iterations">
+              <property name="toolTip">
+               <string>Maximum number of iterations.</string>
+              </property>
+              <property name="text">
+               <string>Max. number of iterations</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QSpinBox" name="spinBox_max_number_of_iterations">
+              <property name="toolTip">
+               <string>Maximum number of iterations.</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>100</number>
+              </property>
+              <property name="value">
+               <number>10</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_iterative_scaling_multiplicative">
+            <property name="toolTip">
+             <string>Settings for the multiplicative iteration approach.</string>
+            </property>
+            <property name="title">
+             <string>Multiplicative approach</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_12">
+             <item>
+              <layout class="QFormLayout" name="formLayout_8">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_initial_step_size_percent">
+                 <property name="toolTip">
+                  <string>Intial step size [%] for the iterative scaling of the SD of all setup observations when applying the multiplicative iteration approach.</string>
+                 </property>
+                 <property name="text">
+                  <string>Initial iteration step size [%]</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_initial_step_size_percent">
+                 <property name="toolTip">
+                  <string>Intial step size [%] for the iterative scaling of the SD of all setup observations when applying the multiplicative iteration approach.</string>
+                 </property>
+                 <property name="decimals">
+                  <number>1</number>
+                 </property>
+                 <property name="minimum">
+                  <double>0.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>20.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_max_multiplicative_factor_to_sd_percent">
+                 <property name="toolTip">
+                  <string>Maximum multiplicative factor when scaling the SD of all setup observations wehen using the multiplicative iteration approach.</string>
+                 </property>
+                 <property name="decimals">
+                  <number>1</number>
+                 </property>
+                 <property name="minimum">
+                  <double>100.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>900.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>200.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_max_multiplicative_factor_to_sd_percent">
+                 <property name="toolTip">
+                  <string>Maximum multiplicative factor when scaling the SD of all setup observations wehen using the multiplicative iteration approach.</string>
+                 </property>
+                 <property name="text">
+                  <string>Max. multiplicative factor to SD [%]</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_iterative_scaling_additive">
+            <property name="toolTip">
+             <string>Settings for the additive iteration approach.</string>
+            </property>
+            <property name="title">
+             <string>Additive approach</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_11">
+             <item>
+              <layout class="QFormLayout" name="formLayout_7">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_initial_setp_size">
+                 <property name="toolTip">
+                  <string>The initial iteration setp size defines how much the SD of all setup observationa is changed initially. Within the iteration process this step size may become smaller in order to reach the s0² target.</string>
+                 </property>
+                 <property name="text">
+                  <string>Initial iteration step size [µGal]</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_initial_step_size">
+                 <property name="toolTip">
+                  <string>The initial iteration setp size defines how much the SD of all setup observationa is changed initially. Within the iteration process this step size may become smaller in order to reach the s0² target.</string>
+                 </property>
+                 <property name="minimum">
+                  <double>0.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>100.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>5.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_max_additive_const_to_sd">
+                 <property name="toolTip">
+                  <string>Definines the maximim permitted additive constant to the standard deviations of the setup observations at the end of the iteration process.</string>
+                 </property>
+                 <property name="maximum">
+                  <double>900.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>20.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_max_additive_const_to_sd">
+                 <property name="toolTip">
+                  <string>Definines the maximim permitted additive constant to the standard deviations of the setup observations at the end of the iteration process.</string>
+                 </property>
+                 <property name="text">
+                  <string>Max. additive const. to SD [µGal]</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
   </layout>

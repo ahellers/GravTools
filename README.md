@@ -16,20 +16,38 @@ Collection of newly developed software for gravity surveys. Programmed with Pyth
 * **1. Carry out installation steps describes above** 
 * **2. Install QT5, if required**
   * `sudo yum install qt5-qtbase-devel.x86_64`
-
+  
+## Installation issues on Ubuntu (20.04):
+After just installing PyQt5 with pip3 the following error occured when trying to actually run a PyQt GUI: qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This issue was resolved by installing the QT dev tools (Designer, etc.): 
+sudo apt-get install qttools5-dev-tools
 
 # Test installation with setuptools 
 With command line interface.
 
-* **1. Configure setup.py**
+1. **Configure setup.py**
   * Define entry points (*console_scripts*)
-* **2. Activate virtual environment**
-  * e.g. `source env/bin/activate`
-* **3. Run setup.py**
-  * `python3 setup.py develop`
+2. **Activate virtual environment**
+    * e.g. `source env/bin/activate`
+3. **Run setup.py**
+    * `python3 setup.py develop`
+    * With make: `make `
+    
 
-## Using make
-`python3 setup.py develop`
+# Packaging
+With setuptools.
+
+## Build package with setuptools
+* Define all options in "setup.py"
+* With make: `make build`
+* Without make: `python3 -m build`
+
+The package is located in the "dist" directory.
+
+## Install package
+1. Create virtual environment (new directory "venv): `python3 -n venv venv`
+2. Install gravtools package: `pip install <path to package file>.tar.gz` 
+   * Dependencies listen in setup.py are automatically installed 
 
 # Run application on Windows and create a stand-alone Windows executable file:
 For creating a Windows executable (stand-alone application, without Python installation) the 
