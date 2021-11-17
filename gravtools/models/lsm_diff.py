@@ -12,7 +12,7 @@ Contains classes for least-squares adjustment of differential relative gravimete
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test
@@ -608,46 +608,46 @@ class LSMDiff(LSM):
         self.goodness_of_fit_test_status = chi_test
         self.number_of_outliers = number_of_outliers
 
-    def create_drift_plot_matplotlib(self):
-        """Create a drift plot with matplotlib."""
-
-        # Prep data:
-        setup_df = self.setups['20200701a'].copy(deep=True)
-        stat_obs_df_short = self.stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
-        setup_df = pd.merge(setup_df, stat_obs_df_short, on="station_name")
-        setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
-        setup_df.sort_values(by='delta_t_h', inplace=True)
-
-        # Evaluate drift polynomial:
-        coeff_list = self.drift_pol_df['coefficient'].to_list()
-        coeff_list.reverse()
-        coeff_list.append(0)
-        t_min_h = setup_df['delta_t_h'].min()  # = 0
-        t_max_h = setup_df['delta_t_h'].max()
-        dt_h = np.linspace(t_min_h, t_max_h, 100)
-        drift_polynomial_mugal = np.polyval(coeff_list, dt_h)
-
-        # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
-        # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
-        # assessment of the drift function), the const. bias N0 is approximated, see below.
-        offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
-        yy_mugal = drift_polynomial_mugal + offset_mugal
-
-        # plot
-        fig, ax = plt.subplots()
-        for station_name in setup_df['station_name'].unique():
-            label_str = station_name
-            delta_t_h = setup_df.loc[setup_df['station_name'] == station_name, 'delta_t_h']
-            g_plot_mugal = setup_df.loc[setup_df['station_name'] == station_name, 'g_plot_mugal']
-            ax.plot(delta_t_h, g_plot_mugal, 'o', label=label_str)
-
-        ax.plot(dt_h, yy_mugal, 'k--', label='drift function')
-        # - Legend and labels:
-        plt.legend(loc='best')
-        ax.grid()
-        plt.title(f'Drift Polynomial (vertical offset: {offset_mugal:.1f} µGal)')
-        plt.xlabel('time [h]')
-        plt.ylabel('gravity reading [µGal]')
+    # def create_drift_plot_matplotlib(self):
+    #     """Create a drift plot with matplotlib."""
+    #
+    #     # Prep data:
+    #     setup_df = self.setups['20200701a'].copy(deep=True)
+    #     stat_obs_df_short = self.stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
+    #     setup_df = pd.merge(setup_df, stat_obs_df_short, on="station_name")
+    #     setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
+    #     setup_df.sort_values(by='delta_t_h', inplace=True)
+    #
+    #     # Evaluate drift polynomial:
+    #     coeff_list = self.drift_pol_df['coefficient'].to_list()
+    #     coeff_list.reverse()
+    #     coeff_list.append(0)
+    #     t_min_h = setup_df['delta_t_h'].min()  # = 0
+    #     t_max_h = setup_df['delta_t_h'].max()
+    #     dt_h = np.linspace(t_min_h, t_max_h, 100)
+    #     drift_polynomial_mugal = np.polyval(coeff_list, dt_h)
+    #
+    #     # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
+    #     # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
+    #     # assessment of the drift function), the const. bias N0 is approximated, see below.
+    #     offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+    #     yy_mugal = drift_polynomial_mugal + offset_mugal
+    #
+    #     # plot
+    #     fig, ax = plt.subplots()
+    #     for station_name in setup_df['station_name'].unique():
+    #         label_str = station_name
+    #         delta_t_h = setup_df.loc[setup_df['station_name'] == station_name, 'delta_t_h']
+    #         g_plot_mugal = setup_df.loc[setup_df['station_name'] == station_name, 'g_plot_mugal']
+    #         ax.plot(delta_t_h, g_plot_mugal, 'o', label=label_str)
+    #
+    #     ax.plot(dt_h, yy_mugal, 'k--', label='drift function')
+    #     # - Legend and labels:
+    #     plt.legend(loc='best')
+    #     ax.grid()
+    #     plt.title(f'Drift Polynomial (vertical offset: {offset_mugal:.1f} µGal)')
+    #     plt.xlabel('time [h]')
+    #     plt.ylabel('gravity reading [µGal]')
 
     @property
     def get_results_obs_df(self):

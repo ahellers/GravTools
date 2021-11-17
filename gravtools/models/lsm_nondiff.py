@@ -12,7 +12,6 @@ Contains classes for least-squares adjustment of non-differential relative gravi
 
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test

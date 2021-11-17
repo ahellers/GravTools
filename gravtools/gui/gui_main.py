@@ -515,7 +515,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def plot_drift_lsm_non_diff(self, lsm_run, surveys=None, stations=None):
         """Create a drift plot for LSM runs based on non-differential observations (method: LSM_non_diff)
 
-        Parameters:
+        Parameters
         -----------
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
@@ -611,7 +611,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def plot_drift_lsm_diff(self, lsm_run, surveys=None, stations=None, offset_user_defined_mugal=0):
         """Create a drift plot for LSM runs based on differential observations (method: LSM_diff)
 
-        Parameters:
+        Parameters
         -----------
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
@@ -711,7 +711,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def plot_drift_mlr_bev_legacy(self, lsm_run, surveys=None, stations=None):
         """Create a drift plot for LSM runs using multiple linear regression (method: MLR BEV legacy)
 
-        Parameters:
+        Parameters
         -----------
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
