@@ -1,11 +1,18 @@
 import setuptools
+import sys
+import os
+
+
+# Add current work directory to python path to get the version tag:
+sys.path.append(os.getcwd())
+import gravtools
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="gravtools",
-    version="0.0.2",
+    version=gravtools.__version__,
     author="Andreas Hellerschmied",
     author_email="andreas.hellerschmied@bev.gv.at",
     description="Gravgui"
@@ -48,7 +55,6 @@ setuptools.setup(
 
     entry_points={
         "console_scripts": [
-            # "schwaus=bev_legacy.command_line:schwaus",
             "gt=gravtools.scripts.run_gui:run_gui",
         ]
     }
