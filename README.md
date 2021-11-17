@@ -25,15 +25,29 @@ sudo apt-get install qttools5-dev-tools
 # Test installation with setuptools 
 With command line interface.
 
-* **1. Configure setup.py**
+1. **Configure setup.py**
   * Define entry points (*console_scripts*)
-* **2. Activate virtual environment**
-  * e.g. `source env/bin/activate`
-* **3. Run setup.py**
-  * `python3 setup.py develop`
+2. **Activate virtual environment**
+    * e.g. `source env/bin/activate`
+3. **Run setup.py**
+    * `python3 setup.py develop`
+    * With make: `make `
+    
 
-## Using make
-`python3 setup.py develop`
+# Packaging
+With setuptools.
+
+## Build package with setuptools
+* Define all options in "setup.py"
+* With make: `make build`
+* Without make: `python3 -m build`
+
+The package is located in the "dist" directory.
+
+## Install package
+1. Create virtual environment (new directory "venv): `python3 -n venv venv`
+2. Install gravtools package: `pip install <path to package file>.tar.gz` 
+   * Dependencies listen in setup.py are automatically installed 
 
 # Run application on Windows and create a stand-alone Windows executable file:
 For creating a Windows executable (stand-alone application, without Python installation) the 
