@@ -418,8 +418,8 @@ class Campaign:
             `self.obs_df` are used to determine the weighted mean values per setup.
         set_epoch_of_first_obs_as_reference: bool, optional (default=True)
             If `True`, the epoch of the first observation in all surveys in the campaign is used as reference epoch
-            for all surveys. `False` implies that the reference eoch is based on the first (active, if
-            `active_obs_only_for_ref_epoch` is `True`) observation in each seurves and determined individually for
+            for all surveys. `False` implies that the reference epoch is based on the first (active, if
+            `active_obs_only_for_ref_epoch` is `True`) observation in each survey and determined individually for
             each survey. Stored in `self.ref_delta_t_dt` (datetime object).
         active_obs_only_for_ref_epoch: bool, optional (default=True)
             `True` implies that the reference epoch is determined by considering active observations only.
