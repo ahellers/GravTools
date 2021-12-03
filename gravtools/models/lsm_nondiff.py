@@ -174,7 +174,7 @@ class LSMNonDiff(LSM):
         add_const_to_sd_of_observations_mugal : float, optional (default=0.0)
             The defined additive constant is added to the standard deviation (SD) of setup
             observations in order to scale the SD and the resulting weights to realistic values. In µGal. The scaling
-            factor `scaling_factor_for_sd_of_observations` is applied before adding this constant!
+            factor `scaling_factor_for_sd_of_observations`is applied before adding this constant!
         scaling_factor_for_sd_of_observations : float, optional (default=1.0)
             Scaling factor for the standard deviation of the setup observations. `add_const_to_sd_of_observations_mugal`
             is applied after applying the scaling factor!
@@ -311,7 +311,7 @@ class LSMNonDiff(LSM):
                 mat_A0[obs_id, self.observed_stations.index(station_name)] = 1
                 # Partial derivative for drift polynomial including constant instrumental bias (pol. degree = 0):
                 for pd_drift_id in range(drift_pol_degree + 1):
-                    mat_A0[obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count] = \
+                    mat_A0[obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count*(drift_pol_degree + 1)] = \
                         delta_t_h ** (pd_drift_id)
 
                 # Log data in DataFrame:
@@ -387,6 +387,15 @@ class LSMNonDiff(LSM):
                     print(tmp_str)
                 if self.write_log:
                     self.log_str += tmp_str
+
+        # Condition of normal equation matrix:
+        if verbose or self.write_log:
+            cond = np.linalg.cond(mat_N)
+            tmp_str = f'Condition of normal equation matix N = {cond:1.3f}\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
 
         # A posteriori variance of unit weight s02:
         dof = mat_A.shape[0] - mat_A.shape[1]  # degree of freedom

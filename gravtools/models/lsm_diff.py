@@ -327,7 +327,7 @@ class LSMDiff(LSM):
                     mat_A0[diff_obs_id, self.observed_stations.index(station_name_from)] = -1
                     # Partial derivative for drift polynomial:
                     for pd_drift_id in range(drift_pol_degree):
-                        mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count] = \
+                        mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count*drift_pol_degree] = \
                             epoch_to ** (pd_drift_id + 1) - epoch_from ** (pd_drift_id + 1)
 
                     # Log data in DataFrame:
@@ -409,6 +409,15 @@ class LSMDiff(LSM):
                     print(tmp_str)
                 if self.write_log:
                     self.log_str += tmp_str
+
+        # Condition of normal equation matrix:
+        if verbose or self.write_log:
+            cond = np.linalg.cond(mat_N)
+            tmp_str = f'Condition of normal equation matix N = {cond:1.3f}\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
 
         # A posteriori variance of unit weight s02:
         dof = mat_A.shape[0] - mat_A.shape[1]  # degree of freedom
