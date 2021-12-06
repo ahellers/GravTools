@@ -170,8 +170,9 @@ class Survey:
             file). The vertical gradient is required for reducing the observed gravity to different reference heights.
         - corr_tide_red_mugal : float, optional (default=None)
             Tidal correction [µGal] that is applied to `g_red_mugal`.
-        - ref_delta_t_dt : datetime, optional (default=None)
-            Reference time for relative times e.g. time spans for drift polynomial adjustment.
+
+    ref_delta_t_dt : datetime, optional (default=None)
+        Reference time for relative times (), e.g. reference time t0 the for drift polynomial adjustment.
     setup_df : :py:obj:`pandas.core.frame.DataFrame`, optional (default=None)
         Contains a single pseudo observation per setup calculated as variance weighted mean of all active
         (flag `keep_obs = True`) reduced observations of a setup and other information that is required for the
@@ -184,10 +185,18 @@ class Survey:
             Same as in `obs_df`.
         - g_mugal : float
             Variance weighted mean of all active reduced observations the setup [µGal].
-        - sd_g_red_mugal : float
+        - sd_g_mugal : float
             Standard deviation of `g_mugal` [µGal]
-        - obs_epoch : :py:obj:`datetime.datetime`; timezone aware, if possible
+        - epoch_unix : float
+            Reference epoch of `g_mugal` in unix time [sec]
+        - epoch_dt : :py:obj:`datetime.datetime`; timezone aware, if possible
             Reference epoch of `g_mugal`.
+        - delta_t_h : float
+            Time span since reference time :py:obj:`Survey.ref_delta_t_dt` in hours.
+        - sd_setup_mugal : float
+             Standard deviation of active observations in this setup [µGal].
+        - number_obs : int
+            Number of observations in a setup.
 
     """
 
@@ -1267,7 +1276,8 @@ class Survey:
                 print('Setup data deleted.')
             self.setup_df = None
 
-    def calculate_setup_data(self, obs_type='reduced', ref_delta_t_dt=None,
+    def calculate_setup_data(self, obs_type='reduced',
+                             ref_delta_t_dt=None,
                              active_obs_only_for_ref_epoch=True,
                              verbose=False):
         """Accumulate all active observation within each setup and calculate a single representative pseudo observation.
