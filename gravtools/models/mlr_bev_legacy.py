@@ -175,7 +175,8 @@ class BEVLegacyProcessing(LSM):
         survey_names = []
         number_of_observations = 0
         setup_ids = []
-        for survey_name, setup_df in self.setups.items():
+        for survey_name, setup_data in self.setups.items():
+            setup_df = setup_data['setup_df']
             observed_stations = observed_stations + setup_df['station_name'].to_list()
             number_of_observations = number_of_observations + len(setup_df)
             survey_names.append(survey_name)

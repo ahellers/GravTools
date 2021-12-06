@@ -93,11 +93,6 @@ ANSERMET_DIFF_TRESHOLD = 1e-3
 # Treshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
 R_POPE_TEST_TRESHOLD = 1e-6
 
-# Only consider active observations for the determination of the reference epochs, e.g. for the drift polynomial. The
-# Reference epochs are determined based on the first (active only or active/inactive) observations in the campaign or
-# in each individual survey, depending on the settings.
-# ACTIVE_OBS_ONLY_FOR_REF_EPOCH = True
-
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
 
