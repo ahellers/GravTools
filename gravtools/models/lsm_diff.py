@@ -143,7 +143,7 @@ class LSMDiff(LSM):
                                              f'A minimum of two setups is required in order to define '
                                              f'differential observations!')
                     else:
-                        setups[survey_name] = survey.setup_df
+                        setups[survey_name] = survey.setup_df  # TODO: Hier irgendwo die reference Time für die setups! => survey.ref_time_t_dt
 
         # Check if setup data is available:
         if len(setups) == 0:
