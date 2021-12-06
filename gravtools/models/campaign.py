@@ -38,6 +38,9 @@ class Campaign:
     lsm_runs : list of objects inherited from :py:obj:`gravtools.models.lsm.LSM`
         Each item in the list contains one enclosed LSM object. Each LSM object reflects one dedicated run of an
         least-squares adjustment in order to estimate target parameters.
+    ref_delta_t_dt : datetime object
+        Reference epoch for relative times within the campaign, e.g. for the determination of the drift polynomials.
+        This reference time is equalt to the first (active) observation in the campaign considering all surveys.
     """
 
     def __init__(self,
@@ -406,10 +409,18 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             self.stations.add_stations_from_survey(survey, verbose)
 
-    def calculate_setup_data(self, obs_type='reduced', set_epoch_of_first_obs_as_reference=True,
+    def calculate_setup_data(self,
+                             obs_type='reduced',
                              active_obs_only_for_ref_epoch=True,
                              verbose=False):
         """Calculate accumulated pseudo observations for each active setup in all active surveys.
+
+        Notes
+        -----
+        Two relative reference epochs are calculated for each setup: (a) w.r.t. the first (active) observation in the
+        whole campaign and (b) w.r.t. the first (active) observation in each survey. Both reference time do not differ
+        for the first survey on a campaign. Whether active observations only are considered is defined by the input
+        parameter `active_obs_only_for_ref_epoch`.
 
         Parameters
         ----------
@@ -422,16 +433,17 @@ class Campaign:
             `active_obs_only_for_ref_epoch` is `True`) observation in each survey and determined individually for
             each survey. Stored in `self.ref_delta_t_dt` (datetime object).
         active_obs_only_for_ref_epoch: bool, optional (default=True)
-            `True` implies that the reference epoch is determined by considering active observations only.
+            `True` implies that the relative reference epochs are determined by considering active observations only.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
         # Get reference epoch:
-        if set_epoch_of_first_obs_as_reference:
-            # Get epoch of first observation:
-            self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
-        else:
-            self.ref_delta_t_dt = None
+        self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
+        # if set_epoch_of_first_obs_as_reference:
+        #     # Get epoch of first observation:
+        #     self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
+        # else:
+        #     self.ref_delta_t_dt = None
 
         # Loop over all surveys in the campaign:
         if verbose:
@@ -441,7 +453,7 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             if survey.keep_survey:
                 survey.calculate_setup_data(obs_type=obs_type,
-                                            ref_delta_t_dt=self.ref_delta_t_dt,
+                                            ref_delta_t_campaign_dt=self.ref_delta_t_dt,
                                             active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
                                             verbose=verbose)
 

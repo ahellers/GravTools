@@ -208,7 +208,8 @@ class SetupTableModel(QAbstractTableModel):
         'g_mugal': 'g [µGal]',
         'sd_g_mugal': 'SD [µGal]',
         'epoch_unix': 'Epoch Unix',
-        'delta_t_h': 'delta_t [h]',
+        'delta_t_h': 'd_t [h]',
+        'delta_t_campaign_h': 'd_t camp [h]',
         'sd_setup_mugal': 'SD of obs [µGal]',
         'number_obs': 'Number of obs.',
     }
@@ -228,6 +229,7 @@ class SetupTableModel(QAbstractTableModel):
         'sd_g_mugal': 1,
         'epoch_unix': 1,
         'delta_t_h': 3,
+        'delta_t_campaign_h': 3,
         'sd_setup_mugal': 1,
     }
 

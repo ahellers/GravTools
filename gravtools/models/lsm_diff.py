@@ -71,10 +71,19 @@ class LSMDiff(LSM):
         ----------
         stat_df : :py:obj:`gravtools.Station.stat_df`
             The station dataframe contains all relevant station data.
-        setups : dict of pandas DataFrames
+        setups : dict of dicts
             The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-            are the survey names (str) and the items are pandas dataframes containing the observation data (see
-            :py:obj:`gravtool.Survey.setup_df`)
+            are the survey names (str). The items are again keys with the follwing items:
+
+            - ref_epoch_delta_t_h : datetime object
+                Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
+                The reference epoch is determined as the epoch of the first (active) observation in this survey.
+            -  ref_epoch_delta_t_campaign_h : datetime object
+                Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
+                dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
+            - setup_df : Pandas DataFrame
+                Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+
         comment : str, optional (default = '')
             Arbitrary comment on the LSM run.
         write_log : bool, optional (default=True)
@@ -143,7 +152,10 @@ class LSMDiff(LSM):
                                              f'A minimum of two setups is required in order to define '
                                              f'differential observations!')
                     else:
-                        setups[survey_name] = survey.setup_df  # TODO: Hier irgendwo die reference Time für die setups! => survey.ref_time_t_dt
+                        setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
+                                           'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
+                                           'setup_df': survey.setup_df}
+                        setups[survey_name] = setup_data_dict
 
         # Check if setup data is available:
         if len(setups) == 0:
@@ -159,9 +171,10 @@ class LSMDiff(LSM):
                scaling_factor_for_sd_of_observations=1.0,
                confidence_level_chi_test=0.95,
                confidence_level_tau_test=0.95,
+               drift_ref_epoch_type='survey',
                verbose=False
                ):  # Confidence level):
-        """Run the adjustment.
+        """Run the adjustment based on differential observations.
 
         Parameters
         ----------
@@ -185,6 +198,10 @@ class LSMDiff(LSM):
             Confidence level for the goodness-of-fit test.
         confidence_level_tau_test : float, optional (default=0.95)
             Confidence level for the tau test.
+        drift_ref_epoch_type : string ('survey' or 'campaign'), optional (default='survey')
+            Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
+            campaign is the reference epoch of the first (active) observation in each survey (option: 'survey') or the
+            first (active) observation in the whole campaign (option: 'campaign').
         verbose : bool, optional (default=False)
             If True, status messages are printed to the command line, e.g. for debugging and testing
 
@@ -203,7 +220,8 @@ class LSMDiff(LSM):
         survey_names = []
         number_of_observations = 0
         setup_ids = []
-        for survey_name, setup_df in self.setups.items():
+        for survey_name, setup_data in self.setups.items():
+            setup_df = setup_data['setup_df']
             self.observed_stations = self.observed_stations + setup_df['station_name'].to_list()
             number_of_observations = number_of_observations + len(setup_df)
             survey_names.append(survey_name)
@@ -292,7 +310,8 @@ class LSMDiff(LSM):
         # # - Add additive constant to standard deviation of setup observations in order to scale them to realistic values:
         # setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
 
-        for survey_name, setup_df in self.setups.items():
+        for survey_name, setup_data in self.setups.items():
+            setup_df = setup_data['setup_df']
             previous_row = None
             survey_count += 1
 
@@ -314,9 +333,15 @@ class LSMDiff(LSM):
                     setup_id_from = previous_row['setup_id']
                     setup_id_to = row['setup_id']
                     # epoch_from = previous_row['epoch_unix']  # [sec]
-                    epoch_from = previous_row['delta_t_h']  # [hours]
+                    if drift_ref_epoch_type == 'survey':
+                        epoch_from = previous_row['delta_t_h']  # [hours]
+                    elif drift_ref_epoch_type == 'campaign':
+                        epoch_from = previous_row['delta_t_campaign_h']  # [hours]
                     # epoch_to = row['epoch_unix']  # [sec]
-                    epoch_to = row['delta_t_h']  # [hours]
+                    if drift_ref_epoch_type == 'survey':
+                        epoch_to = row['delta_t_h']  # [hours]
+                    elif drift_ref_epoch_type == 'campaign':
+                        epoch_to = row['delta_t_campaign_h']  # [hours]
                     ref_epoch_dt = previous_row['epoch_dt'] + (row['epoch_dt'] - previous_row['epoch_dt']) / 2  # mean
 
                     # Populate matrices and vectors:
@@ -327,7 +352,7 @@ class LSMDiff(LSM):
                     mat_A0[diff_obs_id, self.observed_stations.index(station_name_from)] = -1
                     # Partial derivative for drift polynomial:
                     for pd_drift_id in range(drift_pol_degree):
-                        mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count*drift_pol_degree] = \
+                        mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count * drift_pol_degree] = \
                             epoch_to ** (pd_drift_id + 1) - epoch_from ** (pd_drift_id + 1)
 
                     # Log data in DataFrame:
@@ -587,8 +612,9 @@ class LSMDiff(LSM):
                 tmp_str += self.setup_obs_df.loc[filter_tmp, ['station_name_from', 'station_name_to', 'g_diff_mugal',
                                                               'sd_g_diff_mugal', 'sd_g_diff_est_mugal',
                                                               'v_diff_mugal', 'r_diff_obs']].to_string(index=False,
-                                                                                         float_format=lambda
-                                                                                         x: '{:.2f}'.format(x))
+                                                                                                       float_format=lambda
+                                                                                                           x: '{:.2f}'.format(
+                                                                                                           x))
                 tmp_str += f'\n\n'
             tmp_str += f' - Pseudo observations at datum stations (constraints):\n'
             tmp_str += f'Station name  sd [µGal]   v [µGal]   w [µGal]   r [0-1]    Tau test result\n'
@@ -616,47 +642,7 @@ class LSMDiff(LSM):
         self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
         self.goodness_of_fit_test_status = chi_test
         self.number_of_outliers = number_of_outliers
-
-    # def create_drift_plot_matplotlib(self):
-    #     """Create a drift plot with matplotlib."""
-    #
-    #     # Prep data:
-    #     setup_df = self.setups['20200701a'].copy(deep=True)
-    #     stat_obs_df_short = self.stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
-    #     setup_df = pd.merge(setup_df, stat_obs_df_short, on="station_name")
-    #     setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
-    #     setup_df.sort_values(by='delta_t_h', inplace=True)
-    #
-    #     # Evaluate drift polynomial:
-    #     coeff_list = self.drift_pol_df['coefficient'].to_list()
-    #     coeff_list.reverse()
-    #     coeff_list.append(0)
-    #     t_min_h = setup_df['delta_t_h'].min()  # = 0
-    #     t_max_h = setup_df['delta_t_h'].max()
-    #     dt_h = np.linspace(t_min_h, t_max_h, 100)
-    #     drift_polynomial_mugal = np.polyval(coeff_list, dt_h)
-    #
-    #     # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
-    #     # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
-    #     # assessment of the drift function), the const. bias N0 is approximated, see below.
-    #     offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
-    #     yy_mugal = drift_polynomial_mugal + offset_mugal
-    #
-    #     # plot
-    #     fig, ax = plt.subplots()
-    #     for station_name in setup_df['station_name'].unique():
-    #         label_str = station_name
-    #         delta_t_h = setup_df.loc[setup_df['station_name'] == station_name, 'delta_t_h']
-    #         g_plot_mugal = setup_df.loc[setup_df['station_name'] == station_name, 'g_plot_mugal']
-    #         ax.plot(delta_t_h, g_plot_mugal, 'o', label=label_str)
-    #
-    #     ax.plot(dt_h, yy_mugal, 'k--', label='drift function')
-    #     # - Legend and labels:
-    #     plt.legend(loc='best')
-    #     ax.grid()
-    #     plt.title(f'Drift Polynomial (vertical offset: {offset_mugal:.1f} µGal)')
-    #     plt.xlabel('time [h]')
-    #     plt.ylabel('gravity reading [µGal]')
+        self.drift_ref_epoch_type = drift_ref_epoch_type
 
     @property
     def get_results_obs_df(self):

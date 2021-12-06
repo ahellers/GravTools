@@ -137,7 +137,10 @@ class BEVLegacyProcessing(LSM):
                                              f'A minimum of two setups is required in order to define '
                                              f'differential observations!')
                     else:
-                        setups[survey_name] = survey.setup_df
+                        setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
+                                           'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
+                                           'setup_df': survey.setup_df}
+                        setups[survey_name] = setup_data_dict
 
         # Check if setup data is available:
         if len(setups) == 0:
@@ -217,23 +220,23 @@ class BEVLegacyProcessing(LSM):
         self.stat_obs_df = self.stat_df.loc[filter_tmp].copy(deep=True)  # All observed stations
 
         # ##### 2.) Drift Adjustment #####
-        # All obs data is here: all_setups_df['delta_t_h']
-        # - delta_t [h] since first obs in session [also deactivated obs count!] => all_setups_df['delta_t_h']
+        # All obs data is here: all_setups_df['delta_t_campaign_h']
+        # - delta_t [h] since first obs in campaign => all_setups_df['delta_t_campaign_h']
         # Test dataset: "n20200701_1" and "2020-07-01_hermannskogel.txt" (use last obs of each setup! => then equal!)
 
         # Set up obs_df with categorical variables for each point:
-        df_short = all_setups_df[['station_name', 'g_mugal', 'delta_t_h']].copy(deep=True)
+        df_short = all_setups_df[['station_name', 'g_mugal', 'delta_t_campaign_h']].copy(deep=True)
 
         # Create obs_df with categorical dummy variables for each station name:
         prefix = 'is_pkt'
         df_dummy = pd.get_dummies(df_short, prefix=[prefix])
-        categorical_variables = [prefix + '_' + str for str in observed_stations]
+        categorical_variables = [prefix + '_' + str1 for str1 in observed_stations]
 
         # Set up target parameters according to polynomial degree:
         target_parameters = []
         for i in range(1, drift_pol_degree + 1):  # i = 1 to polynomial_degree
             col_name = 'dt_{}'.format(i)
-            df_dummy[col_name] = df_dummy['delta_t_h'].pow(i)
+            df_dummy[col_name] = df_dummy['delta_t_campaign_h'].pow(i)
             target_parameters.append(col_name)
 
         selection_list = target_parameters + categorical_variables
@@ -253,7 +256,7 @@ class BEVLegacyProcessing(LSM):
         # Calculate drift correction for all observations:
         poly_coef = prep_polyval_coef(pol_coef_dict)
 
-        all_setups_df['corr_drift_mugal'] = np.polyval(poly_coef, all_setups_df['delta_t_h'])
+        all_setups_df['corr_drift_mugal'] = np.polyval(poly_coef, all_setups_df['delta_t_campaign_h'])
 
         # Calculate statistics:
         for station_name in observed_stations:
@@ -389,6 +392,7 @@ class BEVLegacyProcessing(LSM):
         # Rename columns to be compatible with the table view model:
         all_setups_df.rename(columns={'epoch_dt': 'ref_epoch_dt'}, inplace=True)
         self.setup_obs_df = all_setups_df
+        self.drift_ref_epoch_type = 'campaign'
 
         # Not used here => =None as initialized!
         # self.sig02_a_priori = sig0_mugal

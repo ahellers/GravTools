@@ -517,6 +517,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         Parameters
         -----------
+        lsm_run : LSMNonDiff object.
+            LSM object for non-differential observations.
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
         stations : `None` (default) or list of station names (str)
@@ -529,7 +531,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         drift_pol_df = lsm_run.drift_pol_df
 
         # Loop over surveys (setup data) in the selected lsm run object and plot data:
-        for survey_name, setup_df_orig in lsm_run.setups.items():
+        for survey_name, setup_data in lsm_run.setups.items():
+            setup_df_orig = setup_data['setup_df']
             # Filter for surveys:
             if surveys is not None:
                 if survey_name not in surveys:
@@ -541,13 +544,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
             setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
             setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
-            setup_df.sort_values(by='delta_t_h', inplace=True)
+            setup_df.sort_values(by='delta_t_campaign_h', inplace=True)
 
             # Evaluate drift polynomial:
             coeff_list = drift_pol_df_short['coefficient'].to_list()
             coeff_list.reverse()
-            delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
-            delta_t_max_h = setup_df['delta_t_h'].max()
+            if lsm_run.drift_ref_epoch_type == 'survey':
+                delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
+                delta_t_max_h = setup_df['delta_t_h'].max()
+            elif lsm_run.drift_ref_epoch_type == 'campaign':
+                delta_t_min_h = setup_df['delta_t_campaign_h'].min()  # = 0
+                delta_t_max_h = setup_df['delta_t_campaign_h'].max()
             delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
             drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
@@ -613,6 +620,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         Parameters
         -----------
+        lsm_run : LSMDiff object
+            LSM object for differential observations.
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
         stations : `None` (default) or list of station names (str)
@@ -627,7 +636,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         drift_pol_df = lsm_run.drift_pol_df
         if stat_obs_df is not None and drift_pol_df is not None:
             # Loop over surveys (setup data) in the selected lsm run object and plot data:
-            for survey_name, setup_df_orig in lsm_run.setups.items():
+            for survey_name, setup_data in lsm_run.setups.items():
+                setup_df_orig = setup_data['setup_df']
                 # Filter for surveys:
                 if surveys is not None:
                     if survey_name not in surveys:
@@ -639,14 +649,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
                 setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
                 setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
-                setup_df.sort_values(by='delta_t_h', inplace=True)
+                setup_df.sort_values(by='delta_t_campaign_h', inplace=True)
 
                 # Evaluate drift polynomial:
                 coeff_list = drift_pol_df_short['coefficient'].to_list()
                 coeff_list.reverse()
                 coeff_list.append(0)
-                delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
-                delta_t_max_h = setup_df['delta_t_h'].max()
+                if lsm_run.drift_ref_epoch_type == 'survey':
+                    delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
+                    delta_t_max_h = setup_df['delta_t_h'].max()
+                elif lsm_run.drift_ref_epoch_type == 'campaign':
+                    delta_t_min_h = setup_df['delta_t_campaign_h'].min()  # = 0
+                    delta_t_max_h = setup_df['delta_t_campaign_h'].max()
                 delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
                 drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
@@ -713,6 +727,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         Parameters
         -----------
+        lsm_run : BEVLegacyProcessing object
+            Parameter adjustment object.
         surveys : `None` (default) or list of survey names (str)
             To filter for surveys that will be displayed.
         stations : `None` (default) or list of station names (str)
@@ -726,7 +742,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Loop over surveys (setup data) in the selected lsm run object and plot data:
         flag_first_survey = True
-        for survey_name, setup_df_orig in lsm_run.setups.items():
+        for survey_name, setup_data in lsm_run.setups.items():
+            setup_df_orig = setup_data['setup_df']
             if flag_first_survey:
                 flag_first_survey = False
                 plot_setup_df = pd.DataFrame(columns=setup_df_orig.columns)
@@ -739,17 +756,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_drift_est_mugal']]
             setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
             setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_drift_est_mugal']
-            setup_df.sort_values(by='delta_t_h', inplace=True)
+            setup_df.sort_values(by='delta_t_campaign_h', inplace=True)
             plot_setup_df = pd.concat([plot_setup_df, setup_df])
 
-        plot_setup_df.sort_values(by='delta_t_h', inplace=True)
+        plot_setup_df.sort_values(by='delta_t_campaign_h', inplace=True)
 
         # Evaluate drift function:
         coeff_list = drift_pol_df['coefficient'].to_list()
         coeff_list.reverse()
         coeff_list.append(0)
-        delta_t_min_h = plot_setup_df['delta_t_h'].min()  # = 0
-        delta_t_max_h = plot_setup_df['delta_t_h'].max()
+        delta_t_min_h = plot_setup_df['delta_t_campaign_h'].min()  # = 0
+        delta_t_max_h = plot_setup_df['delta_t_campaign_h'].max()
         delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
         drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
 
@@ -1188,9 +1205,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
+
+        # Get GUI settings:
+        active_obs_only_for_ref_epoch = self.dlg_estimation_settings.checkBox_drift_ref_epoch_active_obs_only.checkState() == Qt.Checked
+
         try:
-            self.campaign.calculate_setup_data(obs_type='reduced', set_epoch_of_first_obs_as_reference=True,
-                                               active_obs_only_for_ref_epoch=settings.ACTIVE_OBS_ONLY_FOR_REF_EPOCH,
+            self.campaign.calculate_setup_data(obs_type='reduced',
+                                               active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
                                                verbose=IS_VERBOSE)
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
@@ -1231,6 +1252,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             confidence_level_tau_test = self.dlg_estimation_settings.doubleSpinBox_conf_level_tau.value()
             add_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_add_const_sd.value()
             scaling_factor_obs_sd = self.dlg_estimation_settings.doubleSpinBox_mult_factor_sd.value()
+            self.dlg_estimation_settings.radioButton_drift_ref_epoch_first_ob_campaign.isChecked()
+            if self.dlg_estimation_settings.radioButton_drift_ref_epoch_first_obs_survey.isChecked() and not self.dlg_estimation_settings.radioButton_drift_ref_epoch_first_ob_campaign.isChecked():
+                drift_ref_epoch_type = 'survey'
+            elif not self.dlg_estimation_settings.radioButton_drift_ref_epoch_first_obs_survey.isChecked() and self.dlg_estimation_settings.radioButton_drift_ref_epoch_first_ob_campaign.isChecked():
+                drift_ref_epoch_type = 'campaign'
+            else:
+                raise AssertionError('Invalid definition of the drift reference epoch in the GUI!')
 
             # Autoscale settings:
             autoscale_s0_a_posteriori = self.dlg_estimation_settings.checkBox_iterative_s0_scaling.checkState() == Qt.Checked
@@ -1266,6 +1294,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
+                        drift_ref_epoch_type=drift_ref_epoch_type,
                         verbose=IS_VERBOSE,
                     )
                 else:  # no autoscale
@@ -1277,6 +1306,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
+                        drift_ref_epoch_type=drift_ref_epoch_type,
                         verbose=IS_VERBOSE
                     )
                 # self.campaign.lsm_runs[-1].create_drift_plot_matplotlib()
@@ -1298,6 +1328,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
+                        drift_ref_epoch_type=drift_ref_epoch_type,
                         verbose=IS_VERBOSE,
                     )
                 else:
@@ -1308,6 +1339,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                       scaling_factor_for_sd_of_observations=scaling_factor_obs_sd,
                                                       confidence_level_chi_test=confidence_level_chi_test,
                                                       confidence_level_tau_test=confidence_level_tau_test,
+                                                      drift_ref_epoch_type=drift_ref_epoch_type,
                                                       verbose=IS_VERBOSE)
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,

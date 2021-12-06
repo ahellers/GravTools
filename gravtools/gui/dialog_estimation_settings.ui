@@ -392,7 +392,7 @@
            </layout>
           </item>
           <item>
-           <widget class="QCheckBox" name="checkBox_drif_ref_epoch_active_obs_only">
+           <widget class="QCheckBox" name="checkBox_drift_ref_epoch_active_obs_only">
             <property name="toolTip">
              <string>Consider only active observations in the determination of the drift polynomial reference epoch(s).</string>
             </property>
