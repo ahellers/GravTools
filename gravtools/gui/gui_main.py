@@ -193,7 +193,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
         """Invoked whenever the adjustment method changed in the estimation settings dialog."""
-        # print(index)
         # enable/disable GUI elements in the estimation settings dialog according to the selected method:
         selected_method = self.dlg_estimation_settings.comboBox_adjustment_method.currentText()
         if selected_method == 'MLR (BEV legacy processing)':
@@ -956,7 +955,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot(int)
     def on_comboBox_results_lsm_run_selection_current_index_changed(self, index: int):
         """Invoked whenever the index of the selected item in the combobox changed."""
-        # print(index)
         self.update_results_tab()
 
     @pyqtSlot(int)
@@ -1713,10 +1711,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         where the observation tree view is changed accordingly and the `keep_ob` fag is set in the survey in the
         campaign data (method: `self.campaign.surveys[<survey_nanem>].activate_observation()`).
         """
-        # print(points, ev)
-        # print(f'Number of clicked points: {len(ev)}')  # Initially ALL points under the mouse cursor are selected!
-        # print(f'-----------------------------')
-
         # Get first selected point (only select ONE point!):
         spot_item = ev[0]  # <class 'pyqtgraph.graphicsItems.ScatterPlotItem.SpotItem'>
         # Select item in observation_model and toggel the "keep_obs" state:

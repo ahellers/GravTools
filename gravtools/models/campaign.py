@@ -11,6 +11,7 @@ from gravtools.models.survey import Survey
 from gravtools.models.station import Station
 from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
     GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
+from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
 class Campaign:
@@ -41,6 +42,8 @@ class Campaign:
     ref_delta_t_dt : datetime object
         Reference epoch for relative times within the campaign, e.g. for the determination of the drift polynomials.
         This reference time is equalt to the first (active) observation in the campaign considering all surveys.
+    gravtools_version : str
+        Version of the gravtools software that was used to create the dataset.
     """
 
     def __init__(self,
@@ -126,6 +129,9 @@ class Campaign:
                 raise TypeError('`ref_delta_t_dt` needs to be a datetime object.')
         self.ref_delta_t_dt = ref_delta_t_dt
 
+        # Version of gravtools:
+        self.gravtools_version = GRAVTOOLS_VERSION
+
     def add_survey(self, survey_add: Survey, verbose=False) -> bool:
         """Add a survey to campaign and specify whether to use it for ths analysis.
 
@@ -182,7 +188,7 @@ class Campaign:
             if verbose:
                 print(f'Survey "{survey_name}" does not exist.')
             return False
-        except:
+        except Exception:
             if verbose:
                 print(f'Failed to remove survey {survey_name}.')
             return False
@@ -577,7 +583,6 @@ class Campaign:
 
         # Loop over stations in results dataframe:
         for index, row in results_stat_df.iterrows():
-            # print(row['station_name'])
             station_name = row['station_name']
             observed_in_surveys = []
             dhb_list_m = []

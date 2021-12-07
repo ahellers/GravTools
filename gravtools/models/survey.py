@@ -1219,10 +1219,10 @@ class Survey:
             setup_ids = [setup_id]
 
         # Loop over all setups:
-        for id in setup_ids:
-            filter_id = self.obs_df['setup_id'] == id
+        for setup_id in setup_ids:
+            filter_id = self.obs_df['setup_id'] == setup_id
             if verbose:
-                print(f' - setup ID: {id}')
+                print(f' - setup ID: {setup_id}')
             # Check number of observations in setup:
             if len(self.obs_df.loc[filter_id]) < (n_obs + 1):
                 if verbose:
@@ -1431,7 +1431,6 @@ if __name__ == '__main__':
 
     # ### Getters ###
     # Get ÖSGN stations:
-    # print(stat.get_oesgn_stations)
 
     # Get all stations:
     print(stat.get_all_stations)

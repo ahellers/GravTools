@@ -151,7 +151,6 @@ class StationTableModel(QAbstractTableModel):
                     self._data.at[row, col] = False
                     self.dataChanged.emit(index, index)  # Is it necessary?
                 else:
-                    # print(f'Input not valid: {value}')
                     QMessageBox.warning(self.parent(), 'Warning!',
                                         f'Input "{value}" not valid! Only "True" or "False" allowed.')
                     return False
@@ -1043,12 +1042,14 @@ class ResultsDriftModel(QAbstractTableModel):
     }
 
     # Column names (keys) and short description (values):
+    # Column names (keys) and short description (values):
     _PLOT_COLUMNS_DICT = {
         'survey_name': 'Survey',
         'degree': 'Degree',
         'coefficient': 'Coefficient',
         'sd_coeff': 'SD',
         'coeff_unit': 'Unit',
+        'ref_epoch_t0_dt': 'Ref. epoch',
     }
     _PLOT_COLUMNS = list(_PLOT_COLUMNS_DICT.keys())  # Actual list of columns to be shown
 
@@ -1135,6 +1136,8 @@ class ResultsDriftModel(QAbstractTableModel):
                             return '{1:.{0}f}'.format(num_dec_places, value)
                         else:
                             return str(value)
+                elif isinstance(value, dt.datetime):
+                    return value.strftime("%Y-%m-%d, %H:%M:%S")
                 else:  # all other
                     return str(value)
 
@@ -1214,10 +1217,6 @@ class ResultsCorrelationMatrixModel(QAbstractTableModel):
                 self._data = None
                 self._data_column_names = None
                 QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
-            except AttributeError as e:
-                print(e)
-                if e == "'BEVLegacyProcessing' object has no attribute 'x_estimate_names'":
-                    print('test')
             except Exception as e:
                 QMessageBox.critical(self.parent(), 'Error!', str(e))
                 self._data = None

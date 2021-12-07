@@ -405,7 +405,6 @@ class LSM:
         mat_Rxx = np.zeros([self.Cxx.shape[0], self.Cxx.shape[1]])
         for i_row in range(mat_Rxx.shape[0]):
             for i_col in range(mat_Rxx.shape[1]):
-                print(i_row, i_col)
                 mat_Rxx[i_row, i_col] = self.Cxx[i_row, i_col] / (
                             np.sqrt(self.Cxx[i_row, i_row]) * np.sqrt(self.Cxx[i_col, i_col]))
         return mat_Rxx

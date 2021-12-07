@@ -16,6 +16,7 @@ import pandas as pd
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test
 from gravtools.models import misc
+from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
 class LSMNonDiff(LSM):
@@ -59,6 +60,7 @@ class LSMNonDiff(LSM):
         'coefficient': 'Coefficient',
         'sd_coeff': 'SD',
         'coeff_unit': 'Unit',
+        'ref_epoch_t0_dt': 't0',
     }
     _DRIFT_POL_DF_COLUMNS = list(_DRIFT_POL_DF_COLUMNS_DICT.keys())
 
@@ -246,6 +248,7 @@ class LSMNonDiff(LSM):
 
         if verbose or self.write_log:
             tmp_str = f'#### Adjustment log (non-differential LSM) ####\n'
+            tmp_str += f'Gravtools version: {GRAVTOOLS_VERSION}\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
             tmp_str += f'Number of surveys: {number_of_surveys}\n'
@@ -257,6 +260,7 @@ class LSMNonDiff(LSM):
             tmp_str += f'Degree of freedom (with datum constraints): {number_of_observations - number_of_parameters + number_of_datum_stations}\n'
             tmp_str += f'\n'
             tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
+            tmp_str += f'One reference epoch for each: {drift_ref_epoch_type}\n'
             tmp_str += f'A priori std. deviation of unit weight [µGal]: {sig0_mugal}\n'
             tmp_str += f'Scaling factor for datum constraints: {scaling_factor_datum_observations}\n'
             tmp_str += f'Scaling factor for SD of setup observations: {scaling_factor_for_sd_of_observations}\n'
@@ -269,7 +273,6 @@ class LSMNonDiff(LSM):
                 print(tmp_str)
             if self.write_log:
                 self.log_str += tmp_str
-
 
         # Initialize matrices:
         # => Initialize complete matrices first and then populate them. This is most efficient!
@@ -361,7 +364,6 @@ class LSMNonDiff(LSM):
         # - constraints:
         datum_station_id = -1
         for index, row in stat_df_obs_datum.iterrows():
-            # print(f' - Station {row["station_name"]:10s} (row index {index:d})')
             datum_station_id += 1
             station_name = row['station_name']
             station_id = self.observed_stations.index(station_name)
@@ -537,14 +539,21 @@ class LSMNonDiff(LSM):
         coefficient_list = []
         sd_coeff_list = []
         coeff_unit_list = []
+        ref_epoch_t0_dt_list = []
         tmp_idx = 0
         x_estimate_drift_coeff_names = []
-        for survey_name, setup_df in self.setups.items():
+        for survey_name, setup_data in self.setups.items():
             for degree in range(drift_pol_degree + 1):
                 survey_name_list.append(survey_name)
                 degree_list.append(degree)  # starts with 1
                 coefficient_list.append(drift_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
+                if drift_ref_epoch_type == 'survey':
+                    ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_h'])
+                elif drift_ref_epoch_type == 'campaign':
+                    ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_campaign_h'])
+                else:
+                    ref_epoch_t0_dt_list.append(None)  # Should not happen!
                 if degree == 0:
                     coeff_unit_list.append(f'µGal')
                 else:
@@ -555,7 +564,8 @@ class LSMNonDiff(LSM):
                                                   degree_list,
                                                   coefficient_list,
                                                   sd_coeff_list,
-                                                  coeff_unit_list)),
+                                                  coeff_unit_list,
+                                                  ref_epoch_t0_dt_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
 
         for idx, v_obs_mugal in enumerate(v_obs_est_mugal):
