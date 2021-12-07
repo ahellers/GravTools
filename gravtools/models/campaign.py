@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 import os
 
+import pandas as pd
 from gravtools.models.lsm import LSM
 from gravtools.models.lsm_diff import LSMDiff
 from gravtools.models.lsm_nondiff import LSMNonDiff
@@ -10,7 +11,7 @@ from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
 from gravtools.models.station import Station
 from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
-    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
+    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, EXPORT_OBS_LIST_COLUMNS
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
@@ -589,7 +590,8 @@ class Campaign:
             dhf_list_m = []
 
             # Get surveys at which the station was observed:
-            for survey_name, setup_df in lsm_run.setups.items():
+            for survey_name, setup_data in lsm_run.setups.items():
+                setup_df = setup_data['setup_df']
                 if len(setup_df.loc[setup_df['station_name'] == station_name]) > 0:  # was observed in this setup!
                     observed_in_surveys.append(survey_name)
                     obs_df = self.surveys[survey_name].obs_df
@@ -693,6 +695,44 @@ class Campaign:
             if not os.path.isdir(output_directory):
                 raise AssertionError(f'The directory "{output_directory}" does not exist!')
         self.output_directory = output_directory
+
+    def write_obs_list_csv(self, filename_csv: str, export_type: str = 'all_obs', verbose: bool = True):
+        """Export a list of all observations in the campaign to a CSV file.
+
+        This file gives information which observations were active and have been used to compute the setup observations.
+
+        Parameters
+        ----------
+        filename_csv : str
+            Name and path of the output CSV file.
+        export_type : str, optional (default = 'all_obs')
+            Defines which observations are exported. There are three options: (1) all observations ('all_obs'), (2) only
+            active observations ('active_only') or (3) only inactive observations ('inactive_only').
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Prepare dataframe with all observations of all surveys
+        export_survey_df_list = []
+        for survey_name, survey in self.surveys.items():
+            # print(survey, survey_name)
+            tmp_obs_df = survey.obs_df.copy(deep=True)
+            tmp_obs_df.insert(0, 'survey_name', survey_name)
+            export_survey_df_list.append(tmp_obs_df)
+        export_obs_df = pd.concat(export_survey_df_list, ignore_index=True, sort=False)
+        export_obs_df.sort_values('obs_epoch', inplace=True)
+
+        # Filter data:
+        if export_type != 'all_obs':
+            if export_type == 'active_only':
+                tmp_filter = export_obs_df['keep_obs']
+            elif export_type == 'inactive_only':
+                tmp_filter = ~export_obs_df['keep_obs']
+            export_obs_df = export_obs_df.loc[tmp_filter, :]
+
+        # Export to CSV file:
+        if verbose:
+            print(f'Write observation list to: {filename_csv}')
+        export_obs_df.to_csv(filename_csv, index=False, columns=EXPORT_OBS_LIST_COLUMNS)
 
 
 if __name__ == '__main__':

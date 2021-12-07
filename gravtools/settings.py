@@ -116,6 +116,10 @@ CORRELATION_COEF_COLORS = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b'
 # Background color for diagonal elements (=1):
 CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
 
+# --- Data export options: ---
+# List of columns in the `obs_df` dataframe that are written to the exported observation list CSV file:
+EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'obs_epoch', 'station_name', 'keep_obs']
+
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----
 

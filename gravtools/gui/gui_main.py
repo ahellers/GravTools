@@ -335,8 +335,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if not isinstance(station_record.is_datum, bool):
                     QMessageBox.critical(self, 'Error!', 'The is_datum flag is not a bool type!')
                 else:
-                    self.campaign.stations.set_datum_stations([station_record.station_name], is_datum=station_record.is_datum, verbose=IS_VERBOSE)
-
+                    self.campaign.stations.set_datum_stations([station_record.station_name],
+                                                              is_datum=station_record.is_datum, verbose=IS_VERBOSE)
 
     def set_up_stations_map(self):
         """Set up `self.GraphicsLayoutWidget_stations_map` widget."""
@@ -429,14 +429,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 br = symbol.boundingRect()
                 # getting scale
                 # scale = min(1. / (br.width()), 1. / br.height())
-                scale = 1. / (br.width()*3)
+                scale = 1. / (br.width() * 3)
                 # getting transform object
                 tr = QtGui.QTransform()
                 # setting scale to transform object
                 tr.scale(scale, scale)
                 symbol_plot = tr.map(symbol)
                 spot_dic = {'pos': (row['long_deg'], row['lat_deg']),
-                            'size': STATION_LABEL_TEXT_SIZE/symbol_plot.boundingRect().height(),
+                            'size': STATION_LABEL_TEXT_SIZE / symbol_plot.boundingRect().height(),
                             # 'pen': {'color': pen_color, 'width': SCATTER_PLOT_PEN_WIDTH},
                             'brush': STATION_LABEL_TEXT_COLOR,
                             'symbol': symbol_plot}
@@ -460,7 +460,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.glw_drift_plot.setBackground('w')  # white background color
         # Create sub-plots:
         self.drift_plot = self.glw_drift_plot.addPlot(0, 0, name='drift_plot',
-                                                             axisItems={'bottom': TimeAxisItem(orientation='bottom')})
+                                                      axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.drift_plot.setLabel(axis='left', text='')
         self.drift_plot.addLegend()
 
@@ -513,7 +513,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.plot_drift_mlr_bev_legacy(lsm_run, surveys=selected_survey_names, stations=selected_station_names)
             elif lsm_run.lsm_method == 'LSM_non_diff':
                 self.plot_drift_lsm_non_diff(lsm_run, surveys=selected_survey_names,
-                                         stations=selected_station_names)
+                                             stations=selected_station_names)
             else:
                 self.drift_plot.clear()  # Clear drift plot
 
@@ -566,7 +566,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Drift function time reference as UNIX time (needed for plots):
             epoch_unix_min = setup_df['epoch_unix'].min()
             epoch_unix_max = setup_df['epoch_unix'].max()
-            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max,
+                                             settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
             # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
             # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
@@ -579,7 +580,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Plot drift function:
             pen = pg.mkPen(color='k', width=2)
-            self.drift_plot.plot(delta_t_epoch_unix, yy_mugal-subtr_const_mugal,
+            self.drift_plot.plot(delta_t_epoch_unix, yy_mugal - subtr_const_mugal,
                                  name=f'drift: {survey_name}',
                                  pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
 
@@ -596,9 +597,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         brush_color = 'w'
                     else:
                         brush_color = self.station_colors_dict_results[row['station_name']]
-                spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
+                spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal'] - subtr_const_mugal),
                             'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
-                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                    'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                             'brush': brush_color}
                 spots.append(spot_dic)
 
@@ -610,13 +612,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for station, color in self.station_colors_dict_results.items():
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                               'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
             s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
             self.drift_plot.legend.addItem(s_item_tmp, station)
 
         # Adjust plot window:
         self.drift_plot.showGrid(x=True, y=True)
-        self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal/1000:.1f} mGal')
+        self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal / 1000:.1f} mGal')
         self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
         self.drift_plot.autoRange()
 
@@ -672,7 +675,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # Drift function time reference as UNIX time (needed for plots):
                 epoch_unix_min = setup_df['epoch_unix'].min()
                 epoch_unix_max = setup_df['epoch_unix'].max()
-                delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+                delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max,
+                                                 settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
                 # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
                 # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
@@ -686,7 +690,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                 # Plot drift function:
                 pen = pg.mkPen(color='k', width=2)
-                self.drift_plot.plot(delta_t_epoch_unix, yy_mugal-subtr_const_mugal,
+                self.drift_plot.plot(delta_t_epoch_unix, yy_mugal - subtr_const_mugal,
                                      name=f'drift: {survey_name} (offset: {offset_mugal:.1f} µGal)',
                                      pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
 
@@ -703,9 +707,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                             brush_color = 'w'
                         else:
                             brush_color = self.station_colors_dict_results[row['station_name']]
-                    spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']-subtr_const_mugal),
+                    spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal'] - subtr_const_mugal),
                                 'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
-                                'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                                'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                        'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                                 'brush': brush_color}
                     spots.append(spot_dic)
 
@@ -717,13 +722,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             for station, color in self.station_colors_dict_results.items():
                 s_item_tmp = pg.ScatterPlotItem()
                 s_item_tmp.setBrush(color)
-                s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+                s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                   'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
                 s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
                 self.drift_plot.legend.addItem(s_item_tmp, station)
 
             # Adjust plot window:
             self.drift_plot.showGrid(x=True, y=True)
-            self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal/1000:.1f} mGal')
+            self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal / 1000:.1f} mGal')
             self.drift_plot.setTitle(f'Drift function w.r.t. setup observations (with arbitrary offset!)')
             self.drift_plot.autoRange()
 
@@ -778,7 +784,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Drift function time reference as UNIX time (needed for plots):
         epoch_unix_min = plot_setup_df['epoch_unix'].min()
         epoch_unix_max = plot_setup_df['epoch_unix'].max()
-        delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+        delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max,
+                                         settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
         # Plot drift function:
         pen = pg.mkPen(color='k', width=2)
@@ -801,7 +808,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     brush_color = self.station_colors_dict_results[row['station_name']]
             spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal']),
                         'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
-                        'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                        'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                         'brush': brush_color}
             spots.append(spot_dic)
 
@@ -813,7 +821,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for station, color in self.station_colors_dict_results.items():
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
-            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR, 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                               'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
             s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
             self.drift_plot.legend.addItem(s_item_tmp, station)
 
@@ -847,7 +856,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if results_obs_df is not None:  # Data available for plotting
             # Get data:
             data = results_obs_df[column_name].values
-            obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,'s')
+            obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
+                '1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
             plot_name = self.results_observation_model.get_short_column_description(column_name)
             self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=plot_name, color='b',
                               symbol='o', symbol_size=10)
@@ -953,8 +963,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         `idx = -1` indicates that no valid lsm run was selected. In this case the table view should be cleared.
         """
         self.results_correlation_matrix_model.update_view_model(lsm_run_index,
-                                                     station_name=station_name,
-                                                     survey_name=survey_name)
+                                                                station_name=station_name,
+                                                                survey_name=survey_name)
         self.results_correlation_matrix_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_results_correlation_matrix.resizeColumnsToContents()
 
@@ -1088,7 +1098,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Try to select the previous item again:
         if idx != -1:  # Previous selection available
             try:
-                current_short_description = self.results_observation_model.get_short_column_description(current_column_name)
+                current_short_description = self.results_observation_model.get_short_column_description(
+                    current_column_name)
                 self.comboBox_results_obs_plot_select_data_column.setCurrentText(current_short_description)
             except:
                 pass
@@ -1144,14 +1155,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if idx == -1:  # combo box is empty => No lsm run available!
             QMessageBox.warning(self, 'Warning!', 'No LSM adjustment run to be deleted!')
         else:
-            try:
-                self.campaign.delete_lsm_run(idx)
-            except Exception as e:
-                QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f'LSM run "{time_str}" not deleted.')
+            time_str = self.campaign.lsm_runs[idx].init_time.strftime("%Y-%m-%d, %H:%M:%S")
+            comment_str = self.campaign.lsm_runs[idx].comment
+            msg_text = f'Date and time: {time_str}\nComment: {comment_str}'
+            reply = QMessageBox.question(self,
+                                         'Delete LSM run?',
+                                         msg_text,
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                try:
+                    self.campaign.delete_lsm_run(idx)
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                    self.statusBar().showMessage(f'LSM run "{time_str}" not deleted.')
+                else:
+                    self.statusBar().showMessage(f'LSM run "{time_str}" deleted.')
+                    self.update_results_tab()
             else:
-                self.statusBar().showMessage(f'LSM run "{time_str}" deleted.')
-                self.update_results_tab()
+                pass
 
     def get_selected_lsm_run(self):
         """Get the selected lsm run in the results tab."""
@@ -1473,6 +1494,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_menu_file_export_results(self):
         """Launch dialog for exporting results of an LSM run."""
+        _OBS_FILE_EXPORT_TYPES = {'all observations': 'all_obs',
+                                  'only active observations': 'active_only',
+                                  'only inactive observations': 'inactive_only'}
         dlg = DialogExportResults(campaign=self.campaign)
 
         return_value = dlg.exec()
@@ -1517,6 +1541,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         filename_log = filename + '.log'
                         with open(os.path.join(output_path, filename_log), 'w') as out_file:
                             out_file.write(log_string)
+
+                    # Write observatio list (CSV file):
+                    if dlg.checkBox_write_observation_list.checkState() == Qt.Checked:
+                        filename_obs_list = filename + '_obs.csv'
+                        export_type = _OBS_FILE_EXPORT_TYPES[dlg.comboBox_observation_list_export_options.currentText()]
+                        self.campaign.write_obs_list_csv(filename_csv=os.path.join(output_path, filename_obs_list),
+                                                         export_type=export_type,
+                                                         verbose=IS_VERBOSE)
 
                     # Save drift plot to PNG file:
                     if dlg.checkBox_save_drift_plot_png.checkState() == Qt.Checked:
@@ -1588,8 +1620,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if obs_df is not None and survey_name is not None:
             setup_df = self.observation_model.get_setup_data
-            obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,
-                                                                                                                         's')
+            obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64(
+                '1970-01-01T00:00:00Z')) / np.timedelta64(1,
+                                                          's')
             # Plot reduced or unreduced observations:
             flag_show_reduced_observations = False
             if self.checkBox_obs_plot_reduced_observations.checkState() == Qt.Checked and not any(
@@ -1642,7 +1675,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Type of 'self.plot_obs_g_data_item': PlotDataItem
             self.plot_obs_g_data_item = self.plot_obs_g.plot(obs_epoch_timestamps, g_mugal - plot_offset_mugal,
                                                              name=f'Ref.: {ref_height_name}',
-                                                             pen=pen, symbol='o', symbolSize=10, symbolBrush=symbol_brushes)
+                                                             pen=pen, symbol='o', symbolSize=10,
+                                                             symbolBrush=symbol_brushes)
             self.plot_obs_g_data_item.sigPointsClicked.connect(self.on_observation_plot_data_item_clicked)
             self.plot_obs_g.showGrid(x=True, y=True)
             self.plot_obs_g.setTitle(f'Observed gravity [µGal] + {plot_offset_mgal:.1f} mGal')
@@ -2434,7 +2468,6 @@ class DialogOptions(QDialog, Ui_Dialog_options):
             return False
         else:
             raise AssertionError('Invalid GUI mode selected!')
-
 
 
 class DialogExportResults(QDialog, Ui_Dialog_export_results):
