@@ -908,6 +908,9 @@
    <property name="text">
     <string>&amp;Load Campaign</string>
    </property>
+   <property name="toolTip">
+    <string>Load campaign</string>
+   </property>
   </action>
   <action name="action_Add_Stations">
    <property name="enabled">
@@ -996,6 +999,9 @@
    </property>
    <property name="text">
     <string>Export Results</string>
+   </property>
+   <property name="toolTip">
+    <string>Export data</string>
    </property>
   </action>
   <action name="action_Change_output_directory">

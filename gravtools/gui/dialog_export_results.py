@@ -120,7 +120,7 @@ class Ui_Dialog_export_results(object):
 
     def retranslateUi(self, Dialog_export_results):
         _translate = QtCore.QCoreApplication.translate
-        Dialog_export_results.setWindowTitle(_translate("Dialog_export_results", "Export results"))
+        Dialog_export_results.setWindowTitle(_translate("Dialog_export_results", "Export data"))
         self.groupBox_general_settings.setTitle(_translate("Dialog_export_results", "General settings"))
         self.label_select_lsm_run.setText(_translate("Dialog_export_results", "Select LSM run"))
         self.comboBox_select_lsm_run.setToolTip(_translate("Dialog_export_results", "Select one LSM run for data export."))

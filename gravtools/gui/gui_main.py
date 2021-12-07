@@ -1498,29 +1498,35 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                   'only active observations': 'active_only',
                                   'only inactive observations': 'inactive_only'}
         dlg = DialogExportResults(campaign=self.campaign)
-
         return_value = dlg.exec()
         if return_value == QDialog.Accepted:
             # Load Stations to campaign
-            lsm_run_time_tag = dlg.comboBox_select_lsm_run.currentText()
-            lsm_run_idx = dlg.comboBox_select_lsm_run.currentIndex()
-            if lsm_run_idx != -1:  # LSM run selected?
-                try:
-                    # Get GUI settings and data:
-                    lsm_run = self.campaign.lsm_runs[lsm_run_idx]
-                    output_path = dlg.lineEdit_export_path.text()
-                    if dlg.checkBox_add_lsm_comment_to_filename.checkState() == Qt.Checked:
-                        append_lsm_run_comment_to_filenames = True
-                        if not lsm_run.comment:  # Empty string
+            try:
+                # Get GUI settings and data:
+                append_lsm_run_comment_to_filenames = False
+                output_path = dlg.lineEdit_export_path.text()
+                filename = self.campaign.campaign_name
+
+                # Append lsm run comment to filename, if available:
+                if dlg.flag_lsm_runs_available:
+                    # lsm_run_time_tag = dlg.comboBox_select_lsm_run.currentText()
+                    lsm_run_idx = dlg.comboBox_select_lsm_run.currentIndex()
+                    if lsm_run_idx != -1:  # LSM run selected?
+                        lsm_run = self.campaign.lsm_runs[lsm_run_idx]
+                        # Append LSM comment to filename?
+                        if dlg.checkBox_add_lsm_comment_to_filename.checkState() == Qt.Checked:
+                            append_lsm_run_comment_to_filenames = True
+                            if not lsm_run.comment:  # Empty string
+                                append_lsm_run_comment_to_filenames = False
+                        else:
                             append_lsm_run_comment_to_filenames = False
+                        if append_lsm_run_comment_to_filenames:
+                            filename = self.campaign.campaign_name + '_' + lsm_run.comment
                     else:
-                        append_lsm_run_comment_to_filenames = False
+                        dlg.flag_lsm_runs_available = False  # No LSM run selected!
 
-                    if append_lsm_run_comment_to_filenames:
-                        filename = self.campaign.campaign_name + '_' + lsm_run.comment
-                    else:
-                        filename = self.campaign.campaign_name
-
+                # If LSM run available:
+                if dlg.flag_lsm_runs_available:
                     # Write nsb file:
                     if dlg.checkBox_write_nsb_file.checkState() == Qt.Checked:
                         filename_nsb = filename + '.nsb'
@@ -1542,14 +1548,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         with open(os.path.join(output_path, filename_log), 'w') as out_file:
                             out_file.write(log_string)
 
-                    # Write observatio list (CSV file):
-                    if dlg.checkBox_write_observation_list.checkState() == Qt.Checked:
-                        filename_obs_list = filename + '_obs.csv'
-                        export_type = _OBS_FILE_EXPORT_TYPES[dlg.comboBox_observation_list_export_options.currentText()]
-                        self.campaign.write_obs_list_csv(filename_csv=os.path.join(output_path, filename_obs_list),
-                                                         export_type=export_type,
-                                                         verbose=IS_VERBOSE)
-
                     # Save drift plot to PNG file:
                     if dlg.checkBox_save_drift_plot_png.checkState() == Qt.Checked:
                         # Reference: https://pyqtgraph.readthedocs.io/en/latest/exporting.html
@@ -1557,16 +1555,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_results_drift_plot.scene())
                         flag_export_successful = exporter.export(os.path.join(output_path, filename_png))
 
-                except Exception as e:
-                    QMessageBox.critical(self, 'Error!', str(e))
-                    self.statusBar().showMessage(f"No exports.")
-                else:
-                    self.statusBar().showMessage(f"Export to {output_path} successful!")
+                # if observation data available:
+                if dlg.flag_observation_data_available:
+                    # Write observation list (CSV file):
+                    if dlg.checkBox_write_observation_list.checkState() == Qt.Checked:
+                        filename_obs_list = filename + '_obs.csv'
+                        export_type = _OBS_FILE_EXPORT_TYPES[dlg.comboBox_observation_list_export_options.currentText()]
+                        self.campaign.write_obs_list_csv(filename_csv=os.path.join(output_path, filename_obs_list),
+                                                         export_type=export_type,
+                                                         verbose=IS_VERBOSE)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"No exports.")
             else:
-                self.statusBar().showMessage(f"No LSM run selected => No exports.")
+                self.statusBar().showMessage(f"Export to {output_path} successful!")
         else:
             self.statusBar().showMessage(f"No exports.")
-            pass
 
     def set_up_obseration_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
@@ -2476,19 +2480,28 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
     def __init__(self, campaign, parent=None):
         super().__init__(parent)
         self._lsm_runs = campaign.lsm_runs
+        self.flag_observation_data_available = len(campaign.surveys) > 0
+        self.flag_lsm_runs_available = len(campaign.lsm_run_times) > 0
         # Run the .setupUi() method to show the GUI
         self.setupUi(self)
         # Populate the combo box to select an LSM run (enable/disable groupBoxes accordingly):
         self.comboBox_select_lsm_run.clear()
         self.comboBox_select_lsm_run.addItems(campaign.lsm_run_times)
-        if len(campaign.lsm_run_times) > 0:
+        if self.flag_lsm_runs_available:
             self.groupBox_other_files.setEnabled(True)
             self.groupBox_nsb_file.setEnabled(True)
-            self.buttonBox.buttons()[0].setEnabled(True)  # OK button in buttonBox
         else:
             self.groupBox_other_files.setEnabled(False)
             self.groupBox_nsb_file.setEnabled(False)
+        if self.flag_observation_data_available:
+            self.groupBox_observation_list.setEnabled(True)
+        else:
+            self.groupBox_observation_list.setEnabled(False)
+        if self.flag_lsm_runs_available or self.flag_observation_data_available:
+            self.buttonBox.buttons()[0].setEnabled(True)  # OK button in buttonBox
+        else:
             self.buttonBox.buttons()[0].setEnabled(False)  # OK button in buttonBox
+
         # Set the lineEdit with the export path:
         self.lineEdit_export_path.setText(campaign.output_directory)
         # connect signals and slots:
