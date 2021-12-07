@@ -17,6 +17,7 @@ from gravtools.gui.dialog_load_stations import Ui_Dialog_load_stations
 from gravtools.gui.dialog_corrections import Ui_Dialog_corrections
 from gravtools.gui.dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settings
+from gravtools.gui.dialog_setup_data import Ui_Dialog_setup_data
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
@@ -26,7 +27,6 @@ from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools.models.survey import Survey
 from gravtools.models.campaign import Campaign
 from gravtools import settings
-
 
 DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
 DEFAULT_CG5_OBS_FILE_PATH = os.path.abspath(os.getcwd())  # Current working directory
@@ -74,6 +74,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
         self.action_Estimation_settings.triggered.connect(self.on_menu_estimation_settings)
+        self.action_Setup_data_options.triggered.connect(self.on_menu_observations_setup_data)
         self.action_Export_Results.triggered.connect(self.on_menu_file_export_results)
         self.action_Options.triggered.connect(self.on_menu_file_options)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
@@ -115,6 +116,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_autoselect_settings = DialogAutoselectSettings()
         self.dlg_estimation_settings = DialogEstimationSettings()
         self.dlg_options = DialogOptions()
+        self.dlg_setup_data = DialogSetupData()
 
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
@@ -202,6 +204,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(False)
             self.dlg_estimation_settings.label_sig0.setEnabled(False)
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -209,6 +212,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
         elif selected_method == 'LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -216,6 +220,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
@@ -224,6 +229,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
             self.statusBar().showMessage(f"Unknown estimation method selected!")
 
@@ -1205,7 +1211,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Compute setup data for the campaign."""
 
         # Get GUI settings:
-        active_obs_only_for_ref_epoch = self.dlg_estimation_settings.checkBox_drift_ref_epoch_active_obs_only.checkState() == Qt.Checked
+        active_obs_only_for_ref_epoch = self.dlg_setup_data.checkBox_drift_ref_epoch_active_obs_only.checkState() == Qt.Checked
 
         try:
             self.campaign.calculate_setup_data(obs_type='reduced',
@@ -1455,12 +1461,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_menu_observations_autoselection_settings(self):
         """Launch dialog for defining the autoselection settings."""
         return_value = self.dlg_autoselect_settings.exec()
-        pass
+
+    def on_menu_observations_setup_data(self):
+        """Launch dialog for defining setup data options."""
+        return_value = self.dlg_setup_data.exec()
 
     def on_menu_estimation_settings(self):
         """Launch dialog for defining the estimation settings."""
         return_value = self.dlg_estimation_settings.exec()
-        pass
 
     @pyqtSlot()
     def on_menu_file_export_results(self):
@@ -2390,6 +2398,16 @@ class DialogAutoselectSettings(QDialog, Ui_Dialog_autoselection_settings):
 
 class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
     """Dialog to define the estimation settings."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+
+
+class DialogSetupData(QDialog, Ui_Dialog_setup_data):
+    """Dialog to define setup data options."""
 
     def __init__(self, parent=None):
         super().__init__(parent)

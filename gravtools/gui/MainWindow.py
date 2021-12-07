@@ -14,6 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
+        MainWindow.setEnabled(True)
         MainWindow.resize(1337, 746)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -430,6 +431,7 @@ class Ui_MainWindow(object):
         self.menu_Observations.setTearOffEnabled(False)
         self.menu_Observations.setObjectName("menu_Observations")
         self.menuEstimation_settings = QtWidgets.QMenu(self.menubar)
+        self.menuEstimation_settings.setEnabled(True)
         self.menuEstimation_settings.setObjectName("menuEstimation_settings")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
@@ -469,6 +471,7 @@ class Ui_MainWindow(object):
         self.action_Autoselection_settings = QtWidgets.QAction(MainWindow)
         self.action_Autoselection_settings.setObjectName("action_Autoselection_settings")
         self.action_Estimation_settings = QtWidgets.QAction(MainWindow)
+        self.action_Estimation_settings.setEnabled(True)
         self.action_Estimation_settings.setObjectName("action_Estimation_settings")
         self.actionEstimate_long_term_drift = QtWidgets.QAction(MainWindow)
         self.actionEstimate_long_term_drift.setEnabled(True)
@@ -481,6 +484,9 @@ class Ui_MainWindow(object):
         self.action_Change_output_directory.setObjectName("action_Change_output_directory")
         self.action_Options = QtWidgets.QAction(MainWindow)
         self.action_Options.setObjectName("action_Options")
+        self.action_Setup_data_options = QtWidgets.QAction(MainWindow)
+        self.action_Setup_data_options.setEnabled(True)
+        self.action_Setup_data_options.setObjectName("action_Setup_data_options")
         self.menuAdd_Survey.addAction(self.action_from_CG5_observation_file)
         self.menuAdd_Survey.addAction(self.action_from_BEV_observation_file)
         self.menu_File.addAction(self.action_New_Campaign)
@@ -500,6 +506,7 @@ class Ui_MainWindow(object):
         self.menu_Observations.addAction(self.action_Corrections)
         self.menu_Observations.addAction(self.action_Autoselection_settings)
         self.menu_Observations.addAction(self.actionEstimate_long_term_drift)
+        self.menu_Observations.addAction(self.action_Setup_data_options)
         self.menuEstimation_settings.addAction(self.action_Estimation_settings)
         self.menubar.addAction(self.menu_File.menuAction())
         self.menubar.addAction(self.menu_Observations.menuAction())
@@ -609,4 +616,5 @@ class Ui_MainWindow(object):
         self.action_Export_Results.setText(_translate("MainWindow", "Export Results"))
         self.action_Change_output_directory.setText(_translate("MainWindow", "Change output directory"))
         self.action_Options.setText(_translate("MainWindow", "Options"))
+        self.action_Setup_data_options.setText(_translate("MainWindow", "Setup data options"))
 from pyqtgraph import GraphicsLayoutWidget

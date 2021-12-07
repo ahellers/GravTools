@@ -339,7 +339,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="groupBox_drift_polynomial">
+        <widget class="QGroupBox" name="groupBox_drift_polynomial_advanced">
          <property name="title">
           <string>Drift Polynomial</string>
          </property>
@@ -390,19 +390,6 @@
              </layout>
             </item>
            </layout>
-          </item>
-          <item>
-           <widget class="QCheckBox" name="checkBox_drift_ref_epoch_active_obs_only">
-            <property name="toolTip">
-             <string>Consider only active observations in the determination of the drift polynomial reference epoch(s).</string>
-            </property>
-            <property name="text">
-             <string>Consider only active observations for the reference epoch</string>
-            </property>
-            <property name="checked">
-             <bool>false</bool>
-            </property>
-           </widget>
           </item>
          </layout>
         </widget>
