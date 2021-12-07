@@ -16,6 +16,7 @@ import pandas as pd
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test
 from gravtools.models import misc
+from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
 class LSMNonDiff(LSM):
@@ -59,6 +60,7 @@ class LSMNonDiff(LSM):
         'coefficient': 'Coefficient',
         'sd_coeff': 'SD',
         'coeff_unit': 'Unit',
+        'ref_epoch_t0_dt': 't0',
     }
     _DRIFT_POL_DF_COLUMNS = list(_DRIFT_POL_DF_COLUMNS_DICT.keys())
 
@@ -68,10 +70,19 @@ class LSMNonDiff(LSM):
         ----------
         stat_df : :py:obj:`gravtools.Station.stat_df`
             The station dataframe contains all relevant station data.
-        setups : dict of pandas DataFrames
+        setups : dict of dicts
             The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-            are the survey names (str) and the items are pandas dataframes containing the observation data (see
-            :py:obj:`gravtool.Survey.setup_df`)
+            are the survey names (str). The items are again keys with the follwing items:
+
+            - ref_epoch_delta_t_h : datetime object
+                Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
+                The reference epoch is determined as the epoch of the first (active) observation in this survey.
+            -  ref_epoch_delta_t_campaign_h : datetime object
+                Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
+                dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
+            - setup_df : Pandas DataFrame
+                Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+
         comment : str, optional (default = '')
             Arbitrary comment on the LSM run.
         write_log : bool, optional (default=True)
@@ -140,7 +151,10 @@ class LSMNonDiff(LSM):
                                              f'A minimum of two setups is required in order to define '
                                              f'differential observations!')
                     else:
-                        setups[survey_name] = survey.setup_df
+                        setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
+                                           'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
+                                           'setup_df': survey.setup_df}
+                        setups[survey_name] = setup_data_dict
 
         # Check if setup data is available:
         if len(setups) == 0:
@@ -156,9 +170,10 @@ class LSMNonDiff(LSM):
                scaling_factor_for_sd_of_observations=1.0,
                confidence_level_chi_test=0.95,
                confidence_level_tau_test=0.95,
+               drift_ref_epoch_type='survey',
                verbose=False
                ):  # Confidence level):
-        """Run the adjustment.
+        """Run the adjustment based on non-differential observations.
 
         Parameters
         ----------
@@ -168,13 +183,13 @@ class LSMNonDiff(LSM):
             A priori standard deviation of unit weight of observations [µGal] for the stochastic model of the
             least-squares adjustment.
         scaling_factor_datum_observations : float, optional (default=1.0)
-            Factor for scaling the standard deviation (SD) of g of datum stations. The scaled SD is is used for
+            Factor for scaling the standard deviation (SD) of g of datum stations. The scaled SD is used for
             weighting the direct pseudo observations of g at the datum stations that are introduced as datum
             constraints.
         add_const_to_sd_of_observations_mugal : float, optional (default=0.0)
             The defined additive constant is added to the standard deviation (SD) of setup
             observations in order to scale the SD and the resulting weights to realistic values. In µGal. The scaling
-            factor `scaling_factor_for_sd_of_observations`is applied before adding this constant!
+            factor `scaling_factor_for_sd_of_observations` is applied before adding this constant!
         scaling_factor_for_sd_of_observations : float, optional (default=1.0)
             Scaling factor for the standard deviation of the setup observations. `add_const_to_sd_of_observations_mugal`
             is applied after applying the scaling factor!
@@ -182,12 +197,12 @@ class LSMNonDiff(LSM):
             Confidence level for the goodness-of-fit test.
         confidence_level_tau_test : float, optional (default=0.95)
             Confidence level for the tau test.
+        drift_ref_epoch_type : string ('survey' or 'campaign'), optional (default='survey')
+            Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
+            campaign is the reference epoch of the first (active) observation in each survey (option: 'survey') or the
+            first (active) observation in the whole campaign (option: 'campaign').
         verbose : bool, optional (default=False)
-            If True, status messages are printed to the command line, e.g. for debugging and testing
-
-        Notes
-        -----
-        Non-differential observations are adjusted.
+            If `True`, status messages are printed to the command line, e.g. for debugging and testing
         """
 
         # Prepare lists and indices:
@@ -196,7 +211,8 @@ class LSMNonDiff(LSM):
         survey_names = []
         number_of_observations = 0
         setup_ids = []
-        for survey_name, setup_df in self.setups.items():
+        for survey_name, setup_data in self.setups.items():
+            setup_df = setup_data['setup_df']
             self.observed_stations = self.observed_stations + setup_df['station_name'].to_list()
             number_of_observations = number_of_observations + len(setup_df)
             survey_names.append(survey_name)
@@ -232,6 +248,7 @@ class LSMNonDiff(LSM):
 
         if verbose or self.write_log:
             tmp_str = f'#### Adjustment log (non-differential LSM) ####\n'
+            tmp_str += f'Gravtools version: {GRAVTOOLS_VERSION}\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
             tmp_str += f'Number of surveys: {number_of_surveys}\n'
@@ -243,6 +260,7 @@ class LSMNonDiff(LSM):
             tmp_str += f'Degree of freedom (with datum constraints): {number_of_observations - number_of_parameters + number_of_datum_stations}\n'
             tmp_str += f'\n'
             tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
+            tmp_str += f'One reference epoch for each: {drift_ref_epoch_type}\n'
             tmp_str += f'A priori std. deviation of unit weight [µGal]: {sig0_mugal}\n'
             tmp_str += f'Scaling factor for datum constraints: {scaling_factor_datum_observations}\n'
             tmp_str += f'Scaling factor for SD of setup observations: {scaling_factor_for_sd_of_observations}\n'
@@ -255,7 +273,6 @@ class LSMNonDiff(LSM):
                 print(tmp_str)
             if self.write_log:
                 self.log_str += tmp_str
-
 
         # Initialize matrices:
         # => Initialize complete matrices first and then populate them. This is most efficient!
@@ -281,7 +298,8 @@ class LSMNonDiff(LSM):
         survey_names_list = []
         ref_epoch_dt_list = []  # Reference epochs (datetime objects) of differential observations
 
-        for survey_name, setup_df in self.setups.items():
+        for survey_name, setup_data in self.setups.items():
+            setup_df = setup_data['setup_df']
             survey_count += 1
 
             # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
@@ -301,7 +319,11 @@ class LSMNonDiff(LSM):
                 sd_g_obs_mugal = row['sd_g_mugal']
                 station_name = row['station_name']
                 setup_id = row['setup_id']
-                delta_t_h = row['delta_t_h']  # [hours]
+                if drift_ref_epoch_type == 'survey':
+                    delta_t_h = row['delta_t_h']  # [hours]
+                elif drift_ref_epoch_type == 'campaign':
+                    delta_t_h = row['delta_t_campaign_h']  # [hours]
+
                 ref_epoch_dt = row['epoch_dt']
 
                 # Populate matrices and vectors:
@@ -312,7 +334,7 @@ class LSMNonDiff(LSM):
                 # Partial derivative for drift polynomial including constant instrumental bias (pol. degree = 0):
                 for pd_drift_id in range(drift_pol_degree + 1):
                     mat_A0[obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count*(drift_pol_degree + 1)] = \
-                        delta_t_h ** (pd_drift_id)
+                        delta_t_h ** pd_drift_id
 
                 # Log data in DataFrame:
                 g_obs_mugal_list.append(g_obs_mugal)
@@ -342,7 +364,6 @@ class LSMNonDiff(LSM):
         # - constraints:
         datum_station_id = -1
         for index, row in stat_df_obs_datum.iterrows():
-            # print(f' - Station {row["station_name"]:10s} (row index {index:d})')
             datum_station_id += 1
             station_name = row['station_name']
             station_id = self.observed_stations.index(station_name)
@@ -518,14 +539,21 @@ class LSMNonDiff(LSM):
         coefficient_list = []
         sd_coeff_list = []
         coeff_unit_list = []
+        ref_epoch_t0_dt_list = []
         tmp_idx = 0
         x_estimate_drift_coeff_names = []
-        for survey_name, setup_df in self.setups.items():
+        for survey_name, setup_data in self.setups.items():
             for degree in range(drift_pol_degree + 1):
                 survey_name_list.append(survey_name)
                 degree_list.append(degree)  # starts with 1
                 coefficient_list.append(drift_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
+                if drift_ref_epoch_type == 'survey':
+                    ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_h'])
+                elif drift_ref_epoch_type == 'campaign':
+                    ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_campaign_h'])
+                else:
+                    ref_epoch_t0_dt_list.append(None)  # Should not happen!
                 if degree == 0:
                     coeff_unit_list.append(f'µGal')
                 else:
@@ -536,7 +564,8 @@ class LSMNonDiff(LSM):
                                                   degree_list,
                                                   coefficient_list,
                                                   sd_coeff_list,
-                                                  coeff_unit_list)),
+                                                  coeff_unit_list,
+                                                  ref_epoch_t0_dt_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
 
         for idx, v_obs_mugal in enumerate(v_obs_est_mugal):
@@ -592,6 +621,7 @@ class LSMNonDiff(LSM):
         self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
         self.goodness_of_fit_test_status = chi_test
         self.number_of_outliers = number_of_outliers
+        self.drift_ref_epoch_type = drift_ref_epoch_type
 
     @property
     def get_results_obs_df(self):

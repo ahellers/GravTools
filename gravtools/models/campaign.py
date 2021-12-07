@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 import os
 
+import pandas as pd
 from gravtools.models.lsm import LSM
 from gravtools.models.lsm_diff import LSMDiff
 from gravtools.models.lsm_nondiff import LSMNonDiff
@@ -10,7 +11,8 @@ from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
 from gravtools.models.station import Station
 from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
-    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
+    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, EXPORT_OBS_LIST_COLUMNS
+from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
 class Campaign:
@@ -38,6 +40,11 @@ class Campaign:
     lsm_runs : list of objects inherited from :py:obj:`gravtools.models.lsm.LSM`
         Each item in the list contains one enclosed LSM object. Each LSM object reflects one dedicated run of an
         least-squares adjustment in order to estimate target parameters.
+    ref_delta_t_dt : datetime object
+        Reference epoch for relative times within the campaign, e.g. for the determination of the drift polynomials.
+        This reference time is equalt to the first (active) observation in the campaign considering all surveys.
+    gravtools_version : str
+        Version of the gravtools software that was used to create the dataset.
     """
 
     def __init__(self,
@@ -123,6 +130,9 @@ class Campaign:
                 raise TypeError('`ref_delta_t_dt` needs to be a datetime object.')
         self.ref_delta_t_dt = ref_delta_t_dt
 
+        # Version of gravtools:
+        self.gravtools_version = GRAVTOOLS_VERSION
+
     def add_survey(self, survey_add: Survey, verbose=False) -> bool:
         """Add a survey to campaign and specify whether to use it for ths analysis.
 
@@ -179,7 +189,7 @@ class Campaign:
             if verbose:
                 print(f'Survey "{survey_name}" does not exist.')
             return False
-        except:
+        except Exception:
             if verbose:
                 print(f'Failed to remove survey {survey_name}.')
             return False
@@ -406,10 +416,18 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             self.stations.add_stations_from_survey(survey, verbose)
 
-    def calculate_setup_data(self, obs_type='reduced', set_epoch_of_first_obs_as_reference=True,
+    def calculate_setup_data(self,
+                             obs_type='reduced',
                              active_obs_only_for_ref_epoch=True,
                              verbose=False):
         """Calculate accumulated pseudo observations for each active setup in all active surveys.
+
+        Notes
+        -----
+        Two relative reference epochs are calculated for each setup: (a) w.r.t. the first (active) observation in the
+        whole campaign and (b) w.r.t. the first (active) observation in each survey. Both reference time do not differ
+        for the first survey on a campaign. Whether active observations only are considered is defined by the input
+        parameter `active_obs_only_for_ref_epoch`.
 
         Parameters
         ----------
@@ -422,16 +440,17 @@ class Campaign:
             `active_obs_only_for_ref_epoch` is `True`) observation in each survey and determined individually for
             each survey. Stored in `self.ref_delta_t_dt` (datetime object).
         active_obs_only_for_ref_epoch: bool, optional (default=True)
-            `True` implies that the reference epoch is determined by considering active observations only.
+            `True` implies that the relative reference epochs are determined by considering active observations only.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
         # Get reference epoch:
-        if set_epoch_of_first_obs_as_reference:
-            # Get epoch of first observation:
-            self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
-        else:
-            self.ref_delta_t_dt = None
+        self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
+        # if set_epoch_of_first_obs_as_reference:
+        #     # Get epoch of first observation:
+        #     self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
+        # else:
+        #     self.ref_delta_t_dt = None
 
         # Loop over all surveys in the campaign:
         if verbose:
@@ -441,7 +460,7 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             if survey.keep_survey:
                 survey.calculate_setup_data(obs_type=obs_type,
-                                            ref_delta_t_dt=self.ref_delta_t_dt,
+                                            ref_delta_t_campaign_dt=self.ref_delta_t_dt,
                                             active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
                                             verbose=verbose)
 
@@ -565,14 +584,14 @@ class Campaign:
 
         # Loop over stations in results dataframe:
         for index, row in results_stat_df.iterrows():
-            # print(row['station_name'])
             station_name = row['station_name']
             observed_in_surveys = []
             dhb_list_m = []
             dhf_list_m = []
 
             # Get surveys at which the station was observed:
-            for survey_name, setup_df in lsm_run.setups.items():
+            for survey_name, setup_data in lsm_run.setups.items():
+                setup_df = setup_data['setup_df']
                 if len(setup_df.loc[setup_df['station_name'] == station_name]) > 0:  # was observed in this setup!
                     observed_in_surveys.append(survey_name)
                     obs_df = self.surveys[survey_name].obs_df
@@ -676,6 +695,44 @@ class Campaign:
             if not os.path.isdir(output_directory):
                 raise AssertionError(f'The directory "{output_directory}" does not exist!')
         self.output_directory = output_directory
+
+    def write_obs_list_csv(self, filename_csv: str, export_type: str = 'all_obs', verbose: bool = True):
+        """Export a list of all observations in the campaign to a CSV file.
+
+        This file gives information which observations were active and have been used to compute the setup observations.
+
+        Parameters
+        ----------
+        filename_csv : str
+            Name and path of the output CSV file.
+        export_type : str, optional (default = 'all_obs')
+            Defines which observations are exported. There are three options: (1) all observations ('all_obs'), (2) only
+            active observations ('active_only') or (3) only inactive observations ('inactive_only').
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Prepare dataframe with all observations of all surveys
+        export_survey_df_list = []
+        for survey_name, survey in self.surveys.items():
+            # print(survey, survey_name)
+            tmp_obs_df = survey.obs_df.copy(deep=True)
+            tmp_obs_df.insert(0, 'survey_name', survey_name)
+            export_survey_df_list.append(tmp_obs_df)
+        export_obs_df = pd.concat(export_survey_df_list, ignore_index=True, sort=False)
+        export_obs_df.sort_values('obs_epoch', inplace=True)
+
+        # Filter data:
+        if export_type != 'all_obs':
+            if export_type == 'active_only':
+                tmp_filter = export_obs_df['keep_obs']
+            elif export_type == 'inactive_only':
+                tmp_filter = ~export_obs_df['keep_obs']
+            export_obs_df = export_obs_df.loc[tmp_filter, :]
+
+        # Export to CSV file:
+        if verbose:
+            print(f'Write observation list to: {filename_csv}')
+        export_obs_df.to_csv(filename_csv, index=False, columns=EXPORT_OBS_LIST_COLUMNS)
 
 
 if __name__ == '__main__':

@@ -2,6 +2,9 @@
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -865,8 +868,12 @@
     <addaction name="action_Corrections"/>
     <addaction name="action_Autoselection_settings"/>
     <addaction name="actionEstimate_long_term_drift"/>
+    <addaction name="action_Setup_data_options"/>
    </widget>
    <widget class="QMenu" name="menuEstimation_settings">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
     <property name="title">
      <string>Estimation settings</string>
     </property>
@@ -900,6 +907,9 @@
    </property>
    <property name="text">
     <string>&amp;Load Campaign</string>
+   </property>
+   <property name="toolTip">
+    <string>Load campaign</string>
    </property>
   </action>
   <action name="action_Add_Stations">
@@ -968,6 +978,9 @@
    </property>
   </action>
   <action name="action_Estimation_settings">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>Settings</string>
    </property>
@@ -987,6 +1000,9 @@
    <property name="text">
     <string>Export Results</string>
    </property>
+   <property name="toolTip">
+    <string>Export data</string>
+   </property>
   </action>
   <action name="action_Change_output_directory">
    <property name="enabled">
@@ -999,6 +1015,14 @@
   <action name="action_Options">
    <property name="text">
     <string>Options</string>
+   </property>
+  </action>
+  <action name="action_Setup_data_options">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Setup data options</string>
    </property>
   </action>
  </widget>

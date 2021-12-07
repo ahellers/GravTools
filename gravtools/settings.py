@@ -93,11 +93,6 @@ ANSERMET_DIFF_TRESHOLD = 1e-3
 # Treshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
 R_POPE_TEST_TRESHOLD = 1e-6
 
-# Only consider active observations for the determination of the reference epochs, e.g. for the drift polynomial. The
-# Reference epochs are determined based on the first (active only or active/inactive) observations in the campaign or
-# in each individual survey, depending on the settings.
-ACTIVE_OBS_ONLY_FOR_REF_EPOCH = True
-
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
 
@@ -120,6 +115,10 @@ DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR = 'k'
 CORRELATION_COEF_COLORS = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']
 # Background color for diagonal elements (=1):
 CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
+
+# --- Data export options: ---
+# List of columns in the `obs_df` dataframe that are written to the exported observation list CSV file:
+EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'obs_epoch', 'station_name', 'keep_obs']
 
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----

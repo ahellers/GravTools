@@ -20,6 +20,7 @@ import pytz
 import copy
 from sklearn.linear_model import LinearRegression
 from gravtools import settings
+from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
 def prep_polyval_coef(pol_coef_dict):
@@ -62,6 +63,7 @@ class BEVLegacyProcessing(LSM):
         'coefficient': 'Coefficient',
         'sd_coeff': 'SD',
         'coeff_unit': 'Unit',
+        'ref_epoch_t0_dt': 't0',
     }
     _DRIFT_POL_DF_COLUMNS = list(_DRIFT_POL_DF_COLUMNS_DICT.keys())
 
@@ -137,7 +139,10 @@ class BEVLegacyProcessing(LSM):
                                              f'A minimum of two setups is required in order to define '
                                              f'differential observations!')
                     else:
-                        setups[survey_name] = survey.setup_df
+                        setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
+                                           'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
+                                           'setup_df': survey.setup_df}
+                        setups[survey_name] = setup_data_dict
 
         # Check if setup data is available:
         if len(setups) == 0:
@@ -172,7 +177,9 @@ class BEVLegacyProcessing(LSM):
         survey_names = []
         number_of_observations = 0
         setup_ids = []
-        for survey_name, setup_df in self.setups.items():
+        ref_epoch_t0_dt_list = []
+        for survey_name, setup_data in self.setups.items():
+            setup_df = setup_data['setup_df']
             observed_stations = observed_stations + setup_df['station_name'].to_list()
             number_of_observations = number_of_observations + len(setup_df)
             survey_names.append(survey_name)
@@ -184,12 +191,18 @@ class BEVLegacyProcessing(LSM):
                 tmp_setup_df = setup_df.copy(deep=True)
                 tmp_setup_df['survey_name'] = survey_name
                 all_setups_df = pd.concat([all_setups_df, tmp_setup_df]).reset_index()  # concat dataframes
+            ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_campaign_h'])
         observed_stations = list(
             set(observed_stations))  # Unique list of stations => order of stations in matrices!
         number_of_stations = len(observed_stations)
         number_of_surveys = len(self.setups)
         # number_of_parameters = number_of_stations + drift_pol_degree * number_of_surveys  # Total number of parameters to be estimated
         # number_of_diff_obs = number_of_observations - number_of_surveys
+
+        # Check if the drift polynomial reference epoch refers to the same time (campaign start) for all surveys:
+        if len(set(ref_epoch_t0_dt_list)) > 1:
+            raise AssertionError(f'The drift polynomial reference epochs do not match!')
+        ref_epoch_t0_dt = ref_epoch_t0_dt_list[0]
 
         # Check, if setup IDs are unique:
         if len(set(setup_ids)) != len(setup_ids):
@@ -198,6 +211,7 @@ class BEVLegacyProcessing(LSM):
         # Write log:
         if verbose or self.write_log:
             tmp_str = f'#### Adjustment log ####\n'
+            tmp_str += f'Gravtools version: {GRAVTOOLS_VERSION}\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
             tmp_str += f'Number of surveys: {number_of_surveys}\n'
@@ -217,23 +231,23 @@ class BEVLegacyProcessing(LSM):
         self.stat_obs_df = self.stat_df.loc[filter_tmp].copy(deep=True)  # All observed stations
 
         # ##### 2.) Drift Adjustment #####
-        # All obs data is here: all_setups_df['delta_t_h']
-        # - delta_t [h] since first obs in session [also deactivated obs count!] => all_setups_df['delta_t_h']
+        # All obs data is here: all_setups_df['delta_t_campaign_h']
+        # - delta_t [h] since first obs in campaign => all_setups_df['delta_t_campaign_h']
         # Test dataset: "n20200701_1" and "2020-07-01_hermannskogel.txt" (use last obs of each setup! => then equal!)
 
         # Set up obs_df with categorical variables for each point:
-        df_short = all_setups_df[['station_name', 'g_mugal', 'delta_t_h']].copy(deep=True)
+        df_short = all_setups_df[['station_name', 'g_mugal', 'delta_t_campaign_h']].copy(deep=True)
 
         # Create obs_df with categorical dummy variables for each station name:
         prefix = 'is_pkt'
         df_dummy = pd.get_dummies(df_short, prefix=[prefix])
-        categorical_variables = [prefix + '_' + str for str in observed_stations]
+        categorical_variables = [prefix + '_' + str1 for str1 in observed_stations]
 
         # Set up target parameters according to polynomial degree:
         target_parameters = []
         for i in range(1, drift_pol_degree + 1):  # i = 1 to polynomial_degree
             col_name = 'dt_{}'.format(i)
-            df_dummy[col_name] = df_dummy['delta_t_h'].pow(i)
+            df_dummy[col_name] = df_dummy['delta_t_campaign_h'].pow(i)
             target_parameters.append(col_name)
 
         selection_list = target_parameters + categorical_variables
@@ -253,15 +267,13 @@ class BEVLegacyProcessing(LSM):
         # Calculate drift correction for all observations:
         poly_coef = prep_polyval_coef(pol_coef_dict)
 
-        all_setups_df['corr_drift_mugal'] = np.polyval(poly_coef, all_setups_df['delta_t_h'])
+        all_setups_df['corr_drift_mugal'] = np.polyval(poly_coef, all_setups_df['delta_t_campaign_h'])
 
         # Calculate statistics:
         for station_name in observed_stations:
             # Estimate for this station:
             filter_tmp_stat_obs_df = self.stat_obs_df['station_name'] == station_name
             g_drift_est_mugal = self.stat_obs_df.loc[filter_tmp_stat_obs_df, 'g_drift_est_mugal'].values[0]
-            # print(station_name, g_est_mugal)
-            # print(filter_tmp_stat_obs_df)
 
             # Calculate difference between drift corrected reading and the estimated gravity reading at this point:
             filter_tmp_all_setups_df = all_setups_df['station_name'] == station_name
@@ -294,6 +306,7 @@ class BEVLegacyProcessing(LSM):
             tmp_str = f'#### Drift adjustment (MLR) ####\n'
             tmp_str += f'\n'
             tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
+            tmp_str += f'Drift polynomial reference epoch: {ref_epoch_t0_dt.strftime("%Y-%m-%d, %H:%M:%S")}\n'
             tmp_str += f'\n'
             tmp_str += f'Polynomial coefficients (sigma = {pol_coef_sig_mugal:5.2f} µGal)\n'
             for degree, value in pol_coef_dict.items():
@@ -373,22 +386,26 @@ class BEVLegacyProcessing(LSM):
         coefficient_list = []
         sd_coeff_list = []
         coeff_unit_list = []
+        ref_epoch_t0_dt_list = []
         for degree, pol_coeff in pol_coef_dict.items():
             survey_name_list.append(None)  # One drift polynomial estimated for all surveys in campaign
             degree_list.append(degree)
             coefficient_list.append(pol_coeff)
             sd_coeff_list.append(None)  # No standard deviation available
             coeff_unit_list.append(f'µGal/h^{degree}')
+            ref_epoch_t0_dt_list.append(ref_epoch_t0_dt)
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
                                                   sd_coeff_list,
-                                                  coeff_unit_list)),
+                                                  coeff_unit_list,
+                                                  ref_epoch_t0_dt_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
 
         # Rename columns to be compatible with the table view model:
         all_setups_df.rename(columns={'epoch_dt': 'ref_epoch_dt'}, inplace=True)
         self.setup_obs_df = all_setups_df
+        self.drift_ref_epoch_type = 'campaign'
 
         # Not used here => =None as initialized!
         # self.sig02_a_priori = sig0_mugal

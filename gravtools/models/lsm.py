@@ -33,10 +33,19 @@ class LSM:
         Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
     stat_df : :py:obj:`gravtools.Station.stat_df`
         The station dataframe contains all relevant station data.
-    setups : dict of pandas DataFrames
+    setups : dict of dicts
         The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-        are the survey names (str) and the items are pandas dataframes containing the observation data (see
-        :py:obj:`gravtool.Survey.setup_df`)
+        are the survey names (str). The items are again keys with the follwing items:
+
+        - ref_epoch_delta_t_h : datetime object
+            Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
+            The reference epoch is determined as the epoch of the first (active) observation in this survey.
+        -  ref_epoch_delta_t_campaign_h : datetime object
+            Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
+            dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
+        - setup_df : Pandas DataFrame
+            Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+
     comment : str, optional (default = '')
         Optional comment on the adjustment run.
     init_time : datetime object
@@ -51,6 +60,10 @@ class LSM:
     number_of_iterations : int (default=0)
         Indicates the number of iterations if iterative adjustment was applied. `0` indicated the a non-iterative
         adjustment was applied.
+    drift_ref_epoch_type : string ('survey' or 'campaign'), optional (default='survey')
+        Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
+        campaign is the reference epoch of the first (active) observation in each survey (option: 'survey') or the
+        first (active) observation in the whole campaign (option: 'campaign').
         """
 
     def __init__(self, lsm_method, stat_df, setups, comment='', write_log=True):
@@ -61,10 +74,19 @@ class LSM:
             Defines the adjustment method. Has to b listed in :py:obj:`gravtools.settings.ADJUSTMENT_METHODS`.
         stat_df : :py:obj:`gravtools.Station.stat_df`
             The station dataframe contains all relevant station data.
-        setups : dict of pandas DataFrames
+        setups : dict of dicts
             The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-            are the survey names (str) and the items are pandas dataframes containing the observation data (see
-            :py:obj:`gravtool.Survey.setup_df`)
+            are the survey names (str). The items are again keys with the follwing items:
+
+            - ref_epoch_delta_t_h : datetime object
+                Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
+                The reference epoch is determined as the epoch of the first (active) observation in this survey.
+            -  ref_epoch_delta_t_campaign_h : datetime object
+                Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
+                dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
+            - setup_df : Pandas DataFrame
+                Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+
         comment : str, optional (default = '')
             Optional comment on the adjustment run.
         write_log : bool, optional (default=True)
@@ -109,6 +131,7 @@ class LSM:
         self.scaling_factor_datum_observations = None
         self.confidence_level_chi_test = None
         self.confidence_level_tau_test = None
+        self.drift_ref_epoch_type = ''  # 'survey' or 'campaign'
 
         # General statistics:
         self.number_of_stations = None
@@ -147,6 +170,7 @@ class LSM:
                             scaling_factor_for_sd_of_observations=1.0,
                             confidence_level_chi_test=0.95,
                             confidence_level_tau_test=0.95,
+                            drift_ref_epoch_type='survey',
                             verbose=False,
                             ):  # Confidence level):
         """Run the adjustment iteratively in order to adjust s0 to the target value by adapting the SD of observations.
@@ -201,10 +225,12 @@ class LSM:
             Confidence level for the goodness-of-fit test.
         confidence_level_tau_test : float, optional (default=0.95)
             Confidence level for the tau test.
+        drift_ref_epoch_type : string ('survey' or 'campaign'), optional (default='survey')
+            Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
+            campaign is the reference epoch of the first (active) observation in each survey (option: 'survey') or the
+            first (active) observation in the whole campaign (option: 'campaign').
         verbose : bool, optional (default=False)
-            If True, status messages are printed to the command line, e.g. for debugging and testing
-
-
+            If `True`, status messages are printed to the command line, e.g. for debugging and testing
         """
 
         # Init.:
@@ -242,6 +268,7 @@ class LSM:
                         scaling_factor_for_sd_of_observations=mult_factor,  # Adjusted iteratively
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
+                        drift_ref_epoch_type=drift_ref_epoch_type,
                         verbose=False
                         )
 
@@ -378,7 +405,6 @@ class LSM:
         mat_Rxx = np.zeros([self.Cxx.shape[0], self.Cxx.shape[1]])
         for i_row in range(mat_Rxx.shape[0]):
             for i_col in range(mat_Rxx.shape[1]):
-                print(i_row, i_col)
                 mat_Rxx[i_row, i_col] = self.Cxx[i_row, i_col] / (
                             np.sqrt(self.Cxx[i_row, i_row]) * np.sqrt(self.Cxx[i_col, i_col]))
         return mat_Rxx

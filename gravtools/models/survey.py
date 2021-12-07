@@ -232,6 +232,7 @@ class Survey:
         'epoch_unix',  # Reference epoch of `g_mugal` (unix time [sec])
         'epoch_dt',  # Reference epoch of `g_mugal` (datetime obj)
         'delta_t_h',  # Time span since reference time [hours]
+        'delta_t_campaign_h',  # Time span since reference time [hours]  # TODO
         'sd_setup_mugal',  # Standard deviation of active observations in this setup [µGal]
         'number_obs',  # Number of observations in a setup
     )
@@ -1218,10 +1219,10 @@ class Survey:
             setup_ids = [setup_id]
 
         # Loop over all setups:
-        for id in setup_ids:
-            filter_id = self.obs_df['setup_id'] == id
+        for setup_id in setup_ids:
+            filter_id = self.obs_df['setup_id'] == setup_id
             if verbose:
-                print(f' - setup ID: {id}')
+                print(f' - setup ID: {setup_id}')
             # Check number of observations in setup:
             if len(self.obs_df.loc[filter_id]) < (n_obs + 1):
                 if verbose:
@@ -1277,7 +1278,7 @@ class Survey:
             self.setup_df = None
 
     def calculate_setup_data(self, obs_type='reduced',
-                             ref_delta_t_dt=None,
+                             ref_delta_t_campaign_dt=None,
                              active_obs_only_for_ref_epoch=True,
                              verbose=False):
         """Accumulate all active observation within each setup and calculate a single representative pseudo observation.
@@ -1287,16 +1288,20 @@ class Survey:
         obs_type : str, 'observed' or 'reduced' (default)
             Defines whether the observed (as loaded from an observation file) or the reduced observations from
             `self.obs_df` are used to determine the weighted mean values per setup.
-        ref_delta_t_dt : datetime object, optional (default = None)
-            Reference time for calculation of `delta_t_h`. `None` implies that the epoch is the first observation
-            in the survey is used as reference epoch.
+        ref_delta_t_campaign_dt : datetime object, optional (default = None)
+            Reference time for calculation of `delta_t_campaign_h`. `None` implies that the reference epoch is not
+            available/defined. In the latter case `delta_t_campaign_h` is `None` for all setup observations.
         active_obs_only_for_ref_epoch: bool, optional (default=True)
-            `True` implies that the reference epoch is determined by considering active observations only.
+            `True` implies that the relative reference epochs are determined by considering active observations only.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
 
+        if verbose:
+            print(f'Calculate setup data for survey {self.name}')
+
         _VALID_OBS_TYPES = ('observed', 'reduced',)
+        flag_calculate_delta_t_campaign_h = False
 
         self.reset_setup_data(verbose)
 
@@ -1307,7 +1312,7 @@ class Survey:
             raise AssertionError('Observation dataframe is empty!')
 
         # Get all active observations:
-        tmp_filter = self.obs_df['keep_obs'] == True
+        tmp_filter = self.obs_df['keep_obs']
         active_obs_df = self.obs_df[tmp_filter].copy(deep=True)
 
         # Check, if at least one observation is active:
@@ -1322,17 +1327,21 @@ class Survey:
                 if active_obs_df['g_red_mugal'].isnull().any() or active_obs_df['sd_g_red_mugal'].isnull().any():
                     raise AssertionError('Reduced observations (g and sd) are missing!')
 
-            if ref_delta_t_dt is None:
-                if active_obs_only_for_ref_epoch:
-                    ref_delta_t_dt = active_obs_df['obs_epoch'].min()  # First observation epoch in survey (active only)
-                else:
-                    ref_delta_t_dt = self.obs_df.loc['obs_epoch'].min()  # First observation epoch (also inactive obs)
-            elif isinstance(ref_delta_t_dt, dt.datetime):
-                pass  # Input is OK!
+            # Check input
+            if ref_delta_t_campaign_dt is None:  # No reference time for the campaign defined
+                flag_calculate_delta_t_campaign_h = False
+            elif isinstance(ref_delta_t_campaign_dt, dt.datetime):  # Input is OK!
+                flag_calculate_delta_t_campaign_h = True
             else:
-                raise TypeError('`ref_delta_t_dt` needs to be a datetime object!')
+                raise TypeError('`ref_delta_t_campaign_dt` needs to be a datetime object!')
 
-            # Initialize colums lists for creating dataframe:
+            # Determine reference time for the survey:
+            if active_obs_only_for_ref_epoch:
+                ref_delta_t_dt = active_obs_df['obs_epoch'].min()  # First observation epoch in survey (active only)
+            else:
+                ref_delta_t_dt = self.obs_df['obs_epoch'].min()  # First observation epoch (also inactive obs)
+
+            # Initialize columns lists for creating dataframe:
             station_name_list = []
             setup_id_list = []
             g_mugal_list = []
@@ -1340,6 +1349,7 @@ class Survey:
             obs_epoch_list_unix = []
             obs_epoch_list_dt = []
             delta_t_h_list = []
+            delta_t_campaign_h_list = []
             sd_setup_mugal_list = []
             number_obs_list = []
 
@@ -1387,13 +1397,24 @@ class Survey:
                 obs_epoch_list_unix.append(unix_setup_epoch)
                 obs_epoch_list_dt.append(dt_setup_epoch)
                 delta_t_h_list.append((unix_setup_epoch - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
+                if flag_calculate_delta_t_campaign_h:
+                    delta_t_campaign_h_list.append((unix_setup_epoch - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
+                else:
+                    delta_t_campaign_h_list.append(None)
 
             # convert to pd dataframe:
-            self.setup_df = pd.DataFrame(list(zip(station_name_list, setup_id_list, g_mugal_list, sd_g_red_mugal_list,
-                                                  obs_epoch_list_unix, obs_epoch_list_dt, delta_t_h_list,
-                                                  sd_setup_mugal_list, number_obs_list)),
+            self.setup_df = pd.DataFrame(list(zip(station_name_list,
+                                                  setup_id_list,
+                                                  g_mugal_list,
+                                                  sd_g_red_mugal_list,
+                                                  obs_epoch_list_unix,
+                                                  obs_epoch_list_dt,
+                                                  delta_t_h_list,
+                                                  delta_t_campaign_h_list,
+                                                  sd_setup_mugal_list,
+                                                  number_obs_list)),
                                          columns=self._SETUP_DF_COLUMNS)
-            self.set_reference_time(ref_delta_t_dt)  # Save reference time for `delta_t_h`
+            self.set_reference_time(ref_delta_t_dt)  # Save reference time for `delta_t_h`, i.e. for the survey.
 
 
 if __name__ == '__main__':
@@ -1410,7 +1431,6 @@ if __name__ == '__main__':
 
     # ### Getters ###
     # Get ÖSGN stations:
-    # print(stat.get_oesgn_stations)
 
     # Get all stations:
     print(stat.get_all_stations)
