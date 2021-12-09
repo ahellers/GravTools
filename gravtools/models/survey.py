@@ -222,6 +222,7 @@ class Survey:
         'keep_obs',  # Remove observation, if false (bool)
         'vg_mugalm',  # vertical gradient [µGal/m]
         'corr_tide_red_mugal',  # Alternative tidal correction [mGal], optional
+        'duration_sec',  # Duration [sec] TODO
     )
 
     _SETUP_DF_COLUMNS = (
@@ -1113,7 +1114,7 @@ class Survey:
             self.obs_df['corr_tide_red_mugal'] = corr_tide_red_mugal
         return flag_corrections_applied, error_msg
 
-    def autselect_tilt(self, threshold_arcsec: int, setup_id: int = None):
+    def autselect_tilt(self, threshold_arcsec: int, setup_id: int = None, verbose: bool = False):
         """Deactivate all observations of the survey or of a setup with a tilt larger than the defined threshold.
 
         Parameters
@@ -1124,11 +1125,35 @@ class Survey:
         setup_id : int (default=None)
             `None` implies that this autoselection function is applied on all observations of this survey. Otherwise,
             the autoselection function is only applied on observations of the setup wirth the provided ID (`setup_id`)
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
         """
         filter_tilt = (abs(self.obs_df['tiltx']) > threshold_arcsec) | (abs(self.obs_df['tilty']) > threshold_arcsec)
         if setup_id is not None:  # Apply on whole survey
             filter_tilt = filter_tilt & (self.obs_df['setup_id'] == setup_id)
         self.obs_df.loc[filter_tilt, 'keep_obs'] = False
+        if verbose:
+            print(f'Removed observations due to tilt threshold ({threshold_arcsec} asec): {filter_tilt[filter_tilt].count()}')
+
+    def autselect_duration(self, threshold_sec: int, setup_id: int = None, verbose: bool = False):
+        """Detect and deactivate all observations with a measurement duration smaller than the threshold.
+
+        Parameters
+        ----------
+        threshold_sec : int
+            Threshold for the measurement duration.
+        setup_id : int (default=None)
+            `None` implies that this autoselection function is applied on all observations of this survey. Otherwise,
+            the autoselection function is only applied on observations of the setup wirth the provided ID (`setup_id`)
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        filter_duration = self.obs_df['duration_sec'] < threshold_sec
+        if setup_id is not None:  # Apply on whole survey
+            filter_duration = filter_duration & (self.obs_df['setup_id'] == setup_id)
+        self.obs_df.loc[filter_duration, 'keep_obs'] = False
+        if verbose:
+            print(f'Removed observations due to duration threshold ({threshold_sec} sec): {filter_duration[filter_duration].count()}')
 
     def autselect_g_sd(self, threshold_mugal: int, obs_type: str = 'reduced', setup_id: int = None,
                        verbose: bool = False):

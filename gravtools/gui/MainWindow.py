@@ -513,7 +513,7 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menuEstimation_settings.menuAction())
 
         self.retranslateUi(MainWindow)
-        self.tabWidget_Main.setCurrentIndex(2)
+        self.tabWidget_Main.setCurrentIndex(1)
         self.tab_Widget_Stations.setCurrentIndex(0)
         self.tabWidget_observations.setCurrentIndex(2)
         self.tabWidget_results.setCurrentIndex(6)
@@ -614,7 +614,7 @@ class Ui_MainWindow(object):
         self.action_Autoselection_settings.setText(_translate("MainWindow", "Autoselection settings"))
         self.action_Estimation_settings.setText(_translate("MainWindow", "Settings"))
         self.actionEstimate_long_term_drift.setText(_translate("MainWindow", "Estimate long-term drift"))
-        self.action_Export_Results.setText(_translate("MainWindow", "Export Results"))
+        self.action_Export_Results.setText(_translate("MainWindow", "Export Data"))
         self.action_Export_Results.setToolTip(_translate("MainWindow", "Export data"))
         self.action_Change_output_directory.setText(_translate("MainWindow", "Change output directory"))
         self.action_Options.setText(_translate("MainWindow", "Options"))

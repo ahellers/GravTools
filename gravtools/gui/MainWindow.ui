@@ -24,7 +24,7 @@
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -998,7 +998,7 @@
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Export Results</string>
+    <string>Export Data</string>
    </property>
    <property name="toolTip">
     <string>Export data</string>
