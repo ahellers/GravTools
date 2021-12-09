@@ -166,7 +166,7 @@ class CG5SurveyParameters:
         elif survey_count == 0:  # Not available
             return cls()  # Initialize with default values
         else:  # More than 1 block found => Error!
-            raise InvaliFileContentError('{} "CG-5 SURVEY" bocks found in observation file, '
+            raise InvaliFileContentError('{} "CG-5 SURVEY" blocks found in observation file, '
                                          'but only one expected.'.format(survey_count))
 
         # Error Msg, wenn der Block mehr als einmal gefunden wird.

@@ -5,6 +5,7 @@ from PyQt5 import QtGui
 from PyQt5.QtWidgets import QMessageBox
 import datetime as dt
 import pandas as pd
+import numpy as np
 
 from gravtools import settings
 from gravtools.models.survey import Survey
@@ -13,6 +14,7 @@ from gravtools.models.lsm_nondiff import LSMNonDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 
 NONE_REPRESENTATION_IN_TABLE_VIEW = ''  # Representation of None values in table views in the GUI
+
 
 class StationTableModel(QAbstractTableModel):
     """Model for displaying the station data in a table view (QTableView)."""
@@ -407,6 +409,7 @@ class ObservationTableModel(QAbstractTableModel):
         'dhb_m': 'dhb [m]',
         'dhf_m': 'dhf [m]',
         'vg_mugal': 'VG [µGal]',
+        'duration_sec': 'Duration [sec]',
         'keep_obs': 'Ḱeep obs.',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
@@ -427,6 +430,7 @@ class ObservationTableModel(QAbstractTableModel):
         'corr_tide_red_mugal',
         'corr_tide_mugal',
         'vg_mugal',
+        'duration_sec',
         'keep_obs',
     ]
 
@@ -525,8 +529,10 @@ class ObservationTableModel(QAbstractTableModel):
                                 col_name_str = self._data_column_names[index.column()]
                                 num_dec_places = self._DECIMAL_PLACES_PER_FLOAT_COLUMN[col_name_str]
                                 return '{1:.{0}f}'.format(num_dec_places, value)
-                            except:
+                            except Exception:
                                 return str(value)
+                    elif isinstance(value, np.int64):
+                        return str(value)
                     elif isinstance(value, dt.datetime):
                         return value.strftime("%Y-%m-%d, %H:%M:%S")
                     else:  # all other
@@ -534,7 +540,7 @@ class ObservationTableModel(QAbstractTableModel):
 
                 if role == Qt.TextAlignmentRole:
                     value = self._data.iloc[index.row(), index.column()]
-                    if isinstance(value, int) or isinstance(value, float):
+                    if isinstance(value, float) or isinstance(value, int) or isinstance(value, np.int64):
                         # Align right, vertical middle.
                         return Qt.AlignVCenter + Qt.AlignRight
 
@@ -542,7 +548,7 @@ class ObservationTableModel(QAbstractTableModel):
                     try:
                         if not self._data.iloc[index.row(), self._data_column_names.index('keep_obs')]:
                             return QtGui.QColor('red')
-                    except:
+                    except Exception:
                         pass
 
     def flags(self, index):

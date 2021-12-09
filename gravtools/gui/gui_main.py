@@ -1386,17 +1386,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         pass
 
     def on_apply_autoselection(self):
-        """Appply autoselection on the currently selected setup or survey according to the predefined settings."""
+        """Apply autoselection on the currently selected setup or survey according to the predefined settings."""
 
         # Get autoselect parameters from settings dialog
         flag_apply_tilt = self.dlg_autoselect_settings.checkBox_tilt.isChecked()
         flag_apply_g_sd = self.dlg_autoselect_settings.checkBox_sd.isChecked()
         flag_apply_delta_g = self.dlg_autoselect_settings.checkBox_delta_g.isChecked()
+        flag_apply_duration = self.dlg_autoselect_settings.checkBox_duration.isChecked()
 
-        treshold_g_sd_mugal = int(self.dlg_autoselect_settings.spinBox_sd.text())
-        treshold_tilt_arcsec = int(self.dlg_autoselect_settings.spinBox_tilt.text())
-        treshold_delta_sd_mugal = int(self.dlg_autoselect_settings.spinBox_delta_g.text())
-        delta_g_number_of_points = int(self.dlg_autoselect_settings.spinBox_n.text())
+        treshold_g_sd_mugal = self.dlg_autoselect_settings.spinBox_sd.value()
+        treshold_tilt_arcsec = self.dlg_autoselect_settings.spinBox_tilt.value()
+        treshold_delta_sd_mugal = self.dlg_autoselect_settings.spinBox_delta_g.value()
+        delta_g_number_of_points = self.dlg_autoselect_settings.spinBox_n.value()
+        treshold_duration_sec = self.dlg_autoselect_settings.spinBox_duration.value()
 
         if self.dlg_autoselect_settings.radioButton_ref_data_reduced_observations.isChecked():
             reference_data = 'reduced'
@@ -1418,8 +1420,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                      'Reduced observations (reference for autoselection) are not avialable yet!')
                 return
 
+        if flag_apply_duration:
+            surv.autselect_duration(threshold_sec=treshold_duration_sec, setup_id=setup_id, verbose=IS_VERBOSE)
         if flag_apply_tilt:
-            surv.autselect_tilt(threshold_arcsec=treshold_tilt_arcsec, setup_id=setup_id)
+            surv.autselect_tilt(threshold_arcsec=treshold_tilt_arcsec, setup_id=setup_id, verbose=IS_VERBOSE)
         if flag_apply_g_sd:
             surv.autselect_g_sd(threshold_mugal=treshold_g_sd_mugal, obs_type=reference_data, setup_id=setup_id,
                                 verbose=IS_VERBOSE)
@@ -1820,21 +1824,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_tree_widget_item_changed(self, item, column):
         """Invoked whenever an item in th observation tree view is changed, e.g. if the check-state changes."""
         self.treeWidget_observations.blockSignals(True)  # To avoid recursive effects
-        if IS_VERBOSE:
-            print('TreeView: itemChanged: ', item, column)
-            print(f' - CheckState of item "{item.text(0)}": {item.checkState(0)}')
+        # if IS_VERBOSE:
+        #     print('TreeView: itemChanged: ', item, column)
+        #     print(f' - CheckState of item "{item.text(0)}": {item.checkState(0)}')
         flag_checked_state = checked_state_to_bool(item.checkState(0))
         # Is parent (survey) or child (setup):
         if item.parent() is None:  # Is survey item
             survey_name = item.text(0)
             setup_id = None
-            if flag_checked_state == True:
+            if flag_checked_state:
                 self.campaign.activate_survey(survey_name, verbose=False)
             else:
                 self.campaign.deactivate_survey(survey_name, verbose=False)
             self.on_obs_tree_widget_item_selected()
-            if IS_VERBOSE:
-                print('-----------Parent changed---------------------')
+            # if IS_VERBOSE:
+            #     print('-----------Parent changed---------------------')
         else:  # Is a setup item
             # Update table view and data in dataframe:
             survey_name = item.parent().text(0)
@@ -1864,8 +1868,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def update_obs_table_view(self, survey_name: str, setup_id: int):
         """Update the observation table view according to the selected survey and instrument setup."""
-        if IS_VERBOSE:
-            print(f'survey name: {survey_name}; setup ID: {setup_id}')
+        # if IS_VERBOSE:
+        #    print(f'survey name: {survey_name}; setup ID: {setup_id}')
         # Update the observation table view model according to the selected
         self.observation_model.update_view_model(survey_name,
                                                  setup_id,
