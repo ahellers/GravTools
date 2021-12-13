@@ -487,6 +487,8 @@ class Ui_MainWindow(object):
         self.action_Setup_data_options = QtWidgets.QAction(MainWindow)
         self.action_Setup_data_options.setEnabled(True)
         self.action_Setup_data_options.setObjectName("action_Setup_data_options")
+        self.action_Flag_observations = QtWidgets.QAction(MainWindow)
+        self.action_Flag_observations.setObjectName("action_Flag_observations")
         self.menuAdd_Survey.addAction(self.action_from_CG5_observation_file)
         self.menuAdd_Survey.addAction(self.action_from_BEV_observation_file)
         self.menu_File.addAction(self.action_New_Campaign)
@@ -507,6 +509,7 @@ class Ui_MainWindow(object):
         self.menu_Observations.addAction(self.action_Autoselection_settings)
         self.menu_Observations.addAction(self.actionEstimate_long_term_drift)
         self.menu_Observations.addAction(self.action_Setup_data_options)
+        self.menu_Observations.addAction(self.action_Flag_observations)
         self.menuEstimation_settings.addAction(self.action_Estimation_settings)
         self.menubar.addAction(self.menu_File.menuAction())
         self.menubar.addAction(self.menu_Observations.menuAction())
@@ -619,4 +622,6 @@ class Ui_MainWindow(object):
         self.action_Change_output_directory.setText(_translate("MainWindow", "Change output directory"))
         self.action_Options.setText(_translate("MainWindow", "Options"))
         self.action_Setup_data_options.setText(_translate("MainWindow", "Setup data options"))
+        self.action_Flag_observations.setText(_translate("MainWindow", "Load flags from obs. list file"))
+        self.action_Flag_observations.setToolTip(_translate("MainWindow", "Flag observations based ob observations file"))
 from pyqtgraph import GraphicsLayoutWidget

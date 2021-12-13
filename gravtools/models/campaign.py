@@ -696,7 +696,7 @@ class Campaign:
                 raise AssertionError(f'The directory "{output_directory}" does not exist!')
         self.output_directory = output_directory
 
-    def write_obs_list_csv(self, filename_csv: str, export_type: str = 'all_obs', verbose: bool = True):
+    def write_obs_list_csv(self, filename_csv: str, export_type: str = 'all_obs', verbose: bool = False):
         """Export a list of all observations in the campaign to a CSV file.
 
         This file gives information which observations were active and have been used to compute the setup observations.
@@ -733,6 +733,76 @@ class Campaign:
         if verbose:
             print(f'Write observation list to: {filename_csv}')
         export_obs_df.to_csv(filename_csv, index=False, columns=EXPORT_OBS_LIST_COLUMNS)
+
+    def flag_observations_based_on_obs_list_csv_file(self, obs_list_filename: str, update_type: str = 'all_obs',
+                                                     verbose: bool = False):
+        """ Flag observations in campaign based on an observation list file.
+
+        Parameters
+        ----------
+        obs_list_filename : str
+            Name and path of the input CSV file containing the observation list.
+        update_type : str, optional (default = 'all')
+            Defines which observations in the input list are used to update the `keep_obs` status of the matched
+            observations in the campaign:. There are 3 options: (1) `all _obs` indicates that all matched observations
+            are updated, (2) `inactive_only` indicates that only inactive observations (in the list) are updated and (3)
+            `active_only` indicates that only active observations in the list are updated.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        """
+        if verbose:
+            print(f'Flag observations based on observation list in: {obs_list_filename}')
+        flag_log_str = ''
+
+        # Read csv file:
+        obs_list_df = pd.read_csv(obs_list_filename)
+        if len(obs_list_df) > 0:
+            # Check availability of needed columns:
+            # EXPORT_OBS_LIST_COLUMNS
+            invalid_cols = list(set(obs_list_df.columns) - set(EXPORT_OBS_LIST_COLUMNS))
+            if len(invalid_cols) > 0:
+                raise AssertionError(f'Invalid columns in the observation list csv file: {", ".join(invalid_cols)}')
+
+            # Get filter for observations to be updated according to the "update_type":
+            if update_type == 'all_obs':
+                pass
+            elif update_type == 'inactive_only':
+                obs_list_df = obs_list_df[~obs_list_df['keep_obs']]
+            elif update_type == 'active_only':
+                obs_list_df = obs_list_df[obs_list_df['keep_obs']]
+            else:
+                raise AssertionError(f'Invalid input argument for "update_type": {update_type}')
+
+            # Apply flagging:
+            surveys = obs_list_df['survey_name'].unique().tolist()
+            for survey_name in surveys:
+                count_changed = 0
+                count_matched = 0
+                flag_log_str += f'Survey: {survey_name}\n'
+                if survey_name not in self.surveys:
+                    flag_log_str += '  - Does not exist in this campaign.\n'
+                else:
+                    for index, row in obs_list_df[obs_list_df['survey_name'] == survey_name].iterrows():
+                        epoch_dt = dt.datetime.strptime(row['obs_epoch'], '%Y-%m-%d %H:%M:%S%z')
+                        filter_tmp = (self.surveys[survey_name].obs_df['obs_epoch'] == epoch_dt) & (
+                                    self.surveys[survey_name].obs_df['station_name'] == row['station_name'])
+                        num_matched_rows = len(filter_tmp[filter_tmp])
+                        if num_matched_rows > 1:
+                            raise AssertionError(f'In survey {survey_name} the are {num_matched_rows} observations at the '
+                                                 f'same time and station!')
+                        if num_matched_rows == 1:  # OK!
+                            count_matched += 1
+                            if self.surveys[survey_name].obs_df.loc[filter_tmp, 'keep_obs'].bool() != row['keep_obs']:
+                                self.surveys[survey_name].obs_df.loc[filter_tmp, 'keep_obs'] = row['keep_obs']
+                                count_changed += 1
+                    flag_log_str += f'  - Matched observations: {count_matched} of {len(obs_list_df)}\n'
+                    flag_log_str += f'  - Changed "keep_obs" flags: {count_changed}\n'
+        else:
+            flag_log_str = 'Empty observation list file!'
+        if verbose:
+            print(flag_log_str)
+        return flag_log_str
 
 
 if __name__ == '__main__':
