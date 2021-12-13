@@ -869,6 +869,7 @@
     <addaction name="action_Autoselection_settings"/>
     <addaction name="actionEstimate_long_term_drift"/>
     <addaction name="action_Setup_data_options"/>
+    <addaction name="action_Flag_observations"/>
    </widget>
    <widget class="QMenu" name="menuEstimation_settings">
     <property name="enabled">
@@ -1023,6 +1024,14 @@
    </property>
    <property name="text">
     <string>Setup data options</string>
+   </property>
+  </action>
+  <action name="action_Flag_observations">
+   <property name="text">
+    <string>Load flags from obs. list file</string>
+   </property>
+   <property name="toolTip">
+    <string>Flag observations based ob observations file</string>
    </property>
   </action>
  </widget>

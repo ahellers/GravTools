@@ -29,7 +29,7 @@ from gravtools.models.campaign import Campaign
 from gravtools import settings
 
 DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
-DEFAULT_CG5_OBS_FILE_PATH = os.path.abspath(os.getcwd())  # Current working directory
+DEFAULT_WORK_DIR_PATH = os.path.abspath(os.getcwd())  # Current working directory
 IS_VERBOSE = True  # Define, whether screen output is enabled.
 
 MARKER_SYMBOL_ORDER = ('o', 't', 'x', 's', 'star', '+', 'd', 't1', 'p', 't2', 'h', 't3')
@@ -72,6 +72,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_New_Campaign.triggered.connect(self.on_menu_file_new_campaign)
         self.action_Add_Stations.triggered.connect(self.on_menu_file_load_stations)
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
+        self.action_Flag_observations.triggered.connect(self.on_manu_observations_flag_observations)
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
         self.action_Estimation_settings.triggered.connect(self.on_menu_estimation_settings)
         self.action_Setup_data_options.triggered.connect(self.on_menu_observations_setup_data)
@@ -244,7 +245,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         options |= QFileDialog.DontUseNativeDialog
         pkl_file_filename, _ = QFileDialog.getOpenFileName(self,
                                                            'Select pkl file with campaign data',
-                                                           DEFAULT_CG5_OBS_FILE_PATH,
+                                                           DEFAULT_WORK_DIR_PATH,
                                                            "Pickle file (*.pkl)",
                                                            options=options)
         if pkl_file_filename:
@@ -2257,7 +2258,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         options |= QFileDialog.DontUseNativeDialog
         cg5_obs_file_filename, _ = QFileDialog.getOpenFileName(self,
                                                                'Select CG5 observation file',
-                                                               DEFAULT_CG5_OBS_FILE_PATH,
+                                                               DEFAULT_WORK_DIR_PATH,
                                                                "CG5 observation file (*.TXT)",
                                                                options=options)
         if cg5_obs_file_filename:
@@ -2318,6 +2319,55 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                                    auto_range_stations_plot=True)
         else:
             self.statusBar().showMessage(f"No survey data added.")
+
+    @pyqtSlot()
+    def on_manu_observations_flag_observations(self):
+        """Load observation list file to flag observations in current campaign accordingly.
+
+        The observation list file contains a list of gravity meter observations in CSV format with the following columns:
+          - survey_name: Name of the survey
+          - obs_epoch: Observation reference epoch (datetime string)
+          - station_name: Name of the station
+          - keep_obs: flag that indicates whether this particular observation is active or not.
+
+        The observations in the file are matched with those in the campaign based on `survey_name`, `obs_epoch` and
+        `station_name`. All observations with `keep_obs = False` in the loaded file are flagged on the campaign.
+        """
+        # Get the filename of the observation list csv file:
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        obs_list_filename, _ = QFileDialog.getOpenFileName(self,
+                                                           'Load observation list file',
+                                                           DEFAULT_WORK_DIR_PATH,
+                                                           "Gravtools observation list file(*.csv)",
+                                                           options=options)
+        if obs_list_filename:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            obs_list_filename = QDir.toNativeSeparators(obs_list_filename)
+            # Flag observations in current campaign:
+            try:
+                flag_log_str = self.campaign.flag_observations_based_on_obs_list_csv_file(obs_list_filename=obs_list_filename,
+                                                                                          update_type='all_obs',
+                                                                                          verbose=IS_VERBOSE)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"Error while flagging observations.")
+            else:
+                # Update data visualization in GUI:
+                for tree_idx in range(0, self.treeWidget_observations.topLevelItemCount()):
+                    survey_name_tree = self.treeWidget_observations.topLevelItem(tree_idx).text(0)
+                    # Update observation view model:
+                    self.observation_model.update_view_model(survey_name_tree,
+                                                             setup_id=None,
+                                                             gui_simple_mode=self.dlg_options.gui_simple_mode)
+                    self.update_obs_tree_widgget_from_observation_model()
+                survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+                self.update_obs_table_view(survey_name, setup_id)
+                self.plot_observations(survey_name)
+                # print flag log sting to Message Box:
+                QMessageBox.information(self, 'Update Information!', flag_log_str)
 
     def closeEvent(self, event):
         """Ask the user whether to close the window or not!"""
