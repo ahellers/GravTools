@@ -2,6 +2,7 @@ import datetime as dt
 import numpy as np
 import pickle
 import os
+import sys
 
 import pandas as pd
 from gravtools.models.lsm import LSM
@@ -784,7 +785,14 @@ class Campaign:
                     flag_log_str += '  - Does not exist in this campaign.\n'
                 else:
                     for index, row in obs_list_df[obs_list_df['survey_name'] == survey_name].iterrows():
-                        epoch_dt = dt.datetime.strptime(row['obs_epoch'], '%Y-%m-%d %H:%M:%S%z')
+                        obs_epoch = row['obs_epoch']
+                        if sys.version_info >= (3, 7):
+                            epoch_dt = dt.datetime.fromisoformat(obs_epoch)
+                        else:
+                            if (len(obs_epoch) == 25) & (obs_epoch[-3] == ':'):  # E.g.: '2018-10-23 05:52:01+00:00'
+                                epoch_dt = dt.datetime.strptime(obs_epoch[:-3] + obs_epoch[-2:], '%Y-%m-%d %H:%M:%S%z')
+                            else:
+                                raise AssertionError('Unknown tim format!')
                         filter_tmp = (self.surveys[survey_name].obs_df['obs_epoch'] == epoch_dt) & (
                                     self.surveys[survey_name].obs_df['station_name'] == row['station_name'])
                         num_matched_rows = len(filter_tmp[filter_tmp])
