@@ -1,8 +1,8 @@
 """Model classes for pyQt5's model view architecture."""
 
-from PyQt5.QtCore import QAbstractTableModel, Qt
+from PyQt5.QtCore import QAbstractTableModel, Qt, QPersistentModelIndex
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QStyledItemDelegate
 import datetime as dt
 import pandas as pd
 import numpy as np
@@ -449,6 +449,7 @@ class ObservationTableModel(QAbstractTableModel):
         self._data_survey_name = ''  # Name of the Survey that is currently represented by `self._data`
         self._setup_data = None  # Setup data (or at subset) of the survey with the name `self._data_survey_name`
         self.flag_gui_simple_mode = False
+        # self._keep_obs_check_states = dict()  # To keep track of the checkbox states in the keep_obs column
 
     def load_surveys(self, surveys):
         """Load observation data (dict of survey objects in the campaign object) to the observation model.
@@ -551,47 +552,80 @@ class ObservationTableModel(QAbstractTableModel):
                     except Exception:
                         pass
 
+                if role == Qt.CheckStateRole:
+                    try:
+                        if index.column() == self._data_column_names.index('keep_obs'):
+                            keep_obs_flag = self._data.iloc[index.row(), self._data_column_names.index('keep_obs')]
+                            if keep_obs_flag:
+                                return Qt.Checked
+                            else:
+                                return Qt.Unchecked
+
+                    except Exception:
+                        print(f'ERROR: row: {index.row()}, col: {ndex.column()}')
+
     def flags(self, index):
         """Enable editing of table items."""
         flags = super(self.__class__, self).flags(index)
         flags |= Qt.ItemIsSelectable
         flags |= Qt.ItemIsEnabled
-        flags |= Qt.ItemIsDragEnabled
-        flags |= Qt.ItemIsDropEnabled
-        if index.column() == self._data_column_names.index('keep_obs'):  # Column: "is_datum"
+        if index.column() == self._data_column_names.index('keep_obs'):
             flags |= Qt.ItemIsEditable
+            flags |= Qt.ItemIsUserCheckable
         return flags
 
     def setData(self, index, value, role):
         """Example: https://www.semicolonworld.com/question/58510/how-to-display-a-pandas-data-frame-with-pyqt5"""
-        if not index.isValid():
-            return False
-        if role == Qt.EditRole:
-            # Get column and row indices for dataframe:
+        if index.isValid():
+            if role == Qt.EditRole:
+                # Get column and row indices for dataframe:
+                row = self._data.index[index.row()]
+                col = self._data.columns[index.column()]
+                if col == 'keep_obs':
+                    # convert "value" (str) to bool and set item in dataframe:
+                    if value == 'True':
+                        self._data.at[row, col] = True
+                        self.dataChanged.emit(index, index)  # Is it necessary?
+                        # # Change data in `obs_df`:
+                        # obs_df_row_index_int = self._data.index[index.row()]
+                        # self._surveys[self._data_survey_name].obs_df.iat[
+                        #     obs_df_row_index_int, Survey.get_obs_df_column_index('keep_obs')] = True
+                    elif value == 'False':
+                        self._data.at[row, col] = False
+                        self.dataChanged.emit(index, index)  # Is it necessary?
+                        # # Change data in `obs_df`:
+                        # obs_df_row_index_int = self._data.index[index.row()]
+                        # self._surveys[self._data_survey_name].obs_df.iat[
+                        #     obs_df_row_index_int, Survey.get_obs_df_column_index('keep_obs')] = False
+                    else:
+                        QMessageBox.warning(self.parent(), 'Warning!',
+                                            f'Input "{value}" not valid! Only "True" or "False" allowed.')
+                        return False
+                    return True  # Data successfully set
+        else:
+            return False  # Invalid Index
+
+        if role == Qt.CheckStateRole:
             row = self._data.index[index.row()]
             col = self._data.columns[index.column()]
-
+            idx_min = self.index(index.row(), 0)
+            idx_max = self.index(index.row(), len(self._data_column_names) - 1)
             if col == 'keep_obs':
-                # convert "value" (str) to bool and set itm in dataframe:
-                if value == 'True':
-                    self._data.at[row, col] = True
-                    self.dataChanged.emit(index, index)  # Is it necessary?
-                    # # Change data in `obs_df`:
-                    # obs_df_row_index_int = self._data.index[index.row()]
-                    # self._surveys[self._data_survey_name].obs_df.iat[
-                    #     obs_df_row_index_int, Survey.get_obs_df_column_index('keep_obs')] = True
-                elif value == 'False':
+                if value == Qt.Unchecked:
+                    # print(f'row {index.row()}: Unchecked!')
                     self._data.at[row, col] = False
-                    self.dataChanged.emit(index, index)  # Is it necessary?
-                    # # Change data in `obs_df`:
-                    # obs_df_row_index_int = self._data.index[index.row()]
-                    # self._surveys[self._data_survey_name].obs_df.iat[
-                    #     obs_df_row_index_int, Survey.get_obs_df_column_index('keep_obs')] = False
+                    self.dataChanged.emit(idx_min, idx_max)
+                elif value == Qt.Checked:
+                    # print(f'row {index.row()}: Checked!')
+                    self._data.at[row, col] = True
+                    self.dataChanged.emit(idx_min, idx_max)
                 else:
                     QMessageBox.warning(self.parent(), 'Warning!',
-                                        f'Input "{value}" not valid! Only "True" or "False" allowed.')
+                                        f'Invalid value fpr keep observation flag: "{value}"')
                     return False
-                return True  # Data successfully set
+
+            return True  # Data successfully set
+
         return False
 
     @property
@@ -613,7 +647,7 @@ class ObservationTableModel(QAbstractTableModel):
             return [value for value in self._SHOW_COLUMNS_IN_TABLE if value in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI]
         else:
             return self._SHOW_COLUMNS_IN_TABLE
-
+        
 
 class ResultsObservationModel(QAbstractTableModel):
     """Model for displaying the observations-related results."""

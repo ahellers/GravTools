@@ -146,6 +146,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
 
+
     @pyqtSlot()
     def on_action_Change_output_directory_triggered(self):
         """Invoked whenever the menu item change output directory is pressed."""
