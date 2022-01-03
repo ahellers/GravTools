@@ -352,8 +352,9 @@ class LSMDiff(LSM):
                     mat_L0[(diff_obs_id, 0)] = g_diff_mugal
                     mat_sig_ll0[diff_obs_id] = sd_g_diff_mugal ** 2
                     # Partial derivative for g at stations:
-                    mat_A0[diff_obs_id, self.observed_stations.index(station_name_to)] = 1
-                    mat_A0[diff_obs_id, self.observed_stations.index(station_name_from)] = -1
+                    if self.observed_stations.index(station_name_to) != self.observed_stations.index(station_name_from):
+                        mat_A0[diff_obs_id, self.observed_stations.index(station_name_to)] = 1
+                        mat_A0[diff_obs_id, self.observed_stations.index(station_name_from)] = -1
                     # Partial derivative for drift polynomial:
                     for pd_drift_id in range(drift_pol_degree):
                         mat_A0[diff_obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count * drift_pol_degree] = \

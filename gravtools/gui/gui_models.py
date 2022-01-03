@@ -167,9 +167,9 @@ class StationTableModel(QAbstractTableModel):
         flags |= Qt.ItemIsEnabled
         flags |= Qt.ItemIsDragEnabled
         flags |= Qt.ItemIsDropEnabled
-        # flags |= Qt.ItemIsUserCheckable
         if index.column() == self._data_column_names.index('is_datum'):  # Column: "is_datum"
             flags |= Qt.ItemIsEditable
+            # flags |= Qt.ItemIsUserCheckable
         return flags
 
     @property
