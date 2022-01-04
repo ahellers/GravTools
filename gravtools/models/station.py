@@ -110,7 +110,7 @@ class Station:
             else:
                 raise NotImplementedError(f'Loading station files of type "{file_type}" not implemneted yet.')
 
-    def _read_oesgn_table(self, filename):
+    def _read_oesgn_table(self, filename, is_datum=False):
         """Reads an OESGN table file and returns a dataframe containing this data.
 
         Notes
@@ -121,6 +121,8 @@ class Station:
         ----------
         filename : str
             Name (and path) of the OESGN table file.
+        is_datum : bool, optional (default = False)
+            `True` idicates that all loaded OESGN stations are initially selected as datum stations (`is_datum`=True)
 
         Returns
         -------
@@ -161,7 +163,10 @@ class Station:
         stat_df_oesgn = pd.read_fwf(filename, widths=widths, header=None)
         stat_df_oesgn.columns = column_names
         stat_df_oesgn['is_observed'] = False  # Default = False
-        stat_df_oesgn['is_datum'] = True
+        if is_datum:
+            stat_df_oesgn['is_datum'] = True
+        else:
+            stat_df_oesgn['is_datum'] = False
         stat_df_oesgn['source_type'] = 'oesgn_table'
         stat_df_oesgn['source_name'] = os.path.basename(filename)  # filename
 
@@ -171,59 +176,23 @@ class Station:
 
         return stat_df_oesgn
 
-    def add_stations_from_oesgn_table(self, filename, verbose=False):
+    def add_stations_from_oesgn_table(self, filename, is_datum=False, verbose=False):
         """Adds (appends) all stations of the input OESGN table to the station dataframe.
 
         Parameters
         ----------
         filename : str
             Name (and path) of the OESGN table file.
+        is_datum : bool, optional (default = False)
+            `True` idicates that all loaded OESGN stations are initially selected as datum stations (`is_datum`=True)
         verbose : bool, optional
             Print notifications, if `True` (default=`False`)
         """
-        stat_df_new = self._read_oesgn_table(filename)
+        stat_df_new = self._read_oesgn_table(filename, is_datum=is_datum)
         stat_df_new = self._stat_df_add_columns(stat_df_new)
         stat_df_new = self._stat_df_reorder_columns(stat_df_new)
         self.add_stations(stat_df_new, data_source_type='oesgn_table', verbose=verbose)
 
-        # number_of_existing_stations = len(self.stat_df)
-        #
-        # # Concatenate multiple df without duplicate rows and a unique indices:
-        # # https://stackoverflow.com/questions/21317384/pandas-python-how-to-concatenate-two-dataframes-without-duplicates
-        # # https://learndataanalysis.org/concatenate-pandas-dataframes-without-duplicates/
-        # # - pd.concat([self.stat_df, stat_df_new]) => simply concat both df, while it may result in duplicate indices
-        # #   and rows.
-        # # - drop_duplicates() => Drop duplicate rows
-        # # - reset_index(drop=True) => Reset index creates a new indec col with unique indices. With drop=True the old
-        # #   index column is dropped.
-        #
-        # # Concatenate existing with new stations and drop duplicates, based on the columns in specified in
-        # # _STAT_DF_COLUMNS_SAME_STATION_INDICATORS:
-        # self.stat_df = pd.concat([self.stat_df, stat_df_new]).drop_duplicates(
-        #     subset=self._STAT_DF_COLUMNS_SAME_STATION_INDICATORS,
-        #     keep='first'
-        # ).reset_index(drop=True)
-        #
-        # # Check, if station names still have multiple occurrences in the station DataFrame:
-        # number_of_occurrences_per_station_name_series = self.stat_df.value_counts(subset=['station_name'])
-        # if sum(number_of_occurrences_per_station_name_series > 1):
-        #     duplicate_stations = number_of_occurrences_per_station_name_series[
-        #         number_of_occurrences_per_station_name_series > 1
-        #     ].index.values  # The index contains the names of stations with multiple occurrences
-        #     duplicate_stations_list = []
-        #     for item in duplicate_stations:  # Convert list of tuples of strings to list of strings
-        #         duplicate_stations_list.append(item[0])
-        #     duplicate_stations_str = ', '.join(duplicate_stations_list)
-        #     raise AssertionError(f'When adding news stations the following station already exist with differing '
-        #                          f'location parameters and/or a differing data source:' + duplicate_stations_str + f'.'
-        #                          f'\nPlease load station files before adding observations to the campaign!')
-        #
-        # if verbose:
-        #     number_of_new_stations = len(stat_df_new)
-        #     number_of_stations = len(self.stat_df)
-        #     stations_added = number_of_stations - number_of_existing_stations
-        #     print(f"{number_of_new_stations} stations loaded from {filename}. "
-        #           f"{stations_added} stations added ({number_of_new_stations - stations_added} already existed).")
 
     def delete_station(self, station_names: list, verbose=False):
         """

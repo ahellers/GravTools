@@ -355,17 +355,19 @@ class Campaign:
                 # raise AssertionError('Reduction to reference height failed!')
         return flag_corrections_applied_correctly, error_msg
 
-    def add_stations_from_oesgn_table_file(self, oesgn_filename, verbose=False):
+    def add_stations_from_oesgn_table_file(self, oesgn_filename, is_datum=False, verbose=False):
         """Add station from an OESGN table file.
 
         Parameters
         ----------
         oesgn_filename : string, specifying the path/file of the OESGN file
             Stations in the specified OESGN table file are added to the Campaign.
+        is_datum : bool, optional (default = False)
+            `True` idicates that all loaded OESGN stations are initially selected as datum stations (`is_datum`=True)
         verbose : bool, optional (default=False)
             If True, status messages are printed to the command line.
         """
-        self.stations.add_stations_from_oesgn_table(filename=oesgn_filename, verbose=verbose)
+        self.stations.add_stations_from_oesgn_table(filename=oesgn_filename, is_datum=is_datum, verbose=verbose)
 
     def __str__(self):
         return f'Campaign "{self.campaign_name}" with {self.number_of_surveys} surveys ' \

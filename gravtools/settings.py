@@ -95,6 +95,7 @@ R_POPE_TEST_TRESHOLD = 1e-6
 
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
+INIT_OESGN_STATION_AS_DATUM = False  # Initialize OESGN stations as datum stations when loading rom an OESGN file?
 
 
 # ----- GUI appearance and plot settings -----

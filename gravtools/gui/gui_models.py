@@ -90,10 +90,16 @@ class StationTableModel(QAbstractTableModel):
 
     def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
+
+            value = self._data.iloc[index.row(), index.column()]
+            column_name = self._data_column_names[index.column()]
+
             if role == Qt.DisplayRole:
 
-                value = self._data.iloc[index.row(), index.column()]
-                column_name = self._data_column_names[index.column()]
+                # Draw checkboxes only in the "is_datum" column:
+                if column_name == 'is_datum':
+                    return ''
+
                 # Custom formatter (string is expected as return type):
                 if value is None:  #
                     return NONE_REPRESENTATION_IN_TABLE_VIEW
@@ -116,9 +122,24 @@ class StationTableModel(QAbstractTableModel):
                     return Qt.AlignVCenter + Qt.AlignRight
 
             if role == Qt.BackgroundRole:
+                if column_name == 'is_datum':
+                    if value:
+                        return QtGui.QColor('red')
+
                 is_observed_flag = self._data.iloc[index.row(), 7]  # is_observed
                 if is_observed_flag:
                     return QtGui.QColor('cyan')
+
+            if role == Qt.CheckStateRole:
+                try:
+                    if index.column() == self._data_column_names.index('is_datum'):
+                        keep_obs_flag = self._data.iloc[index.row(), self._data_column_names.index('is_datum')]
+                        if keep_obs_flag:
+                            return Qt.Checked
+                        else:
+                            return Qt.Unchecked
+                except Exception:
+                    return None
         return None
 
     def headerData(self, section, orientation, role):
@@ -158,6 +179,23 @@ class StationTableModel(QAbstractTableModel):
                     return False
                 return True  # Data successfully set
 
+        if role == Qt.CheckStateRole:
+            row = self._data.index[index.row()]
+            col = self._data.columns[index.column()]
+            if col == 'is_datum':
+                if value == Qt.Unchecked:
+                    self._data.at[row, col] = False
+                    self.dataChanged.emit(index, index)  # Update only one item
+                elif value == Qt.Checked:
+                    self._data.at[row, col] = True
+                    self.dataChanged.emit(index, index)  # Update only one item
+                else:
+                    QMessageBox.warning(self.parent(), 'Warning!',
+                                        f'Invalid value fpr keep observation flag: "{value}"')
+                    return False
+
+            return True  # Data successfully set
+
         return False
 
     def flags(self, index):
@@ -168,8 +206,8 @@ class StationTableModel(QAbstractTableModel):
         flags |= Qt.ItemIsDragEnabled
         flags |= Qt.ItemIsDropEnabled
         if index.column() == self._data_column_names.index('is_datum'):  # Column: "is_datum"
-            flags |= Qt.ItemIsEditable
-            # flags |= Qt.ItemIsUserCheckable
+            # flags |= Qt.ItemIsEditable  # Use checkbox only!
+            flags |= Qt.ItemIsUserCheckable
         return flags
 
     @property
@@ -519,6 +557,11 @@ class ObservationTableModel(QAbstractTableModel):
             if index.isValid():
                 if role == Qt.DisplayRole:
                     value = self._data.iloc[index.row(), index.column()]
+
+                    # Only checkboxes in the "keep_obs" flag column:
+                    if index.column() == self._data_column_names.index('keep_obs'):
+                        return ''
+
                     # Custom formatter (string is expected as return type):
                     if value is None:  #
                         return NONE_REPRESENTATION_IN_TABLE_VIEW
@@ -570,7 +613,7 @@ class ObservationTableModel(QAbstractTableModel):
         flags |= Qt.ItemIsSelectable
         flags |= Qt.ItemIsEnabled
         if index.column() == self._data_column_names.index('keep_obs'):
-            flags |= Qt.ItemIsEditable
+            # flags |= Qt.ItemIsEditable  # No longer needed => Only checkbox in "keep_obs" column!
             flags |= Qt.ItemIsUserCheckable
         return flags
 
@@ -602,29 +645,27 @@ class ObservationTableModel(QAbstractTableModel):
                                             f'Input "{value}" not valid! Only "True" or "False" allowed.')
                         return False
                     return True  # Data successfully set
-        else:
-            return False  # Invalid Index
 
-        if role == Qt.CheckStateRole:
-            row = self._data.index[index.row()]
-            col = self._data.columns[index.column()]
-            idx_min = self.index(index.row(), 0)
-            idx_max = self.index(index.row(), len(self._data_column_names) - 1)
-            if col == 'keep_obs':
-                if value == Qt.Unchecked:
-                    # print(f'row {index.row()}: Unchecked!')
-                    self._data.at[row, col] = False
-                    self.dataChanged.emit(idx_min, idx_max)
-                elif value == Qt.Checked:
-                    # print(f'row {index.row()}: Checked!')
-                    self._data.at[row, col] = True
-                    self.dataChanged.emit(idx_min, idx_max)
-                else:
-                    QMessageBox.warning(self.parent(), 'Warning!',
-                                        f'Invalid value fpr keep observation flag: "{value}"')
-                    return False
+            if role == Qt.CheckStateRole:
+                row = self._data.index[index.row()]
+                col = self._data.columns[index.column()]
+                idx_min = self.index(index.row(), 0)
+                idx_max = self.index(index.row(), len(self._data_column_names) - 1)
+                if col == 'keep_obs':
+                    if value == Qt.Unchecked:
+                        # print(f'row {index.row()}: Unchecked!')
+                        self._data.at[row, col] = False
+                        self.dataChanged.emit(idx_min, idx_max)
+                    elif value == Qt.Checked:
+                        # print(f'row {index.row()}: Checked!')
+                        self._data.at[row, col] = True
+                        self.dataChanged.emit(idx_min, idx_max)
+                    else:
+                        QMessageBox.warning(self.parent(), 'Warning!',
+                                            f'Invalid value fpr keep observation flag: "{value}"')
+                        return False
 
-            return True  # Data successfully set
+                return True  # Data successfully set
 
         return False
 

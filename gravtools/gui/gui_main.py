@@ -2171,6 +2171,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # => Therefore, these two have to be reassigned in order to mirror the same data! This is done by
                 #    calling the method "self.station_model.load_stat_df(self.campaign.stations.stat_df)".
                 self.campaign.add_stations_from_oesgn_table_file(dlg.lineEdit_oesgn_table_file_path.text(),
+                                                                 is_datum=settings.INIT_OESGN_STATION_AS_DATUM,
                                                                  verbose=IS_VERBOSE)
                 self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
                 self.refresh_stations_table_model_and_view()
