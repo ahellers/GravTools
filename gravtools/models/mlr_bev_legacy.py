@@ -11,7 +11,6 @@ Contains classes for the legacy processign scheme of gravimeter observations at 
 drift adjustment. This scheme also involves the determination of absulte gravity values based on datum stations.
 """
 
-from gravtools.models.lsm import LSM
 import pandas as pd
 import numpy as np
 from scipy import stats
@@ -19,6 +18,8 @@ import datetime as dt
 import pytz
 import copy
 from sklearn.linear_model import LinearRegression
+
+from gravtools.models.lsm import LSM
 from gravtools import settings
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
@@ -210,8 +211,9 @@ class BEVLegacyProcessing(LSM):
 
         # Write log:
         if verbose or self.write_log:
-            tmp_str = f'#### Adjustment log ####\n'
-            tmp_str += f'Gravtools version: {GRAVTOOLS_VERSION}\n'
+            time_now_str = dt.datetime.now(tz=pytz.UTC).strftime('%Y-%m-%d, %H:%M:%S %Z')
+            tmp_str = f'#### Adjustment log (MLR, BEV legacy) ####\n'
+            tmp_str += f'Processed with GravTools {GRAVTOOLS_VERSION} ({time_now_str})\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
             tmp_str += f'Number of surveys: {number_of_surveys}\n'

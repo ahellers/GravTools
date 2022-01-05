@@ -65,7 +65,8 @@ GRAVIMETER_SERIAL_NUMBERS = {
 
 # Lookuptable to convert the gravimeter S/N to the IDs written to the database NSDB:
 GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE = {
-    '40601': '5'
+    '40601': '5',
+    '40236': '5',
 }
 
 #  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
@@ -95,6 +96,7 @@ R_POPE_TEST_TRESHOLD = 1e-6
 
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
+INIT_OESGN_STATION_AS_DATUM = False  # Initialize OESGN stations as datum stations when loading rom an OESGN file?
 
 
 # ----- GUI appearance and plot settings -----
@@ -119,6 +121,16 @@ CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
 # --- Data export options: ---
 # List of columns in the `obs_df` dataframe that are written to the exported observation list CSV file:
 EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'obs_epoch', 'station_name', 'keep_obs']
+# Maximum allowed SD of the estimated gravity at stations when exporting data to a nsb file!
+#  => This is important as only 3 characters are reserved in the nsb file for the SD!
+MAX_SD_FOR_EXPORT_TO_NSB_FILE = 999.0
+# Choices for 5-character comment written to the nsb file (appears as Operat-G in the NSDB):
+# - One letter instrument-ID: 'inst_id'
+# - Official 5-character serial number of the Scintrex CG-5 Gravitimeters: 'cg5_serial_number'
+# - Version of Gravtools: 'gravtools_version'
+# !! Warning: Actually only the gravtools version makes sense, because multiple surveys observed with different
+# instruments can be combindes
+WRITE_COMMENT_TO_NSB = 'gravtools_version'
 
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----

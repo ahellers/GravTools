@@ -842,6 +842,7 @@
     </widget>
     <addaction name="action_New_Campaign"/>
     <addaction name="action_Change_output_directory"/>
+    <addaction name="action_Change_Campaign_name"/>
     <addaction name="action_Save_Campaign"/>
     <addaction name="action_Load_Campaign"/>
     <addaction name="separator"/>
@@ -1032,6 +1033,14 @@
    </property>
    <property name="toolTip">
     <string>Flag observations based ob observations file</string>
+   </property>
+  </action>
+  <action name="action_Change_Campaign_name">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Change Campaign name</string>
    </property>
   </action>
  </widget>
