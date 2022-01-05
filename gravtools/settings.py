@@ -132,6 +132,15 @@ MAX_SD_FOR_EXPORT_TO_NSB_FILE = 999.0
 # instruments can be combindes
 WRITE_COMMENT_TO_NSB = 'gravtools_version'
 
+# ----- Program and Software settings -----
+# Specify the protocol version of pickle used when saving the campaign data to a pickle file.
+# Python 3.6.8 (used at BEV) does not support version 5, only up to version 4
+# Options (type: int):
+# - <int number> => Directly specify the protocol version
+#                   (4 should be a good choice, as it is compatible with python 3.6)
+# - 999 => Use the highest version available at the installation (pickle.HIGHEST_VERSION)
+PICKLE_PROTOCOL_VERSION = 4
+
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----
 
