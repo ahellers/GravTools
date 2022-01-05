@@ -14,7 +14,7 @@ from gravtools.models.survey import Survey
 from gravtools.models.station import Station
 from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
     GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, EXPORT_OBS_LIST_COLUMNS, \
-    MAX_SD_FOR_EXPORT_TO_NSB_FILE, WRITE_COMMENT_TO_NSB
+    MAX_SD_FOR_EXPORT_TO_NSB_FILE, WRITE_COMMENT_TO_NSB, PICKLE_PROTOCOL_VERSION
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
@@ -688,6 +688,7 @@ class Campaign:
         append_str += f'------------------------------------------\n'
         append_str += f'LSM run comment: {lsm_run.comment}\n'
         append_str += f'Log file created: {time_now_str}\n'
+        append_str += f'Log file written with GravTools version: {GRAVTOOLS_VERSION}\n'
         out_string = log_string + '\n' + append_str
         
         # Write file:
@@ -718,7 +719,10 @@ class Campaign:
         if verbose:
             print(f'Export campaign data to {filename}.')
         with open(filename, 'wb') as outfile:
-            pickle.dump(self, outfile, protocol=pickle.HIGHEST_PROTOCOL)
+            if PICKLE_PROTOCOL_VERSION == '999':
+                pickle.dump(self, outfile, protocol=pickle.HIGHEST_PROTOCOL)
+            else:
+                pickle.dump(self, outfile, protocol=PICKLE_PROTOCOL_VERSION)
         return filename
 
     @classmethod
