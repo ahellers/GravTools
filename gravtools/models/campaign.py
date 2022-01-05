@@ -1,4 +1,5 @@
 import datetime as dt
+import pytz
 import numpy as np
 import pickle
 import os
@@ -12,7 +13,8 @@ from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
 from gravtools.models.station import Station
 from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
-    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, EXPORT_OBS_LIST_COLUMNS
+    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, EXPORT_OBS_LIST_COLUMNS, \
+    MAX_SD_FOR_EXPORT_TO_NSB_FILE, WRITE_COMMENT_TO_NSB
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
@@ -560,7 +562,8 @@ class Campaign:
         else:
             raise ValueError('`ref_delta_t_dt` needs to be a datetime object.')
 
-    def write_nsb_file(self, filename: str, lsm_run_index, vertical_offset_mode: str = 'first', verbose=True):
+    def write_nsb_file(self, filename: str, lsm_run_index, vertical_offset_mode: str = 'first',
+                       exclude_datum_stations=False, verbose=False):
         """Write the results of an LSM run to an nsb file (input for NSDB database).
 
         Parameters
@@ -574,6 +577,8 @@ class Campaign:
             respectively, are determined in the case of multiple measurements (setups) on the same point. In the nsb
             file only one dhf/dhb pair per station is allowed. Two options: (1) 'first' indicates that dhb and dhf are
             taken from the first setup at a station. (2) 'mean' indicates that mean values over all setups are taken.
+        exclude_datum_stations : boolean, optional (default=False)
+            `True` indicates that datum stations are excluded from the nsb file.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
@@ -585,8 +590,19 @@ class Campaign:
         lsm_run = self.lsm_runs[lsm_run_index]
         results_stat_df = lsm_run.get_results_stat_df
 
+        # Check if the data is suitable for export to the nsb file:
+        if results_stat_df.loc[results_stat_df['sd_g_est_mugal'] > MAX_SD_FOR_EXPORT_TO_NSB_FILE,
+                               'sd_g_est_mugal'].any():
+            raise AssertionError(f"The SD of at least one station's estimated gravity is larger than {MAX_SD_FOR_EXPORT_TO_NSB_FILE} µGal! ")
+
         # Loop over stations in results dataframe:
         for index, row in results_stat_df.iterrows():
+
+            # Skip datum stations:
+            if exclude_datum_stations:
+                if row['is_datum']:
+                    continue
+
             station_name = row['station_name']
             observed_in_surveys = []
             dhb_list_m = []
@@ -621,13 +637,24 @@ class Campaign:
             gravimeter_serial_number = self.surveys[observed_in_surveys[0]].gravimeter_serial_number
             date_str = self.surveys[observed_in_surveys[0]].date.strftime('%Y%m%d')
 
-            nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s} {:>4s} {:4.0f} {:4.0f}\n'.format(
+            # Comment string:
+            # - Max. 5 characters!
+            if WRITE_COMMENT_TO_NSB == 'cg5_serial_number':
+                comment_str = str(gravimeter_serial_number)
+            elif WRITE_COMMENT_TO_NSB == 'inst_id':
+                comment_str = GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE[gravimeter_serial_number]
+            elif WRITE_COMMENT_TO_NSB == 'gravtools_version':
+                comment_str = 'GT'+''.join(GRAVTOOLS_VERSION.split('.'))
+            else:
+                raise AssertionError(f'Invalid choice for the nsb file comment: {WRITE_COMMENT_TO_NSB}!')
+
+            nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s}{:>5s} {:4.0f} {:4.0f}\n'.format(
                 station_name,
                 date_str,
                 row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
                 row['sd_g_est_mugal'],
                 GRAVIMETER_TYPES_KZG_LOOKUPTABLE[gravimeter_type],
-                GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE[gravimeter_serial_number],
+                comment_str,
                 (dhb_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
                 (dhf_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
             )
@@ -635,6 +662,39 @@ class Campaign:
         # Write file:
         with open(filename, 'w') as out_file:
             out_file.write(nsb_string)
+            
+    def write_log_file(self, filename: str, lsm_run_index, verbose=False):
+        """Write log file of a selected LSM run.
+        
+        Parameters
+        ----------
+        filename : str
+            Name and path of the output nsb file (e.g. /home/johnny/example.nsb)
+        lsm_run_index : int
+            Index of the lsm run in `campaign.lsm_runs` of which the results are exported to the nsb file.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Init.:
+        log_string = ''
+
+        # Get and prepare data:
+        lsm_run = self.lsm_runs[lsm_run_index]
+        log_string = lsm_run.get_log_string
+
+        # Append additional information to log file string:
+        time_now_str = dt.datetime.now(tz=pytz.UTC).strftime('%Y-%m-%d, %H:%M:%S %Z')
+        append_str = ''
+        append_str += f'------------------------------------------\n'
+        append_str += f'LSM run comment: {lsm_run.comment}\n'
+        append_str += f'Log file created: {time_now_str}\n'
+        out_string = log_string + '\n' + append_str
+        
+        # Write file:
+        if verbose:
+            print(f'Write log file to {filename}.')
+        with open(filename, 'w') as out_file:
+            out_file.write(out_string)
 
     def save_to_pickle(self, filename=None, verbose=True):
         """Save the campaign object to a pickle file at the given path.
@@ -813,6 +873,25 @@ class Campaign:
         if verbose:
             print(flag_log_str)
         return flag_log_str
+
+    def change_campaign_name(self, name: str):
+        """Change the name of the campaign.
+
+        Parameters
+        ----------
+        name : str
+            New campaign name. Non-empty string.
+        """
+        if isinstance(name, str):
+            if name:  # Non-empty string
+                if ' ' in name:
+                    raise AssertionError(f'Blanks in the campaign name are not allowed!')
+                else:
+                    self.campaign_name = name
+            else:
+                raise AssertionError('The campaign name is emtpy!')
+        else:
+            raise AssertionError('The campaign name is not a string!')
 
 
 if __name__ == '__main__':

@@ -116,7 +116,7 @@ class StationTableModel(QAbstractTableModel):
                     return str(value)
 
             if role == Qt.TextAlignmentRole:
-                value = self._data.iloc[index.row(), index.column()]
+                # value = self._data.iloc[index.row(), index.column()]
                 if isinstance(value, int) or isinstance(value, float):
                     # Align right, vertical middle.
                     return Qt.AlignVCenter + Qt.AlignRight
@@ -132,7 +132,7 @@ class StationTableModel(QAbstractTableModel):
 
             if role == Qt.CheckStateRole:
                 try:
-                    if index.column() == self._data_column_names.index('is_datum'):
+                    if column_name == 'is_datum':
                         keep_obs_flag = self._data.iloc[index.row(), self._data_column_names.index('is_datum')]
                         if keep_obs_flag:
                             return Qt.Checked

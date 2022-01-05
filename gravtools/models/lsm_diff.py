@@ -12,6 +12,8 @@ Contains classes for least-squares adjustment of differential relative gravimete
 
 import numpy as np
 import pandas as pd
+import datetime as dt
+import pytz
 # from matplotlib import pyplot as plt
 
 from gravtools import settings
@@ -255,8 +257,9 @@ class LSMDiff(LSM):
                                  'for ALL datum stations.')
 
         if verbose or self.write_log:
+            time_now_str = dt.datetime.now(tz=pytz.UTC).strftime('%Y-%m-%d, %H:%M:%S %Z')
             tmp_str = f'#### Adjustment log (differential LSM) ####\n'
-            tmp_str += f'Gravtools version: {GRAVTOOLS_VERSION}\n'
+            tmp_str += f'Processed with GravTools {GRAVTOOLS_VERSION} ({time_now_str})\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
             tmp_str += f'Number of surveys: {number_of_surveys}\n'

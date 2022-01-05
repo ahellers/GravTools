@@ -1,6 +1,7 @@
 import sys
 import os
-from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, QHeaderView
+from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
+    QHeaderView, QInputDialog
 from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QModelIndex
 from PyQt5 import QtGui
 
@@ -146,6 +147,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
 
+    @pyqtSlot()
+    def on_action_Change_Campaign_name_triggered(self):
+        """Invoked whenever the menu item change campaign name is pressed."""
+        # Get name:
+        new_campaign_name, flag_done = QInputDialog.getText(self, 'Enter the new campaign name', 'New campaign name (No blanks or special characters allowed):')
+        if flag_done:
+            try:
+                self.campaign.change_campaign_name(new_campaign_name)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f'No new campaign name set.')
+            else:  # Valid input
+                # Set new window title:
+                self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
+                self.statusBar().showMessage(f'New campaign name set to: {self.campaign.campaign_name}.')
+        else:
+            self.statusBar().showMessage(f'No new campaign name set.')
+
 
     @pyqtSlot()
     def on_action_Change_output_directory_triggered(self):
@@ -269,12 +288,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.action_Export_Results.setEnabled(True)
                 self.action_Save_Campaign.setEnabled(True)
                 self.action_Change_output_directory.setEnabled(True)
+                self.action_Change_Campaign_name.setEnabled(True)
 
                 # Set up view models and views for this campaign:
                 # - Stations tab:
                 self.set_up_station_view_model()
                 self.enable_station_view_options_based_on_model()
-                self.set_up_proxy_station_model()
+                self.set_up_proxy_station_model()  # Time consuming!!!!!
+                self.on_checkBox_filter_observed_stat_only_toggled(
+                    state=self.checkBox_filter_observed_stat_only.checkState())
                 self.update_stations_map(auto_range=True)
                 # - Observations tab
                 self.set_up_observation_view_model()
@@ -1297,6 +1319,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             add_const_to_sd_of_observations_step_size_mugal = self.dlg_estimation_settings.doubleSpinBox_initial_step_size.value()
             max_total_additive_const_to_sd_mugal = self.dlg_estimation_settings.doubleSpinBox_max_additive_const_to_sd.value()
             max_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_max_multiplicative_factor_to_sd_percent.value()
+            min_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_min_multiplicative_factor_to_sd_percent.value()
             initial_step_size_percent = self.dlg_estimation_settings.doubleSpinBox_initial_step_size_percent.value()
 
             # Initialize LSM object and add it to the campaign object:
@@ -1314,6 +1337,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
                         multiplicative_factor_step_size_percent=initial_step_size_percent,
                         max_multiplicative_factor_to_sd_percent=max_multiplicative_factor_to_sd_percent,
+                        min_multiplicative_factor_to_sd_percent=min_multiplicative_factor_to_sd_percent,
                         drift_pol_degree=degree_drift_polynomial,
                         sig0_mugal=sig0,
                         scaling_factor_datum_observations=weight_factor_datum,
@@ -1348,6 +1372,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         max_total_additive_const_to_sd_mugal=max_total_additive_const_to_sd_mugal,
                         multiplicative_factor_step_size_percent=initial_step_size_percent,
                         max_multiplicative_factor_to_sd_percent=max_multiplicative_factor_to_sd_percent,
+                        min_multiplicative_factor_to_sd_percent=min_multiplicative_factor_to_sd_percent,
                         drift_pol_degree=degree_drift_polynomial,
                         sig0_mugal=sig0,
                         scaling_factor_datum_observations=weight_factor_datum,
@@ -1505,76 +1530,121 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                   'only inactive observations': 'inactive_only'}
         dlg = DialogExportResults(campaign=self.campaign)
         return_value = dlg.exec()
+        flag_export_successful = True
         if return_value == QDialog.Accepted:
-            # Load Stations to campaign
-            try:
-                # Get GUI settings and data:
-                append_lsm_run_comment_to_filenames = False
-                output_path = dlg.lineEdit_export_path.text()
-                filename = self.campaign.campaign_name
+            # Get GUI settings and data:
+            append_lsm_run_comment_to_filenames = False
+            output_path = dlg.label_export_path_show.text()
+            filename = self.campaign.campaign_name
 
-                # Append lsm run comment to filename, if available:
-                if dlg.flag_lsm_runs_available:
-                    # lsm_run_time_tag = dlg.comboBox_select_lsm_run.currentText()
-                    lsm_run_idx = dlg.comboBox_select_lsm_run.currentIndex()
-                    if lsm_run_idx != -1:  # LSM run selected?
-                        lsm_run = self.campaign.lsm_runs[lsm_run_idx]
-                        # Append LSM comment to filename?
-                        if dlg.checkBox_add_lsm_comment_to_filename.checkState() == Qt.Checked:
-                            append_lsm_run_comment_to_filenames = True
-                            if not lsm_run.comment:  # Empty string
+            # Check if the output path exists:
+            if not os.path.exists(output_path):
+                QMessageBox.critical(self, 'Error!',
+                                     f"The campaign's output path doe not exist ({output_path})! Change the path.")
+                flag_export_successful = False
+            else:
+                try:
+                    # Append lsm run comment to filename, if available:
+                    if dlg.flag_lsm_runs_available:
+                        # lsm_run_time_tag = dlg.comboBox_select_lsm_run.currentText()
+                        lsm_run_idx = dlg.comboBox_select_lsm_run.currentIndex()
+                        if lsm_run_idx != -1:  # LSM run selected?
+                            lsm_run = self.campaign.lsm_runs[lsm_run_idx]
+                            # Append LSM comment to filename?
+                            if dlg.checkBox_add_lsm_comment_to_filename.checkState() == Qt.Checked:
+                                append_lsm_run_comment_to_filenames = True
+                                if not lsm_run.comment:  # Empty string
+                                    append_lsm_run_comment_to_filenames = False
+                            else:
                                 append_lsm_run_comment_to_filenames = False
+                            if append_lsm_run_comment_to_filenames:
+                                filename = self.campaign.campaign_name + '_' + lsm_run.comment
                         else:
-                            append_lsm_run_comment_to_filenames = False
-                        if append_lsm_run_comment_to_filenames:
-                            filename = self.campaign.campaign_name + '_' + lsm_run.comment
-                    else:
-                        dlg.flag_lsm_runs_available = False  # No LSM run selected!
+                            dlg.flag_lsm_runs_available = False  # No LSM run selected!
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                    flag_export_successful = False
+
+                try:
+                    # if observation data available:
+                    if dlg.flag_observation_data_available:
+                        # Write observation list (CSV file):
+                        if dlg.checkBox_write_observation_list.checkState() == Qt.Checked:
+                            filename_obs_list = filename + '_obs.csv'
+                            export_type = _OBS_FILE_EXPORT_TYPES[
+                                dlg.comboBox_observation_list_export_options.currentText()]
+                            self.campaign.write_obs_list_csv(
+                                filename_csv=os.path.join(output_path, filename_obs_list),
+                                export_type=export_type,
+                                verbose=IS_VERBOSE)
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                    flag_export_successful = False
 
                 # If LSM run available:
                 if dlg.flag_lsm_runs_available:
                     # Write nsb file:
-                    if dlg.checkBox_write_nsb_file.checkState() == Qt.Checked:
-                        filename_nsb = filename + '.nsb'
-                        if dlg.radioButton_mean_dhb_dhf.isChecked():
-                            vertical_offset_mode = 'mean'
-                        elif dlg.radioButton_first_dhb_dhf.isChecked():
-                            vertical_offset_mode = 'first'
-                        else:
-                            raise AssertionError(f'Undefined vertical offset mode!')
-                        self.campaign.write_nsb_file(filename=os.path.join(output_path, filename_nsb),
-                                                     lsm_run_index=lsm_run_idx,
-                                                     vertical_offset_mode=vertical_offset_mode,
-                                                     verbose=IS_VERBOSE)
+                    try:
+                        if dlg.checkBox_write_nsb_file.checkState() == Qt.Checked:
+                            filename_nsb = filename + '.nsb'
+                            if dlg.radioButton_mean_dhb_dhf.isChecked():
+                                vertical_offset_mode = 'mean'
+                            elif dlg.radioButton_first_dhb_dhf.isChecked():
+                                vertical_offset_mode = 'first'
+                            else:
+                                raise AssertionError(f'Undefined vertical offset mode!')
+                            if dlg.checkBox_nsb_remove_datum_stations.checkState() == Qt.Checked:
+                                exclude_datum_stations = True
+                            else:
+                                exclude_datum_stations = False
+                            self.campaign.write_nsb_file(filename=os.path.join(output_path, filename_nsb),
+                                                         lsm_run_index=lsm_run_idx,
+                                                         vertical_offset_mode=vertical_offset_mode,
+                                                         exclude_datum_stations=exclude_datum_stations,
+                                                         verbose=IS_VERBOSE)
+                    except Exception as e:
+                        QMessageBox.critical(self, 'Error!', str(e))
+                        flag_export_successful = False
 
                     # Write log file:
-                    if dlg.checkBox_write_log_file.checkState() == Qt.Checked:
-                        log_string = lsm_run.get_log_string
-                        filename_log = filename + '.log'
-                        with open(os.path.join(output_path, filename_log), 'w') as out_file:
-                            out_file.write(log_string)
+                    try:
+                        if dlg.checkBox_write_log_file.checkState() == Qt.Checked:
+                            filename_log = filename + '.log'
+                            self.campaign.write_log_file(filename=os.path.join(output_path, filename_log),
+                                                         lsm_run_index=lsm_run_idx,
+                                                         verbose=IS_VERBOSE)
+                    except Exception as e:
+                        QMessageBox.critical(self, 'Error!', str(e))
+                        flag_export_successful = False
 
                     # Save drift plot to PNG file:
-                    if dlg.checkBox_save_drift_plot_png.checkState() == Qt.Checked:
-                        # Reference: https://pyqtgraph.readthedocs.io/en/latest/exporting.html
-                        filename_png = filename + '_drift_plot.png'
-                        exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_results_drift_plot.scene())
-                        flag_export_successful = exporter.export(os.path.join(output_path, filename_png))
-
-                # if observation data available:
-                if dlg.flag_observation_data_available:
-                    # Write observation list (CSV file):
-                    if dlg.checkBox_write_observation_list.checkState() == Qt.Checked:
-                        filename_obs_list = filename + '_obs.csv'
-                        export_type = _OBS_FILE_EXPORT_TYPES[dlg.comboBox_observation_list_export_options.currentText()]
-                        self.campaign.write_obs_list_csv(filename_csv=os.path.join(output_path, filename_obs_list),
-                                                         export_type=export_type,
-                                                         verbose=IS_VERBOSE)
-            except Exception as e:
-                QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"No exports.")
-            else:
+                    # Reference: https://pyqtgraph.readthedocs.io/en/latest/exporting.html
+                    # - WARNING: Sometimes a linAlg error occurrs ('MAtrix singular') when trying to export the
+                    #            drift plot. It is not possible at this point in the code to cath this error! Therefore,
+                    #            the export of the drift plot is the last step in the file export procedure! This was
+                    #            at leat all other files can be written.
+                    try:
+                        if dlg.checkBox_save_drift_plot_png.checkState() == Qt.Checked:
+                            # To prevent an error the plot has to be shown first by bringing the drift plot tab to front:
+                            # - Main tab widget:
+                            for idx in range(self.tabWidget_Main.count()):
+                                if self.tabWidget_Main.tabText(idx) == "Results":
+                                    self.tabWidget_Main.setCurrentIndex(idx)
+                            # - Results tab widget:
+                            for idx in range(self.tabWidget_results.count()):
+                                if self.tabWidget_results.tabText(idx) == "Drift Plot":
+                                    self.tabWidget_results.setCurrentIndex(idx)
+                            filename_png = filename + '_drift_plot.png'
+                            # The linAlg error is raised in the following line of code:
+                            exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_results_drift_plot.scene())
+                            flag_export_successful = exporter.export(os.path.join(output_path, filename_png))
+                    except Exception as e:
+                        QMessageBox.critical(self, 'Error!', str(e))
+                        flag_export_successful = False
+            if flag_export_successful:
                 self.statusBar().showMessage(f"Export to {output_path} successful!")
+            else:
+                self.statusBar().showMessage(f"Problems at data export!")
         else:
             self.statusBar().showMessage(f"No exports.")
 
@@ -1763,21 +1833,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         where the observation tree view is changed accordingly and the `keep_ob` fag is set in the survey in the
         campaign data (method: `self.campaign.surveys[<survey_nanem>].activate_observation()`).
         """
-        # Get first selected point (only select ONE point!):
-        spot_item = ev[0]  # <class 'pyqtgraph.graphicsItems.ScatterPlotItem.SpotItem'>
-        # Select item in observation_model and toggel the "keep_obs" state:
-        row = self.observation_model.get_data.index[spot_item._index]
-        if self.observation_model.get_data.at[row, 'keep_obs']:
-            self.observation_model.get_data.at[row, 'keep_obs'] = False
-            # Handled in `self.on_observation_model_data_changed` with `self.set_keep_obs_markers_in_obs_plot` instead:
-            # spot_item.setBrush(self.BRUSH_INACTIVE_OBS)
-        else:
-            self.observation_model.get_data.at[row, 'keep_obs'] = True
-            # Handled in `self.on_observation_model_data_changed` with `self.set_keep_obs_markers_in_obs_plot` instead:
-            # spot_item.setBrush(self.BRUSH_ACTIVE_OBS)
-        index = self.tableView_observations.model().index(spot_item._index,
-                                                          self.observation_model._data_column_names.index('keep_obs'))
-        self.observation_model.dataChanged.emit(index, index)  # Triggers all following events...
+        try:
+            # Get first selected point (only select ONE point!):
+            spot_item = ev[0]  # <class 'pyqtgraph.graphicsItems.ScatterPlotItem.SpotItem'>
+            # Select item in observation_model and toggel the "keep_obs" state:
+            row = self.observation_model.get_data.index[spot_item._index]
+            if self.observation_model.get_data.at[row, 'keep_obs']:
+                self.observation_model.get_data.at[row, 'keep_obs'] = False
+                # Handled in `self.on_observation_model_data_changed` with `self.set_keep_obs_markers_in_obs_plot` instead:
+                # spot_item.setBrush(self.BRUSH_INACTIVE_OBS)
+            else:
+                self.observation_model.get_data.at[row, 'keep_obs'] = True
+                # Handled in `self.on_observation_model_data_changed` with `self.set_keep_obs_markers_in_obs_plot` instead:
+                # spot_item.setBrush(self.BRUSH_ACTIVE_OBS)
+            index = self.tableView_observations.model().index(spot_item._index,
+                                                              self.observation_model._data_column_names.index('keep_obs'))
+            self.observation_model.dataChanged.emit(index, index)  # Triggers all following events...
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+
 
     def on_observation_model_data_changed(self, topLeft, bottomRight, role):
         """Invoked whenever data in the observation table view changed."""
@@ -2110,6 +2184,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.action_Export_Results.setEnabled(True)
             self.action_Save_Campaign.setEnabled(True)
             self.action_Change_output_directory.setEnabled(True)
+            self.action_Change_Campaign_name.setEnabled(True)
 
             # Set up GUI (models and widgets):
             # - Stations Tab:
@@ -2176,6 +2251,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
                 self.refresh_stations_table_model_and_view()
                 self.set_up_proxy_station_model()
+                self.on_checkBox_filter_observed_stat_only_toggled(
+                    state=self.checkBox_filter_observed_stat_only.checkState())
 
             except FileNotFoundError:
                 QMessageBox.critical(self, 'File not found error', f'"{dlg.lineEdit_oesgn_table_file_path.text()}" '
@@ -2227,7 +2304,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.critical(self, 'Error!', str(e))
         else:
             self.connect_station_model_to_table_view()  # Set view
-            self.tableView_Stations.resizeColumnsToContents()  # TODO This line takes a lot of time!!
+            self.tableView_Stations.resizeColumnsToContents()  # TODO This line takes a lot of time!!!!!!!!!!!!
             self.statusBar().showMessage(f"{self.campaign.number_of_stations} stations in current campaign.")
 
     def connect_station_model_to_table_view(self):
@@ -2315,6 +2392,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.statusBar().showMessage(f"No survey data added.")
             finally:
                 self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.
+                self.on_checkBox_filter_observed_stat_only_toggled(
+                    state=self.checkBox_filter_observed_stat_only.checkState())
                 self.enable_station_view_options_based_on_model()
                 # Show observed stations only based on Checkbox state:
                 self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
@@ -2559,7 +2638,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
             self.buttonBox.buttons()[0].setEnabled(False)  # OK button in buttonBox
 
         # Set the lineEdit with the export path:
-        self.lineEdit_export_path.setText(campaign.output_directory)
+        self.label_export_path_show.setText(campaign.output_directory)
         # connect signals and slots:
         self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
 
@@ -2575,7 +2654,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
 
     def write_lsm_run_comment_to_gui(self, lsm_run_idx):
         """Writes the lsm run comment of the selected lsm run to the GUI line edit."""
-        self.lineEdit_export_comment.setText(self.get_lsm_run_comment(lsm_run_idx))
+        self.label_export_comment_show.setText(self.get_lsm_run_comment(lsm_run_idx))
 
     def get_lsm_run_comment(self, lsm_run_idx: int):
         """Returns the lsm run comment of the run with the specified index."""

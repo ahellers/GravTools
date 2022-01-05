@@ -155,14 +155,15 @@ class LSM:
         self.goodness_of_fit_test_status = ''  # str
 
     def adjust_autoscale_s0(self,
-                            iteration_approach='Multiplicative',  # !!!!!!!!!!! NEW !!!!!!!!!
+                            iteration_approach='Multiplicative',
                             s02_target=1,
                             s02_target_delta=0.1,
                             max_number_iterations=10,
                             add_const_to_sd_of_observations_step_size_mugal=5.0,
                             max_total_additive_const_to_sd_mugal=20.0,
-                            multiplicative_factor_step_size_percent=10.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
-                            max_multiplicative_factor_to_sd_percent=150.0,  # [%]  !!!!!!!!!!! NEW !!!!!!!!!
+                            multiplicative_factor_step_size_percent=10.0,  # [%]
+                            max_multiplicative_factor_to_sd_percent=200.0,  # [%]
+                            min_multiplicative_factor_to_sd_percent=50.0,  # [%]
                             drift_pol_degree=1,
                             sig0_mugal=1,
                             scaling_factor_datum_observations=1.0,
@@ -202,9 +203,12 @@ class LSM:
         multiplicative_factor_step_size_percent : float, optional (default=10.0)
             Initial iteration step size for the multiplicative factor that is used to scale all setup
             observations. This parameter is only considered when using the `multiplicative` iteration approach.
-        max_multiplicative_factor_to_sd_percent : float, optional (default=150.0)
+        max_multiplicative_factor_to_sd_percent : float, optional (default=200.0)
             Maximum scaling factor when using the `multiplicative` iteration approach for scaling the SD of setup
             observations. Minimum = 100%.
+        min_multiplicative_factor_to_sd_percent : float, optional (default=50.0)
+            Minimum scaling factor when using the `multiplicative` iteration approach for scaling the SD of setup
+            observations. Minimum = 1.0%, maximum = 100.0%
         drift_pol_degree : int, optional (default=1)
             Degree of estimated drift polynomial.
         sig0_mugal : int, optional (default=1)
@@ -329,12 +333,12 @@ class LSM:
             iteration_log_str_tmp += f'\n'
 
         elif iteration_approach == 'Multiplicative':
-            if flag_s0_within_threshold and (mult_factor_total <= (max_multiplicative_factor_to_sd_percent/100)):
+            if flag_s0_within_threshold and (mult_factor_total <= (max_multiplicative_factor_to_sd_percent/100)) and (mult_factor_total >= (min_multiplicative_factor_to_sd_percent/100)):
                 iteration_log_str_tmp = f' => Iteration successful!\n'
                 iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n '
                 iteration_log_str_tmp += f' => Total multiplicative factor for SD of observations ({mult_factor_total*100:1.3f}%) ' + \
-                                         f'is smaller than the user defined threshold ' + \
-                                         f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
+                                         f'is between the user defined threshold ' + \
+                                         f'of {min_multiplicative_factor_to_sd_percent:1.3f}% and {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
             else:
                 iteration_log_str_tmp = f' => ERROR: Iteration failed!\n'
                 if not flag_s0_within_threshold:
@@ -344,6 +348,10 @@ class LSM:
                     iteration_log_str_tmp += f' => Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) ' + \
                                              f'exceeds the the user defined threshold ' + \
                                              f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
+                if (mult_factor_total < (min_multiplicative_factor_to_sd_percent/100)):
+                    iteration_log_str_tmp += f' => Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) ' + \
+                                             f'is smaller than the user defined threshold ' + \
+                                             f'of {min_multiplicative_factor_to_sd_percent:1.3f}%.\n'
             iteration_log_str_tmp += f'\n'
 
         iteration_log_str += iteration_log_str_tmp
@@ -373,6 +381,10 @@ class LSM:
                 raise AssertionError(f'Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) '
                                      f'exceeds the the user defined threshold '
                                      f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n')
+            if mult_factor_total < (min_multiplicative_factor_to_sd_percent/100):
+                raise AssertionError(f'Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) '
+                                     f'is smaller than the the user defined threshold '
+                                     f'of {min_multiplicative_factor_to_sd_percent:1.3f}%.\n')
 
         self.number_of_iterations = i_iteration
 

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>433</width>
-    <height>571</height>
+    <height>577</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
      <property name="title">
       <string>General settings</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_3">
+     <layout class="QVBoxLayout" name="verticalLayout_5">
       <item>
        <layout class="QFormLayout" name="formLayout">
         <item row="0" column="0">
@@ -39,51 +39,65 @@
         <item row="1" column="0">
          <widget class="QLabel" name="label_export_path">
           <property name="text">
-           <string>Export_path</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QLineEdit" name="lineEdit_export_path">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="toolTip">
-           <string>Default: General campaign path.</string>
-          </property>
-          <property name="text">
-           <string/>
+           <string>Export_path:</string>
           </property>
          </widget>
         </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label_export_comment">
           <property name="text">
-           <string>Comment</string>
+           <string>Comment:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_export_path_show">
+          <property name="text">
+           <string/>
           </property>
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QLineEdit" name="lineEdit_export_comment">
-          <property name="enabled">
-           <bool>false</bool>
+         <widget class="QLabel" name="label_export_comment_show">
+          <property name="text">
+           <string/>
           </property>
          </widget>
         </item>
        </layout>
       </item>
       <item>
-       <widget class="QCheckBox" name="checkBox_add_lsm_comment_to_filename">
-        <property name="toolTip">
-         <string>Append the LSM run comment to the name of the output file(s), e.g. &lt;campaign name&gt;_&lt;lsm run comment&gt;.nsb</string>
-        </property>
-        <property name="text">
-         <string>Append the LSM run comment to the filenames</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <spacer name="horizontalSpacer_3">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>30</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_add_lsm_comment_to_filename">
+          <property name="toolTip">
+           <string>Append the LSM run comment to the name of the output file(s), e.g. &lt;campaign name&gt;_&lt;lsm run comment&gt;.nsb</string>
+          </property>
+          <property name="text">
+           <string>Append comment to filenames</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
@@ -93,7 +107,7 @@
      <property name="title">
       <string>nsb file</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout">
+     <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
        <widget class="QCheckBox" name="checkBox_write_nsb_file">
         <property name="text">
@@ -105,33 +119,70 @@
        </widget>
       </item>
       <item>
-       <widget class="QRadioButton" name="radioButton_first_dhb_dhf">
-        <property name="toolTip">
-         <string>Take vertical offsets between instrument top and ground (dhb) and instrument top and reference point (dhf) at a station from the first setup at this station.</string>
-        </property>
-        <property name="text">
-         <string>Take dhb and dhf from first setup at a station</string>
-        </property>
-        <property name="checked">
-         <bool>true</bool>
-        </property>
-        <attribute name="buttonGroup">
-         <string notr="true">buttonGroup_dhb_dhf</string>
-        </attribute>
-       </widget>
-      </item>
-      <item>
-       <widget class="QRadioButton" name="radioButton_mean_dhb_dhf">
-        <property name="toolTip">
-         <string>Calculate mean values of the vertical offsets between instrument top and ground (dhb) and instrument top and reference point (dhf) from all setups at a station. Write these mean values to the nsb file.</string>
-        </property>
-        <property name="text">
-         <string>Use mean dhb and dhf at stations</string>
-        </property>
-        <attribute name="buttonGroup">
-         <string notr="true">buttonGroup_dhb_dhf</string>
-        </attribute>
-       </widget>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>30</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <layout class="QFormLayout" name="formLayout_3">
+          <item row="0" column="0">
+           <widget class="QRadioButton" name="radioButton_first_dhb_dhf">
+            <property name="toolTip">
+             <string>Take vertical offsets between instrument top and ground (dhb) and instrument top and reference point (dhf) at a station from the first setup at this station.</string>
+            </property>
+            <property name="text">
+             <string>Take dhb and dhf from first setup at a station</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">buttonGroup_dhb_dhf</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QRadioButton" name="radioButton_mean_dhb_dhf">
+            <property name="toolTip">
+             <string>Calculate mean values of the vertical offsets between instrument top and ground (dhb) and instrument top and reference point (dhf) from all setups at a station. Write these mean values to the nsb file.</string>
+            </property>
+            <property name="text">
+             <string>Use mean dhb and dhf at stations</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">buttonGroup_dhb_dhf</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="checkBox_nsb_remove_datum_stations">
+            <property name="toolTip">
+             <string>Remove all datum stations rom the nsb file.</string>
+            </property>
+            <property name="text">
+             <string>Remove datum stations from nsb file</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
@@ -145,7 +196,7 @@
       <item>
        <widget class="QCheckBox" name="checkBox_write_log_file">
         <property name="text">
-         <string>write log file (text file)</string>
+         <string>Write log file (text file)</string>
         </property>
         <property name="checked">
          <bool>true</bool>
@@ -158,7 +209,7 @@
          <bool>true</bool>
         </property>
         <property name="text">
-         <string>save current drift plot (PNG file)</string>
+         <string>Save current drift plot view (PNG file)</string>
         </property>
         <property name="checked">
          <bool>true</bool>
@@ -170,12 +221,18 @@
    </item>
    <item>
     <widget class="QGroupBox" name="groupBox_observation_list">
+     <property name="toolTip">
+      <string>The observation list file contains either a list of all observations, or of all active or inactive observations. These files are required to save the actual selection of observations (gravitimeter reading) and can be loaded to restore this setup later.</string>
+     </property>
      <property name="title">
       <string>Observation list (CSV file)</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_5">
+     <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <widget class="QCheckBox" name="checkBox_write_observation_list">
+        <property name="toolTip">
+         <string>Write an observation list file.</string>
+        </property>
         <property name="text">
          <string>Write Observation list</string>
         </property>
@@ -185,32 +242,58 @@
        </widget>
       </item>
       <item>
-       <layout class="QFormLayout" name="formLayout_2">
+       <layout class="QFormLayout" name="formLayout_5">
         <item row="0" column="0">
-         <widget class="QLabel" name="label_observation_list_export_options">
-          <property name="text">
-           <string>Export </string>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
           </property>
-         </widget>
+          <property name="sizeType">
+           <enum>QSizePolicy::Fixed</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>30</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
         </item>
         <item row="0" column="1">
-         <widget class="QComboBox" name="comboBox_observation_list_export_options">
-          <item>
-           <property name="text">
-            <string>all observations</string>
-           </property>
+         <layout class="QFormLayout" name="formLayout_2">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_observation_list_export_options">
+            <property name="toolTip">
+             <string>Select which observations will be written to the file depending in the activity status.</string>
+            </property>
+            <property name="text">
+             <string>Export </string>
+            </property>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>only active observations</string>
-           </property>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="comboBox_observation_list_export_options">
+            <property name="toolTip">
+             <string>Select which observations will be written to the file depending in the activity status.</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>all observations</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>only active observations</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>only inactive observations</string>
+             </property>
+            </item>
+           </widget>
           </item>
-          <item>
-           <property name="text">
-            <string>only inactive observations</string>
-           </property>
-          </item>
-         </widget>
+         </layout>
         </item>
        </layout>
       </item>
