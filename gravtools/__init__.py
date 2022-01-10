@@ -10,5 +10,5 @@ Summary
 Program collection for handling gravity surveys.
 """
 
-__version__ = '0.0.7'
+__version__ = '0.0.8'
 __author__ = 'Andreas Hellerschmied'
