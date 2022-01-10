@@ -68,13 +68,14 @@ Follow these steps to create an executable on a Windows machine:
   * c. Create virtual environment: `virtualenv env`
   * d. Activate it: `env\Scripts\activate.bat`
     * Deactivate with `deactivate`
-  * e. Install dependencies with pip: `pip install -r requirements.txt` (see comments below!)
-* **4. Try and run the application**
-  * `python3 run_gui.py`
-* **5. Create exe with auto-py-to-exe**
+* **4. Install gravtools: `pip install gravtools-x.x.x.tar.gz`
+    * If a windiws executable should be created install auto-py-to-exe (`pip install auto-py-to-exe`)
+* **5. Try and run the application**
+  * Type `gt` in the command line interface (virtual environmernt must be active)
+* **6. Create exe with auto-py-to-exe**
   * Run the CMD Window as administrator!
   * a. Start auto-py-to-exe in CMD: `auto-py-to-exe`
-  * b. Select the script location (select: run_gui.py)
+  * b. Select the script location (select: gravtools/scripts/run_gui.py)
   * c. Select "One File" and "Console based" (in addition to teh GUI a console will appear)
   * d. Start conversion py pressing the big blue button on the GUI bottom
   * e. The exe file will be save at a new "output" directory. Move the file to: "Windows_executables"
