@@ -179,7 +179,7 @@
       </widget>
       <widget class="QWidget" name="tab_main_observations">
        <attribute name="title">
-        <string>Observations table</string>
+        <string>Observations</string>
        </attribute>
        <layout class="QVBoxLayout" name="verticalLayout_7">
         <item>

@@ -559,7 +559,7 @@ class Ui_MainWindow(object):
         self.tabWidget_observations.setTabText(self.tabWidget_observations.indexOf(self.tab_observations_table), _translate("MainWindow", "Observations table"))
         self.tabWidget_observations.setTabText(self.tabWidget_observations.indexOf(self.tab_observations_setups), _translate("MainWindow", "Setups table"))
         self.tabWidget_observations.setTabText(self.tabWidget_observations.indexOf(self.tab_observations_plots), _translate("MainWindow", "Plots"))
-        self.tabWidget_Main.setTabText(self.tabWidget_Main.indexOf(self.tab_main_observations), _translate("MainWindow", "Observations table"))
+        self.tabWidget_Main.setTabText(self.tabWidget_Main.indexOf(self.tab_main_observations), _translate("MainWindow", "Observations"))
         self.groupBox_results_lsm_runs.setTitle(_translate("MainWindow", "LSM runs"))
         self.pushButton_results_delete_lsm_run.setText(_translate("MainWindow", "Delete selected lsm run"))
         self.groupBox_results_data_selection.setTitle(_translate("MainWindow", "Data selection"))
