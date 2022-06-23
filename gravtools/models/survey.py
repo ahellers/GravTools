@@ -1,13 +1,19 @@
-"""
-gravtools
-=========
+"""Classes for modelling relative gravity surveys.
 
-Code by Andreas Hellerschmied
-andeas.hellerschmid@bev.gv.at
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
-Summary
--------
-Contains classes for modeling gravity campaigns.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from typing import Tuple
 
@@ -17,6 +23,7 @@ import datetime as dt
 import os
 
 import gravtools.models.lsm_diff
+import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
     REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, VERBOSE, \
     PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
@@ -213,7 +220,7 @@ class Survey:
         'g_red_mugal',  # Reduced gravity observation at station (float) [µGal]
         'sd_g_red_mugal',  # Standard deviation of the reduced gravity (float) [µGal]
         'corr_terrain',  # Terrain correction [??]
-        'corr_tide_mugal',  # Tidal correction loaded from input file [mGal], optional (e.g. from CG5 built-in model)
+        'corr_tide_mugal',  # Tidal correction loaded from input file [µGal], optional (e.g. from CG5 built-in model)
         'temp',  # Temperature [mK], optional
         'tiltx',  # [arcsec], optional
         'tilty',  # [arcsec], optional
@@ -221,7 +228,7 @@ class Survey:
         'dhb_m',  # Distance between instrument top and ground (float) [m]
         'keep_obs',  # Remove observation, if false (bool)
         'vg_mugalm',  # vertical gradient [µGal/m]
-        'corr_tide_red_mugal',  # Alternative tidal correction [mGal], optional
+        'corr_tide_red_mugal',  # Alternative tidal correction [µGal], optional
         'duration_sec',  # Duration [sec] TODO
     )
 
@@ -1093,6 +1100,20 @@ class Survey:
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
                         # sd_g_red_mugal = sd_g_red_mugal # Keep SD
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                    elif target_tide_corr == 'longman1959':
+                        # Calculate corrections:
+                        tmp_df = self.obs_df[['obs_epoch', 'lon_deg', 'lat_deg', 'alt_m']].copy(deep=True)
+                        # Remove TZ info for longman evaluation
+                        tmp_df['obs_epoch'] = tmp_df['obs_epoch'].dt.tz_localize(None)
+                        tmp_df['tmp_index'] = tmp_df.index
+                        tmp_df = tmp_df.set_index('obs_epoch')
+                        tmp_df = gravtools.tides.longman1959.solve_tide_df(tmp_df, lat='lat_deg', lon='lon_deg', alt='alt_m')
+                        tmp_df['longman_tide_corr_mugal'] = tmp_df['g0']*1e3  # Convert from mGal to µGal
+                        tmp_df = tmp_df.set_index('tmp_index')
+                        # Apply correction:
+                        g_red_mugal = g_red_mugal - tmp_df['longman_tide_corr_mugal']
+                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
+                        corr_tide_red_mugal = tmp_df['longman_tide_corr_mugal']
                     # elif target_tide_corr == '......':
                 elif self.obs_tide_correction_type == 'cg5_longman1959':
                     if target_tide_corr == 'no_tide_corr':  # Subtract instrumental corrections
@@ -1100,7 +1121,31 @@ class Survey:
                         # sd_g_red_mugal = sd_g_red_mugal # Keep SD
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
                         corr_tide_red_mugal.values[:] = 0
+                    elif target_tide_corr == 'longman1959':
+                        # Calculate corrections:
+                        tmp_df = self.obs_df[['obs_epoch', 'lon_deg', 'lat_deg', 'alt_m']].copy(deep=True)
+                        # Remove TZ info for longman evaluation
+                        tmp_df['obs_epoch'] = tmp_df['obs_epoch'].dt.tz_localize(None)
+                        tmp_df['tmp_index'] = tmp_df.index
+                        tmp_df = tmp_df.set_index('obs_epoch')
+                        tmp_df = gravtools.tides.longman1959.solve_tide_df(tmp_df, lat='lat_deg', lon='lon_deg', alt='alt_m')
+                        tmp_df['longman_tide_corr_mugal'] = tmp_df['g0']*1e3  # Convert from mGal to µGal
+                        tmp_df = tmp_df.set_index('tmp_index')
+                        # Apply correction:
+                        g_red_mugal = g_red_mugal - tmp_df['longman_tide_corr_mugal']
+                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
+                        corr_tide_red_mugal = tmp_df['longman_tide_corr_mugal']
                     # elif target_tide_corr == '......':
+                elif self.obs_tide_correction_type == 'longman1959':
+                    if target_tide_corr == 'no_tide_corr':  # Subtract instrumental corrections
+                        g_red_mugal = g_red_mugal - obs_df['corr_tide_mugal']
+                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
+                        corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                        corr_tide_red_mugal.values[:] = 0
+                    elif target_tide_corr == 'cg5_longman1959':  # Add instrumental corrections
+                        g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
+                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
+                        corr_tide_red_mugal = obs_df['corr_tide_mugal']
                 if verbose:
                     print('...done!')
                 flag_corrections_applied = True

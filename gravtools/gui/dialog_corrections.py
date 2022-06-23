@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Dialog_corrections(object):
     def setupUi(self, Dialog_corrections):
         Dialog_corrections.setObjectName("Dialog_corrections")
-        Dialog_corrections.resize(274, 311)
+        Dialog_corrections.resize(287, 340)
         self.verticalLayout_6 = QtWidgets.QVBoxLayout(Dialog_corrections)
         self.verticalLayout_6.setObjectName("verticalLayout_6")
         self.verticalLayout_5 = QtWidgets.QVBoxLayout()
@@ -36,6 +36,10 @@ class Ui_Dialog_corrections(object):
         self.radioButton_corr_tides_cg5_model.setObjectName("radioButton_corr_tides_cg5_model")
         self.buttonGroup_corrections_tides.addButton(self.radioButton_corr_tides_cg5_model)
         self.verticalLayout.addWidget(self.radioButton_corr_tides_cg5_model)
+        self.radioButton_corr_tides_longman1959 = QtWidgets.QRadioButton(self.groupBox_corrections_tides)
+        self.radioButton_corr_tides_longman1959.setObjectName("radioButton_corr_tides_longman1959")
+        self.buttonGroup_corrections_tides.addButton(self.radioButton_corr_tides_longman1959)
+        self.verticalLayout.addWidget(self.radioButton_corr_tides_longman1959)
         self.verticalLayout_3.addLayout(self.verticalLayout)
         self.verticalLayout_5.addWidget(self.groupBox_corrections_tides)
         self.groupBox_corrections_ref_heights = QtWidgets.QGroupBox(Dialog_corrections)
@@ -83,6 +87,7 @@ class Ui_Dialog_corrections(object):
         self.groupBox_corrections_tides.setTitle(_translate("Dialog_corrections", "Tidal correction"))
         self.radioButton_corr_tides_no_correction.setText(_translate("Dialog_corrections", "No correction"))
         self.radioButton_corr_tides_cg5_model.setText(_translate("Dialog_corrections", "CG-5 model (Longman, 1959)"))
+        self.radioButton_corr_tides_longman1959.setText(_translate("Dialog_corrections", "Longman (1959)"))
         self.groupBox_corrections_ref_heights.setTitle(_translate("Dialog_corrections", "Reference height"))
         self.radioButton_corr_ref_heights_sensor.setText(_translate("Dialog_corrections", "Sensor"))
         self.radioButton_corr_ref_heights_instrument_top.setText(_translate("Dialog_corrections", "Instrument top"))

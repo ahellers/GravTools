@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>274</width>
-    <height>311</height>
+    <width>287</width>
+    <height>340</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -41,6 +41,16 @@
             </property>
             <property name="checked">
              <bool>true</bool>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">buttonGroup_corrections_tides</string>
+            </attribute>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="radioButton_corr_tides_longman1959">
+            <property name="text">
+             <string>Longman (1959)</string>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">buttonGroup_corrections_tides</string>
@@ -161,7 +171,7 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_corrections_tides"/>
   <buttongroup name="buttonGroup_corrections_ref_heights"/>
+  <buttongroup name="buttonGroup_corrections_tides"/>
  </buttongroups>
 </ui>

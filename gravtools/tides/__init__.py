@@ -2,7 +2,7 @@
 GravTools - A software toolbox for processing relative gravity surveys
 =====================================================================
 
-Utility programs for handling the observation data of Scrintrex CG-5 gravity meters.
+Computation of tidal corrections for gravity surveys.
 
 License, contact and authorship
 -------------------------------

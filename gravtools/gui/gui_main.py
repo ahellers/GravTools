@@ -1,3 +1,26 @@
+"""Graphical user interface of GravTools written with PyQt.
+
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Notes
+-----
+The graphical layout of the GUI was created by using the Qt Designer (<https://www.qt.io/>).
+
+"""
+
 import sys
 import os
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
@@ -2150,6 +2173,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             target_tide_corr = 'no_tide_corr'
         elif self.dlg_corrections.radioButton_corr_tides_cg5_model.isChecked():
             target_tide_corr = 'cg5_longman1959'
+        elif self.dlg_corrections.radioButton_corr_tides_longman1959.isChecked():
+            target_tide_corr = 'longman1959'
         else:
             flag_selection_ok = False
             error_msg = f'Invalid selection of tidal correction in GUI (observation corrections dialog).'

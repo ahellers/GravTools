@@ -1,3 +1,21 @@
+"""Modelling of relative gravity campaigns.
+
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import datetime as dt
 import pytz
 import numpy as np
@@ -362,18 +380,14 @@ class Campaign:
 
         Parameters
         ----------
-        oesgn_filename : string, specifying the path/file of the OESGN file
-            Stations in the specified OESGN table file are added to the Campaign.
+        oesgn_filename : string, specifying the path and filename of the OESGN file
+            Stations in the specified OESGN table file are added to the campaign.
         is_datum : bool, optional (default = False)
-            `True` idicates that all loaded OESGN stations are initially selected as datum stations (`is_datum`=True)
+            `True` indicates that all loaded OESGN stations are initially selected as datum stations (is_datum=True)
         verbose : bool, optional (default=False)
-            If True, status messages are printed to the command line.
+            If `True`, status messages are printed to the command line.
         """
         self.stations.add_stations_from_oesgn_table(filename=oesgn_filename, is_datum=is_datum, verbose=verbose)
-
-    def __str__(self):
-        return f'Campaign "{self.campaign_name}" with {self.number_of_surveys} surveys ' \
-               f'and {self.stations.get_number_of_stations} stations.'
 
     def synchronize_stations_and_surveys(self, verbose=False):
         """Synchronize information between station and survey data in the campaign.
@@ -896,6 +910,10 @@ class Campaign:
                 raise AssertionError('The campaign name is emtpy!')
         else:
             raise AssertionError('The campaign name is not a string!')
+
+    def __str__(self):
+        return f'Campaign "{self.campaign_name}" with {self.number_of_surveys} surveys ' \
+               f'and {self.stations.get_number_of_stations} stations.'
 
 
 if __name__ == '__main__':

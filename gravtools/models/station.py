@@ -1,7 +1,23 @@
+"""Modelling gravity stations.
+
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import os
-
 import pandas as pd
-
 from gravtools.models.exceptions import FileTypeError
 from gravtools.settings import STATION_DATA_SOURCE_TYPES
 
@@ -184,7 +200,7 @@ class Station:
         filename : str
             Name (and path) of the OESGN table file.
         is_datum : bool, optional (default = False)
-            `True` idicates that all loaded OESGN stations are initially selected as datum stations (`is_datum`=True)
+            `True` idicates that all loaded OESGN stations are initially selected as datum stations (is_datum=`True`)
         verbose : bool, optional
             Print notifications, if `True` (default=`False`)
         """

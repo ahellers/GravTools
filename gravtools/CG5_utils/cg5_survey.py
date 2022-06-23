@@ -3,14 +3,20 @@
 This module contains all models that are specifically required to
 handle observation with the Scintrex CG-5 gravity meter.
 
-Example
--------
-Running this module as standalone script will read in the default CG-5
-observation file specified by ``settings.PATH_OBS_FILE_CG5`` and
-``settings.NAME_OBS_FILE_CG5`` and create a plot showing the observed
-garvity meter readings over time::
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
-    $ python cg5_survey.py
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import pandas as pd
