@@ -55,7 +55,7 @@ class Ui_Dialog_options(object):
 
     def retranslateUi(self, Dialog_options):
         _translate = QtCore.QCoreApplication.translate
-        Dialog_options.setWindowTitle(_translate("Dialog_options", "Dialog"))
+        Dialog_options.setWindowTitle(_translate("Dialog_options", "Options"))
         self.groupBox_gui_options.setTitle(_translate("Dialog_options", "Graphical user interface (GUI) options"))
         self.label.setToolTip(_translate("Dialog_options", "Select the level of details that is preented in the GUI. The advanced mode provides more options."))
         self.label.setText(_translate("Dialog_options", "GUI mode"))
