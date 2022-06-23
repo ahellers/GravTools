@@ -657,16 +657,14 @@ class CG5Survey:
         # Convert numeric columns to numeric dtypes:
         cols = self.obs_df.columns.drop(self._OBS_DF_NON_NUMERIC_COLUMNS)
         self.obs_df[cols] = self.obs_df[cols].apply(pd.to_numeric, errors='raise')
-        # Sort observations by time and date:
-        self.obs_df.sort_values(by='dec_time_date')
-        # Reset index after sorting by observation time:
-        self.obs_df.reset_index(drop=True)
+        # Sort observations by time and date and reset index:
+        self.obs_df.sort_values(by='dec_time_date', inplace=True, ignore_index=True)
         # Convert date and time to datetime objects (aware, if UTC offset is available):
-
         if self.survey_parameters.date_time is not None:
             self.obs_df['obs_epoch'] = pd.to_datetime(
-                self.obs_df['date'] + ' ' + self.obs_df['time_str'] + ' ' + self.survey_parameters.date_time.tzname(),
-                format='%Y/%m/%d %H:%M:%S %Z')
+                self.obs_df['date'] + ' ' + self.obs_df['time_str'], format='%Y/%m/%d %H:%M:%S')
+            self.obs_df['obs_epoch'] = self.obs_df['obs_epoch'].dt.tz_localize('UTC')  # Set timezone = UTC
+            self.obs_df['obs_epoch'] = self.obs_df['obs_epoch'] + pd.Timedelta(self.survey_parameters.date_time.utcoffset())
         else:  # tz unaware time
             self.obs_df['obs_epoch'] = pd.to_datetime(
                 self.obs_df['date'] + ' ' + self.obs_df['time_str'], format='%Y/%m/%d %H:%M:%S')
