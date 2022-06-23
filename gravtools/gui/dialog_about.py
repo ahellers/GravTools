@@ -113,7 +113,7 @@ class Ui_Dialog_about(object):
 
     def retranslateUi(self, Dialog_about):
         _translate = QtCore.QCoreApplication.translate
-        Dialog_about.setWindowTitle(_translate("Dialog_about", "Dialog"))
+        Dialog_about.setWindowTitle(_translate("Dialog_about", "About"))
         self.label_2.setText(_translate("Dialog_about", "GravTools - A Software toolbox for processing relative gravity surveys"))
         self.label_8.setText(_translate("Dialog_about", "Version:"))
         self.label_version.setText(_translate("Dialog_about", "version"))
