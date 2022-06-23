@@ -29,3 +29,5 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 __version__ = '0.0.8'
 __author__ = 'Andreas Hellerschmied'
 __git_repo__ = 'https://gitlab.com/Heller182/grav/'
+__email__ = 'andreas.hellerschmied@bev.gv.at'
+__copyright__ = '(c) 2021 Andreas Hellerschmied'

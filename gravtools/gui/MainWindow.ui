@@ -1055,6 +1055,11 @@
     <string>About</string>
    </property>
   </action>
+  <action name="action_License">
+   <property name="text">
+    <string>License</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
