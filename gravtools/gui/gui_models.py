@@ -1,4 +1,4 @@
-"""Model classes for pyQt's model view architecture.
+"""Model classes for PyQt's model view architecture.
 
 Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 

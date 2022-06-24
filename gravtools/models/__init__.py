@@ -1,6 +1,6 @@
 """
 GravTools - A software toolbox for processing relative gravity surveys
-=====================================================================
+======================================================================
 
 The module *models* contains all classes for modelling gravity campaigns, including the data processing and parameter
 adjustment.

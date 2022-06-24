@@ -1,8 +1,13 @@
 """
 GravTools - A software toolbox for processing relative gravity surveys
-=====================================================================
+======================================================================
 
 The module *gui* represents the graphical user interface of GravTools written with PyQt.
+
+Notes
+-----
+The *.ui files are created using the Qt Designer. The according *.py files are automatically created with the program
+pyuic5 based on the *.ui files and should therefore not be edited!
 
 License, contact and authorship
 -------------------------------

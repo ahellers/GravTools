@@ -545,7 +545,7 @@ class Campaign:
 
         Returns
         -------
-        list : List of string stating the epochs of lsm adjustment runs that can be used to identifiterrowsy individual runs.
+        list : List of string stating the epochs of lsm adjustment runs that can be used to identify individual runs.
         """
         lsm_run_times = []
         for lsm_run in self.lsm_runs:
@@ -918,5 +918,5 @@ class Campaign:
 
 if __name__ == '__main__':
     """Main function, primarily for debugging and testing."""
-    filename = '/home/heller/pyProjects/gravtools/out/test.pkl'
+    filename = '/pyProjects/gravtools/out/test.pkl'
     camp = Campaign.from_pkl(filename)

@@ -40,14 +40,16 @@ class Survey:
     survey is usually observed on the same day, under similar conditions by the same operator.
 
     All analytical observation-level reductions and corrections are applied here. The reduced g values are stored in the
-    columns `g_red_mugal` and the according standard deviation in `sd_g_red_mugal` of `obs_df`. The following
+    columns `g_red_mugal` and the according standard deviation in `sd_g_red_mugal` in `obs_df`. The following
     corrections/reductions are supported:
 
     - Tidal corrections of observations
 
-      - Bulit-in corrections of the CG-5 (Longman, 1959)
+      - Corrections of the CG-5 instruments provided in the observation files (Longman, 1959)
+      - No corrections
+      - Longman (1959) model, evaluated in GravTools for the longitude, latitude , altitude and UTC time stamp of each observation. The correction is calculated for the middle of the readint time (obs_epoch + duration_sec/2)
 
-    - Reduction of the observed gravity to various height levels
+    - Reduction of the observed gravity to different reference height levels
 
       - Control point level
       - Ground level
@@ -59,6 +61,10 @@ class Survey:
     Basically it is possible to initialize an empty survey, by just defining the survey's name on the instantiation
     step. In this case all other (class and instance) attributes are initialized with the default values listed below
     in the Attributes section.
+
+    The observation reference time in GravTools is equal to the start time of an instrument reading - in accordance with
+    the CG-5 observation files. This has to be taken into account when calcualting time dependent corrections, such as
+    tidal corrections.
 
     Attributes
     ----------
@@ -107,9 +113,9 @@ class Survey:
             to distinguish between independent groups of observations at a station.
         - loop_id: int, optional (default=None)
             Unique ID of a line. A survey can be split up into multiple lines. A line needs to have at least one station
-            that was observed at least twice for drift control (preferably at the begin and end of the line). If `None`,
-            loops were not defined. The purpose of splitting surveys into loops is to carry out drift correction for
-            individual loops (shorter time period) rather than fo the complete survey.
+            that was observed at least twice for drift control (preferably at the beginning and end of the line). If
+            `None`, loops were not defined. The purpose of splitting surveys into loops is to carry out drift correction
+            for individual loops (shorter time period) rather than fo the complete survey.
         -  lon_deg : float, optional (default=None)
             Geographical longitude of the station [°]. When loading observation data from the CG-5 observation files,
             geographical coordinates are obtained from measurements of the built-in GPS device of teh instrument.
@@ -120,9 +126,9 @@ class Survey:
             Altitude of the station [m]. When loading observation data from the CG-5 observation files,
             altitudes are obtained from measurements of the built-in GPS device of teh instrument.
         - obs_epoch : :py:obj:`datetime.datetime`; timezone aware, if possible
-            Reference epoch of the observation. Per default the start epoch of an observation. Be aware that for the
+            Reference epoch of the observation. Per default the start epoch (!) of an observation. Be aware that for the
             determination of tidal corrections by the CG-5 built-in model (Longman, 1959) the middle of the observation
-            with the duration dur_sec [sec] is used (obs_epoch + dur_sec/2)!
+            with the duration dur_sec [sec] is used (obs_epoch + duration_sec/2)!
         - g_obs_mugal : float
             Observed gravity value (instrument reading) [µGal], as obtained from the data source (observation files).
             Be aware that, depending on the instrument settings and the observation data source, different corrections
@@ -177,6 +183,8 @@ class Survey:
             file). The vertical gradient is required for reducing the observed gravity to different reference heights.
         - corr_tide_red_mugal : float, optional (default=None)
             Tidal correction [µGal] that is applied to `g_red_mugal`.
+        - duration_sec : int
+            Duration of each observation from the CG-5 observation files. Given in seconds.
 
     ref_delta_t_dt : datetime, optional (default=None)
         Reference time for relative times (), e.g. reference time t0 the for drift polynomial adjustment.
@@ -204,7 +212,6 @@ class Survey:
              Standard deviation of active observations in this setup [µGal].
         - number_obs : int
             Number of observations in a setup.
-
     """
 
     _OBS_DF_COLUMNS = (
@@ -214,7 +221,7 @@ class Survey:
         'lon_deg',  # Longitude [deg], optional (float)
         'lat_deg',  # Latitude [deg], optional (float)
         'alt_m',  # Altitude [m], optional (float)
-        'obs_epoch',  # Observation epoch (datetime object, TZ=<UTC>)
+        'obs_epoch',  # Observation epoch (datetime object, TZ=<UTC>), start of instrument reading!
         'g_obs_mugal',  # observed g from obs file [µGal] (float)
         'sd_g_obs_mugal',  # Standard deviation of g observed from obs file (float) [µGal]
         'g_red_mugal',  # Reduced gravity observation at station (float) [µGal]
@@ -229,7 +236,7 @@ class Survey:
         'keep_obs',  # Remove observation, if false (bool)
         'vg_mugalm',  # vertical gradient [µGal/m]
         'corr_tide_red_mugal',  # Alternative tidal correction [µGal], optional
-        'duration_sec',  # Duration [sec] TODO
+        'duration_sec',  # Duration [sec]
     )
 
     _SETUP_DF_COLUMNS = (
@@ -243,13 +250,7 @@ class Survey:
         'delta_t_campaign_h',  # Time span since reference time [hours]  # TODO
         'sd_setup_mugal',  # Standard deviation of active observations in this setup [µGal]
         'number_obs',  # Number of observations in a setup
-    )
-
-    # TODO: Get missing infos on columns in CG5 obs file!
-    # How is the reference epoch of the observations defined?
-    # - begin, middle or end of the observation?
-    # - Does this depend on the obs-file type?
-    # => Enter the missing information in the docstring above!
+    )    # TODO: Get missing infos on columns in CG5 obs file!
 
     def __init__(self,
                  name,
@@ -1102,14 +1103,19 @@ class Survey:
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
                     elif target_tide_corr == 'longman1959':
                         # Calculate corrections:
-                        tmp_df = self.obs_df[['obs_epoch', 'lon_deg', 'lat_deg', 'alt_m']].copy(deep=True)
-                        # Remove TZ info for longman evaluation
+                        tmp_df = self.obs_df[['obs_epoch', 'duration_sec', 'lon_deg', 'lat_deg', 'alt_m']].copy(
+                            deep=True)
+                        # Shift obs reference epoch from start to the middle of the gravity reading
+                        # (= evaluation time for the tide model):
+                        tmp_df['obs_epoch'] = tmp_df['obs_epoch'] + pd.to_timedelta(tmp_df['duration_sec'], 'sec') / 2
+                        # Remove TZ info for longman evaluation:
                         tmp_df['obs_epoch'] = tmp_df['obs_epoch'].dt.tz_localize(None)
                         tmp_df['tmp_index'] = tmp_df.index
                         tmp_df = tmp_df.set_index('obs_epoch')
-                        tmp_df = gravtools.tides.longman1959.solve_tide_df(tmp_df, lat='lat_deg', lon='lon_deg', alt='alt_m')
-                        tmp_df['longman_tide_corr_mugal'] = tmp_df['g0']*1e3  # Convert from mGal to µGal
-                        tmp_df = tmp_df.set_index('tmp_index')
+                        tmp_df = gravtools.tides.longman1959.solve_tide_df(tmp_df, lat='lat_deg', lon='lon_deg',
+                                                                           alt='alt_m')
+                        tmp_df['longman_tide_corr_mugal'] = tmp_df['g0'] * 1e3  # Convert from mGal to µGal
+                        tmp_df = tmp_df.set_index('tmp_index')  # Restore numerical index
                         # Apply correction:
                         g_red_mugal = g_red_mugal - tmp_df['longman_tide_corr_mugal']
                         # sd_g_red_mugal = sd_g_red_mugal # Keep SD
@@ -1123,14 +1129,18 @@ class Survey:
                         corr_tide_red_mugal.values[:] = 0
                     elif target_tide_corr == 'longman1959':
                         # Calculate corrections:
-                        tmp_df = self.obs_df[['obs_epoch', 'lon_deg', 'lat_deg', 'alt_m']].copy(deep=True)
-                        # Remove TZ info for longman evaluation
+                        tmp_df = self.obs_df[['obs_epoch', 'duration_sec', 'lon_deg', 'lat_deg', 'alt_m']].copy(
+                            deep=True)
+                        # Shift obs reference epoch from start to the middle of the gravity reading
+                        # (= evaluation time for the tide model):
+                        tmp_df['obs_epoch'] = tmp_df['obs_epoch'] + pd.to_timedelta(tmp_df['duration_sec'], 'sec') / 2
+                        # Remove TZ info for longman evaluation:
                         tmp_df['obs_epoch'] = tmp_df['obs_epoch'].dt.tz_localize(None)
                         tmp_df['tmp_index'] = tmp_df.index
                         tmp_df = tmp_df.set_index('obs_epoch')
                         tmp_df = gravtools.tides.longman1959.solve_tide_df(tmp_df, lat='lat_deg', lon='lon_deg', alt='alt_m')
                         tmp_df['longman_tide_corr_mugal'] = tmp_df['g0']*1e3  # Convert from mGal to µGal
-                        tmp_df = tmp_df.set_index('tmp_index')
+                        tmp_df = tmp_df.set_index('tmp_index')  # Restore numerical index
                         # Apply correction:
                         g_red_mugal = g_red_mugal - tmp_df['longman_tide_corr_mugal']
                         # sd_g_red_mugal = sd_g_red_mugal # Keep SD
@@ -1501,7 +1511,6 @@ if __name__ == '__main__':
 
     # ### Getters ###
     # Get ÖSGN stations:
-
     # Get all stations:
     print(stat.get_all_stations)
 
@@ -1563,7 +1572,3 @@ if __name__ == '__main__':
 
     camp.initialize_and_add_lsm_run('MLR_BEV', 'Test BEV legacy processing scheme!')
     camp.lsm_runs[1].adjust(drift_pol_degree=1, verbose=True)
-
-    pass
-
-# TODO: Use pickle to serialize campaign objects: https://www.youtube.com/watch?v=BbRY9gsKA7Q

@@ -83,7 +83,7 @@ class LSMDiff(LSM):
             The station dataframe contains all relevant station data.
         setups : dict of dicts
             The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-            are the survey names (str). The items are again keys with the follwing items:
+            are the survey names (str). The items are again keys with the following items:
 
             - ref_epoch_delta_t_h : datetime object
                 Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
@@ -92,7 +92,7 @@ class LSMDiff(LSM):
                 Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
                 dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
             - setup_df : Pandas DataFrame
-                Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+                Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
 
         comment : str, optional (default = '')
             Arbitrary comment on the LSM run.
@@ -194,7 +194,7 @@ class LSMDiff(LSM):
             A priori standard deviation of unit weight of observations [µGal] for the stochastic model of the
             least-squares adjustment.
         scaling_factor_datum_observations : float, optional (default=1.0)
-            Factor for scaling the standard deviation (SD) of g of datum stations. The scaled SD is is used for
+            Factor for scaling the standard deviation (SD) of g of datum stations. The scaled SD is used for
             weighting the direct pseudo observations of g at the datum stations that are introduced as datum
             constraints.
         add_const_to_sd_of_observations_mugal : float, optional (default=0.0)
@@ -543,7 +543,7 @@ class LSMDiff(LSM):
             if self.write_log:
                 self.log_str += tmp_str
 
-        # blunder detection parameters calculation
+        # Blunder detection parameters calculation
         # sv_tau = 1 - confidence_level_tau_test
         # std_res, tau_val, tau_crt = tau_criterion_test(diag_Qvv, mat_r, mat_v, s02_a_posteriori_mugal2, dof, sv_tau)
 

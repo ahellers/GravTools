@@ -42,7 +42,7 @@ def prep_polyval_coef(pol_coef_dict):
 
     Returns
     -------
-    list : list of polynomial coeficients suitable for np.polyval()
+    list : list of polynomial coefficients suitable for np.polyval()
     """
     poly_coef = list()
     for degree, value in pol_coef_dict.items():
@@ -53,7 +53,7 @@ def prep_polyval_coef(pol_coef_dict):
 
 
 class BEVLegacyProcessing(LSM):
-    """Lagacy processing scheme for relative gravimeter observations at BEV.
+    """Legacy processing scheme for relative gravimeter observations at BEV.
 
     First, the instrumental drift is estimated by multiple linear regression. Afterwards, the drift-corrected
     gravimeter readings per station are referred to absolute gravity values at the datum stations.
@@ -439,11 +439,4 @@ class BEVLegacyProcessing(LSM):
         """Getter for the station-related results."""
         return self.stat_obs_df
 
-
-# pd.options.display.float_format = '{:.2f}'.format
-# pd.set_option('display.max_columns', 500)
-# pd.set_option('display.width', 1000)
-
-# TODO: Write output files
-# TODO: Create drift plot
 

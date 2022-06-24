@@ -1,6 +1,6 @@
 """
 GravTools - A software toolbox for processing relative gravity surveys
-=====================================================================
+======================================================================
 
 Computation of tidal corrections for gravity surveys.
 

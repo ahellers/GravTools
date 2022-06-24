@@ -1,6 +1,6 @@
 """
 GravTools - A software toolbox for processing relative gravity surveys
-=====================================================================
+======================================================================
 
 Script files for GravTools.
 

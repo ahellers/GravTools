@@ -81,14 +81,6 @@ class Station:
         'in_survey',  # Names of surveys in which ths station was observed (separator = ;), str
     )
 
-    # _STAT_DF_COLUMNS_SAME_STATION_INDICATORS = (
-    #     'station_name',  # Station name, str
-    #     'long_deg',  # longitude [deg], float
-    #     'lat_deg',  # latitude [deg], float
-    #     'height_m',  # Height [m]
-    #     'source_type',
-    # )
-
     def __init__(self, station_files=None):
         """
         Parameters
@@ -124,7 +116,7 @@ class Station:
             if file_type == 'oesgn_table':
                 self.add_stations_from_oesgn_table(file_name)
             else:
-                raise NotImplementedError(f'Loading station files of type "{file_type}" not implemneted yet.')
+                raise NotImplementedError(f'Loading station files of type "{file_type}" not implemented yet.')
 
     def _read_oesgn_table(self, filename, is_datum=False):
         """Reads an OESGN table file and returns a dataframe containing this data.
@@ -138,7 +130,7 @@ class Station:
         filename : str
             Name (and path) of the OESGN table file.
         is_datum : bool, optional (default = False)
-            `True` idicates that all loaded OESGN stations are initially selected as datum stations (`is_datum`=True)
+            `True` indicates that all loaded OESGN stations are initially selected as datum stations (`is_datum`=True)
 
         Returns
         -------
@@ -200,7 +192,7 @@ class Station:
         filename : str
             Name (and path) of the OESGN table file.
         is_datum : bool, optional (default = False)
-            `True` idicates that all loaded OESGN stations are initially selected as datum stations (is_datum=`True`)
+            `True` indicates that all loaded OESGN stations are initially selected as datum stations (is_datum=`True`)
         verbose : bool, optional
             Print notifications, if `True` (default=`False`)
         """
@@ -349,13 +341,13 @@ class Station:
         -----
 
         - Station names (column 'station_name') have to be unique in the resulting station dataframe
-        - Keep the added station and drop existing entries, if the sation names match.
+        - Keep the added station and drop existing entries, if the station names match.
         - If a station (with a unique station_name) is already available in the station dataframe and originates from a
             station file (e.g. ÖSGN file), the new station (from any source) is not added.
         - If a station originating from an observation file is already available in the station dataframe an the same
             station (same name) should be added from a station file (e.g. ÖSGN), the old version is overwritten be the
-            entry from the staton file.
-        - If a station originating from an observation file is already available in the station dataframe an the same
+            entry from the station file.
+        - If a station originating from an observation file is already available in the station dataframe and the same
             station (same name) should be added from an observation file (e.g. CG5 observation file), the old version
             is kept and the new version is discarded.
 
@@ -367,8 +359,8 @@ class Station:
         data_source_type : str
             Specifies the type of the data source. Valid data source types are defined in
             :py:obj:`gravtools.settings.STATION_DATA_SOURCE_TYPES`.
-        verbose : bool, delauft = `False`
-            If `True`, the status mesages are printed to the command line.
+        verbose : bool, default = `False`
+            If `True`, the status messages are printed to the command line.
 
         """
         number_of_existing_stations = len(self.stat_df)

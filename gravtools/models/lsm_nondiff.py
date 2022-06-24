@@ -80,7 +80,7 @@ class LSMNonDiff(LSM):
             The station dataframe contains all relevant station data.
         setups : dict of dicts
             The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-            are the survey names (str). The items are again keys with the follwing items:
+            are the survey names (str). The items are again keys with the following items:
 
             - ref_epoch_delta_t_h : datetime object
                 Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
@@ -89,7 +89,7 @@ class LSMNonDiff(LSM):
                 Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
                 dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
             - setup_df : Pandas DataFrame
-                Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+                Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
 
         comment : str, optional (default = '')
             Arbitrary comment on the LSM run.
