@@ -146,7 +146,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_options = DialogOptions()
         self.dlg_setup_data = DialogSetupData()
         self.dlg_about = DialogAbout()
-        self.dlg_about.label_author.setText(__author__)
+        # self.dlg_about.label_author.setText(__author__)
         self.dlg_about.label_version.setText(__version__)
         self.dlg_about.label_git_repo.setText(__git_repo__)
         self.dlg_about.label_email.setText(__email__)
