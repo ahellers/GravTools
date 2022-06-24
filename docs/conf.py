@@ -17,8 +17,8 @@ sys.path.insert(0, os.path.abspath('..'))  # parent directory
 
 # -- Project information -----------------------------------------------------
 
-project = 'gravtools'
-copyright = '2020, Andreas Hellerschmied'
+project = 'GravTools'
+copyright = '2021, Andreas Hellerschmied'
 author = 'Andreas Hellerschmied'
 
 

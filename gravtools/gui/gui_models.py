@@ -1,4 +1,20 @@
-"""Model classes for pyQt5's model view architecture."""
+"""Model classes for PyQt's model view architecture.
+
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 
 from PyQt5.QtCore import QAbstractTableModel, Qt, QPersistentModelIndex
 from PyQt5 import QtGui
@@ -243,7 +259,7 @@ class SetupTableModel(QAbstractTableModel):
     _SHOW_COLUMNS_IN_TABLE_DICT = {
         'station_name': 'Station',
         'setup_id': 'Setup ID',
-        'epoch_dt': 'Epoch',
+        'epoch_dt': 'Epoch UTC',
         'g_mugal': 'g [µGal]',
         'sd_g_mugal': 'SD [µGal]',
         'epoch_unix': 'Epoch Unix',
@@ -433,7 +449,7 @@ class ObservationTableModel(QAbstractTableModel):
         'lon_deg': 'Lon [°]',
         'lat_deg': 'Lat [°]',
         'alt_m': 'h [m]',
-        'obs_epoch': 'Epoch',
+        'obs_epoch': 'Epoch UTC',
         'g_obs_mugal': 'g_obs [µGal]',
         'sd_g_obs_mugal': 'SD_obs [µGal]',
         'g_red_mugal': 'g_red [µGal]',
@@ -724,7 +740,7 @@ class ResultsObservationModel(QAbstractTableModel):
         'station_name_from': 'Station from',  # LSM_diff
         'station_name_to': 'Station to',  # LSM_diff
         'station_name': 'Station',  # MLR, LSM_non_diff
-        'ref_epoch_dt': 'Epoch',  # LSM_non_diff, LSM_diff
+        'ref_epoch_dt': 'Epoch UTC',  # LSM_non_diff, LSM_diff
         'delta_t_h': 'd_t [h]',  # LSM_non_diff, LSM_diff
         'g_mugal': 'g [µGal]',  # MLR
         'g_diff_mugal': 'g [µGal]',  # LSM_diff

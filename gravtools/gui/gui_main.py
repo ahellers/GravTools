@@ -1,3 +1,26 @@
+"""Graphical user interface of GravTools written with PyQt.
+
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Notes
+-----
+The graphical layout of the GUI was created by using the Qt Designer (<https://www.qt.io/>).
+
+"""
+
 import sys
 import os
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
@@ -21,9 +44,11 @@ from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settin
 from gravtools.gui.dialog_setup_data import Ui_Dialog_setup_data
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
+from gravtools.gui.dialog_about import Ui_Dialog_about
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
     ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
+from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__
 
 from gravtools.models.survey import Survey
 from gravtools.models.campaign import Campaign
@@ -79,6 +104,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Setup_data_options.triggered.connect(self.on_menu_observations_setup_data)
         self.action_Export_Results.triggered.connect(self.on_menu_file_export_results)
         self.action_Options.triggered.connect(self.on_menu_file_options)
+        self.action_About.triggered.connect(self.on_menu_help_about)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
@@ -119,6 +145,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_estimation_settings = DialogEstimationSettings()
         self.dlg_options = DialogOptions()
         self.dlg_setup_data = DialogSetupData()
+        self.dlg_about = DialogAbout()
+        self.dlg_about.label_author.setText(__author__)
+        self.dlg_about.label_version.setText(__version__)
+        self.dlg_about.label_git_repo.setText(__git_repo__)
+        self.dlg_about.label_email.setText(__email__)
+        self.dlg_about.label_copyright.setText(__copyright__)
+
 
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
@@ -2113,6 +2146,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.update_obs_table_view(survey_name, setup_id)
         self.update_setup_table_view(survey_name, setup_id)
 
+    def on_menu_help_about(self):
+        """Launch the about dialog."""
+        return_value = self.dlg_about.exec()
+
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
         return_value = self.dlg_corrections.exec()
@@ -2150,6 +2187,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             target_tide_corr = 'no_tide_corr'
         elif self.dlg_corrections.radioButton_corr_tides_cg5_model.isChecked():
             target_tide_corr = 'cg5_longman1959'
+        elif self.dlg_corrections.radioButton_corr_tides_longman1959.isChecked():
+            target_tide_corr = 'longman1959'
         else:
             flag_selection_ok = False
             error_msg = f'Invalid selection of tidal correction in GUI (observation corrections dialog).'
@@ -2581,6 +2620,16 @@ class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
 
 class DialogSetupData(QDialog, Ui_Dialog_setup_data):
     """Dialog to define setup data options."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+
+
+class DialogAbout(QDialog, Ui_Dialog_about):
+    """About dialog."""
 
     def __init__(self, parent=None):
         super().__init__(parent)

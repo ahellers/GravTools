@@ -1,13 +1,19 @@
-"""
-gravtools
-=========
+"""Classes for least-squares adjustment of non-differential relative gravimeter observations.
 
-Code by Andreas Hellerschmied
-andeas.hellerschmid@bev.gv.at
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
-Summary
--------
-Contains classes for least-squares adjustment of non-differential relative gravimeter observations.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import numpy as np
@@ -74,7 +80,7 @@ class LSMNonDiff(LSM):
             The station dataframe contains all relevant station data.
         setups : dict of dicts
             The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-            are the survey names (str). The items are again keys with the follwing items:
+            are the survey names (str). The items are again keys with the following items:
 
             - ref_epoch_delta_t_h : datetime object
                 Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
@@ -83,7 +89,7 @@ class LSMNonDiff(LSM):
                 Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
                 dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
             - setup_df : Pandas DataFrame
-                Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+                Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
 
         comment : str, optional (default = '')
             Arbitrary comment on the LSM run.

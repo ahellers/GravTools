@@ -1,13 +1,19 @@
-"""
-gravtools
-=========
+"""GravTools settings defined by the user.
 
-Code by Andreas Hellerschmied
-andeas.hellerschmid@bev.gv.at
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
-Summary
--------
-User-defined settings for gravtools.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # Additive constant for the determination of the full absolute gravity [µGal] from observed values:
@@ -25,6 +31,7 @@ STATION_DATA_SOURCE_TYPES = {
 
 TIDE_CORRECTION_TYPES = {
     'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
+    'longman1959': 'Tidal corrections by the model of Longman (1959)',
     'no_tide_corr': 'No tide correction applied',
     'unknown': 'Unknown whether a tide correction was applied',
 }

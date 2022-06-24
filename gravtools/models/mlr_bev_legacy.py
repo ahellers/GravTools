@@ -1,14 +1,22 @@
-"""
-gravtools
-=========
+"""Processing gravity surveys by the BEV legacy method.
 
-Code by Andreas Hellerschmied
-andeas.hellerschmid@bev.gv.at
+Contains classes for the legacy processing scheme of gravimeter observations at BEV using multiple linear regression for
+drift adjustment. This scheme also involves the determination of absolute gravity values based on datum stations.
 
-Summary
--------
-Contains classes for the legacy processign scheme of gravimeter observations at BEV using multiple linear regression for
-drift adjustment. This scheme also involves the determination of absulte gravity values based on datum stations.
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import pandas as pd
@@ -34,7 +42,7 @@ def prep_polyval_coef(pol_coef_dict):
 
     Returns
     -------
-    list : list of polynomial coeficients suitable for np.polyval()
+    list : list of polynomial coefficients suitable for np.polyval()
     """
     poly_coef = list()
     for degree, value in pol_coef_dict.items():
@@ -45,7 +53,7 @@ def prep_polyval_coef(pol_coef_dict):
 
 
 class BEVLegacyProcessing(LSM):
-    """Lagacy processing scheme for relative gravimeter observations at BEV.
+    """Legacy processing scheme for relative gravimeter observations at BEV.
 
     First, the instrumental drift is estimated by multiple linear regression. Afterwards, the drift-corrected
     gravimeter readings per station are referred to absolute gravity values at the datum stations.
@@ -431,11 +439,4 @@ class BEVLegacyProcessing(LSM):
         """Getter for the station-related results."""
         return self.stat_obs_df
 
-
-# pd.options.display.float_format = '{:.2f}'.format
-# pd.set_option('display.max_columns', 500)
-# pd.set_option('display.width', 1000)
-
-# TODO: Write output files
-# TODO: Create drift plot
 

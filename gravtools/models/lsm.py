@@ -1,13 +1,19 @@
-"""
-gravtools
-=========
+"""Classes for least-squares adjustment of gravimeter-surveys.
 
-Code by Andreas Hellerschmied
-andeas.hellerschmid@bev.gv.at
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
-Summary
--------
-Contains classes for least-squares adjustment of gravimeter-surveys.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import numpy as np
@@ -15,13 +21,7 @@ from scipy import stats
 import datetime as dt
 import pytz
 import copy
-# from abc import ABC
 from gravtools import settings
-
-
-# Using abstract base classes, see e.g.:
-#  - https://www.python-course.eu/python3_abstract_classes.php
-#  - https://stackoverflow.com/questions/5133262/python-abstract-base-class-init-initializion-or-validation
 
 
 class LSM:
@@ -35,7 +35,7 @@ class LSM:
         The station dataframe contains all relevant station data.
     setups : dict of dicts
         The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-        are the survey names (str). The items are again keys with the follwing items:
+        are the survey names (str). The items are again keys with the following items:
 
         - ref_epoch_delta_t_h : datetime object
             Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
@@ -44,7 +44,7 @@ class LSM:
             Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
             dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
         - setup_df : Pandas DataFrame
-            Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+            Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
 
     comment : str, optional (default = '')
         Optional comment on the adjustment run.
@@ -58,7 +58,7 @@ class LSM:
         Pandas Dataframes for logging (differential or absolute) setup observations, the related metadata, estimation
         results and statistics. The columns of the dataframe may differ between adjustment methods.
     number_of_iterations : int (default=0)
-        Indicates the number of iterations if iterative adjustment was applied. `0` indicated the a non-iterative
+        Indicates the number of iterations if iterative adjustment was applied. `0` indicated that a non-iterative
         adjustment was applied.
     drift_ref_epoch_type : string ('survey' or 'campaign'), optional (default='survey')
         Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
@@ -76,7 +76,7 @@ class LSM:
             The station dataframe contains all relevant station data.
         setups : dict of dicts
             The setups dictionary contains all observation data used for the adjustment. The keys of the dictionary
-            are the survey names (str). The items are again keys with the follwing items:
+            are the survey names (str). The items are again keys with the following items:
 
             - ref_epoch_delta_t_h : datetime object
                 Reference epoch for the relative reference times in the column `delta_t_h` in the `setup_df` dataframe.
@@ -85,7 +85,7 @@ class LSM:
                 Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
                 dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
             - setup_df : Pandas DataFrame
-                Pandas dataframes containing the observation data (see :py:obj:`gravtool.Survey.setup_df`).
+                Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
 
         comment : str, optional (default = '')
             Optional comment on the adjustment run.
@@ -501,41 +501,14 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
     Returns
     -------
     """
-    # a_priori_variance_of_unit_weight = 1
-    alpha = 1 - cf  # Significance level = Probability of commiting a type 1 error (H0 wrongly dismissed)
+    alpha = 1 - cf  # Significance level = Probability of committing a type 1 error (H0 wrongly dismissed)
     chi_crit_upper = stats.chi2.ppf(1 - alpha / 2, dof)  # critical value
     chi_crit_lower = stats.chi2.ppf(alpha / 2, dof)  # critical value
     chi_val = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # tested value
-    # TODO: Why is there an upper AND a lower critical value? In the literatur only an upper critical value ist defined!
+    # TODO: Why is there an upper AND a lower critical value? In the literature only an upper critical value ist defined!
     if chi_crit_lower < chi_val < chi_crit_upper:
         chi_test_status = 'Passed'
     else:
         chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
     return chi_crit, chi_val, chi_test_status
-
-# TODO: Save relevant estimation settings and matrices/vectors in LSM object for later analysis and documentation!
-# TODO: Global model test: Why is there an upper and lower critical value? => In literarture only upper!
-# TODO: Add information on tests (global model AND Tau-test) to log string!
-# TODO: Check the documentation/docstrings!
-
-# TODO: Plot co-variance matrix for estimates
-
-# TODO: Treat redundancy components roperly and add determination of inner and outer reliability (AG2, pp. 70-72)
-# r: In obs results table die einzelnen obs nach der Kategorisierung (in settings definiert) auf p. 70 einteilen!
-
-# TODO: auto-scale SD to get an Chi² of 1
-# - input:
-#   - target Chi² (GUI)
-#   - delta target Chi² (GUI)
-#   - max. number of iterations (GUI)
-#   - max. value additive constant (GUI)
-# - Iteratively solve the equation system to get the target Chi² +- the defined delta
-#   - Scale the SD of all individual observations (before differentiating them!)
-#     - By adopting a additive constant with each iteration
-#     - Raise warning if max. number of iterations and/or max. additive constand is violated
-# - comments:
-#   - Additive vs. multiplicative factor for SD scaling:
-#     - The P matrix is th inverse Qll matrix. Hence, multiplicative factors are actually squared!
-#     - Try what works best!
-#   - Implement for both lsm methods.
