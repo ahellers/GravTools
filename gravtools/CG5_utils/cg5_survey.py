@@ -22,7 +22,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import pandas as pd
 import numpy as np
 import re
-# import sys
 import datetime as dt
 import matplotlib.pyplot as plt
 # from io import StringIO  # Python 3.x required
@@ -712,17 +711,11 @@ class CG5Survey:
 
 # Run as standalone program:
 if __name__ == "__main__":
-
-    # path = '/home/heller/pyProjects/gravtools/data/20200907_test.TXT'
     path = settings.PATH_OBS_FILE_CG5 + settings.NAME_OBS_FILE_CG5
-
     s1 = CG5Survey()
     s1.read_obs_file(path)
-
     # s1.plot_g_values(['1-164-04', '1-164-12', '1-164-11'])
     # s1.plot_g_values(['TEST'])
     s1.plot_g_values()
-
 else:
-    # not run as standalone program, but as module
     pass
