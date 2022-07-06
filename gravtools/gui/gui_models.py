@@ -1,10 +1,27 @@
-"""Model classes for pyQt5's model view architecture."""
+"""Model classes for PyQt's model view architecture.
 
-from PyQt5.QtCore import QAbstractTableModel, Qt
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
+from PyQt5.QtCore import QAbstractTableModel, Qt, QPersistentModelIndex
 from PyQt5 import QtGui
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QStyledItemDelegate
 import datetime as dt
 import pandas as pd
+import numpy as np
 
 from gravtools import settings
 from gravtools.models.survey import Survey
@@ -13,6 +30,7 @@ from gravtools.models.lsm_nondiff import LSMNonDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 
 NONE_REPRESENTATION_IN_TABLE_VIEW = ''  # Representation of None values in table views in the GUI
+
 
 class StationTableModel(QAbstractTableModel):
     """Model for displaying the station data in a table view (QTableView)."""
@@ -88,10 +106,16 @@ class StationTableModel(QAbstractTableModel):
 
     def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
+
+            value = self._data.iloc[index.row(), index.column()]
+            column_name = self._data_column_names[index.column()]
+
             if role == Qt.DisplayRole:
 
-                value = self._data.iloc[index.row(), index.column()]
-                column_name = self._data_column_names[index.column()]
+                # Draw checkboxes only in the "is_datum" column:
+                if column_name == 'is_datum':
+                    return ''
+
                 # Custom formatter (string is expected as return type):
                 if value is None:  #
                     return NONE_REPRESENTATION_IN_TABLE_VIEW
@@ -108,15 +132,30 @@ class StationTableModel(QAbstractTableModel):
                     return str(value)
 
             if role == Qt.TextAlignmentRole:
-                value = self._data.iloc[index.row(), index.column()]
+                # value = self._data.iloc[index.row(), index.column()]
                 if isinstance(value, int) or isinstance(value, float):
                     # Align right, vertical middle.
                     return Qt.AlignVCenter + Qt.AlignRight
 
             if role == Qt.BackgroundRole:
+                if column_name == 'is_datum':
+                    if value:
+                        return QtGui.QColor('red')
+
                 is_observed_flag = self._data.iloc[index.row(), 7]  # is_observed
                 if is_observed_flag:
                     return QtGui.QColor('cyan')
+
+            if role == Qt.CheckStateRole:
+                try:
+                    if column_name == 'is_datum':
+                        keep_obs_flag = self._data.iloc[index.row(), self._data_column_names.index('is_datum')]
+                        if keep_obs_flag:
+                            return Qt.Checked
+                        else:
+                            return Qt.Unchecked
+                except Exception:
+                    return None
         return None
 
     def headerData(self, section, orientation, role):
@@ -151,11 +190,27 @@ class StationTableModel(QAbstractTableModel):
                     self._data.at[row, col] = False
                     self.dataChanged.emit(index, index)  # Is it necessary?
                 else:
-                    # print(f'Input not valid: {value}')
                     QMessageBox.warning(self.parent(), 'Warning!',
                                         f'Input "{value}" not valid! Only "True" or "False" allowed.')
                     return False
                 return True  # Data successfully set
+
+        if role == Qt.CheckStateRole:
+            row = self._data.index[index.row()]
+            col = self._data.columns[index.column()]
+            if col == 'is_datum':
+                if value == Qt.Unchecked:
+                    self._data.at[row, col] = False
+                    self.dataChanged.emit(index, index)  # Update only one item
+                elif value == Qt.Checked:
+                    self._data.at[row, col] = True
+                    self.dataChanged.emit(index, index)  # Update only one item
+                else:
+                    QMessageBox.warning(self.parent(), 'Warning!',
+                                        f'Invalid value fpr keep observation flag: "{value}"')
+                    return False
+
+            return True  # Data successfully set
 
         return False
 
@@ -166,9 +221,9 @@ class StationTableModel(QAbstractTableModel):
         flags |= Qt.ItemIsEnabled
         flags |= Qt.ItemIsDragEnabled
         flags |= Qt.ItemIsDropEnabled
-        # flags |= Qt.ItemIsUserCheckable
         if index.column() == self._data_column_names.index('is_datum'):  # Column: "is_datum"
-            flags |= Qt.ItemIsEditable
+            # flags |= Qt.ItemIsEditable  # Use checkbox only!
+            flags |= Qt.ItemIsUserCheckable
         return flags
 
     @property
@@ -204,11 +259,12 @@ class SetupTableModel(QAbstractTableModel):
     _SHOW_COLUMNS_IN_TABLE_DICT = {
         'station_name': 'Station',
         'setup_id': 'Setup ID',
-        'epoch_dt': 'Epoch',
+        'epoch_dt': 'Epoch UTC',
         'g_mugal': 'g [µGal]',
         'sd_g_mugal': 'SD [µGal]',
         'epoch_unix': 'Epoch Unix',
-        'delta_t_h': 'delta_t [h]',
+        'delta_t_h': 'd_t [h]',
+        'delta_t_campaign_h': 'd_t camp [h]',
         'sd_setup_mugal': 'SD of obs [µGal]',
         'number_obs': 'Number of obs.',
     }
@@ -228,6 +284,7 @@ class SetupTableModel(QAbstractTableModel):
         'sd_g_mugal': 1,
         'epoch_unix': 1,
         'delta_t_h': 3,
+        'delta_t_campaign_h': 3,
         'sd_setup_mugal': 1,
     }
 
@@ -392,7 +449,7 @@ class ObservationTableModel(QAbstractTableModel):
         'lon_deg': 'Lon [°]',
         'lat_deg': 'Lat [°]',
         'alt_m': 'h [m]',
-        'obs_epoch': 'Epoch',
+        'obs_epoch': 'Epoch UTC',
         'g_obs_mugal': 'g_obs [µGal]',
         'sd_g_obs_mugal': 'SD_obs [µGal]',
         'g_red_mugal': 'g_red [µGal]',
@@ -406,6 +463,7 @@ class ObservationTableModel(QAbstractTableModel):
         'dhb_m': 'dhb [m]',
         'dhf_m': 'dhf [m]',
         'vg_mugal': 'VG [µGal]',
+        'duration_sec': 'Duration [sec]',
         'keep_obs': 'Ḱeep obs.',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
@@ -426,6 +484,7 @@ class ObservationTableModel(QAbstractTableModel):
         'corr_tide_red_mugal',
         'corr_tide_mugal',
         'vg_mugal',
+        'duration_sec',
         'keep_obs',
     ]
 
@@ -444,6 +503,7 @@ class ObservationTableModel(QAbstractTableModel):
         self._data_survey_name = ''  # Name of the Survey that is currently represented by `self._data`
         self._setup_data = None  # Setup data (or at subset) of the survey with the name `self._data_survey_name`
         self.flag_gui_simple_mode = False
+        # self._keep_obs_check_states = dict()  # To keep track of the checkbox states in the keep_obs column
 
     def load_surveys(self, surveys):
         """Load observation data (dict of survey objects in the campaign object) to the observation model.
@@ -513,6 +573,11 @@ class ObservationTableModel(QAbstractTableModel):
             if index.isValid():
                 if role == Qt.DisplayRole:
                     value = self._data.iloc[index.row(), index.column()]
+
+                    # Only checkboxes in the "keep_obs" flag column:
+                    if index.column() == self._data_column_names.index('keep_obs'):
+                        return ''
+
                     # Custom formatter (string is expected as return type):
                     if value is None:  #
                         return NONE_REPRESENTATION_IN_TABLE_VIEW
@@ -524,8 +589,10 @@ class ObservationTableModel(QAbstractTableModel):
                                 col_name_str = self._data_column_names[index.column()]
                                 num_dec_places = self._DECIMAL_PLACES_PER_FLOAT_COLUMN[col_name_str]
                                 return '{1:.{0}f}'.format(num_dec_places, value)
-                            except:
+                            except Exception:
                                 return str(value)
+                    elif isinstance(value, np.int64):
+                        return str(value)
                     elif isinstance(value, dt.datetime):
                         return value.strftime("%Y-%m-%d, %H:%M:%S")
                     else:  # all other
@@ -533,7 +600,7 @@ class ObservationTableModel(QAbstractTableModel):
 
                 if role == Qt.TextAlignmentRole:
                     value = self._data.iloc[index.row(), index.column()]
-                    if isinstance(value, int) or isinstance(value, float):
+                    if isinstance(value, float) or isinstance(value, int) or isinstance(value, np.int64):
                         # Align right, vertical middle.
                         return Qt.AlignVCenter + Qt.AlignRight
 
@@ -541,50 +608,81 @@ class ObservationTableModel(QAbstractTableModel):
                     try:
                         if not self._data.iloc[index.row(), self._data_column_names.index('keep_obs')]:
                             return QtGui.QColor('red')
-                    except:
+                    except Exception:
                         pass
+
+                if role == Qt.CheckStateRole:
+                    try:
+                        if index.column() == self._data_column_names.index('keep_obs'):
+                            keep_obs_flag = self._data.iloc[index.row(), self._data_column_names.index('keep_obs')]
+                            if keep_obs_flag:
+                                return Qt.Checked
+                            else:
+                                return Qt.Unchecked
+
+                    except Exception:
+                        print(f'ERROR: row: {index.row()}, col: {ndex.column()}')
 
     def flags(self, index):
         """Enable editing of table items."""
         flags = super(self.__class__, self).flags(index)
         flags |= Qt.ItemIsSelectable
         flags |= Qt.ItemIsEnabled
-        flags |= Qt.ItemIsDragEnabled
-        flags |= Qt.ItemIsDropEnabled
-        if index.column() == self._data_column_names.index('keep_obs'):  # Column: "is_datum"
-            flags |= Qt.ItemIsEditable
+        if index.column() == self._data_column_names.index('keep_obs'):
+            # flags |= Qt.ItemIsEditable  # No longer needed => Only checkbox in "keep_obs" column!
+            flags |= Qt.ItemIsUserCheckable
         return flags
 
     def setData(self, index, value, role):
         """Example: https://www.semicolonworld.com/question/58510/how-to-display-a-pandas-data-frame-with-pyqt5"""
-        if not index.isValid():
-            return False
-        if role == Qt.EditRole:
-            # Get column and row indices for dataframe:
-            row = self._data.index[index.row()]
-            col = self._data.columns[index.column()]
+        if index.isValid():
+            if role == Qt.EditRole:
+                # Get column and row indices for dataframe:
+                row = self._data.index[index.row()]
+                col = self._data.columns[index.column()]
+                if col == 'keep_obs':
+                    # convert "value" (str) to bool and set item in dataframe:
+                    if value == 'True':
+                        self._data.at[row, col] = True
+                        self.dataChanged.emit(index, index)  # Is it necessary?
+                        # # Change data in `obs_df`:
+                        # obs_df_row_index_int = self._data.index[index.row()]
+                        # self._surveys[self._data_survey_name].obs_df.iat[
+                        #     obs_df_row_index_int, Survey.get_obs_df_column_index('keep_obs')] = True
+                    elif value == 'False':
+                        self._data.at[row, col] = False
+                        self.dataChanged.emit(index, index)  # Is it necessary?
+                        # # Change data in `obs_df`:
+                        # obs_df_row_index_int = self._data.index[index.row()]
+                        # self._surveys[self._data_survey_name].obs_df.iat[
+                        #     obs_df_row_index_int, Survey.get_obs_df_column_index('keep_obs')] = False
+                    else:
+                        QMessageBox.warning(self.parent(), 'Warning!',
+                                            f'Input "{value}" not valid! Only "True" or "False" allowed.')
+                        return False
+                    return True  # Data successfully set
 
-            if col == 'keep_obs':
-                # convert "value" (str) to bool and set itm in dataframe:
-                if value == 'True':
-                    self._data.at[row, col] = True
-                    self.dataChanged.emit(index, index)  # Is it necessary?
-                    # # Change data in `obs_df`:
-                    # obs_df_row_index_int = self._data.index[index.row()]
-                    # self._surveys[self._data_survey_name].obs_df.iat[
-                    #     obs_df_row_index_int, Survey.get_obs_df_column_index('keep_obs')] = True
-                elif value == 'False':
-                    self._data.at[row, col] = False
-                    self.dataChanged.emit(index, index)  # Is it necessary?
-                    # # Change data in `obs_df`:
-                    # obs_df_row_index_int = self._data.index[index.row()]
-                    # self._surveys[self._data_survey_name].obs_df.iat[
-                    #     obs_df_row_index_int, Survey.get_obs_df_column_index('keep_obs')] = False
-                else:
-                    QMessageBox.warning(self.parent(), 'Warning!',
-                                        f'Input "{value}" not valid! Only "True" or "False" allowed.')
-                    return False
+            if role == Qt.CheckStateRole:
+                row = self._data.index[index.row()]
+                col = self._data.columns[index.column()]
+                idx_min = self.index(index.row(), 0)
+                idx_max = self.index(index.row(), len(self._data_column_names) - 1)
+                if col == 'keep_obs':
+                    if value == Qt.Unchecked:
+                        # print(f'row {index.row()}: Unchecked!')
+                        self._data.at[row, col] = False
+                        self.dataChanged.emit(idx_min, idx_max)
+                    elif value == Qt.Checked:
+                        # print(f'row {index.row()}: Checked!')
+                        self._data.at[row, col] = True
+                        self.dataChanged.emit(idx_min, idx_max)
+                    else:
+                        QMessageBox.warning(self.parent(), 'Warning!',
+                                            f'Invalid value fpr keep observation flag: "{value}"')
+                        return False
+
                 return True  # Data successfully set
+
         return False
 
     @property
@@ -606,7 +704,7 @@ class ObservationTableModel(QAbstractTableModel):
             return [value for value in self._SHOW_COLUMNS_IN_TABLE if value in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI]
         else:
             return self._SHOW_COLUMNS_IN_TABLE
-
+        
 
 class ResultsObservationModel(QAbstractTableModel):
     """Model for displaying the observations-related results."""
@@ -642,7 +740,7 @@ class ResultsObservationModel(QAbstractTableModel):
         'station_name_from': 'Station from',  # LSM_diff
         'station_name_to': 'Station to',  # LSM_diff
         'station_name': 'Station',  # MLR, LSM_non_diff
-        'ref_epoch_dt': 'Epoch',  # LSM_non_diff, LSM_diff
+        'ref_epoch_dt': 'Epoch UTC',  # LSM_non_diff, LSM_diff
         'delta_t_h': 'd_t [h]',  # LSM_non_diff, LSM_diff
         'g_mugal': 'g [µGal]',  # MLR
         'g_diff_mugal': 'g [µGal]',  # LSM_diff
@@ -1041,12 +1139,14 @@ class ResultsDriftModel(QAbstractTableModel):
     }
 
     # Column names (keys) and short description (values):
+    # Column names (keys) and short description (values):
     _PLOT_COLUMNS_DICT = {
         'survey_name': 'Survey',
         'degree': 'Degree',
         'coefficient': 'Coefficient',
         'sd_coeff': 'SD',
         'coeff_unit': 'Unit',
+        'ref_epoch_t0_dt': 'Ref. epoch',
     }
     _PLOT_COLUMNS = list(_PLOT_COLUMNS_DICT.keys())  # Actual list of columns to be shown
 
@@ -1133,6 +1233,8 @@ class ResultsDriftModel(QAbstractTableModel):
                             return '{1:.{0}f}'.format(num_dec_places, value)
                         else:
                             return str(value)
+                elif isinstance(value, dt.datetime):
+                    return value.strftime("%Y-%m-%d, %H:%M:%S")
                 else:  # all other
                     return str(value)
 
@@ -1212,10 +1314,6 @@ class ResultsCorrelationMatrixModel(QAbstractTableModel):
                 self._data = None
                 self._data_column_names = None
                 QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
-            except AttributeError as e:
-                print(e)
-                if e == "'BEVLegacyProcessing' object has no attribute 'x_estimate_names'":
-                    print('test')
             except Exception as e:
                 QMessageBox.critical(self.parent(), 'Error!', str(e))
                 self._data = None

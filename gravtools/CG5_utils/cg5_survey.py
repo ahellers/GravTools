@@ -3,20 +3,25 @@
 This module contains all models that are specifically required to
 handle observation with the Scintrex CG-5 gravity meter.
 
-Example
--------
-Running this module as standalone script will read in the default CG-5
-observation file specified by ``settings.PATH_OBS_FILE_CG5`` and
-``settings.NAME_OBS_FILE_CG5`` and create a plot showing the observed
-garvity meter readings over time::
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
-    $ python cg5_survey.py
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import pandas as pd
 import numpy as np
 import re
-# import sys
 import datetime as dt
 import matplotlib.pyplot as plt
 # from io import StringIO  # Python 3.x required
@@ -166,7 +171,7 @@ class CG5SurveyParameters:
         elif survey_count == 0:  # Not available
             return cls()  # Initialize with default values
         else:  # More than 1 block found => Error!
-            raise InvaliFileContentError('{} "CG-5 SURVEY" bocks found in observation file, '
+            raise InvaliFileContentError('{} "CG-5 SURVEY" blocks found in observation file, '
                                          'but only one expected.'.format(survey_count))
 
         # Error Msg, wenn der Block mehr als einmal gefunden wird.
@@ -657,16 +662,14 @@ class CG5Survey:
         # Convert numeric columns to numeric dtypes:
         cols = self.obs_df.columns.drop(self._OBS_DF_NON_NUMERIC_COLUMNS)
         self.obs_df[cols] = self.obs_df[cols].apply(pd.to_numeric, errors='raise')
-        # Sort observations by time and date:
-        self.obs_df.sort_values(by='dec_time_date')
-        # Reset index after sorting by observation time:
-        self.obs_df.reset_index(drop=True)
+        # Sort observations by time and date and reset index:
+        self.obs_df.sort_values(by='dec_time_date', inplace=True, ignore_index=True)
         # Convert date and time to datetime objects (aware, if UTC offset is available):
-
         if self.survey_parameters.date_time is not None:
             self.obs_df['obs_epoch'] = pd.to_datetime(
-                self.obs_df['date'] + ' ' + self.obs_df['time_str'] + ' ' + self.survey_parameters.date_time.tzname(),
-                format='%Y/%m/%d %H:%M:%S %Z')
+                self.obs_df['date'] + ' ' + self.obs_df['time_str'], format='%Y/%m/%d %H:%M:%S')
+            self.obs_df['obs_epoch'] = self.obs_df['obs_epoch'].dt.tz_localize('UTC')  # Set timezone = UTC
+            self.obs_df['obs_epoch'] = self.obs_df['obs_epoch'] + pd.Timedelta(self.survey_parameters.date_time.utcoffset())
         else:  # tz unaware time
             self.obs_df['obs_epoch'] = pd.to_datetime(
                 self.obs_df['date'] + ' ' + self.obs_df['time_str'], format='%Y/%m/%d %H:%M:%S')
@@ -708,17 +711,11 @@ class CG5Survey:
 
 # Run as standalone program:
 if __name__ == "__main__":
-
-    # path = '/home/heller/pyProjects/gravtools/data/20200907_test.TXT'
     path = settings.PATH_OBS_FILE_CG5 + settings.NAME_OBS_FILE_CG5
-
     s1 = CG5Survey()
     s1.read_obs_file(path)
-
     # s1.plot_g_values(['1-164-04', '1-164-12', '1-164-11'])
     # s1.plot_g_values(['TEST'])
     s1.plot_g_values()
-
 else:
-    # not run as standalone program, but as module
     pass

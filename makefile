@@ -31,3 +31,5 @@ py_gui:
 	pyuic5 -o gravtools/gui/dialog_estimation_settings.py gravtools/gui/dialog_estimation_settings.ui
 	pyuic5 -o gravtools/gui/dialog_export_results.py gravtools/gui/dialog_export_results.ui
 	pyuic5 -o gravtools/gui/dialog_options.py gravtools/gui/dialog_options.ui
+	pyuic5 -o gravtools/gui/dialog_setup_data.py gravtools/gui/dialog_setup_data.ui
+	pyuic5 -o gravtools/gui/dialog_about.py gravtools/gui/dialog_about.ui

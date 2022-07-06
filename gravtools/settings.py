@@ -1,13 +1,19 @@
-"""
-gravtools
-=========
+"""GravTools settings defined by the user.
 
-Code by Andreas Hellerschmied
-andeas.hellerschmid@bev.gv.at
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
-Summary
--------
-User-defined settings for gravtools.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # Additive constant for the determination of the full absolute gravity [µGal] from observed values:
@@ -25,6 +31,7 @@ STATION_DATA_SOURCE_TYPES = {
 
 TIDE_CORRECTION_TYPES = {
     'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
+    'longman1959': 'Tidal corrections by the model of Longman (1959)',
     'no_tide_corr': 'No tide correction applied',
     'unknown': 'Unknown whether a tide correction was applied',
 }
@@ -65,7 +72,8 @@ GRAVIMETER_SERIAL_NUMBERS = {
 
 # Lookuptable to convert the gravimeter S/N to the IDs written to the database NSDB:
 GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE = {
-    '40601': '5'
+    '40601': '5',
+    '40236': '5',
 }
 
 #  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
@@ -93,13 +101,9 @@ ANSERMET_DIFF_TRESHOLD = 1e-3
 # Treshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
 R_POPE_TEST_TRESHOLD = 1e-6
 
-# Only consider active observations for the determination of the reference epochs, e.g. for the drift polynomial. The
-# Reference epochs are determined based on the first (active only or active/inactive) observations in the campaign or
-# in each individual survey, depending on the settings.
-ACTIVE_OBS_ONLY_FOR_REF_EPOCH = True
-
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
+INIT_OESGN_STATION_AS_DATUM = False  # Initialize OESGN stations as datum stations when loading rom an OESGN file?
 
 
 # ----- GUI appearance and plot settings -----
@@ -120,6 +124,29 @@ DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR = 'k'
 CORRELATION_COEF_COLORS = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']
 # Background color for diagonal elements (=1):
 CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
+
+# --- Data export options: ---
+# List of columns in the `obs_df` dataframe that are written to the exported observation list CSV file:
+EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'obs_epoch', 'station_name', 'keep_obs']
+# Maximum allowed SD of the estimated gravity at stations when exporting data to a nsb file!
+#  => This is important as only 3 characters are reserved in the nsb file for the SD!
+MAX_SD_FOR_EXPORT_TO_NSB_FILE = 999.0
+# Choices for 5-character comment written to the nsb file (appears as Operat-G in the NSDB):
+# - One letter instrument-ID: 'inst_id'
+# - Official 5-character serial number of the Scintrex CG-5 Gravitimeters: 'cg5_serial_number'
+# - Version of Gravtools: 'gravtools_version'
+# !! Warning: Actually only the gravtools version makes sense, because multiple surveys observed with different
+# instruments can be combindes
+WRITE_COMMENT_TO_NSB = 'gravtools_version'
+
+# ----- Program and Software settings -----
+# Specify the protocol version of pickle used when saving the campaign data to a pickle file.
+# Python 3.6.8 (used at BEV) does not support version 5, only up to version 4
+# Options (type: int):
+# - <int number> => Directly specify the protocol version
+#                   (4 should be a good choice, as it is compatible with python 3.6)
+# - 999 => Use the highest version available at the installation (pickle.HIGHEST_VERSION)
+PICKLE_PROTOCOL_VERSION = 4
 
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----

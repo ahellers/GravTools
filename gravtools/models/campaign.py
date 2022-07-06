@@ -1,8 +1,29 @@
+"""Modelling of relative gravity campaigns.
+
+Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import datetime as dt
+import pytz
 import numpy as np
 import pickle
 import os
+import sys
 
+import pandas as pd
 from gravtools.models.lsm import LSM
 from gravtools.models.lsm_diff import LSMDiff
 from gravtools.models.lsm_nondiff import LSMNonDiff
@@ -10,7 +31,9 @@ from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
 from gravtools.models.station import Station
 from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
-    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m
+    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, EXPORT_OBS_LIST_COLUMNS, \
+    MAX_SD_FOR_EXPORT_TO_NSB_FILE, WRITE_COMMENT_TO_NSB, PICKLE_PROTOCOL_VERSION
+from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
 class Campaign:
@@ -38,6 +61,11 @@ class Campaign:
     lsm_runs : list of objects inherited from :py:obj:`gravtools.models.lsm.LSM`
         Each item in the list contains one enclosed LSM object. Each LSM object reflects one dedicated run of an
         least-squares adjustment in order to estimate target parameters.
+    ref_delta_t_dt : datetime object
+        Reference epoch for relative times within the campaign, e.g. for the determination of the drift polynomials.
+        This reference time is equalt to the first (active) observation in the campaign considering all surveys.
+    gravtools_version : str
+        Version of the gravtools software that was used to create the dataset.
     """
 
     def __init__(self,
@@ -123,6 +151,9 @@ class Campaign:
                 raise TypeError('`ref_delta_t_dt` needs to be a datetime object.')
         self.ref_delta_t_dt = ref_delta_t_dt
 
+        # Version of gravtools:
+        self.gravtools_version = GRAVTOOLS_VERSION
+
     def add_survey(self, survey_add: Survey, verbose=False) -> bool:
         """Add a survey to campaign and specify whether to use it for ths analysis.
 
@@ -179,7 +210,7 @@ class Campaign:
             if verbose:
                 print(f'Survey "{survey_name}" does not exist.')
             return False
-        except:
+        except Exception:
             if verbose:
                 print(f'Failed to remove survey {survey_name}.')
             return False
@@ -344,21 +375,19 @@ class Campaign:
                 # raise AssertionError('Reduction to reference height failed!')
         return flag_corrections_applied_correctly, error_msg
 
-    def add_stations_from_oesgn_table_file(self, oesgn_filename, verbose=False):
+    def add_stations_from_oesgn_table_file(self, oesgn_filename, is_datum=False, verbose=False):
         """Add station from an OESGN table file.
 
         Parameters
         ----------
-        oesgn_filename : string, specifying the path/file of the OESGN file
-            Stations in the specified OESGN table file are added to the Campaign.
+        oesgn_filename : string, specifying the path and filename of the OESGN file
+            Stations in the specified OESGN table file are added to the campaign.
+        is_datum : bool, optional (default = False)
+            `True` indicates that all loaded OESGN stations are initially selected as datum stations (is_datum=True)
         verbose : bool, optional (default=False)
-            If True, status messages are printed to the command line.
+            If `True`, status messages are printed to the command line.
         """
-        self.stations.add_stations_from_oesgn_table(filename=oesgn_filename, verbose=verbose)
-
-    def __str__(self):
-        return f'Campaign "{self.campaign_name}" with {self.number_of_surveys} surveys ' \
-               f'and {self.stations.get_number_of_stations} stations.'
+        self.stations.add_stations_from_oesgn_table(filename=oesgn_filename, is_datum=is_datum, verbose=verbose)
 
     def synchronize_stations_and_surveys(self, verbose=False):
         """Synchronize information between station and survey data in the campaign.
@@ -406,10 +435,18 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             self.stations.add_stations_from_survey(survey, verbose)
 
-    def calculate_setup_data(self, obs_type='reduced', set_epoch_of_first_obs_as_reference=True,
+    def calculate_setup_data(self,
+                             obs_type='reduced',
                              active_obs_only_for_ref_epoch=True,
                              verbose=False):
         """Calculate accumulated pseudo observations for each active setup in all active surveys.
+
+        Notes
+        -----
+        Two relative reference epochs are calculated for each setup: (a) w.r.t. the first (active) observation in the
+        whole campaign and (b) w.r.t. the first (active) observation in each survey. Both reference time do not differ
+        for the first survey on a campaign. Whether active observations only are considered is defined by the input
+        parameter `active_obs_only_for_ref_epoch`.
 
         Parameters
         ----------
@@ -418,20 +455,21 @@ class Campaign:
             `self.obs_df` are used to determine the weighted mean values per setup.
         set_epoch_of_first_obs_as_reference: bool, optional (default=True)
             If `True`, the epoch of the first observation in all surveys in the campaign is used as reference epoch
-            for all surveys. `False` implies that the reference eoch is based on the first (active, if
-            `active_obs_only_for_ref_epoch` is `True`) observation in each seurves and determined individually for
+            for all surveys. `False` implies that the reference epoch is based on the first (active, if
+            `active_obs_only_for_ref_epoch` is `True`) observation in each survey and determined individually for
             each survey. Stored in `self.ref_delta_t_dt` (datetime object).
         active_obs_only_for_ref_epoch: bool, optional (default=True)
-            `True` implies that the reference epoch is determined by considering active observations only.
+            `True` implies that the relative reference epochs are determined by considering active observations only.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
         # Get reference epoch:
-        if set_epoch_of_first_obs_as_reference:
-            # Get epoch of first observation:
-            self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
-        else:
-            self.ref_delta_t_dt = None
+        self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
+        # if set_epoch_of_first_obs_as_reference:
+        #     # Get epoch of first observation:
+        #     self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
+        # else:
+        #     self.ref_delta_t_dt = None
 
         # Loop over all surveys in the campaign:
         if verbose:
@@ -441,7 +479,7 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             if survey.keep_survey:
                 survey.calculate_setup_data(obs_type=obs_type,
-                                            ref_delta_t_dt=self.ref_delta_t_dt,
+                                            ref_delta_t_campaign_dt=self.ref_delta_t_dt,
                                             active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
                                             verbose=verbose)
 
@@ -507,7 +545,7 @@ class Campaign:
 
         Returns
         -------
-        list : List of string stating the epochs of lsm adjustment runs that can be used to identifiterrowsy individual runs.
+        list : List of string stating the epochs of lsm adjustment runs that can be used to identify individual runs.
         """
         lsm_run_times = []
         for lsm_run in self.lsm_runs:
@@ -538,7 +576,8 @@ class Campaign:
         else:
             raise ValueError('`ref_delta_t_dt` needs to be a datetime object.')
 
-    def write_nsb_file(self, filename: str, lsm_run_index, vertical_offset_mode: str = 'first', verbose=True):
+    def write_nsb_file(self, filename: str, lsm_run_index, vertical_offset_mode: str = 'first',
+                       exclude_datum_stations=False, verbose=False):
         """Write the results of an LSM run to an nsb file (input for NSDB database).
 
         Parameters
@@ -552,6 +591,8 @@ class Campaign:
             respectively, are determined in the case of multiple measurements (setups) on the same point. In the nsb
             file only one dhf/dhb pair per station is allowed. Two options: (1) 'first' indicates that dhb and dhf are
             taken from the first setup at a station. (2) 'mean' indicates that mean values over all setups are taken.
+        exclude_datum_stations : boolean, optional (default=False)
+            `True` indicates that datum stations are excluded from the nsb file.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
@@ -563,16 +604,27 @@ class Campaign:
         lsm_run = self.lsm_runs[lsm_run_index]
         results_stat_df = lsm_run.get_results_stat_df
 
+        # Check if the data is suitable for export to the nsb file:
+        if results_stat_df.loc[results_stat_df['sd_g_est_mugal'] > MAX_SD_FOR_EXPORT_TO_NSB_FILE,
+                               'sd_g_est_mugal'].any():
+            raise AssertionError(f"The SD of at least one station's estimated gravity is larger than {MAX_SD_FOR_EXPORT_TO_NSB_FILE} µGal! ")
+
         # Loop over stations in results dataframe:
         for index, row in results_stat_df.iterrows():
-            # print(row['station_name'])
+
+            # Skip datum stations:
+            if exclude_datum_stations:
+                if row['is_datum']:
+                    continue
+
             station_name = row['station_name']
             observed_in_surveys = []
             dhb_list_m = []
             dhf_list_m = []
 
             # Get surveys at which the station was observed:
-            for survey_name, setup_df in lsm_run.setups.items():
+            for survey_name, setup_data in lsm_run.setups.items():
+                setup_df = setup_data['setup_df']
                 if len(setup_df.loc[setup_df['station_name'] == station_name]) > 0:  # was observed in this setup!
                     observed_in_surveys.append(survey_name)
                     obs_df = self.surveys[survey_name].obs_df
@@ -599,13 +651,24 @@ class Campaign:
             gravimeter_serial_number = self.surveys[observed_in_surveys[0]].gravimeter_serial_number
             date_str = self.surveys[observed_in_surveys[0]].date.strftime('%Y%m%d')
 
-            nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s} {:>4s} {:4.0f} {:4.0f}\n'.format(
+            # Comment string:
+            # - Max. 5 characters!
+            if WRITE_COMMENT_TO_NSB == 'cg5_serial_number':
+                comment_str = str(gravimeter_serial_number)
+            elif WRITE_COMMENT_TO_NSB == 'inst_id':
+                comment_str = GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE[gravimeter_serial_number]
+            elif WRITE_COMMENT_TO_NSB == 'gravtools_version':
+                comment_str = 'GT'+''.join(GRAVTOOLS_VERSION.split('.'))
+            else:
+                raise AssertionError(f'Invalid choice for the nsb file comment: {WRITE_COMMENT_TO_NSB}!')
+
+            nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s}{:>5s} {:4.0f} {:4.0f}\n'.format(
                 station_name,
                 date_str,
                 row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
                 row['sd_g_est_mugal'],
                 GRAVIMETER_TYPES_KZG_LOOKUPTABLE[gravimeter_type],
-                GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE[gravimeter_serial_number],
+                comment_str,
                 (dhb_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
                 (dhf_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
             )
@@ -613,6 +676,40 @@ class Campaign:
         # Write file:
         with open(filename, 'w') as out_file:
             out_file.write(nsb_string)
+            
+    def write_log_file(self, filename: str, lsm_run_index, verbose=False):
+        """Write log file of a selected LSM run.
+        
+        Parameters
+        ----------
+        filename : str
+            Name and path of the output nsb file (e.g. /home/johnny/example.nsb)
+        lsm_run_index : int
+            Index of the lsm run in `campaign.lsm_runs` of which the results are exported to the nsb file.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Init.:
+        log_string = ''
+
+        # Get and prepare data:
+        lsm_run = self.lsm_runs[lsm_run_index]
+        log_string = lsm_run.get_log_string
+
+        # Append additional information to log file string:
+        time_now_str = dt.datetime.now(tz=pytz.UTC).strftime('%Y-%m-%d, %H:%M:%S %Z')
+        append_str = ''
+        append_str += f'------------------------------------------\n'
+        append_str += f'LSM run comment: {lsm_run.comment}\n'
+        append_str += f'Log file created: {time_now_str}\n'
+        append_str += f'Log file written with GravTools version: {GRAVTOOLS_VERSION}\n'
+        out_string = log_string + '\n' + append_str
+        
+        # Write file:
+        if verbose:
+            print(f'Write log file to {filename}.')
+        with open(filename, 'w') as out_file:
+            out_file.write(out_string)
 
     def save_to_pickle(self, filename=None, verbose=True):
         """Save the campaign object to a pickle file at the given path.
@@ -636,7 +733,10 @@ class Campaign:
         if verbose:
             print(f'Export campaign data to {filename}.')
         with open(filename, 'wb') as outfile:
-            pickle.dump(self, outfile, protocol=pickle.HIGHEST_PROTOCOL)
+            if PICKLE_PROTOCOL_VERSION == '999':
+                pickle.dump(self, outfile, protocol=pickle.HIGHEST_PROTOCOL)
+            else:
+                pickle.dump(self, outfile, protocol=PICKLE_PROTOCOL_VERSION)
         return filename
 
     @classmethod
@@ -677,8 +777,146 @@ class Campaign:
                 raise AssertionError(f'The directory "{output_directory}" does not exist!')
         self.output_directory = output_directory
 
+    def write_obs_list_csv(self, filename_csv: str, export_type: str = 'all_obs', verbose: bool = False):
+        """Export a list of all observations in the campaign to a CSV file.
+
+        This file gives information which observations were active and have been used to compute the setup observations.
+
+        Parameters
+        ----------
+        filename_csv : str
+            Name and path of the output CSV file.
+        export_type : str, optional (default = 'all_obs')
+            Defines which observations are exported. There are three options: (1) all observations ('all_obs'), (2) only
+            active observations ('active_only') or (3) only inactive observations ('inactive_only').
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Prepare dataframe with all observations of all surveys
+        export_survey_df_list = []
+        for survey_name, survey in self.surveys.items():
+            # print(survey, survey_name)
+            tmp_obs_df = survey.obs_df.copy(deep=True)
+            tmp_obs_df.insert(0, 'survey_name', survey_name)
+            export_survey_df_list.append(tmp_obs_df)
+        export_obs_df = pd.concat(export_survey_df_list, ignore_index=True, sort=False)
+        export_obs_df.sort_values('obs_epoch', inplace=True)
+
+        # Filter data:
+        if export_type != 'all_obs':
+            if export_type == 'active_only':
+                tmp_filter = export_obs_df['keep_obs']
+            elif export_type == 'inactive_only':
+                tmp_filter = ~export_obs_df['keep_obs']
+            export_obs_df = export_obs_df.loc[tmp_filter, :]
+
+        # Export to CSV file:
+        if verbose:
+            print(f'Write observation list to: {filename_csv}')
+        export_obs_df.to_csv(filename_csv, index=False, columns=EXPORT_OBS_LIST_COLUMNS)
+
+    def flag_observations_based_on_obs_list_csv_file(self, obs_list_filename: str, update_type: str = 'all_obs',
+                                                     verbose: bool = False):
+        """ Flag observations in campaign based on an observation list file.
+
+        Parameters
+        ----------
+        obs_list_filename : str
+            Name and path of the input CSV file containing the observation list.
+        update_type : str, optional (default = 'all')
+            Defines which observations in the input list are used to update the `keep_obs` status of the matched
+            observations in the campaign:. There are 3 options: (1) `all _obs` indicates that all matched observations
+            are updated, (2) `inactive_only` indicates that only inactive observations (in the list) are updated and (3)
+            `active_only` indicates that only active observations in the list are updated.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        """
+        if verbose:
+            print(f'Flag observations based on observation list in: {obs_list_filename}')
+        flag_log_str = ''
+
+        # Read csv file:
+        obs_list_df = pd.read_csv(obs_list_filename)
+        if len(obs_list_df) > 0:
+            # Check availability of needed columns:
+            # EXPORT_OBS_LIST_COLUMNS
+            invalid_cols = list(set(obs_list_df.columns) - set(EXPORT_OBS_LIST_COLUMNS))
+            if len(invalid_cols) > 0:
+                raise AssertionError(f'Invalid columns in the observation list csv file: {", ".join(invalid_cols)}')
+
+            # Get filter for observations to be updated according to the "update_type":
+            if update_type == 'all_obs':
+                pass
+            elif update_type == 'inactive_only':
+                obs_list_df = obs_list_df[~obs_list_df['keep_obs']]
+            elif update_type == 'active_only':
+                obs_list_df = obs_list_df[obs_list_df['keep_obs']]
+            else:
+                raise AssertionError(f'Invalid input argument for "update_type": {update_type}')
+
+            # Apply flagging:
+            surveys = obs_list_df['survey_name'].unique().tolist()
+            for survey_name in surveys:
+                count_changed = 0
+                count_matched = 0
+                flag_log_str += f'Survey: {survey_name}\n'
+                if survey_name not in self.surveys:
+                    flag_log_str += '  - Does not exist in this campaign.\n'
+                else:
+                    for index, row in obs_list_df[obs_list_df['survey_name'] == survey_name].iterrows():
+                        obs_epoch = row['obs_epoch']
+                        if sys.version_info >= (3, 7):
+                            epoch_dt = dt.datetime.fromisoformat(obs_epoch)
+                        else:
+                            if (len(obs_epoch) == 25) & (obs_epoch[-3] == ':'):  # E.g.: '2018-10-23 05:52:01+00:00'
+                                epoch_dt = dt.datetime.strptime(obs_epoch[:-3] + obs_epoch[-2:], '%Y-%m-%d %H:%M:%S%z')
+                            else:
+                                raise AssertionError('Unknown tim format!')
+                        filter_tmp = (self.surveys[survey_name].obs_df['obs_epoch'] == epoch_dt) & (
+                                    self.surveys[survey_name].obs_df['station_name'] == row['station_name'])
+                        num_matched_rows = len(filter_tmp[filter_tmp])
+                        if num_matched_rows > 1:
+                            raise AssertionError(f'In survey {survey_name} the are {num_matched_rows} observations at the '
+                                                 f'same time and station!')
+                        if num_matched_rows == 1:  # OK!
+                            count_matched += 1
+                            if self.surveys[survey_name].obs_df.loc[filter_tmp, 'keep_obs'].bool() != row['keep_obs']:
+                                self.surveys[survey_name].obs_df.loc[filter_tmp, 'keep_obs'] = row['keep_obs']
+                                count_changed += 1
+                    flag_log_str += f'  - Matched observations: {count_matched} of {len(obs_list_df)}\n'
+                    flag_log_str += f'  - Changed "keep_obs" flags: {count_changed}\n'
+        else:
+            flag_log_str = 'Empty observation list file!'
+        if verbose:
+            print(flag_log_str)
+        return flag_log_str
+
+    def change_campaign_name(self, name: str):
+        """Change the name of the campaign.
+
+        Parameters
+        ----------
+        name : str
+            New campaign name. Non-empty string.
+        """
+        if isinstance(name, str):
+            if name:  # Non-empty string
+                if ' ' in name:
+                    raise AssertionError(f'Blanks in the campaign name are not allowed!')
+                else:
+                    self.campaign_name = name
+            else:
+                raise AssertionError('The campaign name is emtpy!')
+        else:
+            raise AssertionError('The campaign name is not a string!')
+
+    def __str__(self):
+        return f'Campaign "{self.campaign_name}" with {self.number_of_surveys} surveys ' \
+               f'and {self.stations.get_number_of_stations} stations.'
+
 
 if __name__ == '__main__':
     """Main function, primarily for debugging and testing."""
-    filename = '/home/heller/pyProjects/gravtools/out/test.pkl'
+    filename = '/pyProjects/gravtools/out/test.pkl'
     camp = Campaign.from_pkl(filename)

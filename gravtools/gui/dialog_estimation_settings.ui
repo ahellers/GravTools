@@ -74,7 +74,7 @@
              <string>Adjust SD of setup observations to scale a posteriori s0</string>
             </property>
             <property name="checked">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
            </widget>
           </item>
@@ -339,6 +339,62 @@
         </widget>
        </item>
        <item>
+        <widget class="QGroupBox" name="groupBox_drift_polynomial_advanced">
+         <property name="title">
+          <string>Drift Polynomial</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_14">
+          <item>
+           <layout class="QFormLayout" name="formLayout_9">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_10">
+              <property name="toolTip">
+               <string>The refernce epoch for the estimated drift polynomials (one per survey) is either the epoch of the first observation on the campaign (same reference epoch for all surveys) or of the first observat in each survey of the campaign (different for each survey).</string>
+              </property>
+              <property name="text">
+               <string>Reference epoch t0</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <layout class="QVBoxLayout" name="verticalLayout_13">
+              <item>
+               <widget class="QRadioButton" name="radioButton_drift_ref_epoch_first_ob_campaign">
+                <property name="toolTip">
+                 <string>The epoch of the first observation in campaign is the reference epoch for the estimate drift polynomials for ALL surveys in the campaign. </string>
+                </property>
+                <property name="text">
+                 <string>First observation in campaign</string>
+                </property>
+                <attribute name="buttonGroup">
+                 <string notr="true">buttonGroup</string>
+                </attribute>
+               </widget>
+              </item>
+              <item>
+               <widget class="QRadioButton" name="radioButton_drift_ref_epoch_first_obs_survey">
+                <property name="toolTip">
+                 <string>The epoch of the first observation in each survey is used as reference epoch for the estimated drift polynomial (different for each survey in the campaign).</string>
+                </property>
+                <property name="text">
+                 <string>First observation of survey</string>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+                <attribute name="buttonGroup">
+                 <string notr="true">buttonGroup</string>
+                </attribute>
+               </widget>
+              </item>
+             </layout>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacer_2">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -523,6 +579,26 @@
                  </property>
                 </widget>
                </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="label_min_multiplicative_factor_to_sd_percent">
+                 <property name="text">
+                  <string>Min. multiplicative factor to SD [%]</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_min_multiplicative_factor_to_sd_percent">
+                 <property name="minimum">
+                  <double>1.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>100.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>50.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
               </layout>
              </item>
             </layout>
@@ -617,4 +693,7 @@
  </widget>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup"/>
+ </buttongroups>
 </ui>
