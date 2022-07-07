@@ -122,19 +122,6 @@ Sphinx is used to create an API documentation based on docstrings. Run make in t
 ## Dependancies
 * Required python packages are listed in gravtools/requirements.txt
   * created with `>>>pip freeze > requirements.txt`
-  
-## Version control with GIT
-* Gitlab repository: https://gitlab.com/Heller182/grav
-* Branching model:
-  * **master** branch: Current release version
-  * **develop** branch: Current working version. 
-    * All team members merge their feature branches into develop (merge request via gitlab)
-    * Make sure that the develop branch contains a fully functional version of the code!
-  * **feature** branches: Branches of develop for the implementation of new features and other changes.
-    * Code changes only in feature branches!
-    * Naming convention: feature_<description of change/feature>, e.g. feature_new_tide_model
-* Use gitignore files to prevent any data files (except example files), IDE control files, compiled python code, etc. from being stored in the GIT repository
-  * Generally rule: Ignore everything in a directory and define explicit exceptions!
     
 ## Packaging and distribution
 * With setuptools 
