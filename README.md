@@ -3,6 +3,17 @@ GravTools is an open source software toolbox for processing relative gravity sur
 Federal Office of Metrology and Surveying (BEV).  
 
 # Installation and setup
+
+## Install python package
+Python packages for multiple release versions are available in the *dist* directory. For installation in a virtual 
+python environment follow these steps: 
+
+1. Create a new virtual environment in the directory "venv": `python3 -n venv venv`
+2. Install the GravTools package: `pip install <path to package file>.tar.gz` 
+   * Dependencies listen in setup.py are automatically installed 
+
+
+## Install python project in local environment
 * **1.  Create virtual environment (venv)**
   * `python3 -m venv env`
 * **2. Activate virtual environment**
@@ -129,7 +140,7 @@ Sphinx is used to create an API documentation based on docstrings. Run make in t
 
 # License and copyright
 
-Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
+Copyright (C) 2021  Andreas Hellerschmied (<andreas.hellerschmied@bev.gv.at>)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
