@@ -8,8 +8,8 @@ Federal Office of Metrology and Surveying (BEV).
 * **2. Activate virtual environment**
   * `source env/bin/activate`
 * **3. Clone git repository to local machine**
-  * `git clone git@gitlab.com:Heller182/grav.git`
-  * `cd grav`
+  * `git clone https//github.com/ahellers/GravTools.git`
+  * `cd GravTools`
 * **4. Install required python packages using pip**
   * `pip install -r requirements.txt`
   
