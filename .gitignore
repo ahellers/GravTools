@@ -34,6 +34,8 @@ var/
 venv/
 ENV/
 env/
+env38/
+env310/
 
 ### JetBrains template
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and Webstorm
