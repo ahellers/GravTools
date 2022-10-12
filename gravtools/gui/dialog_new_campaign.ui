@@ -57,7 +57,7 @@
           <string>Enter the path to the output directory or use the dialog below.</string>
          </property>
          <property name="maxLength">
-          <number>100</number>
+          <number>300</number>
          </property>
         </widget>
        </item>
