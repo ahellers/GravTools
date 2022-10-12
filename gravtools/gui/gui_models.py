@@ -267,6 +267,7 @@ class SetupTableModel(QAbstractTableModel):
         'delta_t_campaign_h': 'd_t camp [h]',
         'sd_setup_mugal': 'SD of obs [µGal]',
         'number_obs': 'Number of obs.',
+        'dhf_sensor_m': 'dhf_sensor [m]',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -286,6 +287,7 @@ class SetupTableModel(QAbstractTableModel):
         'delta_t_h': 3,
         'delta_t_campaign_h': 3,
         'sd_setup_mugal': 1,
+        'dhf_sensor_m': 3,
     }
 
     def __init__(self, surveys):

@@ -250,6 +250,7 @@ class Survey:
         'delta_t_campaign_h',  # Time span since reference time [hours]  # TODO
         'sd_setup_mugal',  # Standard deviation of active observations in this setup [µGal]
         'number_obs',  # Number of observations in a setup
+        'dhf_sensor_m',  # Vertical distance between control point and sensor height
     )    # TODO: Get missing infos on columns in CG5 obs file!
 
     def __init__(self,
@@ -1432,6 +1433,7 @@ class Survey:
             delta_t_campaign_h_list = []
             sd_setup_mugal_list = []
             number_obs_list = []
+            dhf_sensor_m_list = []
 
             # Loop over setups:
             setup_ids = active_obs_df['setup_id'].unique()
@@ -1453,13 +1455,16 @@ class Survey:
                     )
 
                 # Standard deviation of active observations within setup:
-                # - If less then 2 active observations in setup => Calculation not possible => NaN
+                # - If less than 2 active observations in setup => Calculation not possible => NaN
                 if len(g_mugal) >= 2:
                     sd_setup_mugal_list.append(g_mugal.std(ddof=1))  # degree of freedom = (len(g_mugal) - 1)
                 else:
                     sd_setup_mugal_list.append(np.nan)
 
                 number_obs_list.append(len(g_mugal))  # Number of observations
+
+                # Get vertical distance between sensor height and control point:
+                dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type])
 
                 # observation epoch (UNIX timestamps in full seconds):
                 obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
@@ -1492,7 +1497,8 @@ class Survey:
                                                   delta_t_h_list,
                                                   delta_t_campaign_h_list,
                                                   sd_setup_mugal_list,
-                                                  number_obs_list)),
+                                                  number_obs_list,
+                                                  dhf_sensor_m_list)),
                                          columns=self._SETUP_DF_COLUMNS)
             self.set_reference_time(ref_delta_t_dt)  # Save reference time for `delta_t_h`, i.e. for the survey.
 

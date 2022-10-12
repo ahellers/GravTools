@@ -259,6 +259,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.label_sig0.setEnabled(False)
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(False)
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -267,6 +268,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
         elif selected_method == 'LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -275,6 +277,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
+        elif selected_method == 'VG LSM (differential observations)':
+            self.dlg_estimation_settings.groupBox_constraints.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
+            self.dlg_estimation_settings.doubleSpinBox_sig0.setEnabled(True)
+            self.dlg_estimation_settings.label_sig0.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(True)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
@@ -1355,6 +1367,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             min_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_min_multiplicative_factor_to_sd_percent.value()
             initial_step_size_percent = self.dlg_estimation_settings.doubleSpinBox_initial_step_size_percent.value()
 
+            num_of_lsm_runs_in_camapaign_before_adjustment = len(self.campaign.lsm_runs)
+
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
 
@@ -1429,14 +1443,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
                                                   verbose=IS_VERBOSE)
+            elif lsm_method == 'VG_LSM_diff':
+                # Get all required parameters from the GUI specific for the VG estimation:
+                vg_polynomial_ref_height_offset_m = self.dlg_estimation_settings.doubleSpinBox_vg_polynomial_ref_height_offset_m.value()
+                vg_polynomial_degree = self.dlg_estimation_settings.spinBox_vg_polynomial_degree.value()
+                self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
+                                                  vg_polynomial_degree=vg_polynomial_degree,
+                                                  vg_polynomial_ref_height_offset_m=vg_polynomial_ref_height_offset_m,
+                                                  sig0_mugal=sig0,
+                                                  confidence_level_chi_test=confidence_level_chi_test,
+                                                  confidence_level_tau_test=confidence_level_tau_test,
+                                                  drift_ref_epoch_type=drift_ref_epoch_type,
+                                                  verbose=IS_VERBOSE)
 
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
-            self.campaign.delete_lsm_run(-1)  # Delete failed lsm run object
+            # Delete failed lsm run object
+            self.campaign.lsm_runs = self.campaign.lsm_runs[0:num_of_lsm_runs_in_camapaign_before_adjustment]
             self.statusBar().showMessage(f"Error! No parameters estimated.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
-            self.campaign.delete_lsm_run(-1)  # Delete failed lsm run object
+            # Delete failed lsm run object
+            self.campaign.lsm_runs = self.campaign.lsm_runs[0:num_of_lsm_runs_in_camapaign_before_adjustment]
             self.statusBar().showMessage(f"Error! No parameters estimated.")
         else:
             # No errors when computing the setup data:

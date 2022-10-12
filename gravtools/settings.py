@@ -87,6 +87,7 @@ ADJUSTMENT_METHODS = {
     'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
     'LSM_non_diff': 'LSM (non-differential observations)',  # Least-squares adjustment of non-differential observations
     'MLR_BEV': 'MLR (BEV legacy processing)',  # Least-squares adjustment of differential observations
+    'VG_LSM_diff': 'VG LSM (differential observations)',  # Vertical Gravity Gradient estimation based on Least-squares adjustment of differential observations
 }
 
 # Available iteration approaches for scaling the SD of setup observations:

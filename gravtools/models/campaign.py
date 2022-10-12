@@ -26,6 +26,7 @@ import sys
 import pandas as pd
 from gravtools.models.lsm import LSM
 from gravtools.models.lsm_diff import LSMDiff
+from gravtools.models.vg_lsm_diff import VGLSMDiff
 from gravtools.models.lsm_nondiff import LSMNonDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
@@ -534,8 +535,11 @@ class Campaign:
             lsm_run = LSMNonDiff.from_campaign(self, comment, write_log)
         elif lsm_method == 'MLR_BEV':
             lsm_run = BEVLegacyProcessing.from_campaign(self, comment, write_log)
+        elif lsm_method == 'VG_LSM_diff':
+            print('Add code to create a new VG LSM object here!')
+            lsm_run = VGLSMDiff.from_campaign(self, comment, write_log)
         else:
-            raise AssertionError('Unknown LSM method: {lsm_method}')
+            raise AssertionError(f'Unknown LSM method: {lsm_method}')
         # Add LSM object to campaign:
         self.lsm_runs.append(lsm_run)
 
