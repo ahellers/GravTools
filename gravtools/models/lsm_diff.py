@@ -23,7 +23,7 @@ import pytz
 # from matplotlib import pyplot as plt
 
 from gravtools import settings
-from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test
+from gravtools.models.lsm import LSM, create_hist, global_model_test, tau_test
 from gravtools.models import misc
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
@@ -495,8 +495,8 @@ class LSMDiff(LSM):
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
 
         # goodness-of-fit test
-        chi_crit, chi_val, chi_test = goodness_of_fit_test(confidence_level_chi_test, dof,
-                                                           s02_a_posteriori_mugal2, sig0_mugal ** 2)
+        chi_crit, chi_val, chi_test = global_model_test(confidence_level_chi_test, dof,
+                                                        s02_a_posteriori_mugal2, sig0_mugal ** 2)
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'# Goodness-of-fit test results:\n'

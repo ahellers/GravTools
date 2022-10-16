@@ -441,13 +441,27 @@ def bin_redundacy_components(mat_r):
 def tau_test(mat_w, dof, alpha, mat_r):
     """Tau-criterion test for outlier detection of a least-squares adjustment.
 
-    See: Pope (1976): The statistics of residuals and the detection of outliers.
+    This test considers that the true variance factor sigma_0² is unknown. It is based on normalized residuals
+    (Studentized residuals) and the Tau distribution.
+
+    If the test fails it indicates that ONE (!) observation is a gross error, i.e. ONE residual is an outlier!
+    If the adjustment is affected by two or more gross errors this test is not applicable. In that case the
+    following pragmatic approach is recommended (e.g. by Caspary, 1987): The observation with the largest test
+    statistic is discarded. Then the adjustment is repeated with the remaining n-1 observations and the test is
+    repeated based on the new results, etc.
+
+    Notes
+    -----
+    Ref.: Pope (1976): The statistics of residuals and the detection of outliers, NOAA Technical Report NOS 65 NGS 1
+    Ref.: Caspari (1987): Concepts of network and deformation analysis. Monograph by UNSW Sydney, pp. 76-77
+    This method implements a two-sided test, as the critical value is calculated with (alpha/2) and the abs. value of
+    the normalized residual w is tested.
 
     Parameters
     ----------
     mat_w: np.array of floats
         Vector with standardized post-fit residuals of all observations in the least-squares adjustment.
-        They are computed as post-fit residuls divides by their standard deviations.
+        They are computed as post-fit residuals divides by their standard deviations.
     dof: int
         Degree of freedom of the least-squares adjustment.
     alpha: float (0 to 1)
@@ -455,14 +469,14 @@ def tau_test(mat_w, dof, alpha, mat_r):
     mat_r: np.array of floats
         Vector with redundancy components derived in the least-squares adjustment for each observation.
     """
-    # Critical value:
-    tsd_crt = stats.t.ppf(1 - alpha / 2, dof - 1)  # calc. t-distribution crit. val.
+    # Critical value (two-sided test: the abs. value of w is tested und the Tau-distribution is symmetric about 0!):
+    tsd_crt = stats.t.ppf(1 - alpha / 2, dof - 1)  # t distribution
     tau_crt = (tsd_crt * np.sqrt(dof)) / np.sqrt(dof - 1 + tsd_crt ** 2)  # Critical value (Pope, 1976, Eq. (6))
     tau_test_result = []
     for idx, w in enumerate(mat_w):
         # Check, if redancy component is larger than threshold:
         if mat_r[idx] > settings.R_POPE_TEST_TRESHOLD:
-            if np.abs(w) > tau_crt:
+            if np.abs(w) > tau_crt:  # Equ. (6-36) in Caspary (1987)
                 tau_test_result.append('failed')
             else:
                 tau_test_result.append('passed')
@@ -479,13 +493,18 @@ def create_hist(mat_v):
     return hist_residuals, bin_edges
 
 
-def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
-    """Statistical testing using chi square.
+def global_model_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
+    """Global model test based on the comparison of a posteriori and a priori variance of unit weight.
+
+    This global model test asserts if the "model is correct and complete". If it fails it indicates that the
+    observations contradict the mathematical adjustment model. However, this test cannot the validity of the model or
+    the correctness of the observation!
 
     Notes
     -----
-    This "global model test" is dewscribed by Caspari (1987): Concepts of network and deformation analysis.
-    pp. 6-8 and pp.68-69.
+    This "global model test" is described by Caspari (1987): Concepts of network and deformation analysis. Monograph
+    by UNSW Sydney, pp. 6-8 and pp.68-69.
+    This method implements a two-sided test.
 
     Parameters
     ----------
@@ -504,11 +523,12 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
     alpha = 1 - cf  # Significance level = Probability of committing a type 1 error (H0 wrongly dismissed)
     chi_crit_upper = stats.chi2.ppf(1 - alpha / 2, dof)  # critical value
     chi_crit_lower = stats.chi2.ppf(alpha / 2, dof)  # critical value
-    chi_val = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # tested value
-    # TODO: Why is there an upper AND a lower critical value? In the literature only an upper critical value ist defined!
-    if chi_crit_lower < chi_val < chi_crit_upper:
+    # chi_critical_value = stats.chi2.ppf(alpha, dof)  # critical value
+    test_value = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # Equ. (2-13) in Caspary (1987)
+    if chi_crit_lower < test_value < chi_crit_upper:
+    # if test_value <= test_value:  # Equ. (2-15) in Caspary (1987)
         chi_test_status = 'Passed'
     else:
         chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
-    return chi_crit, chi_val, chi_test_status
+    return chi_crit, test_value, chi_test_status
