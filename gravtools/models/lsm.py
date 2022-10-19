@@ -122,8 +122,8 @@ class LSM:
         self.setup_obs_df = None  # Dataframe that contain the observation (setup) related results
         self.observed_stations = None  # Unique list of observed stations; defines the station IDs for matrices
         self.stat_obs_df = None  # Station dataframe that contains estimation results of observed stations
-        self.drift_pol_df = None  # DataFrame that contains the estimated parameters of the drift polynomials an
-        # their statistics for each survey
+        self.drift_pol_df = None  # DataFrame that contains the estimated parameters of the drift polynomials and their statistics for each survey
+        self.vg_pol_df = None  # DataFrame that contains the estimated parameters of the vertical gravity gradient polynomial
 
         # Estimation settings:
         self.drift_polynomial_degree = None
@@ -132,6 +132,7 @@ class LSM:
         self.confidence_level_chi_test = None
         self.confidence_level_tau_test = None
         self.drift_ref_epoch_type = ''  # 'survey' or 'campaign'
+        self.vg_polynomial_degree = None
 
         # General statistics:
         self.number_of_stations = None
@@ -152,7 +153,7 @@ class LSM:
 
         # Statistical tests:
         self.number_of_outliers = None
-        self.goodness_of_fit_test_status = ''  # str
+        self.global_model_test_status = ''  # str
 
     def adjust_autoscale_s0(self,
                             iteration_approach='Multiplicative',
@@ -178,7 +179,7 @@ class LSM:
 
         Notes
         -----
-        Iterative adjustment works for differential and non-differential LSM adjustment.
+        Iterative adjustment works for differential and non-differential LSM adjustment, not for VG estimation!
 
         Parameters
         ---------

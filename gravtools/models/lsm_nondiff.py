@@ -260,6 +260,7 @@ class LSMNonDiff(LSM):
             tmp_str += f'Processed with GravTools {GRAVTOOLS_VERSION} ({time_now_str})\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
+            tmp_str += f'Method: {settings.ADJUSTMENT_METHODS[self.lsm_method]}\n'
             tmp_str += f'Number of surveys: {number_of_surveys}\n'
             tmp_str += f'Number of stations: {number_of_stations}\n'
             tmp_str += f'Number of observations: {number_of_observations}\n'
@@ -305,7 +306,7 @@ class LSMNonDiff(LSM):
         sd_g_obs_mugal_list = []
         obs_id_list = []
         survey_names_list = []
-        ref_epoch_dt_list = []  # Reference epochs (datetime objects) of differential observations
+        ref_epoch_dt_list = []  # Reference epochs (datetime objects) of observations
 
         for survey_name, setup_data in self.setups.items():
             setup_df = setup_data['setup_df']
@@ -318,7 +319,7 @@ class LSMNonDiff(LSM):
             setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
             if (setup_df['sd_g_mugal'] < 0).any():
                 raise AssertionError(
-                    f'ERROR: SD of observations ("sd_g_mugal") 8in survey {survey_name} <= 0 are not allowed! This '
+                    f'ERROR: SD of observations ("sd_g_mugal") in survey {survey_name} <= 0 are not allowed! This '
                     f'may be due to the scaling of the SD of observations with additive factors.')
 
             for index, row in setup_df.iterrows():

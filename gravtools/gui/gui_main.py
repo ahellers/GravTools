@@ -260,6 +260,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(False)
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(False)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
+            self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -269,6 +270,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
+            self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
         elif selected_method == 'LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -278,7 +280,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
-        elif selected_method == 'VG LSM (differential observations)':
+            self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
+        elif selected_method == 'VG LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(False)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
             self.dlg_estimation_settings.groupBox_observations.setEnabled(True)
@@ -287,6 +290,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(False)
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(True)
+            self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(False)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
@@ -296,6 +300,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.label_sig0.setEnabled(True)
             self.dlg_estimation_settings.groupBox_iterative_scaling.setEnabled(True)
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(True)
+            self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
             self.statusBar().showMessage(f"Unknown estimation method selected!")
 
@@ -1103,7 +1109,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             except:
                 self.label_results_number_of_outliers.clear()
             try:
-                self.label_results_goodness_of_fit_test_status.setText(lsm_run.goodness_of_fit_test_status)
+                self.label_results_goodness_of_fit_test_status.setText(lsm_run.global_model_test_status)
             except:
                 self.label_results_goodness_of_fit_test_status.clear()
 
@@ -1443,7 +1449,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
                                                   verbose=IS_VERBOSE)
-            elif lsm_method == 'VG_LSM_diff':
+            elif lsm_method == 'VG_LSM_nondiff':
                 # Get all required parameters from the GUI specific for the VG estimation:
                 vg_polynomial_ref_height_offset_m = self.dlg_estimation_settings.doubleSpinBox_vg_polynomial_ref_height_offset_m.value()
                 vg_polynomial_degree = self.dlg_estimation_settings.spinBox_vg_polynomial_degree.value()
@@ -1453,7 +1459,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                   sig0_mugal=sig0,
                                                   confidence_level_chi_test=confidence_level_chi_test,
                                                   confidence_level_tau_test=confidence_level_tau_test,
-                                                  drift_ref_epoch_type=drift_ref_epoch_type,
                                                   verbose=IS_VERBOSE)
 
         except AssertionError as e:

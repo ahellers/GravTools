@@ -268,6 +268,7 @@ class LSMDiff(LSM):
             tmp_str += f'Processed with GravTools {GRAVTOOLS_VERSION} ({time_now_str})\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
+            tmp_str += f'Method: {settings.ADJUSTMENT_METHODS[self.lsm_method]}\n'
             tmp_str += f'Number of surveys: {number_of_surveys}\n'
             tmp_str += f'Number of stations: {number_of_stations}\n'
             tmp_str += f'Number of differential observations: {number_of_diff_obs}\n'
