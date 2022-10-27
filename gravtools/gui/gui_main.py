@@ -206,7 +206,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def change_campaign_output_directory(self):
         """Change the output directory of the current campaign."""
         initial_folder_path = self.campaign.output_directory
-        output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path)
+        output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path,
+                                                           QtGui.QFileDialog.ShowDirsOnly)
         if output_dir_name:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
             # operating system.
@@ -2490,7 +2491,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         options |= QFileDialog.DontUseNativeDialog
         obs_list_filename, _ = QFileDialog.getOpenFileName(self,
                                                            'Load observation list file',
-                                                           DEFAULT_WORK_DIR_PATH,
+                                                           self.campaign.output_directory,
                                                            "Gravtools observation list file(*.csv)",
                                                            options=options)
         if obs_list_filename:
@@ -2557,7 +2558,8 @@ class DialogNewCampaign(QDialog, Ui_Dialog_new_Campaign):
         """Open dialog to get the output directory."""
 
         initial_folder_path = self.lineEdit_output_directory.text()
-        output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path)
+        output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path,
+                                                           QtGui.QFileDialog.ShowDirsOnly)
 
         if output_dir_name:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
