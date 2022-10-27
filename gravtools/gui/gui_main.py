@@ -152,7 +152,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_about.label_email.setText(__email__)
         self.dlg_about.label_copyright.setText(__copyright__)
 
-
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
             self.on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed)
@@ -184,7 +183,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_action_Change_Campaign_name_triggered(self):
         """Invoked whenever the menu item change campaign name is pressed."""
         # Get name:
-        new_campaign_name, flag_done = QInputDialog.getText(self, 'Enter the new campaign name', 'New campaign name (No blanks or special characters allowed):')
+        new_campaign_name, flag_done = QInputDialog.getText(self, 'Enter the new campaign name',
+                                                            'New campaign name (No blanks or special characters allowed):')
         if flag_done:
             try:
                 self.campaign.change_campaign_name(new_campaign_name)
@@ -197,7 +197,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.statusBar().showMessage(f'New campaign name set to: {self.campaign.campaign_name}.')
         else:
             self.statusBar().showMessage(f'No new campaign name set.')
-
 
     @pyqtSlot()
     def on_action_Change_output_directory_triggered(self):
@@ -1913,18 +1912,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # Handled in `self.on_observation_model_data_changed` with `self.set_keep_obs_markers_in_obs_plot` instead:
                 # spot_item.setBrush(self.BRUSH_ACTIVE_OBS)
             index = self.tableView_observations.model().index(spot_item._index,
-                                                              self.observation_model._data_column_names.index('keep_obs'))
-            self.observation_model.dataChanged.emit(index, index)  # Triggers all following events...
+                                                              self.observation_model._data_column_names.index(
+                                                                  'keep_obs'))
+            self.observation_model.dataChanged.emit(index, index, [9999])  # Call connected method "on_observation_model_data_changed"
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
-
 
     def on_observation_model_data_changed(self, topLeft, bottomRight, role):
         """Invoked whenever data in the observation table view changed."""
         if IS_VERBOSE:
             # print('TableModel: dataChanged: ', topLeft, bottomRight, role)
             pass
-        if topLeft == bottomRight:  # Only one item selected?
+        if topLeft == bottomRight and 9999 in role:  # Only one item selected and role=9999 => keep obs flag changed
             index = topLeft
             # Get column and row indices for dataframe:
             row = self.observation_model.get_data.index[index.row()]
@@ -1961,7 +1960,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # Plot 'keep_obs' marker symbols in the observation timeseries plot:
                 self.set_keep_obs_markers_in_obs_plot(index.row(), flag_keep_obs)
         else:
-            pass  # More than one items selected/changed.
+            pass  # More than one item selected/changed.
 
     def on_tree_widget_item_changed(self, item, column):
         """Invoked whenever an item in th observation tree view is changed, e.g. if the check-state changes."""
@@ -2298,7 +2297,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def on_menu_file_load_stations(self):
         """Launch dialog to load stations to project."""
-        dlg = DialogLoadStations()
+        dlg = DialogLoadStations(campaign_output_dir=self.campaign.output_directory)
         return_value = dlg.exec()
         if return_value == QDialog.Accepted:
             # Load Stations to campaign
@@ -2409,7 +2408,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         options |= QFileDialog.DontUseNativeDialog
         cg5_obs_file_filename, _ = QFileDialog.getOpenFileName(self,
                                                                'Select CG5 observation file',
-                                                               DEFAULT_WORK_DIR_PATH,
+                                                               self.campaign.output_directory,
                                                                "CG5 observation file (*.TXT)",
                                                                options=options)
         if cg5_obs_file_filename:
@@ -2501,9 +2500,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             obs_list_filename = QDir.toNativeSeparators(obs_list_filename)
             # Flag observations in current campaign:
             try:
-                flag_log_str = self.campaign.flag_observations_based_on_obs_list_csv_file(obs_list_filename=obs_list_filename,
-                                                                                          update_type='all_obs',
-                                                                                          verbose=IS_VERBOSE)
+                flag_log_str = self.campaign.flag_observations_based_on_obs_list_csv_file(
+                    obs_list_filename=obs_list_filename,
+                    update_type='all_obs',
+                    verbose=IS_VERBOSE)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
                 self.statusBar().showMessage(f"Error while flagging observations.")
@@ -2590,13 +2590,14 @@ class DialogNewCampaign(QDialog, Ui_Dialog_new_Campaign):
 class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
     """Dialog to load stations to project."""
 
-    def __init__(self, parent=None):
+    def __init__(self, campaign_output_dir, parent=None):
         super().__init__(parent)
 
         # Run the .setupUi() method to show the GUI
         self.setupUi(self)
         # connect signals and slots:
         self.pushButton_select_oesgn_table.clicked.connect(self.select_oesgn_table_file_dialog)
+        self.campaign_output_dir = campaign_output_dir
 
     def select_oesgn_table_file_dialog(self):
         """Open file selection dialog."""
@@ -2604,7 +2605,7 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
         if self.lineEdit_oesgn_table_file_path.text():
             initial_oesgn_file_path = os.path.dirname(os.path.abspath(self.lineEdit_oesgn_table_file_path.text()))
         else:
-            initial_oesgn_file_path = self.lineEdit_oesgn_table_file_path.text()
+            initial_oesgn_file_path = self.campaign_output_dir
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         oesgn_filename, _ = QFileDialog.getOpenFileName(self, 'Select OESGN table file', initial_oesgn_file_path,

@@ -88,7 +88,7 @@ class StationTableModel(QAbstractTableModel):
         """Load station data from pandas dataframe to table model."""
         # self._data = stat_df.copy()
         # Get list of columns to be depicted via the table model:
-        # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+        # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
         stat_df_columns_set = frozenset(stat_df.columns)
         table_model_columns = [x for x in self.get_table_columns if x in stat_df_columns_set]
         # if self.flag_gui_simple_mode:
@@ -673,11 +673,19 @@ class ObservationTableModel(QAbstractTableModel):
                     if value == Qt.Unchecked:
                         # print(f'row {index.row()}: Unchecked!')
                         self._data.at[row, col] = False
-                        self.dataChanged.emit(idx_min, idx_max)
+                        # Change data in `obs_df`:
+                        self._surveys[self._data_survey_name].obs_df.iloc[
+                            self._data.index[index.row()], Survey.get_obs_df_column_index('keep_obs')] = False
+                        self.dataChanged.emit(idx_min, idx_max)  # Change color of obs. table row
+                        self.dataChanged.emit(index, index, [9999])  # Change obs. plot and tree
                     elif value == Qt.Checked:
                         # print(f'row {index.row()}: Checked!')
                         self._data.at[row, col] = True
-                        self.dataChanged.emit(idx_min, idx_max)
+                        # Change data in `obs_df`:
+                        self._surveys[self._data_survey_name].obs_df.iloc[
+                            self._data.index[index.row()], Survey.get_obs_df_column_index('keep_obs')] = True
+                        self.dataChanged.emit(idx_min, idx_max)  # Change color of obs. table row
+                        self.dataChanged.emit(index, index, [9999])  # Change obs. plot and tree
                     else:
                         QMessageBox.warning(self.parent(), 'Warning!',
                                             f'Invalid value fpr keep observation flag: "{value}"')
