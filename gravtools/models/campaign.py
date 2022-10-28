@@ -583,6 +583,11 @@ class Campaign:
                        exclude_datum_stations=False, verbose=False):
         """Write the results of an LSM run to an nsb file (input for NSDB database).
 
+        Notes
+        -----
+        A nsb file can only be written, if station results are available which is not the case e.g. for the estimation
+        of vertical gravity gradients!
+
         Parameters
         ----------
         filename : str
@@ -607,78 +612,92 @@ class Campaign:
         lsm_run = self.lsm_runs[lsm_run_index]
         results_stat_df = lsm_run.get_results_stat_df
 
-        # Check if the data is suitable for export to the nsb file:
-        if results_stat_df.loc[results_stat_df['sd_g_est_mugal'] > MAX_SD_FOR_EXPORT_TO_NSB_FILE,
-                               'sd_g_est_mugal'].any():
-            raise AssertionError(f"The SD of at least one station's estimated gravity is larger than {MAX_SD_FOR_EXPORT_TO_NSB_FILE} µGal! ")
+        # Check, if station results are available (e.g. nor the case for VG estimation):
+        if results_stat_df is not None:
 
-        # Loop over stations in results dataframe:
-        for index, row in results_stat_df.iterrows():
+            # Check if the required columns are available:
+            if 'g_est_mugal' in results_stat_df.columns and 'sd_g_est_mugal' in results_stat_df.columns:
 
-            # Skip datum stations:
-            if exclude_datum_stations:
-                if row['is_datum']:
-                    continue
+                # Check if the data is suitable for export to the nsb file:
+                if results_stat_df.loc[results_stat_df['sd_g_est_mugal'] > MAX_SD_FOR_EXPORT_TO_NSB_FILE,
+                                       'sd_g_est_mugal'].any():
+                    raise AssertionError(f"The SD of at least one station's estimated gravity is larger than {MAX_SD_FOR_EXPORT_TO_NSB_FILE} µGal! ")
 
-            station_name = row['station_name']
-            observed_in_surveys = []
-            dhb_list_m = []
-            dhf_list_m = []
+                # Loop over stations in results dataframe:
+                for index, row in results_stat_df.iterrows():
 
-            # Get surveys at which the station was observed:
-            for survey_name, setup_data in lsm_run.setups.items():
-                setup_df = setup_data['setup_df']
-                if len(setup_df.loc[setup_df['station_name'] == station_name]) > 0:  # was observed in this setup!
-                    observed_in_surveys.append(survey_name)
-                    obs_df = self.surveys[survey_name].obs_df
-                    setup_ids = obs_df.loc[obs_df['station_name'] == station_name, 'setup_id'].unique()
-                    setup_ids = setup_df.loc[setup_df['station_name'] == station_name, 'setup_id'].to_list()
-                    # Get list of dhb and dhf:
-                    for setup_id in setup_ids:
-                        dhb_list_m.append(obs_df.loc[obs_df['setup_id'] == setup_id, 'dhb_m'].values[0])
-                        dhf_list_m.append(obs_df.loc[obs_df['setup_id'] == setup_id, 'dhf_m'].values[0])
+                    # Skip datum stations:
+                    if exclude_datum_stations:
+                        if row['is_datum']:
+                            continue
 
-            if vertical_offset_mode == 'first':
-                dhb_m = dhb_list_m[0]
-                dhf_m = dhf_list_m[0]
-            elif vertical_offset_mode == 'mean':
-                dhb_m = np.mean(dhb_list_m)
-                dhf_m = np.mean(dhf_list_m)
+                    station_name = row['station_name']
+                    observed_in_surveys = []
+                    dhb_list_m = []
+                    dhf_list_m = []
 
-            # Get gravimeter S/N and gravimeter type of first survey in the list:
+                    # Get surveys at which the station was observed:
+                    for survey_name, setup_data in lsm_run.setups.items():
+                        setup_df = setup_data['setup_df']
+                        if len(setup_df.loc[setup_df['station_name'] == station_name]) > 0:  # was observed in this setup!
+                            observed_in_surveys.append(survey_name)
+                            obs_df = self.surveys[survey_name].obs_df
+                            setup_ids = obs_df.loc[obs_df['station_name'] == station_name, 'setup_id'].unique()
+                            setup_ids = setup_df.loc[setup_df['station_name'] == station_name, 'setup_id'].to_list()
+                            # Get list of dhb and dhf:
+                            for setup_id in setup_ids:
+                                dhb_list_m.append(obs_df.loc[obs_df['setup_id'] == setup_id, 'dhb_m'].values[0])
+                                dhf_list_m.append(obs_df.loc[obs_df['setup_id'] == setup_id, 'dhf_m'].values[0])
+
+                    if vertical_offset_mode == 'first':
+                        dhb_m = dhb_list_m[0]
+                        dhf_m = dhf_list_m[0]
+                    elif vertical_offset_mode == 'mean':
+                        dhb_m = np.mean(dhb_list_m)
+                        dhf_m = np.mean(dhf_list_m)
+
+                    # Get gravimeter S/N and gravimeter type of first survey in the list:
+                    if verbose:
+                        if len(observed_in_surveys) > 1:
+                            print(f'WARNING: station {station_name} was observed in {len(observed_in_surveys)} surveys! Hence, '
+                                  f'the gravimeter serial number and type may be ambiguous in the nsb file!')
+                    gravimeter_type = self.surveys[observed_in_surveys[0]].gravimeter_type
+                    gravimeter_serial_number = self.surveys[observed_in_surveys[0]].gravimeter_serial_number
+                    date_str = self.surveys[observed_in_surveys[0]].date.strftime('%Y%m%d')
+
+                    # Comment string:
+                    # - Max. 5 characters!
+                    if WRITE_COMMENT_TO_NSB == 'cg5_serial_number':
+                        comment_str = str(gravimeter_serial_number)
+                    elif WRITE_COMMENT_TO_NSB == 'inst_id':
+                        comment_str = GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE[gravimeter_serial_number]
+                    elif WRITE_COMMENT_TO_NSB == 'gravtools_version':
+                        comment_str = 'GT'+''.join(GRAVTOOLS_VERSION.split('.'))
+                    else:
+                        raise AssertionError(f'Invalid choice for the nsb file comment: {WRITE_COMMENT_TO_NSB}!')
+
+                    nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s}{:>5s} {:4.0f} {:4.0f}\n'.format(
+                        station_name,
+                        date_str,
+                        row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
+                        row['sd_g_est_mugal'],
+                        GRAVIMETER_TYPES_KZG_LOOKUPTABLE[gravimeter_type],
+                        comment_str,
+                        (dhb_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
+                        (dhf_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
+                    )
+
+                # Write file:
+                with open(filename, 'w') as out_file:
+                    out_file.write(nsb_string)
+
+            else:  # Required columns are not available
+                if verbose:
+                    print(f'The nsb file cannot be written as the required station data is not available.')
+
+        else:  # No station results available
             if verbose:
-                if len(observed_in_surveys) > 1:
-                    print(f'WARNING: station {station_name} was observed in {len(observed_in_surveys)} surveys! Hence, '
-                          f'the gravimeter serial number and type may be ambiguous in the nsb file!')
-            gravimeter_type = self.surveys[observed_in_surveys[0]].gravimeter_type
-            gravimeter_serial_number = self.surveys[observed_in_surveys[0]].gravimeter_serial_number
-            date_str = self.surveys[observed_in_surveys[0]].date.strftime('%Y%m%d')
-
-            # Comment string:
-            # - Max. 5 characters!
-            if WRITE_COMMENT_TO_NSB == 'cg5_serial_number':
-                comment_str = str(gravimeter_serial_number)
-            elif WRITE_COMMENT_TO_NSB == 'inst_id':
-                comment_str = GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE[gravimeter_serial_number]
-            elif WRITE_COMMENT_TO_NSB == 'gravtools_version':
-                comment_str = 'GT'+''.join(GRAVTOOLS_VERSION.split('.'))
-            else:
-                raise AssertionError(f'Invalid choice for the nsb file comment: {WRITE_COMMENT_TO_NSB}!')
-
-            nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s}{:>5s} {:4.0f} {:4.0f}\n'.format(
-                station_name,
-                date_str,
-                row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
-                row['sd_g_est_mugal'],
-                GRAVIMETER_TYPES_KZG_LOOKUPTABLE[gravimeter_type],
-                comment_str,
-                (dhb_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
-                (dhf_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
-            )
-
-        # Write file:
-        with open(filename, 'w') as out_file:
-            out_file.write(nsb_string)
+                print(f'The nsb file cannot be written as the required station data is not available.')
             
     def write_log_file(self, filename: str, lsm_run_index, verbose=False):
         """Write log file of a selected LSM run.

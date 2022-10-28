@@ -133,6 +133,7 @@ class LSM:
         self.confidence_level_tau_test = None
         self.drift_ref_epoch_type = ''  # 'survey' or 'campaign'
         self.vg_polynomial_degree = None
+        self.vg_polynomial_ref_height_offset_m = 0.0
 
         # General statistics:
         self.number_of_stations = None
@@ -421,6 +422,26 @@ class LSM:
                 mat_Rxx[i_row, i_col] = self.Cxx[i_row, i_col] / (
                             np.sqrt(self.Cxx[i_row, i_row]) * np.sqrt(self.Cxx[i_col, i_col]))
         return mat_Rxx
+
+    @property
+    def get_results_obs_df(self):
+        """Getter for the observation-related results."""
+        return self.setup_obs_df
+
+    @property
+    def get_results_drift_df(self):
+        """Getter for the drift-related results."""
+        return self.drift_pol_df
+
+    @property
+    def get_results_stat_df(self):
+        """Getter for the station-related results."""
+        return self.stat_obs_df
+
+    @property
+    def get_results_vg_df(self):
+        """Getter for the results of vertical gravity gradient estimation."""
+        return self.vg_pol_df
 
 
 def bin_redundacy_components(mat_r):

@@ -589,14 +589,127 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             elif lsm_run.lsm_method == 'LSM_non_diff':
                 self.plot_drift_lsm_non_diff(lsm_run, surveys=selected_survey_names,
                                              stations=selected_station_names)
+            elif lsm_run.lsm_method == 'VG_LSM_nondiff':
+                self.plot_drift_vg_lsm_nondiff(lsm_run, surveys=selected_survey_names,
+                                                stations=selected_station_names)
             else:
                 self.drift_plot.clear()  # Clear drift plot
+
+
+    def plot_drift_vg_lsm_nondiff(self, lsm_run, surveys=None, stations=None):
+        """Create a drift plot for Vg estimation based on non-differential observations (method: VG_LSM_nondiff)
+
+        Parameters
+        ----------
+        lsm_run : LSMNonDiff object.
+            LSM object for VG estimation based non-differential observations.
+        surveys : `None` (default) or list of survey names (str)
+            To filter for surveys that will be displayed.
+        stations : `None` (default) or list of station names (str)
+            To filter for stations that will be displayed.
+        """
+        # TODO: Add code for plotting here!
+        print('Add Code for plotting!')
+
+        self.drift_plot.clear()
+        self.drift_plot.legend.clear()
+
+        # stat_obs_df = lsm_run.stat_obs_df
+        drift_pol_df = lsm_run.drift_pol_df
+
+        # Loop over surveys (setup data) in the selected lsm run object and plot data:
+        for survey_name, setup_data in lsm_run.setups.items():
+            setup_df_orig = setup_data['setup_df']
+            # Filter for surveys:
+            if surveys is not None:
+                if survey_name not in surveys:
+                    continue
+
+            # Prep data:
+            drift_pol_df_short = drift_pol_df.loc[drift_pol_df['survey_name'] == survey_name]
+            setup_df = setup_df_orig.copy(deep=True)  # Make hard copy to protect original data!
+            # stat_obs_df_short = stat_obs_df.loc[:, ['station_name', 'g_est_mugal', 'sd_g_est_mugal']]
+            # setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
+            # setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
+            setup_df.sort_values(by='delta_t_campaign_h', inplace=True)
+
+            # Evaluate drift polynomial:
+            coeff_list = drift_pol_df_short['coefficient'].to_list()
+            coeff_list.reverse()
+            if lsm_run.drift_ref_epoch_type == 'survey':
+                delta_t_min_h = setup_df['delta_t_h'].min()  # = 0
+                delta_t_max_h = setup_df['delta_t_h'].max()
+            elif lsm_run.drift_ref_epoch_type == 'campaign':
+                delta_t_min_h = setup_df['delta_t_campaign_h'].min()  # = 0
+                delta_t_max_h = setup_df['delta_t_campaign_h'].max()
+            delta_t_h = np.linspace(delta_t_min_h, delta_t_max_h, settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+            drift_polynomial_mugal = np.polyval(coeff_list, delta_t_h)
+
+            # Drift function time reference as UNIX time (needed for plots):
+            epoch_unix_min = setup_df['epoch_unix'].min()
+            epoch_unix_max = setup_df['epoch_unix'].max()
+            delta_t_epoch_unix = np.linspace(epoch_unix_min, epoch_unix_max,
+                                             settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
+
+            # !!! Due to the differential observations, the constant bias (N0) of the gravity reading cannot be estimated!
+            # In order to draw the drift polynomial function w.r.t. the gravity meter observations (for the sake of visual
+            # assessment of the drift function), the const. bias N0 is approximated, see below.
+            offset_mugal = setup_df['g_plot_mugal'].mean() - drift_polynomial_mugal.mean()
+            yy_mugal = drift_polynomial_mugal + offset_mugal
+
+            # Constant to be subtracted from y-axis:
+            subtr_const_mugal = round(setup_df['g_plot_mugal'].mean() / 1000) * 1000
+
+            # Plot drift function:
+            pen = pg.mkPen(color='k', width=2)
+            self.drift_plot.plot(delta_t_epoch_unix, yy_mugal - subtr_const_mugal,
+                                 name=f'drift: {survey_name}',
+                                 pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
+
+            # plot observation data (setup observations):
+            # - Example: https://www.geeksforgeeks.org/pyqtgraph-different-colored-spots-on-scatter-plot-graph/
+            scatter = pg.ScatterPlotItem()
+            spots = []
+            # - prep. data for scatterplot:
+            for index, row in setup_df.iterrows():
+                if stations is None:
+                    brush_color = self.station_colors_dict_results[row['station_name']]
+                else:
+                    if row['station_name'] not in stations:
+                        brush_color = 'w'
+                    else:
+                        brush_color = self.station_colors_dict_results[row['station_name']]
+                spot_dic = {'pos': (row['epoch_unix'], row['g_plot_mugal'] - subtr_const_mugal),
+                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                    'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                            'brush': brush_color}
+                spots.append(spot_dic)
+
+            scatter.addPoints(spots)
+            self.drift_plot.addItem(scatter)
+
+        # Add station items to legend:
+        # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
+        for station, color in self.station_colors_dict_results.items():
+            s_item_tmp = pg.ScatterPlotItem()
+            s_item_tmp.setBrush(color)
+            s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                               'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+            s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
+            self.drift_plot.legend.addItem(s_item_tmp, station)
+
+        # Adjust plot window:
+        self.drift_plot.showGrid(x=True, y=True)
+        self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal / 1000:.1f} mGal')
+        self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
+        self.drift_plot.autoRange()
 
     def plot_drift_lsm_non_diff(self, lsm_run, surveys=None, stations=None):
         """Create a drift plot for LSM runs based on non-differential observations (method: LSM_non_diff)
 
         Parameters
-        -----------
+        ----------
         lsm_run : LSMNonDiff object.
             LSM object for non-differential observations.
         surveys : `None` (default) or list of survey names (str)
@@ -1915,7 +2028,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             index = self.tableView_observations.model().index(spot_item._index,
                                                               self.observation_model._data_column_names.index(
                                                                   'keep_obs'))
-            self.observation_model.dataChanged.emit(index, index, [9999])  # Call connected method "on_observation_model_data_changed"
+            self.observation_model.dataChanged.emit(index, index,
+                                                    [9999])  # Call connected method "on_observation_model_data_changed"
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
 

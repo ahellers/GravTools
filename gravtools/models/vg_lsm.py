@@ -81,6 +81,17 @@ class VGLSM(LSM):
     }
     _DRIFT_POL_DF_COLUMNS = list(_DRIFT_POL_DF_COLUMNS_DICT.keys())
 
+    # Column names of self.vg_pol_df:
+    # - keys: Column names of the pandas dataframe
+    # - values: Short description for table headers, etc., in the GUI
+    _VG_POL_DF_COLUMNS_DICT = {
+        'degree': 'Degree',
+        'coefficient': 'Coefficient',
+        'sd_coeff': 'SD',
+        'coeff_unit': 'Unit',
+    }
+    _VG_POL_DF_COLUMNS = list(_VG_POL_DF_COLUMNS_DICT.keys())
+
     def __init__(self, stat_df, setups, comment='', write_log=True):
         """
         Parameters
@@ -150,7 +161,8 @@ class VGLSM(LSM):
                     raise AssertionError(f'The campaign "{campaign.campaign_name}" has an empty station dataframe!')
                 else:  # Just one station allowed => Check the coordinates (lon, lat)!
                     stat_df_observed = campaign.stations.stat_df.loc[campaign.stations.stat_df.is_observed]
-                    if (len(stat_df_observed['lat_deg'].unique()) > 1) or (len(stat_df_observed['long_deg'].unique()) > 1):
+                    if (len(stat_df_observed['lat_deg'].unique()) > 1) or (
+                            len(stat_df_observed['long_deg'].unique()) > 1):
                         raise AssertionError(f'This campaign contains observed stations with differing latitudes and/or'
                                              f' longitudes. This is an indicator for observations of more than one '
                                              f'stations which is not allowed.')
@@ -163,7 +175,8 @@ class VGLSM(LSM):
             if len(campaign.surveys) == 0:
                 raise AssertionError(f'The campaign "{campaign.campaign_name}" contains no survey data!')
             if len(campaign.surveys) > 1:
-                raise AssertionError(f'The campaign "{campaign.campaign_name}" contains more than one survey! The VG estimation is restricted to just one survey.')
+                raise AssertionError(
+                    f'The campaign "{campaign.campaign_name}" contains more than one survey! The VG estimation is restricted to just one survey.')
 
         # Create setups dict:
         # Loop over surveys in campaign (just one...):
@@ -238,6 +251,20 @@ class VGLSM(LSM):
         survey_names = []
         number_of_observations = 0
         setup_ids = []
+
+        # ### Station data ###
+        # Get dataframe with subset of observed stations only:
+        # TODO: Calculate mean, min, max, SD of heigt (dhf) for each station and delete columns that are not required for the VG estimation!
+        # - Einzelne dhf aus den setup_df nehmen!
+        filter_tmp = self.stat_df['station_name'].isin(self.observed_stations)
+        self.stat_obs_df = self.stat_df.loc[filter_tmp].copy(deep=True)  # All observed stations
+        # setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').mean()
+        # setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').std()
+        # setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').min()
+        # setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').max()
+        # => Berechnung evtl in loop über setups weiter unten...
+        # self.stat_obs_df speichern
+
         for survey_name, setup_data in self.setups.items():
             setup_df = setup_data['setup_df']
             self.observed_stations = self.observed_stations + setup_df['station_name'].to_list()
@@ -250,7 +277,8 @@ class VGLSM(LSM):
         number_of_surveys = len(self.setups)  # Has to be 1 anyway
 
         if number_of_surveys > 1:
-            raise AssertionError(f'Invalid number of surveys ({number_of_surveys})! Only one survey allowed for VG estimation.')
+            raise AssertionError(
+                f'Invalid number of surveys ({number_of_surveys})! Only one survey allowed for VG estimation.')
         # Total number of parameters to be estimated:
         # - Drift polynomial coeff.: Polynomial degree * number of surveys
         # - 1 constant instrumental bias per survey
@@ -289,12 +317,12 @@ class VGLSM(LSM):
         # Initialize matrices:
         # => Initialize complete matrices first and then populate them. This is most efficient!
         # - Observation model:
-        mat_A0 = np.zeros([number_of_observations, number_of_parameters])  # Model-matrix
-        mat_L0 = np.zeros((number_of_observations, 1))  # Observations
-        mat_sig_ll0 = np.zeros(number_of_observations)
+        mat_A = np.zeros([number_of_observations, number_of_parameters])  # Design matrix
+        mat_L = np.zeros((number_of_observations, 1))  # Observations
+        mat_sig_ll = np.zeros(number_of_observations)  # Variances of obs.
 
         # Populate matrices:
-        obs_id = -1  # Index of differential observations in vectors mat_L0, rows of mat_A0 and mat_p0
+        obs_id = -1  # Index of differential observations in vectors mat_L, rows of mat_A and mat_p0
         survey_count = -1  # Survey counter for indexing the drift parameters in the A-matrix
         g_obs_mugal_list = []
         station_name_list = []
@@ -326,16 +354,16 @@ class VGLSM(LSM):
                 dhf_sensor_m = row['dhf_sensor_m'] + vg_polynomial_ref_height_offset_m
 
                 # Populate matrices and vectors:
-                mat_L0[(obs_id, 0)] = g_obs_mugal
-                mat_sig_ll0[obs_id] = sd_g_obs_mugal ** 2
+                mat_L[(obs_id, 0)] = g_obs_mugal
+                mat_sig_ll[obs_id] = sd_g_obs_mugal ** 2
                 # Partial derivative for drift polynomial including constant instrumental bias (pol. degree = 0):
                 for pd_drift_id in range(drift_pol_degree + 1):
-                    mat_A0[obs_id, pd_drift_id] = \
+                    mat_A[obs_id, pd_drift_id] = \
                         delta_t_h ** pd_drift_id
                 # Partial derivative for VG polynomial:
                 for pd_vg_id in range(vg_polynomial_degree):
-                    mat_A0[obs_id, drift_pol_degree + 1 + pd_vg_id] = \
-                        dhf_sensor_m ** (pd_vg_id+1)
+                    mat_A[obs_id, drift_pol_degree + 1 + pd_vg_id] = \
+                        dhf_sensor_m ** (pd_vg_id + 1)
 
                 # Log data in DataFrame:
                 g_obs_mugal_list.append(g_obs_mugal)
@@ -364,13 +392,8 @@ class VGLSM(LSM):
                                                   )),
                                          columns=self._SETUP_OBS_COLUMNS)
 
-    # TODO: Continue to modify code below!
-    # - Only one A and L matrix => A0 und L0 not required.
-
         # Set up all required matrices:
-        mat_A = np.vstack((mat_A0, mat_Ac))  # Eq. (16)
-        mat_L = np.vstack((mat_L0, mat_Lc))  # Eq. (16)
-        mat_sig_ll = np.diag(np.hstack((mat_sig_ll0, mat_sig_llc)))
+        mat_sig_ll = np.diag(mat_sig_ll)
         mat_Qll = mat_sig_ll / (sig0_mugal ** 2)
         mat_P = np.linalg.inv(mat_Qll)
 
@@ -469,7 +492,7 @@ class VGLSM(LSM):
                 self.log_str += tmp_str
 
         # outlier detection effectiveness (redundancy components)
-        diag_Qvv = np.diag(mat_Qvv)  # TODO: Still needed?
+        # diag_Qvv = np.diag(mat_Qvv)  # TODO: Still needed?
         # mat_R = np.diag(mat_P) * diag_Qvv
         # mat_R is exactly the same as "mat_r"
 
@@ -490,7 +513,7 @@ class VGLSM(LSM):
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'# Tau-test results:\n'
-            tmp_str += f'Critical value: {tau_critical_value:1.3f}\n'
+            tmp_str += f'Critical value (for testing w): {tau_critical_value:1.3f}\n'
             tmp_str += f' - Number of detected outliers: {number_of_outliers}\n'
             tmp_str += f' - Number low redundancy component: {tau_test_result.count("r too small")}\n'
             tmp_str += f'\n'
@@ -499,35 +522,16 @@ class VGLSM(LSM):
             if self.write_log:
                 self.log_str += tmp_str
 
-        # blunder detection parameters calculation
-        # sv_tau = 1 - confidence_level_tau_test
-        # std_res, tau_val, tau_crt = tau_criterion_test(diag_Qvv, mat_r, mat_v, s02_a_posteriori_mugal2, dof, sv_tau)
-
         # #### Store results ####
-        g_est_mugal = mat_x[0:number_of_stations, 0]
-        sd_g_est_mugal = mat_sd_xx[0:number_of_stations]
-        drift_pol_coeff = mat_x[number_of_stations:, 0]
-        drift_pol_coeff_sd = mat_sd_xx[number_of_stations:]
-        sd_g_obs_est_mugal = mat_sd_ldld[:number_of_observations]
-        sd_pseudo_obs_est_mugal = mat_sd_ldld[number_of_observations:]
-        v_obs_est_mugal = mat_v[:number_of_observations, 0]
-        v_pseudo_obs_mugal = mat_v[number_of_observations:, 0]
-        w_obs_est_mugal = mat_w[:number_of_observations]
-        w_pseudo_obs_mugal = mat_w[number_of_observations:]
-        r_obs_est = mat_r[:number_of_observations]
-        r_pseudo_obs = mat_r[number_of_observations:]
-        # TODO: Add Tau criterion data here
-        tau_test_result_obs = tau_test_result[:number_of_observations]
-        tau_test_result_pseudo_obs = tau_test_result[number_of_observations:]
-
-        # Station related results:
-        for idx, stat_name in enumerate(self.observed_stations):
-            filter_tmp = self.stat_obs_df['station_name'] == stat_name
-            self.stat_obs_df.loc[filter_tmp, 'g_est_mugal'] = g_est_mugal[idx]
-            self.stat_obs_df.loc[filter_tmp, 'sd_g_est_mugal'] = sd_g_est_mugal[idx]
-        # Calculate differences to estimates:
-        self.stat_obs_df['diff_g_est_mugal'] = self.stat_obs_df['g_est_mugal'] - self.stat_obs_df['g_mugal']
-        self.stat_obs_df['diff_sd_g_est_mugal'] = self.stat_obs_df['sd_g_est_mugal'] - self.stat_obs_df['sd_g_mugal']
+        drift_pol_coeff = mat_x[:drift_pol_degree + 1, 0]
+        drift_pol_coeff_sd = mat_sd_xx[:drift_pol_degree + 1]
+        vg_pol_coeff = mat_x[drift_pol_degree + 1:, 0]
+        vg_pol_coeff_sd = mat_sd_xx[drift_pol_degree + 1:]
+        sd_g_obs_est_mugal = mat_sd_ldld
+        v_obs_est_mugal = mat_v
+        w_obs_est_mugal = mat_w
+        r_obs_est = mat_r
+        tau_test_result_obs = tau_test_result
 
         # Drift parameters:
         survey_name_list = []
@@ -544,18 +548,13 @@ class VGLSM(LSM):
                 degree_list.append(degree)  # starts with 1
                 coefficient_list.append(drift_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
-                if drift_ref_epoch_type == 'survey':
-                    ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_h'])
-                elif drift_ref_epoch_type == 'campaign':
-                    ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_campaign_h'])
-                else:
-                    ref_epoch_t0_dt_list.append(None)  # Should not happen!
+                ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_h'])
                 if degree == 0:
                     coeff_unit_list.append(f'µGal')
                 else:
                     coeff_unit_list.append(f'µGal/h^{degree}')
                 tmp_idx += 1
-                x_estimate_drift_coeff_names.append(f'{survey_name}-{degree}')
+                x_estimate_drift_coeff_names.append(f'drift-{degree}')
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
@@ -564,6 +563,30 @@ class VGLSM(LSM):
                                                   ref_epoch_t0_dt_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
 
+        # VG parameters:
+        degree_list = []
+        coefficient_list = []
+        sd_coeff_list = []
+        coeff_unit_list = []
+        tmp_idx = 0
+        x_estimate_vg_coeff_names = []
+        for degree in range(1, vg_polynomial_degree + 1):
+            degree_list.append(degree)  # starts with 1
+            coefficient_list.append(vg_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
+            sd_coeff_list.append(vg_pol_coeff_sd[tmp_idx])
+            if degree == 0:
+                coeff_unit_list.append(f'µGal')
+            else:
+                coeff_unit_list.append(f'µGal/m^{degree}')
+            tmp_idx += 1
+            x_estimate_vg_coeff_names.append(f'vg-{degree}')
+        self.vg_pol_df = pd.DataFrame(list(zip(degree_list,
+                                               coefficient_list,
+                                               sd_coeff_list,
+                                               coeff_unit_list)),
+                                      columns=self._VG_POL_DF_COLUMNS)
+
+        # Observation-related results:
         for idx, v_obs_mugal in enumerate(v_obs_est_mugal):
             filter_tmp = self.setup_obs_df['obs_id'] == idx
             self.setup_obs_df.loc[filter_tmp, 'v_obs_est_mugal'] = v_obs_mugal
@@ -572,17 +595,14 @@ class VGLSM(LSM):
             self.setup_obs_df.loc[filter_tmp, 'r_obs_est'] = r_obs_est[idx]  # redundancy components
             self.setup_obs_df.loc[filter_tmp, 'tau_test_result'] = tau_test_result_obs[idx]  # str
 
-        # Print results to terminal:
+        # Print results to terminal and to log string:
         if verbose or self.write_log:
             tmp_str = f'\n'
-            tmp_str += f' - Station data:\n'
-            tmp_str += self.stat_obs_df[['station_name', 'is_datum', 'g_mugal', 'g_est_mugal',
-                                         'diff_g_est_mugal', 'sd_g_mugal',
-                                         'sd_g_est_mugal']].to_string(index=False,
-                                                                      float_format=lambda x: '{:.1f}'.format(x))
-            tmp_str += f'\n\n'
             tmp_str += f' - Drift polynomial coefficients:\n'
             tmp_str += self.drift_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
+            tmp_str += f'\n\n'
+            tmp_str += f' - VG polynomial coefficients:\n'
+            tmp_str += self.vg_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Observations:\n'
             for survey_name in survey_names:
@@ -593,11 +613,6 @@ class VGLSM(LSM):
                                                           'v_obs_est_mugal']].to_string(index=False,
                                                                                         float_format=lambda
                                                                                             x: '{:.1f}'.format(x))
-            tmp_str += f'\n\n'
-            tmp_str += f' - Pseudo observations at datum stations (constraints):\n'
-            tmp_str += f'Station name  sd [µGal]   v [µGal]   w [µGal]   r [0-1]    Tau test result\n'
-            for idx, station_name in enumerate(datum_stations):
-                tmp_str += f'{station_name:10}   {sd_pseudo_obs_est_mugal[idx]:8.3}     {v_pseudo_obs_mugal[idx]:+8.3}     {w_pseudo_obs_mugal[idx]:+5.3}     {r_pseudo_obs[idx]:+5.3}  {tau_test_result_pseudo_obs[idx]}\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:
@@ -606,44 +621,20 @@ class VGLSM(LSM):
         # Save data/infos to object for later use:
         self.drift_polynomial_degree = drift_pol_degree
         self.sig0_a_priori = sig0_mugal
-        self.scaling_factor_datum_observations = scaling_factor_datum_observations
         self.confidence_level_chi_test = confidence_level_chi_test
         self.confidence_level_tau_test = confidence_level_chi_test
         self.number_of_stations = number_of_stations
-        self.number_of_datum_stations = number_of_datum_stations
         self.number_of_estimates = number_of_parameters
         self.degree_of_freedom = dof
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
-        self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
-        self.goodness_of_fit_test_status = chi_test
+        self.x_estimate_names = x_estimate_drift_coeff_names + x_estimate_vg_coeff_names
+        self.global_model_test_status = chi_test
         self.number_of_outliers = number_of_outliers
-        self.drift_ref_epoch_type = drift_ref_epoch_type
-
-        # VG estimation specific:
-        # self.vg_polynomial_degree =
-        # self.vg_pol_df =   # Results
-
-    @property
-    def get_results_obs_df(self):
-        """Getter for the observation-related results."""
-        return self.setup_obs_df
-
-    @property
-    def get_results_drift_df(self):
-        """Getter for the drift-related results."""
-        return self.drift_pol_df
-
-    @property
-    def get_results_stat_df(self):
-        """Getter for the station-related results."""
-        return self.stat_obs_df
-
-    @property
-    def get_results_vg_df(self):
-        """Getter for the results of vertical gravity gradient estimation."""
-        return self.vg_pol_df
-
-
-if __name__ == '__main__':
-    pass
+        self.drift_ref_epoch_type = 'survey'  # Not relevant anyway, because only ONE survey allowed in the campaign!
+        self.vg_polynomial_ref_height_offset_m = vg_polynomial_ref_height_offset_m
+        self.vg_polynomial_degree = vg_polynomial_degree
+        # The following attributes are None as initialized:
+        # self.scaling_factor_datum_observations
+        # self.number_of_datum_stations
+        # self.stat_obs_df

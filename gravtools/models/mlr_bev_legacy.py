@@ -424,19 +424,4 @@ class BEVLegacyProcessing(LSM):
         # self.confidence_level_tau_test = confidence_level_chi_test
         # self.s02_a_posteriori = s02_a_posteriori_mugal2
 
-    @property
-    def get_results_obs_df(self):
-        """Getter for the observation-related results."""
-        return self.setup_obs_df
-
-    @property
-    def get_results_drift_df(self):
-        """Getter for the drift-related results."""
-        return self.drift_pol_df
-
-    @property
-    def get_results_stat_df(self):
-        """Getter for the station-related results."""
-        return self.stat_obs_df
-
 

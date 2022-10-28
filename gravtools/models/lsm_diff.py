@@ -660,26 +660,6 @@ class LSMDiff(LSM):
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
         self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
-        self.goodness_of_fit_test_status = chi_test
+        self.global_model_test_status = chi_test
         self.number_of_outliers = number_of_outliers
         self.drift_ref_epoch_type = drift_ref_epoch_type
-
-    @property
-    def get_results_obs_df(self):
-        """Getter for the observation-related results."""
-        return self.setup_obs_df
-
-    @property
-    def get_results_drift_df(self):
-        """Getter for the drift-related results."""
-        return self.drift_pol_df
-
-    @property
-    def get_results_stat_df(self):
-        """Getter for the station-related results."""
-        return self.stat_obs_df
-
-
-if __name__ == '__main__':
-    test2 = LSMDiff('a', 'b')  # This test will cause an error due to invalid data types!
-    pass
