@@ -441,7 +441,10 @@ class LSM:
     @property
     def get_results_vg_df(self):
         """Getter for the results of vertical gravity gradient estimation."""
-        return self.vg_pol_df
+        try:
+            return self.vg_pol_df
+        except AttributeError:  # If "self" has no attribute "vg_pol_df" (not initialized)
+            return None
 
 
 def bin_redundacy_components(mat_r):

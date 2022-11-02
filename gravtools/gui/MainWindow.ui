@@ -474,7 +474,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>6</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -674,7 +674,7 @@
            </widget>
            <widget class="QWidget" name="tab_results_obs_table">
             <attribute name="title">
-             <string>Observations table</string>
+             <string>Observations Table</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_15">
              <item>
@@ -717,7 +717,7 @@
            </widget>
            <widget class="QWidget" name="tab_results_drift">
             <attribute name="title">
-             <string>Drift table</string>
+             <string>Drift Table</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_18">
              <item>
@@ -790,7 +790,7 @@
            </widget>
            <widget class="QWidget" name="tab_results_stat_table">
             <attribute name="title">
-             <string> Stations table</string>
+             <string> Stations Table</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_19">
              <item>
@@ -805,6 +805,26 @@
             <layout class="QVBoxLayout" name="verticalLayout_32">
              <item>
               <widget class="QTableView" name="tableView_results_correlation_matrix"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_vg_table">
+            <attribute name="title">
+             <string>VG Table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_33">
+             <item>
+              <widget class="QTableView" name="tableView_results_vg_table"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_vg_plot">
+            <attribute name="title">
+             <string>VG Plot</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_34">
+             <item>
+              <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_results_vg_plot"/>
              </item>
             </layout>
            </widget>

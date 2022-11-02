@@ -46,7 +46,7 @@ from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.dialog_about import Ui_Dialog_about
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
-    ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel
+    ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel, ResultsVGModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__
 
@@ -137,6 +137,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_obseration_results_plots_widget()
         self.set_up_drift_plot_widget()
         self.set_up_stations_map()
+        self.set_up_vg_plot_widget()
         # self.observations_splitter.setSizes([1000, 10])
 
         # Initialize dialogs if necessary at the start of the application:
@@ -361,6 +362,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_results_correlation_matrix_view_model()
                 self.set_up_results_observations_view_model()
                 self.set_up_results_drift_view_model()
+                self.set_up_results_vg_view_model()
                 self.update_results_tab(select_latest_item=True)
 
                 self.statusBar().showMessage(
@@ -529,6 +531,69 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Invoke, whenever the state of the checkbox changes."""
         self.update_stations_map(auto_range=False)
 
+    def set_up_vg_plot_widget(self):
+        """Set up `self.graphicsLayoutWidget_results_vg_plot` widget."""
+        self.glw_vg_plot = self.graphicsLayoutWidget_results_vg_plot
+        self.glw_vg_plot.setBackground('w')  # white background color
+        # Create sub-plots:
+        self.vg_plot = self.glw_vg_plot.addPlot(0, 0, name='vg_plot')
+        self.vg_plot.setLabel(axis='left', text='Vertical gravity gradient [µGal/m]')
+        self.vg_plot.setLabel(axis='bottom', text='Height over reference [m]')
+        self.vg_plot.addLegend()
+        self.vg_plot.setTitle('')
+
+    def update_vg_plot(self):
+        """Update the vg plot in the results tab."""
+        # Clear plot:
+        self.vg_plot.clear()
+        self.vg_plot.legend.clear()
+        self.vg_plot.setTitle('')
+        # Get GUI parameters:
+        # - Selected LSM run:
+        lsm_run_idx, lsm_run_time_str = self.get_selected_lsm_run()
+        if lsm_run_idx != -1:
+            # - Selected station:
+            idx_selected_station, selected_station_name = self.get_selected_station()
+            if selected_station_name == 'All stations':
+                selected_station_names = None
+            else:
+                selected_station_names = [selected_station_name]
+            # - Selected Survey:
+            # idx_selected_survey, selected_survey_name = self.get_selected_survey()
+            # if selected_survey_name == 'All surveys':
+            #     selected_survey_names = None
+            # else:
+            #     selected_survey_names = [selected_survey_name]
+
+            # Select lsm run:
+            lsm_run = self.campaign.lsm_runs[lsm_run_idx]
+
+            # Invoke plotting method according to the LSM method:
+            if lsm_run.lsm_method == 'VG_LSM_nondiff':
+                self.plot_vg_lsm_nondiff(lsm_run, stations=selected_station_names)
+            else:
+                self.vg_plot.clear()  # Clear vg plot
+
+    def plot_vg_lsm_nondiff(self, lsm_run, stations=None):
+        """Create a VG plot for LSM estimation based on non-differential observations.
+
+        Notes
+        -----
+        This method is applicable for the LSM methods VG_LSM_nondiff.
+
+        Parameters
+        ----------
+        lsm_run : LSMNonDiff object.
+            LSM object for VG estimation based non-differential observations.
+        stations : `None` (default) or list of station names (str)
+            To filter for stations that will be displayed.
+        """
+        self.vg_plot.clear()
+        self.vg_plot.legend.clear()
+
+        # TODO: Add code for plotting here!
+
+
     def set_up_drift_plot_widget(self):
         """Set up `self.graphicsLayoutWidget_results_drift_plot` widget."""
         self.glw_drift_plot = self.graphicsLayoutWidget_results_drift_plot
@@ -617,7 +682,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.drift_plot.clear()
         self.drift_plot.legend.clear()
 
-        # stat_obs_df = lsm_run.stat_obs_df
         drift_pol_df = lsm_run.drift_pol_df
 
         # Loop over surveys (setup data) in the selected lsm run object and plot data:
@@ -971,6 +1035,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
 
+    def set_up_results_vg_view_model(self):
+        """Set up the view model for the VG results table view."""
+        try:
+            self.results_vg_model = ResultsVGModel(self.campaign.lsm_runs)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No LSM-adjustment results available!')
+            self.statusBar().showMessage(f"No LSM-adjustment results available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.tableView_results_vg_table.setModel(self.results_vg_model)
+            self.tableView_results_vg_table.resizeColumnsToContents()
+
+    def update_results_vg_table_view(self, lsm_run_index: int):
+        """Update the VG results table view after changing the table model."""
+        self.results_vg_model.load_lsm_runs(self.campaign.lsm_runs)
+        self.results_vg_model.update_view_model(lsm_run_index)
+        self.results_vg_model.layoutChanged.emit()  # Show changes in table view
+        self.tableView_results_vg_table.resizeColumnsToContents()
+
     def set_up_results_drift_view_model(self):
         """Set up the view model for the drift results table view."""
         try:
@@ -1154,8 +1238,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_results_correlation_matrix_table_view(idx)
             self.update_results_observation_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_drift_table_view(idx, survey_name=survey_name)
+            self.update_results_vg_table_view(idx)
             self.update_results_obs_plots()
             self.update_drift_plot()
+            self.update_vg_plot()
         else:  # invalid index => Reset results views
             self.station_colors_dict_results = {}
             self.label_results_comment.clear()
@@ -1171,10 +1257,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_results_correlation_matrix_table_view(idx)  # Can handle idx=-1
             self.update_results_observation_table_view(idx, station_name=None, survey_name=None)  # Can handle idx=-1
             self.update_results_drift_table_view(idx, survey_name=None)
+            self.update_results_vg_table_view(idx)
             self.update_comboBox_results_selection_station(observed_stations=[])
             self.update_comboBox_results_selection_surrvey(survey_names=[])
             self.update_results_obs_plots()
             self.update_drift_plot()
+            self.update_vg_plot()
 
     def update_comboBox_results_obs_plot_select_data_column_based_on_table_view(self):
         """Update the observaterion results data column selection combo box in the results tab."""
@@ -1434,7 +1522,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         drift_ref_epoch_type=drift_ref_epoch_type,
                         verbose=IS_VERBOSE
                     )
-                # self.campaign.lsm_runs[-1].create_drift_plot_matplotlib()
             elif lsm_method == 'LSM_non_diff':
                 if autoscale_s0_a_posteriori:
                     self.campaign.lsm_runs[-1].adjust_autoscale_s0(
@@ -2297,6 +2384,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_up_results_correlation_matrix_view_model()
             self.set_up_results_observations_view_model()
             self.set_up_results_drift_view_model()
+            self.set_up_results_vg_view_model()
             self.update_results_tab(select_latest_item=True)
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
