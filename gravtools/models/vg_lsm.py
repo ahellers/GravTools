@@ -252,19 +252,6 @@ class VGLSM(LSM):
         number_of_observations = 0
         setup_ids = []
 
-        # ### Station data ###
-        # Get dataframe with subset of observed stations only:
-        # TODO: Calculate mean, min, max, SD of heigt (dhf) for each station and delete columns that are not required for the VG estimation!
-        # - Einzelne dhf aus den setup_df nehmen!
-        filter_tmp = self.stat_df['station_name'].isin(self.observed_stations)
-        self.stat_obs_df = self.stat_df.loc[filter_tmp].copy(deep=True)  # All observed stations
-        # setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').mean()
-        # setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').std()
-        # setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').min()
-        # setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').max()
-        # => Berechnung evtl in loop über setups weiter unten...
-        # self.stat_obs_df speichern
-
         for survey_name, setup_data in self.setups.items():
             setup_df = setup_data['setup_df']
             self.observed_stations = self.observed_stations + setup_df['station_name'].to_list()
@@ -275,6 +262,26 @@ class VGLSM(LSM):
             self.observed_stations)  # Unique list of stations => order of stations in matrices!
         number_of_stations = len(self.observed_stations)
         number_of_surveys = len(self.setups)  # Has to be 1 anyway
+
+        # ### Station data ###
+        # Get dataframe with subset of observed stations only:
+        filter_tmp = self.stat_df['station_name'].isin(self.observed_stations)
+        self.stat_obs_df = self.stat_df.loc[filter_tmp].copy(deep=True)  # All observed stations
+        # Drop columns that are not required at VG estimation:
+        self.stat_obs_df.drop(columns=['g_mugal', 'sd_g_mugal', 'is_datum'], inplace=True)
+        # Calculate statistical data for the sensor height (relevant information for VG estimation):
+        tmp_df = setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').mean().rename(
+            columns={"dhf_sensor_m": "dhf_sensor_mean_m"})
+        self.stat_obs_df = self.stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+        tmp_df = setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').std().rename(
+            columns={"dhf_sensor_m": "dhf_sensor_std_m"})
+        self.stat_obs_df = self.stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+        tmp_df = setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').min().rename(
+            columns={"dhf_sensor_m": "dhf_sensor_min_m"})
+        self.stat_obs_df = self.stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+        tmp_df = setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').max().rename(
+            columns={"dhf_sensor_m": "dhf_sensor_max_m"})
+        self.stat_obs_df = self.stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
 
         if number_of_surveys > 1:
             raise AssertionError(
@@ -491,12 +498,8 @@ class VGLSM(LSM):
             if self.write_log:
                 self.log_str += tmp_str
 
-        # outlier detection effectiveness (redundancy components)
-        # diag_Qvv = np.diag(mat_Qvv)  # TODO: Still needed?
-        # mat_R = np.diag(mat_P) * diag_Qvv
-        # mat_R is exactly the same as "mat_r"
-
         # Redundanzanteile (redundancy components):
+        # - Measure for the outlier detection effectiveness
         # - AG II, pp. 66-71
         mat_r = np.diag(mat_Qvv @ mat_P)
 
@@ -598,6 +601,11 @@ class VGLSM(LSM):
         # Print results to terminal and to log string:
         if verbose or self.write_log:
             tmp_str = f'\n'
+            tmp_str += f' - Station data:\n'
+            tmp_str += self.stat_obs_df[['station_name', 'dhf_sensor_mean_m', 'dhf_sensor_std_m',
+                                         'dhf_sensor_min_m', 'dhf_sensor_max_m']].to_string(index=False,
+                                                                      float_format=lambda x: '{:.4f}'.format(x))
+            tmp_str += f'\n\n'
             tmp_str += f' - Drift polynomial coefficients:\n'
             tmp_str += self.drift_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
             tmp_str += f'\n\n'
@@ -637,4 +645,3 @@ class VGLSM(LSM):
         # The following attributes are None as initialized:
         # self.scaling_factor_datum_observations
         # self.number_of_datum_stations
-        # self.stat_obs_df

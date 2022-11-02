@@ -161,10 +161,11 @@ class StationTableModel(QAbstractTableModel):
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
-                return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
-            if orientation == Qt.Vertical:
-                return str(self._data.index[section])
+            if self._data is not None:
+                if orientation == Qt.Horizontal:
+                    return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
+                if orientation == Qt.Vertical:
+                    return str(self._data.index[section])
 
     def setData(self, index, value, role):
         """Example: https://www.semicolonworld.com/question/58510/how-to-display-a-pandas-data-frame-with-pyqt5"""
@@ -1018,6 +1019,10 @@ class ResultsStationModel(QAbstractTableModel):
         'diff_sd_g_est_mugal': 1,
         'g0_mugal': 1,
         'sig_g0_mugal': 1,
+        'dhf_sensor_mean_m': 4,
+        'dhf_sensor_std_m': 4,
+        'dhf_sensor_min_m': 4,
+        'dhf_sensor_max_m': 4,
     }
 
     # Columns that will be shown in the table view, if available in the data (also defines the order of columns):
@@ -1033,7 +1038,10 @@ class ResultsStationModel(QAbstractTableModel):
         'diff_g_est_mugal': 'delta_g [µGal]',
         'diff_sd_g_est_mugal': 'delta_SD [µGal]',
         'g0_mugal': 'g0 [µGal]',
-        'sig_g0_mugal': 'SD_g0 [µGal]',
+        'dhf_sensor_mean_m': 'dhf mean [m]',
+        'dhf_sensor_std_m': 'dhf SD [m]',
+        'dhf_sensor_min_m': 'dhf min [m]',
+        'dhf_sensor_max_m': 'dhf max [m]',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -1133,7 +1141,7 @@ class ResultsStationModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
-        if role == Qt.DisplayRole:
+        if role == Qt.DisplayRole and self._data is not None:
             if orientation == Qt.Horizontal:
                 return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
             if orientation == Qt.Vertical:
@@ -1258,10 +1266,11 @@ class ResultsDriftModel(QAbstractTableModel):
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
-                return self._PLOT_COLUMNS_DICT[str(self._data.columns[section])]
-            if orientation == Qt.Vertical:
-                return str(self._data.index[section])
+            if self._data is not None:
+                if orientation == Qt.Horizontal:
+                    return self._PLOT_COLUMNS_DICT[str(self._data.columns[section])]
+                if orientation == Qt.Vertical:
+                    return str(self._data.index[section])
 
     def get_short_column_description(self, column_name: str) -> str:
         """Returns the short description of the model column."""
