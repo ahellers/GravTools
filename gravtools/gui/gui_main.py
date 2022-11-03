@@ -2450,6 +2450,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                                    auto_range_stations_plot=True)
                 # self.update_stations_map() => Called in self.on_checkBox_filter_observed_stat_only_toggled() above!
                 number_of_stations_added = self.campaign.stations.get_number_of_stations - number_of_stations_old
+
+                # Re-calculate observation corrections, based on the new station data (VG is relevant for height
+                # reduction!):
+                self.apply_observation_corrections()
+
+                # Update the observations table and plot (in case the reduced obs. changed):
+                survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+                self.update_obs_table_view(survey_name, setup_id)
+                self.plot_observations(survey_name)
+
                 self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
         else:
             self.statusBar().showMessage(f"No stations added.")
