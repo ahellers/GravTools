@@ -126,7 +126,17 @@ CORRELATION_COEF_COLORS = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b'
 # Background color for diagonal elements (=1):
 CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
 
-# --- Data export options: ---
+# --- VG plot in the results tab: ---
+# Min. and max. height for the horizontal plot axis [m]:
+# - "None" indicates that the min/max of the horizontal axis is adjusted to the actual setup height (dhf) of the
+# observations. In this case the plotted height range is widened by "VG_PLOT_HEIGHT_DELTA_M".
+VG_PLOT_MIN_HEIGHT_M = 0.0
+VG_PLOT_MAX_HEIGHT_M = 1.8
+VG_PLOT_HEIGHT_DELTA_M = 0.1
+# Number of datapoints plotted in the range betwen min. and max. height:
+VG_PLOT_NUM_ITEMS_VG_POLYNOMIAL = 100
+
+# ----- Data export options: -----
 # List of columns in the `obs_df` dataframe that are written to the exported observation list CSV file:
 EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'obs_epoch', 'station_name', 'keep_obs']
 # Maximum allowed SD of the estimated gravity at stations when exporting data to a nsb file!

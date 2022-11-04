@@ -148,6 +148,8 @@ class LSM:
         self.Cxx = None  # Co-variance matrix of estimated parameters
         self.Rxx = None  # Correlation matrix of estimates parameters
         self.x_estimate_names = []  # List of items in the Cxx matrix (index 0 to n)
+        self.mat_A = None  # Design matrix
+        self.mat_x = None  # Estimated parameters
 
         # Iterative adjustment:
         self.number_of_iterations = 0  # `0` indicates no iterations.

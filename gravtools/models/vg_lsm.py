@@ -642,6 +642,8 @@ class VGLSM(LSM):
         self.drift_ref_epoch_type = 'survey'  # Not relevant anyway, because only ONE survey allowed in the campaign!
         self.vg_polynomial_ref_height_offset_m = vg_polynomial_ref_height_offset_m
         self.vg_polynomial_degree = vg_polynomial_degree
+        self.mat_A = mat_A
+        self.mat_x = mat_x
         # The following attributes are None as initialized:
         # self.scaling_factor_datum_observations
         # self.number_of_datum_stations

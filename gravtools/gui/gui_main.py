@@ -540,6 +540,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.vg_plot.setLabel(axis='left', text='Vertical gravity gradient [µGal/m]')
         self.vg_plot.setLabel(axis='bottom', text='Height over reference [m]')
         self.vg_plot.addLegend()
+        self.vg_plot.showGrid(x=True, y=True)
         self.vg_plot.setTitle('')
 
     def update_vg_plot(self):
@@ -570,11 +571,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Invoke plotting method according to the LSM method:
             if lsm_run.lsm_method == 'VG_LSM_nondiff':
-                self.plot_vg_lsm_nondiff(lsm_run, stations=selected_station_names)
+                # TODO: Get parameters from GUI!!
+                self.plot_vg_lsm_nondiff(lsm_run,
+                                         plot_type='detail',
+                                         plot_residuals=True,
+                                         stations=selected_station_names)
             else:
                 self.vg_plot.clear()  # Clear vg plot
 
-    def plot_vg_lsm_nondiff(self, lsm_run, stations=None):
+    def plot_vg_lsm_nondiff(self, lsm_run, plot_type='detail', plot_residuals=True, stations=None):
         """Create a VG plot for LSM estimation based on non-differential observations.
 
         Notes
@@ -585,13 +590,206 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ----------
         lsm_run : LSMNonDiff object.
             LSM object for VG estimation based non-differential observations.
+        plot_type : str, optional (delauft=`detail`)
+            Plot type selection. It `full` just the full vg polynomial (all degrees) is plotted. If `detail` the linear
+            and the non-linear constituents are visualized separately in addition to post-fit residuals. Additionally,
+            the mean setup heights are plotted.
+        plot_residuals : booblean, optional (default=True)
+            if `True`, the post-fit residuals are grouped per setup height (station) and plotted.
         stations : `None` (default) or list of station names (str)
             To filter for stations that will be displayed.
         """
         self.vg_plot.clear()
         self.vg_plot.legend.clear()
+        self.vg_plot.setTitle('')
 
-        # TODO: Add code for plotting here!
+        if len(lsm_run.setups) != 1:  # Only one survey allowed!
+            raise AssertionError(f'The current LSM run contains {len(lsm_run.setups)}. Only one survey allowed at '
+                                 f'estimation of vertical gravity gradients!')
+
+        # Get and prep. required data:
+        vg_pol_df = lsm_run.vg_pol_df
+        for survey_name, setup_data in lsm_run.setups.items():
+            setup_df = setup_data['setup_df'].copy(deep=True)
+            ref_epoch_delta_t_h = setup_data['ref_epoch_delta_t_h']
+            ref_epoch_delta_t_campaign_h = setup_data['ref_epoch_delta_t_campaign_h']
+        setup_obs_df = lsm_run.setup_obs_df.copy(deep=True)
+        stat_obs_df = lsm_run.stat_obs_df.copy(deep=True)
+        vg_polynomial_degree = lsm_run.vg_polynomial_degree
+        vg_polynomial_ref_height_offset_m = lsm_run.vg_polynomial_ref_height_offset_m
+        vg_pol_df = lsm_run.vg_pol_df
+
+        # Get height range:
+        h_max_m = settings.VG_PLOT_MAX_HEIGHT_M
+        h_min_m = settings.VG_PLOT_MIN_HEIGHT_M
+        if (h_max_m is None) or (stat_obs_df['dhf_sensor_max_m'].max() > h_max_m):
+            h_max_m = stat_obs_df['dhf_sensor_max_m'].max() + settings.VG_PLOT_HEIGHT_DELTA_M
+        if (h_min_m is None) or (stat_obs_df['dhf_sensor_min_m'].max() < h_min_m):
+            h_min_m = stat_obs_df['dhf_sensor_min_m'].min() + settings.VG_PLOT_HEIGHT_DELTA_M
+        h_m = np.linspace(h_min_m, h_max_m, settings.VG_PLOT_NUM_ITEMS_VG_POLYNOMIAL)
+
+        # Evaluate the linear part of the vg polynomial (degree 2 to max.):
+        coeff_list = [0.0] + vg_pol_df['coefficient'].to_list()
+        del coeff_list[2:]  # Delete non-linear constituents
+        coeff_list.reverse()
+        vg_polynomial_linear_mugal = np.polyval(coeff_list, h_m)
+
+        # Evaluate non-linear part of the vg polynomial (degree 2 to max.):
+        if vg_polynomial_degree > 1:
+            coeff_list = [0.0] + vg_pol_df['coefficient'].to_list()
+            coeff_list[1] = 0.0  # Set linear constituent to 0
+            coeff_list.reverse()
+            vg_polynomial_nonlinear_mugal = np.polyval(coeff_list, h_m)
+        else:  # Array of zeros
+            vg_polynomial_nonlinear_mugal = np.zeros(settings.VG_PLOT_NUM_ITEMS_VG_POLYNOMIAL)
+
+        # Full VG polynomial
+        vg_polynomial_full_mugal = (vg_polynomial_linear_mugal + vg_polynomial_nonlinear_mugal)
+
+        # Create plot and set title:
+        if plot_type == 'full':
+            self.vg_plot.setTitle(f'Full VG polynomial (degree = {vg_polynomial_degree})')
+            self.vg_plot.setLabel(axis='left', text='Gravity [µGal]')
+
+            # Plot VG polynomial
+            pen = pg.mkPen(color='k', width=2)
+            self.vg_plot.plot(h_m, vg_polynomial_full_mugal,
+                                 name=f'VG polynomial',
+                                 pen=pen)
+
+        elif plot_type == 'detail':
+            self.vg_plot.setTitle(f'Linear and non-linear components (pol. degree = {vg_polynomial_degree})')
+            self.vg_plot.setLabel(axis='left', text='Gravity [µGal]')
+
+            # Linear component (horizontal line):
+            vg_linear = vg_pol_df.loc[vg_pol_df["degree"] == 1, "coefficient"].values[0]
+            pen = pg.mkPen(color='k', width=2)
+            self.vg_plot.plot([h_m.min(), h_m.max()], [0.0, 0.0],
+                              name=f'LinearVG: {vg_linear:7.3f} µGal/m',
+                              pen=pen)
+            vg_linear_TextItem = pg.TextItem(text=f'{vg_linear:7.3f} µGal/m', color='k')
+            vg_linear_TextItem.setPos(0, 0)
+            self.vg_plot.addItem(vg_linear_TextItem)
+
+            # Non-linear component:
+            if vg_polynomial_degree > 1:
+                pen = pg.mkPen(color='b', width=2)
+                self.vg_plot.plot(h_m, vg_polynomial_nonlinear_mugal,
+                                  name=f'Non-linear component',
+                                  pen=pen)
+
+            # Residuals (grouped by setup height)
+            if plot_residuals and (vg_polynomial_degree > 1):
+                self.vg_plot.setLabel(axis='left', text='Gravity [µGal], Residuals [µGal]')
+                # Calc. residuals w.r.t. linear VG:
+                mat_A = lsm_run.mat_A
+                mat_x = lsm_run.mat_x
+
+                mat_x_lin = mat_x[:-(vg_polynomial_degree - 1)]
+                mat_A_lin = mat_A[:, :-(vg_polynomial_degree - 1)]
+                setup_obs_df['g_obs_est_lin_vg_mugal'] = mat_A_lin @ mat_x_lin
+                setup_obs_df['res_lin_vg_mugal'] = setup_obs_df['g_obs_mugal'] - setup_obs_df['g_obs_est_lin_vg_mugal']
+
+                # Mean residuals per setup height (station) and their standard deviation:
+                tmp_df = setup_obs_df.loc[:, ['station_name', 'res_lin_vg_mugal']].groupby('station_name').mean().rename(
+                    columns={"res_lin_vg_mugal": "mean_res_lin_vg_mugal"})
+                stat_obs_df = stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+                tmp_df = setup_obs_df.loc[:, ['station_name', 'res_lin_vg_mugal']].groupby(
+                    'station_name').std().rename(
+                    columns={"res_lin_vg_mugal": "std_res_lin_vg_mugal"})
+                stat_obs_df = stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+
+                scatter = pg.ScatterPlotItem()
+                spots = []
+                # - prep. data for scatterplot:
+                for index, row in setup_obs_df.iterrows():
+                    if stations is None:
+                        brush_color = self.station_colors_dict_results[row['station_name']]
+                    else:
+                        if row['station_name'] not in stations:
+                            brush_color = 'w'
+                        else:
+                            brush_color = self.station_colors_dict_results[row['station_name']]
+                    spot_dic = {'pos': (row['dhf_sensor_m'], row['res_lin_vg_mugal']),
+                                'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                                'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                        'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                                'brush': brush_color}
+                    spots.append(spot_dic)
+
+                scatter.addPoints(spots)
+                self.vg_plot.addItem(scatter)
+
+                # Add residuals to legend:
+                # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
+                for station, color in self.station_colors_dict_results.items():
+                    s_item_tmp = pg.ScatterPlotItem()
+                    s_item_tmp.setBrush(color)
+                    s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                       'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
+                    s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
+                    self.vg_plot.legend.addItem(s_item_tmp, f'Residuals w.r.t. linear VG ({station})')
+
+                # Plot mean residuals w.r.t. linear VG and error bars per station:
+                scatter_mean_res = pg.ScatterPlotItem()
+                spots = []
+                for index, row in stat_obs_df.iterrows():
+                    spot_dic = {'pos': (
+                        row['dhf_sensor_mean_m'], row['mean_res_lin_vg_mugal']),
+                        'size': 20,
+                        'pen': {'color': 'k',
+                                'width': 2},
+                        'symbol': 'x',
+                        'brush': 'k'}
+                    spots.append(spot_dic)
+                scatter_mean_res.addPoints(spots)
+                self.vg_plot.addItem(scatter_mean_res)
+
+                pen = pg.mkPen(color='k', width=1)
+                error_bar = pg.ErrorBarItem(x=stat_obs_df['dhf_sensor_mean_m'].to_numpy(),
+                                            y=stat_obs_df['mean_res_lin_vg_mugal'].to_numpy(),
+                                            height=stat_obs_df['std_res_lin_vg_mugal'].to_numpy() * 2,
+                                            beam=0.1,
+                                            pen=pen)
+                self.vg_plot.addItem(error_bar)
+
+
+                # Add item to legend
+                s_item_tmp = pg.ScatterPlotItem()
+                s_item_tmp.setBrush('k')
+                s_item_tmp.setSymbol('x')
+                s_item_tmp.setSize(20)
+                s_item_tmp.setPen({'color': 'k',
+                                   'width': 2})
+                self.vg_plot.legend.addItem(s_item_tmp, f'Mean Residuals + Errorbars')
+
+        else:
+            raise AssertionError(f'Unknown VG plot type: {plot_type}!')
+
+        # Plot mean setup heights:
+        y_axis_range = self.vg_plot.axes['left']['item'].range
+        for index, row in stat_obs_df.iterrows():
+            if stations is None:
+                brush_color = self.station_colors_dict_results[row['station_name']]
+            else:
+                if row['station_name'] not in stations:
+                    brush_color = 'w'
+                else:
+                    brush_color = self.station_colors_dict_results[row['station_name']]
+            pen = pg.mkPen(color=brush_color, width=1, style=Qt.DashLine)
+            line = self.vg_plot.plot([row['dhf_sensor_mean_m'], row['dhf_sensor_mean_m']], y_axis_range,
+                                     pen=pen,
+                                     name=f'Mean height: {row["station_name"]}')
+
+        # Plot reference height
+        pen = pg.mkPen(color='k', width=1.5, style=Qt.DashDotDotLine)
+        line = self.vg_plot.plot([vg_polynomial_ref_height_offset_m, vg_polynomial_ref_height_offset_m], y_axis_range,
+                                 pen=pen,
+                                 name=f'Ref. height: {vg_polynomial_ref_height_offset_m:5.3f} m')
+
+        # General plot settings:
+        self.vg_plot.autoRange()
+
 
 
     def set_up_drift_plot_widget(self):
