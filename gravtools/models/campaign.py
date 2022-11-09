@@ -800,9 +800,7 @@ class Campaign:
         self.output_directory = output_directory
 
     def write_obs_list_csv(self, filename_csv: str, export_type: str = 'all_obs', verbose: bool = False):
-        """Export a list of all observations in the campaign to a CSV file.
-
-        This file gives information which observations were active and have been used to compute the setup observations.
+        """Export a list of all observations in the current campaign.
 
         Parameters
         ----------
@@ -817,7 +815,6 @@ class Campaign:
         # Prepare dataframe with all observations of all surveys
         export_survey_df_list = []
         for survey_name, survey in self.surveys.items():
-            # print(survey, survey_name)
             tmp_obs_df = survey.obs_df.copy(deep=True)
             tmp_obs_df.insert(0, 'survey_name', survey_name)
             export_survey_df_list.append(tmp_obs_df)
@@ -836,6 +833,66 @@ class Campaign:
         if verbose:
             print(f'Write observation list to: {filename_csv}')
         export_obs_df.to_csv(filename_csv, index=False, columns=EXPORT_OBS_LIST_COLUMNS)
+
+    def write_obs_list_of_lsm_run_csv(self, filename_csv: str, lsm_run_index: int,
+                                      export_type: str = 'all_obs', verbose: bool = False):
+        """Export a list of all observations that were used for calcualting the setup data of a lsm_run.
+
+        Parameters
+        ----------
+        filename_csv : str
+            Name and path of the output CSV file.
+        lsm_run_index : int
+            Index of the lsm_run for which the observation list should be exported. If `None`, the current observation
+            selection (in `Survey.obs_df`) is exported.
+        export_type : str, optional (default = 'all_obs')
+            Defines which observations are exported. There are three options: (1) all observations ('all_obs'), (2) only
+            active observations ('active_only') or (3) only inactive observations ('inactive_only').
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        # Get LSM run
+        try:
+            lsm_run = self.lsm_runs[lsm_run_index]
+        except:
+            raise AssertionError(f'Invalid LSM run index: {lsm_run_index}')
+
+        # Prepare dataframe with all observations of all surveys
+        export_survey_df_list = []
+        for survey_name, setup in lsm_run.setups.items():
+            setup_obs_list_df = setup['setup_obs_list_df'].copy(deep=True)
+            setup_obs_list_df.insert(0, 'survey_name', survey_name)
+            export_survey_df_list.append(setup_obs_list_df)
+        export_df = pd.concat(export_survey_df_list, ignore_index=True, sort=False)
+        export_df.sort_values('obs_epoch', inplace=True)
+
+        # Merge with survey data, if available:
+        obs_df_list = []
+        for survey_name, survey in self.surveys.items():
+            obs_df = self.surveys[survey_name].obs_df.copy(deep=True)
+            obs_df_list.append(obs_df)
+        obs_df_all = pd.concat(obs_df_list, ignore_index=True, sort=False)
+        obs_df_all.sort_values('obs_epoch', inplace=True)
+
+        export_df = pd.merge(export_df, obs_df_all, how='left', left_on=['station_name', 'obs_epoch'],
+                                     right_on=['station_name', 'obs_epoch']).rename(
+            columns={'keep_obs_x': 'keep_obs', 'station_name_x': 'station_name', 'obs_epoch_x': 'obs_epoch'})
+
+        drop_col_list = list(set(export_df.columns) - set(EXPORT_OBS_LIST_COLUMNS))
+        export_df.drop(columns=drop_col_list, inplace=True)
+
+        # Filter data:
+        if export_type != 'all_obs':
+            if export_type == 'active_only':
+                tmp_filter = export_df['keep_obs']
+            elif export_type == 'inactive_only':
+                tmp_filter = ~export_df['keep_obs']
+            export_obs_df = export_df.loc[tmp_filter, :]
+
+        # Export to CSV file:
+        if verbose:
+            print(f'Write observation list to: {filename_csv}')
+        export_df.to_csv(filename_csv, index=False, columns=EXPORT_OBS_LIST_COLUMNS)
 
     def flag_observations_based_on_obs_list_csv_file(self, obs_list_filename: str, update_type: str = 'all_obs',
                                                      verbose: bool = False):

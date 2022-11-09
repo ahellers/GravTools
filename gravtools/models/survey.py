@@ -99,6 +99,14 @@ class Survey:
         Reference level type of the reduced observations (column `g_red_mugal` in `obs_df`). Valid entries have to be
         listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`. `Empty string`, if corrected observations are not
         available.
+    setup_tide_correction_type : str, optional (default='')
+        Type of the tidal corrections applied on the observations that are used to calculate the setup data in the
+        `setup_df` dataframe. Valid entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
+        `Empty string`, if corrected setup data has not been calculated so far (`setup_df` = None).
+    setup_reference_height_type : str, optional (default='')
+        Reference height reduction type applied on the observations that are used to calculate the setup data in the
+        `setup_df` dataframe. Valid entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
+        `Empty string`, if corrected setup data has not been calculated so far (`setup_df` = None).
     keep_survey : bool (default=True)
         Flag that indicates whether this survey will be considered in the data analysis (adjustment).`True` is the
         default and implies that this survey is considered.
@@ -212,6 +220,17 @@ class Survey:
              Standard deviation of active observations in this setup [µGal].
         - number_obs : int
             Number of observations in a setup.
+    setup_obs_list_df : :py:obj:`pandas.core.frame.DataFrame`, optional (default=None)
+        List of observations in the `obs_df` dataframe that were used to calculate the setup observations in the
+        `setup_df` dataframe.
+
+        - station_name : str
+            Name of the station.
+        - obs_epoch : :py:obj:`datetime.datetime`; timezone aware, if possible
+            Reference epoch of the observation
+        - keep_obs : bool (default=True)
+
+
     """
 
     _OBS_DF_COLUMNS = (
@@ -247,11 +266,17 @@ class Survey:
         'epoch_unix',  # Reference epoch of `g_mugal` (unix time [sec])
         'epoch_dt',  # Reference epoch of `g_mugal` (datetime obj)
         'delta_t_h',  # Time span since reference time [hours]
-        'delta_t_campaign_h',  # Time span since reference time [hours]  # TODO
+        'delta_t_campaign_h',  # Time span since reference time [hours]
         'sd_setup_mugal',  # Standard deviation of active observations in this setup [µGal]
         'number_obs',  # Number of observations in a setup
         'dhf_sensor_m',  # Vertical distance between control point and sensor height
-    )    # TODO: Get missing infos on columns in CG5 obs file!
+    )
+
+    _SETUP_OBS_LIST_DF_COLUMNS = (
+        'station_name',  # Name of station (str)
+        'obs_epoch',  # Observation epoch (datetime object, TZ=<UTC>), start of instrument reading!
+        'keep_obs',  # If False, the observation is not used for calculating setup observations (bool)
+    )
 
     def __init__(self,
                  name,
@@ -267,11 +292,17 @@ class Survey:
                  obs_reference_height_type='',  # of "g_obs_mugal"
                  red_tide_correction_type='',  # of "g_red_mugal"
                  red_reference_height_type='',  # of "g_red_mugal"
+                 setup_tide_correction_type='',
+                 setup_reference_height_type='',
                  keep_survey=True,  # Flag
                  setup_df=None,
                  ref_delta_t_dt=None,  # Datetime object (UTC)
+                 setup_obs_list_df=None  #
                  ):
         """Default constructor of class Survey."""
+
+
+
 
         # Check input arguments:
         # name:
@@ -416,6 +447,32 @@ class Survey:
         else:
             raise TypeError('"red_tide_correction_type" needs to be a string')
 
+        # setup_tide_correction_type:
+        if isinstance(setup_tide_correction_type, str):
+            if setup_tide_correction_type:
+                if setup_tide_correction_type in REFERENCE_HEIGHT_TYPE.keys():
+                    self.setup_tide_correction_type = setup_tide_correction_type
+                else:
+                    raise ValueError('"setup_tide_correction_type" needs to be a key in REFERENCE_HEIGHT_TYPE '
+                                     '({})'.format(', '.join(REFERENCE_HEIGHT_TYPE.keys())))
+            else:
+                self.setup_tide_correction_type = setup_tide_correction_type  # ''
+        else:
+            raise TypeError('"setup_tide_correction_type" needs to be a string')
+
+        # setup_reference_height_type:
+        if isinstance(setup_reference_height_type, str):
+            if setup_reference_height_type:
+                if setup_reference_height_type in REFERENCE_HEIGHT_TYPE.keys():
+                    self.setup_reference_height_type = setup_reference_height_type
+                else:
+                    raise ValueError('"setup_reference_height_type" needs to be a key in REFERENCE_HEIGHT_TYPE '
+                                     '({})'.format(', '.join(REFERENCE_HEIGHT_TYPE.keys())))
+            else:
+                self.setup_reference_height_type = setup_reference_height_type  # ''
+        else:
+            raise TypeError('"setup_reference_height_type" needs to be a string')
+
         # keep_survey
         if isinstance(keep_survey, bool):
             self.keep_survey = keep_survey
@@ -441,6 +498,21 @@ class Survey:
             if not isinstance(ref_delta_t_dt, dt.datetime):
                 raise TypeError('`ref_delta_t_dt` needs to be a datetime object.')
         self.ref_delta_t_dt = ref_delta_t_dt
+
+        # setup_obs_list_df:
+        if setup_obs_list_df is not None:
+            if isinstance(setup_obs_list_df, pd.DataFrame):
+                # Check if setup_df contains exactly all columns defined by self._SETUP_DF_COLUMNS:
+                if all([item for item in obs_df.columns.isin(self._SETUP_OBS_LIST_DF_COLUMNS)]) and \
+                        obs_df.shape[1] == len(self._SETUP_OBS_LIST_DF_COLUMNS):
+                    self.setup_obs_list_df = setup_obs_list_df
+                else:
+                    raise ValueError(
+                        '"setup_obs_list_df" needs the following columns:{}'.format(', '.join(self._SETUP_OBS_LIST_DF_COLUMNS)))
+            else:
+                raise TypeError('"setup_obs_list_df" needs to be a pandas DataFrame.')
+        else:
+            self.setup_obs_list_df = setup_obs_list_df  # None
 
     @classmethod
     def from_cg5_survey(cls, cg5_survey, keep_survey=True):
@@ -1357,6 +1429,9 @@ class Survey:
             if verbose:
                 print('Setup data deleted.')
             self.setup_df = None
+            self.setup_reference_height_type = ''
+            self.setup_tide_correction_type = ''
+            self.setup_obs_list_df = None
 
     def calculate_setup_data(self, obs_type='reduced',
                              ref_delta_t_campaign_dt=None,
@@ -1487,6 +1562,14 @@ class Survey:
                 else:
                     delta_t_campaign_h_list.append(None)
 
+            if obs_type == 'observed':
+                self.setup_tide_correction_type = self.obs_tide_correction_type
+                self.setup_reference_height_type = self.obs_reference_height_type
+            elif obs_type == 'reduced':
+                self.setup_tide_correction_type = self.red_tide_correction_type
+                self.setup_reference_height_type = self.obs_reference_height_type
+            self.create_setup_obs_list()
+
             # convert to pd dataframe:
             self.setup_df = pd.DataFrame(list(zip(station_name_list,
                                                   setup_id_list,
@@ -1502,79 +1585,11 @@ class Survey:
                                          columns=self._SETUP_DF_COLUMNS)
             self.set_reference_time(ref_delta_t_dt)  # Save reference time for `delta_t_h`, i.e. for the survey.
 
+    def create_setup_obs_list(self):
+        """Create list of all observations that contribute to the calculation of setup data in this Survey object.
 
-if __name__ == '__main__':
-    """Main function, primarily for debugging and testing."""
+        The list is created as pabdas dataframe. It holds information whether an observation in the `obs_df` is
+        active or inactive (`keep_obs` flag).
+        """
+        self.setup_obs_list_df = self.obs_df.loc[:, self._SETUP_OBS_LIST_DF_COLUMNS].copy(deep=True)
 
-    from gravtools.settings import NAME_OESGN_TABLE, PATH_OESGN_TABLE, VERBOSE, PATH_OBS_FILE_CG5, NAME_OBS_FILE_CG5
-
-    station_files_dict = {PATH_OESGN_TABLE + NAME_OESGN_TABLE: 'oesgn_table'}
-    stat = Station(station_files_dict)
-    stat.add_stations_from_oesgn_table(PATH_OESGN_TABLE + NAME_OESGN_TABLE, verbose=VERBOSE)
-
-    # delete stations:
-    stat.delete_station(['2-008-02', '2-001-00'], verbose=VERBOSE)
-
-    # ### Getters ###
-    # Get ÖSGN stations:
-    # Get all stations:
-    print(stat.get_all_stations)
-
-    cg5surv = CG5Survey(PATH_OBS_FILE_CG5 + NAME_OBS_FILE_CG5)
-
-    surv = Survey.from_cg5_survey(cg5surv)
-    print(surv)
-
-    surv.activate_setup(1592449837, False)
-    surv.activate_observation(18, False)
-
-    surv2 = Survey.from_cg5_obs_file(PATH_OBS_FILE_CG5 + NAME_OBS_FILE_CG5)
-    print(surv2)
-
-    camp = Campaign('AD1', 'dir_name', stations=stat, surveys={surv2.name: surv2})
-
-    surv_bev = Survey.from_bev_obs_file(PATH_OBS_FILE_BEV + NAME_OBS_FILE_BEV, verbose=VERBOSE)
-
-    validity = surv_bev.is_valid_obs_df(verbose=True)
-
-    camp.add_survey(survey_add=surv_bev, verbose=VERBOSE)
-
-    surveys_info_dict = camp.get_survey_names_and_status(verbose=VERBOSE)
-
-    surv.obs_df_populate_vg_from_stations(stat, verbose=True)
-
-    print(surv.reduce_observations(target_ref_height='control_point', target_tide_corr='no_tide_corr', verbose=True))
-    print(surv.reduce_observations(target_ref_height='control_point', target_tide_corr='cg5_longman1959', verbose=True))
-    print(surv.reduce_observations(target_ref_height='ground', target_tide_corr='no_tide_corr', verbose=True))
-    print(surv.reduce_observations(target_ref_height='instrument_top', target_tide_corr='cg5_longman1959',
-                                   verbose=True))
-    print(surv.reduce_observations(target_ref_height='sensor_height', target_tide_corr='no_tide_corr', verbose=True))
-
-    print(camp.reduce_observations_in_all_surveys(target_ref_height='control_point', target_tide_corr='cg5_longman1959',
-                                                  verbose=True))
-
-    camp.synchronize_stations_and_surveys()
-
-    camp.get_epoch_of_first_observation()
-
-    surv.autselect_tilt(threshold_arcsec=5, setup_id=None)
-    # surv.autselect_g_sd(threshold_mugal=10, obs_type='observed', setup_id=None, verbose=True)
-    # surv.autselect_delta_g(threshold_mugal=10, obs_type='observed', setup_id=None, verbose=True)
-    # surv.autselect_delta_g(threshold_mugal=10, obs_type='observed', setup_id=1599551889, verbose=True)
-
-    surv.reset_setup_data(verbose=True)
-    surv.calculate_setup_data(obs_type='observed', verbose=True)
-
-    camp.deactivate_survey('n20200701_1')  # From BEV obsrvation file => SD of observations is missing!
-    camp.calculate_setup_data(obs_type='observed', verbose=True)
-
-    # Test adjustment:
-    from gravtools.models import lsm
-
-    lsm_diff = gravtools.models.lsm_diff.LSMDiff.from_campaign(camp)
-    lsm_diff.adjust(drift_pol_degree=1, sig0_mugal=10, scaling_factor_datum_observations=1e-3, verbose=True)
-
-    camp.initialize_and_add_lsm_run('LSM_diff', 'Test number one!')
-
-    camp.initialize_and_add_lsm_run('MLR_BEV', 'Test BEV legacy processing scheme!')
-    camp.lsm_runs[1].adjust(drift_pol_degree=1, verbose=True)

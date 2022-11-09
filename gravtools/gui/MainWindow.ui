@@ -474,7 +474,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>7</number>
+            <number>8</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -822,9 +822,67 @@
             <attribute name="title">
              <string>VG Plot</string>
             </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_34">
+            <layout class="QVBoxLayout" name="verticalLayout_35">
              <item>
-              <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_results_vg_plot"/>
+              <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_results_vg_plot">
+               <property name="toolTip">
+                <string>The VG plot illustartes the estimation results of the VG polynomial.</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox_results_vg_plot_settings">
+               <property name="toolTip">
+                <string>Settings for the VG plot.</string>
+               </property>
+               <property name="title">
+                <string>VG plot settings</string>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_34">
+                <item>
+                 <widget class="QCheckBox" name="checkBox_results_vg_plot_show_residuals">
+                  <property name="toolTip">
+                   <string>Plot the post fit residuals grouped by the setup height (station name). If linear and no-linear components of the VG polynomial (degree &gt; 1) are plotted separately, the residuals w.r.t. the linear component estimated in the LSM adjustment are shown.</string>
+                  </property>
+                  <property name="text">
+                   <string>Show residuals</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="radioButton_results_vg_plot_details">
+                  <property name="toolTip">
+                   <string>Plot the linear and non-linear components of the estimates VG polynomial separately. </string>
+                  </property>
+                  <property name="text">
+                   <string>Plot linear and non-linear components separately</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">buttonGroup_results_vg_plot_type_selection</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="radioButton_results_vg_plot_full_polynomial">
+                  <property name="toolTip">
+                   <string>Plot the full estimated VG polynomial versus height above the reference.</string>
+                  </property>
+                  <property name="text">
+                   <string>Plot full polynomial</string>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">buttonGroup_results_vg_plot_type_selection</string>
+                  </attribute>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -1090,4 +1148,7 @@
  </customwidgets>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup_results_vg_plot_type_selection"/>
+ </buttongroups>
 </ui>

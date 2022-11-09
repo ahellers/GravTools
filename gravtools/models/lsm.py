@@ -45,6 +45,14 @@ class LSM:
             dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
         - setup_df : Pandas DataFrame
             Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
+        - tide_correction_type : str, optional (default='')
+            Type of the tidal corrections applied on the reduced observations (column `g_red_mugal` in `obs_df`) that
+            were used to calculate the setup data store in this dict. Valid entries have to be listed in
+            :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
+        - reference_height_type : str, optional (default='')
+            Reference height type of the reduced observations (column `g_red_mugal` in `obs_df`) that
+            were used to calculate the setup data store in this dict. Valid entries have to be listed in
+            :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`.
 
     comment : str, optional (default = '')
         Optional comment on the adjustment run.
@@ -86,6 +94,14 @@ class LSM:
                 dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
             - setup_df : Pandas DataFrame
                 Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
+            - tide_correction_type : str, optional (default='')
+                Type of the tidal corrections applied on the reduced observations (column `g_red_mugal` in `obs_df`) that
+                were used to calculate the setup data store in this dict. Valid entries have to be listed in
+                :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
+        - red_reference_height_type : str, optional (default='')
+                Reference height type of the reduced observations (column `g_red_mugal` in `obs_df`) that
+                were used to calculate the setup data store in this dict. Valid entries have to be listed in
+                :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`.
 
         comment : str, optional (default = '')
             Optional comment on the adjustment run.
@@ -157,6 +173,79 @@ class LSM:
         # Statistical tests:
         self.number_of_outliers = None
         self.global_model_test_status = ''  # str
+
+    @classmethod
+    def from_campaign(cls, campaign, comment='', write_log=True):
+        """Constructor that generates and populates the LSM object (child!) from a Campaign class object.
+
+        Notes
+        -----
+        Put all checks and data preparations relevant for all LSM methods into this method!
+
+        Parameters
+        ----------
+        campaign : :py:obj:`gravtools.models.survey.Campaign`
+            The campaign object needs to provide setup data for all active surveys and the related station data.
+        comment : str, optional (default = '')
+            Arbitrary comment on the LSM run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
+
+        Returns
+        -------
+        LSM Object of the child class
+            Contains all information required for adjusting the campaign.
+        """
+        # Check if all required data is available in the campaign object:
+
+        # Comment:
+        if not isinstance(comment, str):
+            raise TypeError(f'"comment" needs to be a string!')
+
+        # Station data:
+        if campaign.stations is None:
+            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any station data!')
+        else:
+            if not hasattr(campaign.stations, 'stat_df'):
+                raise AssertionError(f'The campaign "{campaign.campaign_name}" has not station dataframe!')
+            else:
+                if len(campaign.stations.stat_df) == 0:
+                    raise AssertionError(f'The campaign "{campaign.campaign_name}" has an empty station dataframe!')
+
+        # Survey data:
+        if campaign.surveys is None:
+            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any survey data!')
+        else:
+            if len(campaign.surveys) == 0:
+                raise AssertionError(f'The campaign "{campaign.campaign_name}" contains no survey data!')
+
+        # Create setups dict:
+        # Loop over surveys in campaign:
+        setups = {}
+        for survey_name, survey in campaign.surveys.items():
+            if survey.keep_survey:
+                if survey.setup_df is None:
+                    raise AssertionError(f'Setup data is missing for survey "{survey_name}"')
+                else:
+                    if len(survey.setup_df) < 2:
+                        raise AssertionError(f'Survey "{survey_name}" has less than two setup observations! '
+                                             f'A minimum of two setups is required in order to define '
+                                             f'differential observations!')
+                    else:
+                        setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
+                                           'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
+                                           'setup_df': survey.setup_df,
+                                           'tide_correction_type': survey.setup_tide_correction_type,
+                                           'reference_height_type': survey.setup_reference_height_type,
+                                           'setup_obs_list_df': survey.setup_obs_list_df}
+                        setups[survey_name] = setup_data_dict
+
+        # Check if setup data is available:
+        if len(setups) == 0:
+            raise AssertionError(f'Setup data of campaign "{campaign.campaign_name}" does not contain observations!')
+
+        # Initialize and return LSM object:
+        return cls(campaign.stations.stat_df, setups, comment=comment, write_log=write_log)
 
     def adjust_autoscale_s0(self,
                             iteration_approach='Multiplicative',

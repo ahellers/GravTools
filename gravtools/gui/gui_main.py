@@ -128,6 +128,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.on_spinBox_results_drift_plot_v_offset_value_changed)
         self.checkBox_stations_map_show_stat_name_labels.stateChanged.connect(
             self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
+        self.radioButton_results_vg_plot_details.toggled.connect(self.on_results_vg_plot_type_radiobuttons_changed)
+        self.radioButton_results_vg_plot_full_polynomial.toggled.connect(self.on_results_vg_plot_type_radiobuttons_changed)
+        self.checkBox_stations_map_show_stat_name_labels.stateChanged.connect(
+            self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
+        self.checkBox_results_vg_plot_show_residuals.stateChanged.connect(
+            self.checkBox_results_vg_plot_show_residuals_state_changed)
         # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
         # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
 
@@ -572,9 +578,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Invoke plotting method according to the LSM method:
             if lsm_run.lsm_method == 'VG_LSM_nondiff':
                 # TODO: Get parameters from GUI!!
+                # Get plot settings from the GUI:
+                plot_residuals = self.checkBox_results_vg_plot_show_residuals.checkState() == Qt.Checked
+                if self.radioButton_results_vg_plot_details.isChecked() and not self.radioButton_results_vg_plot_full_polynomial.isChecked():
+                    plot_type = 'detail'
+                elif not self.radioButton_results_vg_plot_details.isChecked() and self.radioButton_results_vg_plot_full_polynomial.isChecked():
+                    plot_type = 'full'
+                else:
+                    raise AssertionError(f'Invalid VG plot settings!')
                 self.plot_vg_lsm_nondiff(lsm_run,
-                                         plot_type='detail',
-                                         plot_residuals=True,
+                                         plot_type=plot_type,
+                                         plot_residuals=plot_residuals,
                                          stations=selected_station_names)
             else:
                 self.vg_plot.clear()  # Clear vg plot
@@ -590,7 +604,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ----------
         lsm_run : LSMNonDiff object.
             LSM object for VG estimation based non-differential observations.
-        plot_type : str, optional (delauft=`detail`)
+        plot_type : str, optional (default=`detail`)
             Plot type selection. It `full` just the full vg polynomial (all degrees) is plotted. If `detail` the linear
             and the non-linear constituents are visualized separately in addition to post-fit residuals. Additionally,
             the mean setup heights are plotted.
@@ -602,6 +616,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.vg_plot.clear()
         self.vg_plot.legend.clear()
         self.vg_plot.setTitle('')
+
+        res_plot_legend_str = ''
 
         if len(lsm_run.setups) != 1:  # Only one survey allowed!
             raise AssertionError(f'The current LSM run contains {len(lsm_run.setups)}. Only one survey allowed at '
@@ -668,40 +684,50 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                               name=f'LinearVG: {vg_linear:7.3f} µGal/m',
                               pen=pen)
             vg_linear_TextItem = pg.TextItem(text=f'{vg_linear:7.3f} µGal/m', color='k')
-            vg_linear_TextItem.setPos(0, 0)
+            text_width_px = vg_linear_TextItem.boundingRect().width()
+            # TODO: For unknown reasons the command "self.vg_plot.getViewBox().viewPixelSize()" fails sometimes.
+            #  Therefor the exception handling was added below.
+            try:
+                sx, _ = self.vg_plot.getViewBox().viewPixelSize()
+                text_width_m = text_width_px * sx
+                vg_linear_TextItem.setPos(h_m.max() - text_width_m, 0)
+            except:
+                vg_linear_TextItem.setPos(0, 0)
             self.vg_plot.addItem(vg_linear_TextItem)
 
-            # Non-linear component:
-            if vg_polynomial_degree > 1:
+            if vg_polynomial_degree == 1:
+                # Plot post-fit residuals:
+                if plot_residuals:
+                    # Prep. residuals data for plotting:
+                    setup_obs_df['res_plot_mugal'] = setup_obs_df['v_obs_est_mugal'].astype('float')
+                    res_plot_legend_str = 'Post-fit residuals'
+
+            elif vg_polynomial_degree > 1:
                 pen = pg.mkPen(color='b', width=2)
                 self.vg_plot.plot(h_m, vg_polynomial_nonlinear_mugal,
                                   name=f'Non-linear component',
                                   pen=pen)
 
-            # Residuals (grouped by setup height)
-            if plot_residuals and (vg_polynomial_degree > 1):
-                self.vg_plot.setLabel(axis='left', text='Gravity [µGal], Residuals [µGal]')
-                # Calc. residuals w.r.t. linear VG:
-                mat_A = lsm_run.mat_A
-                mat_x = lsm_run.mat_x
+                # Residuals w.r.t. estimated linear component of the VG (grouped by setup height):
+                if plot_residuals:
+                    self.vg_plot.setLabel(axis='left', text='Gravity [µGal], Residuals [µGal]')
+                    # Calc. residuals w.r.t. linear VG:
+                    mat_A = lsm_run.mat_A
+                    mat_x = lsm_run.mat_x
+                    mat_x_lin = mat_x[:-(vg_polynomial_degree - 1)]
+                    mat_A_lin = mat_A[:, :-(vg_polynomial_degree - 1)]
+                    setup_obs_df['g_obs_est_lin_vg_mugal'] = mat_A_lin @ mat_x_lin
+                    setup_obs_df['res_lin_vg_mugal'] = setup_obs_df['g_obs_mugal'] - setup_obs_df['g_obs_est_lin_vg_mugal']
+                    setup_obs_df['res_plot_mugal'] = setup_obs_df['res_lin_vg_mugal']
+                    res_plot_legend_str = 'Residuals w.r.t. linear VG'
+            else:
+                raise AssertionError(f'Invalid degree of the VG polynomial: {vg_polynomial_degree}')
 
-                mat_x_lin = mat_x[:-(vg_polynomial_degree - 1)]
-                mat_A_lin = mat_A[:, :-(vg_polynomial_degree - 1)]
-                setup_obs_df['g_obs_est_lin_vg_mugal'] = mat_A_lin @ mat_x_lin
-                setup_obs_df['res_lin_vg_mugal'] = setup_obs_df['g_obs_mugal'] - setup_obs_df['g_obs_est_lin_vg_mugal']
-
-                # Mean residuals per setup height (station) and their standard deviation:
-                tmp_df = setup_obs_df.loc[:, ['station_name', 'res_lin_vg_mugal']].groupby('station_name').mean().rename(
-                    columns={"res_lin_vg_mugal": "mean_res_lin_vg_mugal"})
-                stat_obs_df = stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
-                tmp_df = setup_obs_df.loc[:, ['station_name', 'res_lin_vg_mugal']].groupby(
-                    'station_name').std().rename(
-                    columns={"res_lin_vg_mugal": "std_res_lin_vg_mugal"})
-                stat_obs_df = stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
-
+            # Plot residuals:
+            if plot_residuals:
                 scatter = pg.ScatterPlotItem()
                 spots = []
-                # - prep. data for scatterplot:
+                # - Prep. data for scatterplot:
                 for index, row in setup_obs_df.iterrows():
                     if stations is None:
                         brush_color = self.station_colors_dict_results[row['station_name']]
@@ -710,32 +736,50 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                             brush_color = 'w'
                         else:
                             brush_color = self.station_colors_dict_results[row['station_name']]
-                    spot_dic = {'pos': (row['dhf_sensor_m'], row['res_lin_vg_mugal']),
-                                'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
-                                'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
-                                        'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                    spot_dic = {'pos': (row['dhf_sensor_m'], row['res_plot_mugal']),
+                                'size': settings.VG_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                                'pen': {'color': settings.VG_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                        'width': settings.VG_PLOT_SCATTER_PLOT_PEN_WIDTH},
                                 'brush': brush_color}
                     spots.append(spot_dic)
-
                 scatter.addPoints(spots)
                 self.vg_plot.addItem(scatter)
 
                 # Add residuals to legend:
                 # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
                 for station, color in self.station_colors_dict_results.items():
-                    s_item_tmp = pg.ScatterPlotItem()
-                    s_item_tmp.setBrush(color)
-                    s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
-                                       'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH})
-                    s_item_tmp.setSize(settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
-                    self.vg_plot.legend.addItem(s_item_tmp, f'Residuals w.r.t. linear VG ({station})')
+                    flag_add_to_legend = False
+                    if stations is None:
+                        flag_add_to_legend = True
+                    elif station in stations:
+                        flag_add_to_legend = True
+                    else:
+                        flag_add_to_legend = False
+
+                    if flag_add_to_legend:
+                        s_item_tmp = pg.ScatterPlotItem()
+                        s_item_tmp.setBrush(color)
+                        s_item_tmp.setPen({'color': settings.VG_PLOT_SCATTER_PLOT_PEN_COLOR,
+                                           'width': settings.VG_PLOT_SCATTER_PLOT_PEN_WIDTH})
+                        s_item_tmp.setSize(settings.VG_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
+                        self.vg_plot.legend.addItem(s_item_tmp, res_plot_legend_str + f' ({station})')
 
                 # Plot mean residuals w.r.t. linear VG and error bars per station:
+                # - Calc. mean residuals per setup height (station) and their standard deviation:
+                tmp_df = setup_obs_df.loc[:, ['station_name', 'res_plot_mugal']].groupby(
+                    'station_name').mean().rename(
+                    columns={"res_plot_mugal": "mean_res_plot_mugal"})
+                stat_obs_df = stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+                tmp_df = setup_obs_df.loc[:, ['station_name', 'res_plot_mugal']].groupby(
+                    'station_name').std().rename(
+                    columns={"res_plot_mugal": "std_res_plot_mugal"})
+                stat_obs_df = stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
                 scatter_mean_res = pg.ScatterPlotItem()
                 spots = []
+                # - Plot data:
                 for index, row in stat_obs_df.iterrows():
                     spot_dic = {'pos': (
-                        row['dhf_sensor_mean_m'], row['mean_res_lin_vg_mugal']),
+                        row['dhf_sensor_mean_m'], row['mean_res_plot_mugal']),
                         'size': 20,
                         'pen': {'color': 'k',
                                 'width': 2},
@@ -747,12 +791,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                 pen = pg.mkPen(color='k', width=1)
                 error_bar = pg.ErrorBarItem(x=stat_obs_df['dhf_sensor_mean_m'].to_numpy(),
-                                            y=stat_obs_df['mean_res_lin_vg_mugal'].to_numpy(),
-                                            height=stat_obs_df['std_res_lin_vg_mugal'].to_numpy() * 2,
+                                            y=stat_obs_df['mean_res_plot_mugal'].to_numpy(),
+                                            height=stat_obs_df['std_res_plot_mugal'].to_numpy() * 2,
                                             beam=0.1,
                                             pen=pen)
                 self.vg_plot.addItem(error_bar)
-
 
                 # Add item to legend
                 s_item_tmp = pg.ScatterPlotItem()
@@ -766,8 +809,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             raise AssertionError(f'Unknown VG plot type: {plot_type}!')
 
+        # Check/set min/mx Y-range:
+        self.vg_plot.autoRange()
+        [y_min, y_max] = self.vg_plot.axes['left']['item'].range
+        flag_set_y_range = False
+        if y_min > settings.VG_PLOT_MIN_LOWER_L_RANGE:
+            y_min = settings.VG_PLOT_MIN_LOWER_L_RANGE
+            flag_set_y_range = True
+        if y_max < settings.VG_PLOT_MIN_UPPER_Y_RANGE:
+            y_max = settings.VG_PLOT_MIN_UPPER_Y_RANGE
+            flag_set_y_range = True
+        if flag_set_y_range:
+            self.vg_plot.setYRange(y_min, y_max)
+
         # Plot mean setup heights:
-        y_axis_range = self.vg_plot.axes['left']['item'].range
         for index, row in stat_obs_df.iterrows():
             if stations is None:
                 brush_color = self.station_colors_dict_results[row['station_name']]
@@ -777,20 +832,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 else:
                     brush_color = self.station_colors_dict_results[row['station_name']]
             pen = pg.mkPen(color=brush_color, width=1, style=Qt.DashLine)
-            line = self.vg_plot.plot([row['dhf_sensor_mean_m'], row['dhf_sensor_mean_m']], y_axis_range,
+            line = self.vg_plot.plot([row['dhf_sensor_mean_m'], row['dhf_sensor_mean_m']], [y_min, y_max],
                                      pen=pen,
                                      name=f'Mean height: {row["station_name"]}')
 
         # Plot reference height
         pen = pg.mkPen(color='k', width=1.5, style=Qt.DashDotDotLine)
-        line = self.vg_plot.plot([vg_polynomial_ref_height_offset_m, vg_polynomial_ref_height_offset_m], y_axis_range,
+        line = self.vg_plot.plot([vg_polynomial_ref_height_offset_m, vg_polynomial_ref_height_offset_m], [y_min, y_max],
                                  pen=pen,
                                  name=f'Ref. height: {vg_polynomial_ref_height_offset_m:5.3f} m')
 
         # General plot settings:
-        self.vg_plot.autoRange()
-
-
+        # - Get and set X-range:
+        self.vg_plot.setXRange(h_m.min(), h_m.max())
+        # self.vg_plot.autoRange()
 
     def set_up_drift_plot_widget(self):
         """Set up `self.graphicsLayoutWidget_results_drift_plot` widget."""
@@ -1636,6 +1691,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def run_parameter_estimation(self):
         """Run the parameter estimation process according to the defined estimation settings."""
+        num_of_lsm_runs_in_camapaign_before_adjustment = len(self.campaign.lsm_runs)
         try:
             # Check if setup data is prepared:
             flag_setup_data_available = False
@@ -1679,8 +1735,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             max_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_max_multiplicative_factor_to_sd_percent.value()
             min_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_min_multiplicative_factor_to_sd_percent.value()
             initial_step_size_percent = self.dlg_estimation_settings.doubleSpinBox_initial_step_size_percent.value()
-
-            num_of_lsm_runs_in_camapaign_before_adjustment = len(self.campaign.lsm_runs)
 
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
@@ -1937,46 +1991,54 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     QMessageBox.critical(self, 'Error!', str(e))
                     flag_export_successful = False
 
-                try:
-                    # if observation data available:
-                    if dlg.flag_observation_data_available:
-                        # Write observation list (CSV file):
-                        if dlg.checkBox_write_observation_list.checkState() == Qt.Checked:
-                            filename_obs_list = filename + '_obs.csv'
-                            export_type = _OBS_FILE_EXPORT_TYPES[
-                                dlg.comboBox_observation_list_export_options.currentText()]
-                            self.campaign.write_obs_list_csv(
+                # Write observation list (CSV file):
+                if dlg.checkBox_write_observation_list.checkState() == Qt.Checked:
+                    try:
+                        filename_obs_list = filename + '_obs.csv'
+                        export_type = _OBS_FILE_EXPORT_TYPES[
+                            dlg.comboBox_observation_list_export_options.currentText()]
+                        if dlg.flag_lsm_runs_available:
+                            self.campaign.write_obs_list_of_lsm_run_csv(
                                 filename_csv=os.path.join(output_path, filename_obs_list),
+                                lsm_run_index=lsm_run_idx,
                                 export_type=export_type,
                                 verbose=IS_VERBOSE)
-                except Exception as e:
-                    QMessageBox.critical(self, 'Error!', str(e))
-                    flag_export_successful = False
+                        else:
+                            # if observation data available:
+                            if dlg.flag_observation_data_available:
+                                self.campaign.write_obs_list_csv(
+                                    filename_csv=os.path.join(output_path, filename_obs_list),
+                                    export_type=export_type,
+                                    verbose=IS_VERBOSE)
+                    except Exception as e:
+                        QMessageBox.critical(self, 'Error!', str(e))
+                        flag_export_successful = False
 
                 # If LSM run available:
                 if dlg.flag_lsm_runs_available:
                     # Write nsb file:
-                    try:
-                        if dlg.checkBox_write_nsb_file.checkState() == Qt.Checked:
-                            filename_nsb = filename + '.nsb'
-                            if dlg.radioButton_mean_dhb_dhf.isChecked():
-                                vertical_offset_mode = 'mean'
-                            elif dlg.radioButton_first_dhb_dhf.isChecked():
-                                vertical_offset_mode = 'first'
-                            else:
-                                raise AssertionError(f'Undefined vertical offset mode!')
-                            if dlg.checkBox_nsb_remove_datum_stations.checkState() == Qt.Checked:
-                                exclude_datum_stations = True
-                            else:
-                                exclude_datum_stations = False
-                            self.campaign.write_nsb_file(filename=os.path.join(output_path, filename_nsb),
-                                                         lsm_run_index=lsm_run_idx,
-                                                         vertical_offset_mode=vertical_offset_mode,
-                                                         exclude_datum_stations=exclude_datum_stations,
-                                                         verbose=IS_VERBOSE)
-                    except Exception as e:
-                        QMessageBox.critical(self, 'Error!', str(e))
-                        flag_export_successful = False
+                    if lsm_run.lsm_method in settings.LSM_METHODS_NSD_FILE_EXPORT:
+                        try:
+                            if dlg.checkBox_write_nsb_file.checkState() == Qt.Checked:
+                                filename_nsb = filename + '.nsb'
+                                if dlg.radioButton_mean_dhb_dhf.isChecked():
+                                    vertical_offset_mode = 'mean'
+                                elif dlg.radioButton_first_dhb_dhf.isChecked():
+                                    vertical_offset_mode = 'first'
+                                else:
+                                    raise AssertionError(f'Undefined vertical offset mode!')
+                                if dlg.checkBox_nsb_remove_datum_stations.checkState() == Qt.Checked:
+                                    exclude_datum_stations = True
+                                else:
+                                    exclude_datum_stations = False
+                                self.campaign.write_nsb_file(filename=os.path.join(output_path, filename_nsb),
+                                                             lsm_run_index=lsm_run_idx,
+                                                             vertical_offset_mode=vertical_offset_mode,
+                                                             exclude_datum_stations=exclude_datum_stations,
+                                                             verbose=IS_VERBOSE)
+                        except Exception as e:
+                            QMessageBox.critical(self, 'Error!', str(e))
+                            flag_export_successful = False
 
                     # Write log file:
                     try:
@@ -2013,6 +2075,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     except Exception as e:
                         QMessageBox.critical(self, 'Error!', str(e))
                         flag_export_successful = False
+
+                    # Save VG plot to PNG file:
+                    if lsm_run.lsm_method in settings.LSM_METHODS_VG_PLOT:
+                        try:
+                            if dlg.checkBox_save_vg_plot_png.checkState() == Qt.Checked:
+                                # To prevent an error the plot has to be shown first by bringing the drift plot tab to front:
+                                # - Main tab widget:
+                                for idx in range(self.tabWidget_Main.count()):
+                                    if self.tabWidget_Main.tabText(idx) == "Results":
+                                        self.tabWidget_Main.setCurrentIndex(idx)
+                                # - Results tab widget:
+                                for idx in range(self.tabWidget_results.count()):
+                                    if self.tabWidget_results.tabText(idx) == "VG Plot":
+                                        self.tabWidget_results.setCurrentIndex(idx)
+                                filename_png = filename + '_vg_plot.png'
+                                # The linAlg error is raised in the following line of code:
+                                exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_results_drift_plot.scene())
+                                flag_export_successful = exporter.export(os.path.join(output_path, filename_png))
+                        except Exception as e:
+                            QMessageBox.critical(self, 'Error!', str(e))
+                            flag_export_successful = False
+
             if flag_export_successful:
                 self.statusBar().showMessage(f"Export to {output_path} successful!")
             else:
@@ -2841,6 +2925,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # print flag log sting to Message Box:
                 QMessageBox.information(self, 'Update Information!', flag_log_str)
 
+    def on_results_vg_plot_type_radiobuttons_changed(self, checked):
+        """Invoked whenever a radiobutton for selecting the VG plot type in the results tab is changed."""
+        if not checked:
+            return
+        if self.radioButton_results_vg_plot_details.isChecked():
+            self.checkBox_results_vg_plot_show_residuals.setEnabled(True)
+            self.update_vg_plot()
+        if self.radioButton_results_vg_plot_full_polynomial.isChecked():
+            self.checkBox_results_vg_plot_show_residuals.setEnabled(False)
+            self.update_vg_plot()
+
+    def checkBox_results_vg_plot_show_residuals_state_changed(self):
+        """Invoked whenever the state of the checkbox changes."""
+        self.update_vg_plot()
+
     def closeEvent(self, event):
         """Ask the user whether to close the window or not!"""
         reply = QMessageBox.question(self, 'Message', "Are you sure to quit?",
@@ -3042,18 +3141,23 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
 
         # Set the lineEdit with the export path:
         self.label_export_path_show.setText(campaign.output_directory)
-        # connect signals and slots:
-        self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
 
         # Select LSM run, etc.
         idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
         self.comboBox_select_lsm_run.setCurrentIndex(idx)
         self.write_lsm_run_comment_to_gui(idx)
+        self.enable_gui_widgets_based_on_lsm_method(idx)
+
+        # connect signals and slots:
+        self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
+
+
 
     @pyqtSlot(int)
     def on_comboBox_select_lsm_run_current_index_changed(self, index: int):
         """Invoked whenever the index of the selected item in the combobox changed."""
         self.write_lsm_run_comment_to_gui(index)
+        self.enable_gui_widgets_based_on_lsm_method(index)
 
     def write_lsm_run_comment_to_gui(self, lsm_run_idx):
         """Writes the lsm run comment of the selected lsm run to the GUI line edit."""
@@ -3065,6 +3169,18 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
             return self._lsm_runs[lsm_run_idx].comment
         except:
             return ''
+
+    def enable_gui_widgets_based_on_lsm_method(self, lsm_run_idx: int):
+        """Enable or disable GUI elements based on the lsm run selection."""
+        lsm_method = self._lsm_runs[lsm_run_idx].lsm_method
+        if lsm_method == 'LSM_diff' or lsm_method == 'LSM_non_diff' or lsm_method == 'MLR_BEV':  # network adjustment
+            self.groupBox_nsb_file.setEnabled(True)
+            self.checkBox_save_vg_plot_png.setEnabled(False)
+        elif lsm_method == 'VG_LSM_nondiff':  # VG estimation
+            self.groupBox_nsb_file.setEnabled(False)
+            self.checkBox_save_vg_plot_png.setEnabled(True)
+        else:
+            raise AssertionError(f'Invali LSM method: {lsm_method}!')
 
 
 def main():

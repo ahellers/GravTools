@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>433</width>
-    <height>577</height>
+    <height>606</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -195,6 +195,9 @@
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
        <widget class="QCheckBox" name="checkBox_write_log_file">
+        <property name="toolTip">
+         <string/>
+        </property>
         <property name="text">
          <string>Write log file (text file)</string>
         </property>
@@ -208,8 +211,24 @@
         <property name="enabled">
          <bool>true</bool>
         </property>
+        <property name="toolTip">
+         <string>Save the current drift plot to a PNG file.</string>
+        </property>
         <property name="text">
          <string>Save current drift plot view (PNG file)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkBox_save_vg_plot_png">
+        <property name="toolTip">
+         <string>Save the current VG plot to a PNG file (only available if the VG was estimated).</string>
+        </property>
+        <property name="text">
+         <string>Save the current VG plot view (PNG file)</string>
         </property>
         <property name="checked">
          <bool>true</bool>

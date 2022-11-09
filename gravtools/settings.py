@@ -90,6 +90,18 @@ ADJUSTMENT_METHODS = {
     'VG_LSM_nondiff': 'VG LSM (non-differential observations)',  # Vertical Gravity Gradient estimation based on Least-squares adjustment of non-differential observations
 }
 
+# List of LSM methods where export of nsb files is allowed:
+LSM_METHODS_NSD_FILE_EXPORT = [
+    'LSM_diff',
+    'LSM_non_diff',
+    'MLR_BEV',
+]
+
+# List of LSM methods where VG plots are created (and should be saved as PNG files):
+LSM_METHODS_VG_PLOT = [
+    'VG_LSM_nondiff',
+]
+
 # Available iteration approaches for scaling the SD of setup observations:
 ITERATION_APPROACHES = {
     'Multiplicative': 'Multiplicative iteration approach',
@@ -135,10 +147,17 @@ VG_PLOT_MAX_HEIGHT_M = 1.8
 VG_PLOT_HEIGHT_DELTA_M = 0.1
 # Number of datapoints plotted in the range betwen min. and max. height:
 VG_PLOT_NUM_ITEMS_VG_POLYNOMIAL = 100
+# Min. Y-range (default: [VG_PLOT_MIN_LOWER_L_RANGE, VG_PLOT_MIN_UPPER_Y_RANGE] = [-1, +1]):
+VG_PLOT_MIN_UPPER_Y_RANGE = 1.0
+VG_PLOT_MIN_LOWER_L_RANGE = -1.0
+# Define pen for scatter plot of residuals:
+VG_PLOT_SCATTER_PLOT_PEN_COLOR = 'k'
+VG_PLOT_SCATTER_PLOT_PEN_WIDTH = 1
+VG_PLOT_SCATTER_PLOT_SYMBOL_SIZE = 10
 
 # ----- Data export options: -----
 # List of columns in the `obs_df` dataframe that are written to the exported observation list CSV file:
-EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'obs_epoch', 'station_name', 'keep_obs']
+EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'station_name', 'obs_epoch', 'keep_obs']
 # Maximum allowed SD of the estimated gravity at stations when exporting data to a nsb file!
 #  => This is important as only 3 characters are reserved in the nsb file for the SD!
 MAX_SD_FOR_EXPORT_TO_NSB_FILE = 999.0

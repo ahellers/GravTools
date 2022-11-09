@@ -126,8 +126,8 @@ class VGLSM(LSM):
 
         Notes
         -----
-        From all active surveys in the campaign the setup data (= observations) are loaded, additionally to the station
-        data (station dataframe).
+        Put checks that are dependent on the LSM method into here! All common checks and preparations are implemented
+        in the `from_campaign` method of the parent class `LSM`.
 
         Parameters
         ----------
@@ -140,15 +140,9 @@ class VGLSM(LSM):
 
         Returns
         -------
-        :py:obj:`.LSMDiff`
+        :py:obj:`.VGLSM`
             Contains all information required for adjusting the campaign.
         """
-        # Check if all required data is available in the campaign object:
-
-        # Comment:
-        if not isinstance(comment, str):
-            raise TypeError(f'"comment" needs to be a string!')
-
         # Station data:
         # - Just one station (at different height levels) allowed => Check coordinates!
         if campaign.stations is None:
@@ -172,6 +166,74 @@ class VGLSM(LSM):
         if campaign.surveys is None:
             raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any survey data!')
         else:
+            if len(campaign.surveys) > 1:
+                raise AssertionError(
+                    f'The campaign "{campaign.campaign_name}" contains more than one survey! The VG estimation is '
+                    f'restricted to just one survey.')
+
+        # Check if the reduced setup observations refer to the sensor height of the instrument:
+        # Loop over surveys in campaign (just one...):
+        for survey_name, survey in campaign.surveys.items():
+            if survey.keep_survey:
+                if survey.red_reference_height_type != 'sensor_height':
+                    raise AssertionError(f'In survey {survey_name} the reduced gravity values do not refer to the '
+                                         f'sensor height! Change the reference height to "Sensor" and recalculate the '
+                                         f'setup observation data.')
+
+        return super().from_campaign(campaign, comment='', write_log=True)
+
+    @classmethod
+    def from_campaign_2(cls, campaign, comment='', write_log=True):
+        """Constructor that generates and populates the LSM object from a Campaign class object.
+
+        Notes
+        -----
+        From all active surveys in the campaign the setup data (= observations) are loaded, additionally to the station
+        data (station dataframe).
+
+        Parameters
+        ----------
+        campaign : :py:obj:`gravtools.models.survey.Campaign`
+            The campaign object needs to provide setup data for all active surveys and the related station data.
+        comment : str, optional (default = '')
+            Arbitrary comment on the LSM run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
+
+        Returns
+        -------
+        :py:obj:`.VGLSM`
+            Contains all information required for adjusting the campaign.
+        """
+        # Check if all required data is available in the campaign object:
+
+        # Comment:
+        if not isinstance(comment, str):
+            raise TypeError(f'"comment" needs to be a string!')
+
+        ## Station data:
+        # - Just one station (at different height levels) allowed => Check coordinates!
+        if campaign.stations is None:
+            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any station data!')
+        else:
+            if not hasattr(campaign.stations, 'stat_df'):
+                raise AssertionError(f'The campaign "{campaign.campaign_name}" has not station dataframe!')
+            else:
+                if len(campaign.stations.stat_df) == 0:
+                    raise AssertionError(f'The campaign "{campaign.campaign_name}" has an empty station dataframe!')
+                else:  # Just one station allowed => Check the coordinates (lon, lat)!
+                    stat_df_observed = campaign.stations.stat_df.loc[campaign.stations.stat_df.is_observed]
+                    if (len(stat_df_observed['lat_deg'].unique()) > 1) or (
+                            len(stat_df_observed['long_deg'].unique()) > 1):
+                        raise AssertionError(f'This campaign contains observed stations with differing latitudes and/or'
+                                             f' longitudes. This is an indicator for observations of more than one '
+                                             f'stations which is not allowed.')
+
+        ## Survey data:
+        # - Just one survey allowed!
+        if campaign.surveys is None:
+            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any survey data!')
+        else:
             if len(campaign.surveys) == 0:
                 raise AssertionError(f'The campaign "{campaign.campaign_name}" contains no survey data!')
             if len(campaign.surveys) > 1:
@@ -191,10 +253,12 @@ class VGLSM(LSM):
                     else:
                         setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
                                            'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
-                                           'setup_df': survey.setup_df}
+                                           'setup_df': survey.setup_df,
+                                           'tide_correction_type': survey.red_tide_correction_type,
+                                           'reference_height_type': survey.red_reference_height_type}
                         setups[survey_name] = setup_data_dict
 
-                # Check if the reduced setup observations refer to the sensor height of the instrument:
+                ## Check if the reduced setup observations refer to the sensor height of the instrument:
                 if survey.red_reference_height_type != 'sensor_height':
                     raise AssertionError(f'In survey {survey_name} the reduced gravity values do not refer to the '
                                          f'sensor height! Change the reference height to "Sensor" and recalculate the '
