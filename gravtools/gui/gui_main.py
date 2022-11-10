@@ -1969,24 +1969,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                      f"The campaign's output path doe not exist ({output_path})! Change the path.")
                 flag_export_successful = False
             else:
+                # Get LSM run index and check data availability:
+                lsm_run_idx = dlg.comboBox_select_lsm_run.currentIndex() - 1
+                flag_lsm_run_selected = dlg.flag_lsm_runs_available and (lsm_run_idx > -1)
+
                 try:
                     # Append lsm run comment to filename, if available:
-                    if dlg.flag_lsm_runs_available:
-                        # lsm_run_time_tag = dlg.comboBox_select_lsm_run.currentText()
-                        lsm_run_idx = dlg.comboBox_select_lsm_run.currentIndex()
-                        if lsm_run_idx != -1:  # LSM run selected?
-                            lsm_run = self.campaign.lsm_runs[lsm_run_idx]
-                            # Append LSM comment to filename?
-                            if dlg.checkBox_add_lsm_comment_to_filename.checkState() == Qt.Checked:
-                                append_lsm_run_comment_to_filenames = True
-                                if not lsm_run.comment:  # Empty string
-                                    append_lsm_run_comment_to_filenames = False
-                            else:
+                    if flag_lsm_run_selected:
+                        lsm_run = self.campaign.lsm_runs[lsm_run_idx]
+                        # Append LSM comment to filename?
+                        if dlg.checkBox_add_lsm_comment_to_filename.checkState() == Qt.Checked:
+                            append_lsm_run_comment_to_filenames = True
+                            if not lsm_run.comment:  # Empty string
                                 append_lsm_run_comment_to_filenames = False
-                            if append_lsm_run_comment_to_filenames:
-                                filename = self.campaign.campaign_name + '_' + lsm_run.comment
                         else:
-                            dlg.flag_lsm_runs_available = False  # No LSM run selected!
+                            append_lsm_run_comment_to_filenames = False
+                        if append_lsm_run_comment_to_filenames:
+                            filename = self.campaign.campaign_name + '_' + lsm_run.comment
+
                 except Exception as e:
                     QMessageBox.critical(self, 'Error!', str(e))
                     flag_export_successful = False
@@ -1997,14 +1997,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         filename_obs_list = filename + '_obs.csv'
                         export_type = _OBS_FILE_EXPORT_TYPES[
                             dlg.comboBox_observation_list_export_options.currentText()]
-                        if dlg.flag_lsm_runs_available:
+                        if flag_lsm_run_selected:
                             self.campaign.write_obs_list_of_lsm_run_csv(
                                 filename_csv=os.path.join(output_path, filename_obs_list),
                                 lsm_run_index=lsm_run_idx,
                                 export_type=export_type,
                                 verbose=IS_VERBOSE)
                         else:
-                            # if observation data available:
+                            # if no lsm run selected:
                             if dlg.flag_observation_data_available:
                                 self.campaign.write_obs_list_csv(
                                     filename_csv=os.path.join(output_path, filename_obs_list),
@@ -2014,8 +2014,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         QMessageBox.critical(self, 'Error!', str(e))
                         flag_export_successful = False
 
-                # If LSM run available:
-                if dlg.flag_lsm_runs_available:
+                # If LSM run selected:
+                if flag_lsm_run_selected:
                     # Write nsb file:
                     if lsm_run.lsm_method in settings.LSM_METHODS_NSD_FILE_EXPORT:
                         try:
@@ -3116,6 +3116,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
 
     def __init__(self, campaign, parent=None):
         super().__init__(parent)
+        # Get data:
         self._lsm_runs = campaign.lsm_runs
         self.flag_observation_data_available = len(campaign.surveys) > 0
         self.flag_lsm_runs_available = len(campaign.lsm_run_times) > 0
@@ -3123,45 +3124,41 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         self.setupUi(self)
         # Populate the combo box to select an LSM run (enable/disable groupBoxes accordingly):
         self.comboBox_select_lsm_run.clear()
-        self.comboBox_select_lsm_run.addItems(campaign.lsm_run_times)
-        if self.flag_lsm_runs_available:
-            self.groupBox_other_files.setEnabled(True)
-            self.groupBox_nsb_file.setEnabled(True)
-        else:
-            self.groupBox_other_files.setEnabled(False)
-            self.groupBox_nsb_file.setEnabled(False)
-        if self.flag_observation_data_available:
-            self.groupBox_observation_list.setEnabled(True)
-        else:
-            self.groupBox_observation_list.setEnabled(False)
-        if self.flag_lsm_runs_available or self.flag_observation_data_available:
-            self.buttonBox.buttons()[0].setEnabled(True)  # OK button in buttonBox
-        else:
-            self.buttonBox.buttons()[0].setEnabled(False)  # OK button in buttonBox
+        self.comboBox_select_lsm_run.addItems(['Current observation selection (no LSM run)'] + campaign.lsm_run_times)
 
         # Set the lineEdit with the export path:
         self.label_export_path_show.setText(campaign.output_directory)
 
-        # Select LSM run, etc.
+        # Set initial item in comboBox (last entry/LSM run):
         idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
         self.comboBox_select_lsm_run.setCurrentIndex(idx)
-        self.write_lsm_run_comment_to_gui(idx)
-        self.enable_gui_widgets_based_on_lsm_method(idx)
+
+        # Select LSM run, etc.
+        if self.flag_lsm_runs_available:
+            lsm_run_idx = idx - 1
+        else:
+            lsm_run_idx = -1
+
+        # Enable/disable GUI items and add lsm run comment:
+        self.write_lsm_run_comment_to_gui(lsm_run_idx)
+        self.enable_gui_widgets_based_on_lsm_run_selection(lsm_run_idx)
 
         # connect signals and slots:
         self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
 
-
-
     @pyqtSlot(int)
     def on_comboBox_select_lsm_run_current_index_changed(self, index: int):
         """Invoked whenever the index of the selected item in the combobox changed."""
-        self.write_lsm_run_comment_to_gui(index)
-        self.enable_gui_widgets_based_on_lsm_method(index)
+        lsm_run_idx = index - 1
+        self.write_lsm_run_comment_to_gui(lsm_run_idx)
+        self.enable_gui_widgets_based_on_lsm_run_selection(lsm_run_idx)
 
     def write_lsm_run_comment_to_gui(self, lsm_run_idx):
         """Writes the lsm run comment of the selected lsm run to the GUI line edit."""
-        self.label_export_comment_show.setText(self.get_lsm_run_comment(lsm_run_idx))
+        if lsm_run_idx > 1:
+            self.label_export_comment_show.setText(self.get_lsm_run_comment(lsm_run_idx))
+        else:
+            self.label_export_comment_show.setText('')
 
     def get_lsm_run_comment(self, lsm_run_idx: int):
         """Returns the lsm run comment of the run with the specified index."""
@@ -3170,18 +3167,36 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         except:
             return ''
 
-    def enable_gui_widgets_based_on_lsm_method(self, lsm_run_idx: int):
+    def enable_gui_widgets_based_on_lsm_run_selection(self, lsm_run_idx: int):
         """Enable or disable GUI elements based on the lsm run selection."""
-        lsm_method = self._lsm_runs[lsm_run_idx].lsm_method
-        if lsm_method == 'LSM_diff' or lsm_method == 'LSM_non_diff' or lsm_method == 'MLR_BEV':  # network adjustment
-            self.groupBox_nsb_file.setEnabled(True)
-            self.checkBox_save_vg_plot_png.setEnabled(False)
-        elif lsm_method == 'VG_LSM_nondiff':  # VG estimation
-            self.groupBox_nsb_file.setEnabled(False)
-            self.checkBox_save_vg_plot_png.setEnabled(True)
-        else:
-            raise AssertionError(f'Invali LSM method: {lsm_method}!')
 
+        flag_lsm_run_selected = self.flag_lsm_runs_available and (lsm_run_idx > -1)
+
+        if flag_lsm_run_selected:
+            self.groupBox_other_files.setEnabled(True)
+            self.groupBox_nsb_file.setEnabled(True)
+            self.groupBox_observation_list.setEnabled(True)
+        else:
+            self.groupBox_other_files.setEnabled(False)
+            self.groupBox_nsb_file.setEnabled(False)
+            self.groupBox_observation_list.setEnabled(False)
+            if self.flag_observation_data_available:
+                self.groupBox_observation_list.setEnabled(True)
+        if flag_lsm_run_selected or self.flag_observation_data_available:
+            self.buttonBox.buttons()[0].setEnabled(True)  # OK button in buttonBox
+        else:
+            self.buttonBox.buttons()[0].setEnabled(False)  # OK button in buttonBox
+
+        if flag_lsm_run_selected:  # => lsm_run_idx >= 0
+            lsm_method = self._lsm_runs[lsm_run_idx].lsm_method
+            if lsm_method == 'LSM_diff' or lsm_method == 'LSM_non_diff' or lsm_method == 'MLR_BEV':  # network adjust.
+                self.groupBox_nsb_file.setEnabled(True)
+                self.checkBox_save_vg_plot_png.setEnabled(False)
+            elif lsm_method == 'VG_LSM_nondiff':  # VG estimation
+                self.groupBox_nsb_file.setEnabled(False)
+                self.checkBox_save_vg_plot_png.setEnabled(True)
+            else:
+                raise AssertionError(f'Invali LSM method: {lsm_method}!')
 
 def main():
     """Main program to start the GUI."""

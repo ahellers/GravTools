@@ -126,7 +126,7 @@ class LSMDiff(LSM):
         :py:obj:`.LSMDiff`
             Contains all information required for adjusting the campaign.
         """
-        return super().from_campaign(campaign, comment='', write_log=True)
+        return super().from_campaign(campaign, comment=comment, write_log=write_log)
 
     def adjust(self, drift_pol_degree=1,
                sig0_mugal=1,
