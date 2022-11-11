@@ -325,7 +325,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>2</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -344,6 +344,58 @@
             <layout class="QVBoxLayout" name="verticalLayout_11">
              <item>
               <widget class="QTableView" name="tableView_observations_setups"/>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox_obs_setups_applied_corrections">
+               <property name="toolTip">
+                <string>Information on the corrections that have been applied on the observations on which the setup data is based on.</string>
+               </property>
+               <property name="title">
+                <string>Applied corrections:</string>
+               </property>
+               <layout class="QFormLayout" name="formLayout_6">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_obs_setups_1">
+                  <property name="toolTip">
+                   <string>Type of applied tidal corrections.</string>
+                  </property>
+                  <property name="text">
+                   <string>Tidal correction:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="label_obs_setups_tidal_corr">
+                  <property name="toolTip">
+                   <string>Type of applied tidal corrections.</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_obs_setups_2">
+                  <property name="toolTip">
+                   <string>Type of the applied reference height reduction.</string>
+                  </property>
+                  <property name="text">
+                   <string>Obs. reference height:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="label_obs_setups_ref_height">
+                  <property name="toolTip">
+                   <string>Type of the applied reference height reduction.</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -474,7 +526,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>6</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -674,7 +726,7 @@
            </widget>
            <widget class="QWidget" name="tab_results_obs_table">
             <attribute name="title">
-             <string>Observations table</string>
+             <string>Observations Table</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_15">
              <item>
@@ -717,7 +769,7 @@
            </widget>
            <widget class="QWidget" name="tab_results_drift">
             <attribute name="title">
-             <string>Drift table</string>
+             <string>Drift Table</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_18">
              <item>
@@ -790,7 +842,7 @@
            </widget>
            <widget class="QWidget" name="tab_results_stat_table">
             <attribute name="title">
-             <string> Stations table</string>
+             <string> Stations Table</string>
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_19">
              <item>
@@ -805,6 +857,84 @@
             <layout class="QVBoxLayout" name="verticalLayout_32">
              <item>
               <widget class="QTableView" name="tableView_results_correlation_matrix"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_vg_table">
+            <attribute name="title">
+             <string>VG Table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_33">
+             <item>
+              <widget class="QTableView" name="tableView_results_vg_table"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_vg_plot">
+            <attribute name="title">
+             <string>VG Plot</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_35">
+             <item>
+              <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_results_vg_plot">
+               <property name="toolTip">
+                <string>The VG plot illustartes the estimation results of the VG polynomial.</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox_results_vg_plot_settings">
+               <property name="toolTip">
+                <string>Settings for the VG plot.</string>
+               </property>
+               <property name="title">
+                <string>VG plot settings</string>
+               </property>
+               <layout class="QVBoxLayout" name="verticalLayout_34">
+                <item>
+                 <widget class="QCheckBox" name="checkBox_results_vg_plot_show_residuals">
+                  <property name="toolTip">
+                   <string>Plot the post fit residuals grouped by the setup height (station name). If linear and no-linear components of the VG polynomial (degree &gt; 1) are plotted separately, the residuals w.r.t. the linear component estimated in the LSM adjustment are shown.</string>
+                  </property>
+                  <property name="text">
+                   <string>Show residuals</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="radioButton_results_vg_plot_details">
+                  <property name="toolTip">
+                   <string>Plot the linear and non-linear components of the estimates VG polynomial separately. </string>
+                  </property>
+                  <property name="text">
+                   <string>Plot linear and non-linear components separately</string>
+                  </property>
+                  <property name="checked">
+                   <bool>true</bool>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">buttonGroup_results_vg_plot_type_selection</string>
+                  </attribute>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QRadioButton" name="radioButton_results_vg_plot_full_polynomial">
+                  <property name="toolTip">
+                   <string>Plot the full estimated VG polynomial versus height above the reference.</string>
+                  </property>
+                  <property name="text">
+                   <string>Plot full polynomial</string>
+                  </property>
+                  <attribute name="buttonGroup">
+                   <string notr="true">buttonGroup_results_vg_plot_type_selection</string>
+                  </attribute>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -1070,4 +1200,7 @@
  </customwidgets>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup_results_vg_plot_type_selection"/>
+ </buttongroups>
 </ui>

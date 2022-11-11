@@ -37,10 +37,10 @@ TIDE_CORRECTION_TYPES = {
 }
 
 REFERENCE_HEIGHT_TYPE = {
-    'sensor_height': 'The gravity reverence point at the station is at the sensor height',
-    'instrument_top': 'The gravity value refers to the height og the instrument top',
-    'ground': 'The gravity value refers to the ground point at the station',
-    'control_point': 'The gravity value refers to the control point at the station',
+    'sensor_height': 'The gravity values refer to the sensor height',
+    'instrument_top': 'The gravity values refers to the instrument top',
+    'ground': 'The gravity values refers to the ground point of the station',
+    'control_point': 'The gravity values refers to the control point of the station',
 }
 
 # Reference heights (sensor heights) of different gravimeter types:
@@ -87,7 +87,20 @@ ADJUSTMENT_METHODS = {
     'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
     'LSM_non_diff': 'LSM (non-differential observations)',  # Least-squares adjustment of non-differential observations
     'MLR_BEV': 'MLR (BEV legacy processing)',  # Least-squares adjustment of differential observations
+    'VG_LSM_nondiff': 'VG LSM (non-differential observations)',  # Vertical Gravity Gradient estimation based on Least-squares adjustment of non-differential observations
 }
+
+# List of LSM methods where export of nsb files is allowed:
+LSM_METHODS_NSD_FILE_EXPORT = [
+    'LSM_diff',
+    'LSM_non_diff',
+    'MLR_BEV',
+]
+
+# List of LSM methods where VG plots are created (and should be saved as PNG files):
+LSM_METHODS_VG_PLOT = [
+    'VG_LSM_nondiff',
+]
 
 # Available iteration approaches for scaling the SD of setup observations:
 ITERATION_APPROACHES = {
@@ -125,9 +138,26 @@ CORRELATION_COEF_COLORS = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b'
 # Background color for diagonal elements (=1):
 CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
 
-# --- Data export options: ---
+# --- VG plot in the results tab: ---
+# Min. and max. height for the horizontal plot axis [m]:
+# - "None" indicates that the min/max of the horizontal axis is adjusted to the actual setup height (dhf) of the
+# observations. In this case the plotted height range is widened by "VG_PLOT_HEIGHT_DELTA_M".
+VG_PLOT_MIN_HEIGHT_M = 0.0
+VG_PLOT_MAX_HEIGHT_M = 1.8
+VG_PLOT_HEIGHT_DELTA_M = 0.1
+# Number of datapoints plotted in the range betwen min. and max. height:
+VG_PLOT_NUM_ITEMS_VG_POLYNOMIAL = 100
+# Min. Y-range (default: [VG_PLOT_MIN_LOWER_L_RANGE, VG_PLOT_MIN_UPPER_Y_RANGE] = [-1, +1]):
+VG_PLOT_MIN_UPPER_Y_RANGE = 1.0
+VG_PLOT_MIN_LOWER_L_RANGE = -1.0
+# Define pen for scatter plot of residuals:
+VG_PLOT_SCATTER_PLOT_PEN_COLOR = 'k'
+VG_PLOT_SCATTER_PLOT_PEN_WIDTH = 1
+VG_PLOT_SCATTER_PLOT_SYMBOL_SIZE = 10
+
+# ----- Data export options: -----
 # List of columns in the `obs_df` dataframe that are written to the exported observation list CSV file:
-EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'obs_epoch', 'station_name', 'keep_obs']
+EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'station_name', 'obs_epoch', 'keep_obs']
 # Maximum allowed SD of the estimated gravity at stations when exporting data to a nsb file!
 #  => This is important as only 3 characters are reserved in the nsb file for the SD!
 MAX_SD_FOR_EXPORT_TO_NSB_FILE = 999.0

@@ -23,7 +23,7 @@ import pytz
 # from matplotlib import pyplot as plt
 
 from gravtools import settings
-from gravtools.models.lsm import LSM, create_hist, goodness_of_fit_test, tau_test
+from gravtools.models.lsm import LSM, create_hist, global_model_test, tau_test
 from gravtools.models import misc
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
@@ -109,8 +109,8 @@ class LSMDiff(LSM):
 
         Notes
         -----
-        From all active surveys in the campaign the setup data (= observations) are loaded, additionally to the station
-        data (station dataframe).
+        Put checks that are dependent on the LSM method into here! All common checks and preparations are implemented
+        in the `from_campaign` method of the parent class `LSM`.
 
         Parameters
         ----------
@@ -126,53 +126,7 @@ class LSMDiff(LSM):
         :py:obj:`.LSMDiff`
             Contains all information required for adjusting the campaign.
         """
-        # Check if all required data is available in the campaign object:
-
-        # Comment:
-        if not isinstance(comment, str):
-            raise TypeError(f'"comment" needs to be a string!')
-
-        # Station data:
-        if campaign.stations is None:
-            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any station data!')
-        else:
-            if not hasattr(campaign.stations, 'stat_df'):
-                raise AssertionError(f'The campaign "{campaign.campaign_name}" has not station dataframe!')
-            else:
-                if len(campaign.stations.stat_df) == 0:
-                    raise AssertionError(f'The campaign "{campaign.campaign_name}" has an empty station dataframe!')
-
-        # Survey data:
-        if campaign.surveys is None:
-            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any survey data!')
-        else:
-            if len(campaign.surveys) == 0:
-                raise AssertionError(f'The campaign "{campaign.campaign_name}" contains no survey data!')
-
-        # Create setups dict:
-        # Loop over surveys in campaign:
-        setups = {}
-        for survey_name, survey in campaign.surveys.items():
-            if survey.keep_survey:
-                if survey.setup_df is None:
-                    raise AssertionError(f'Setup data is missing for survey "{survey_name}"')
-                else:
-                    if len(survey.setup_df) < 2:
-                        raise AssertionError(f'Survey "{survey_name}" has less than two setup observations! '
-                                             f'A minimum of two setups is required in order to define '
-                                             f'differential observations!')
-                    else:
-                        setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
-                                           'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
-                                           'setup_df': survey.setup_df}
-                        setups[survey_name] = setup_data_dict
-
-        # Check if setup data is available:
-        if len(setups) == 0:
-            raise AssertionError(f'Setup data of campaign "{campaign.campaign_name}" does not contain observations!')
-
-        # Initialize and return LSM object:
-        return cls(campaign.stations.stat_df, setups, comment=comment, write_log=write_log)
+        return super().from_campaign(campaign, comment=comment, write_log=write_log)
 
     def adjust(self, drift_pol_degree=1,
                sig0_mugal=1,
@@ -268,6 +222,7 @@ class LSMDiff(LSM):
             tmp_str += f'Processed with GravTools {GRAVTOOLS_VERSION} ({time_now_str})\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
+            tmp_str += f'Method: {settings.ADJUSTMENT_METHODS[self.lsm_method]}\n'
             tmp_str += f'Number of surveys: {number_of_surveys}\n'
             tmp_str += f'Number of stations: {number_of_stations}\n'
             tmp_str += f'Number of differential observations: {number_of_diff_obs}\n'
@@ -495,8 +450,8 @@ class LSMDiff(LSM):
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
 
         # goodness-of-fit test
-        chi_crit, chi_val, chi_test = goodness_of_fit_test(confidence_level_chi_test, dof,
-                                                           s02_a_posteriori_mugal2, sig0_mugal ** 2)
+        chi_crit, chi_val, chi_test = global_model_test(confidence_level_chi_test, dof,
+                                                        s02_a_posteriori_mugal2, sig0_mugal ** 2)
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'# Goodness-of-fit test results:\n'
@@ -659,26 +614,6 @@ class LSMDiff(LSM):
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
         self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
-        self.goodness_of_fit_test_status = chi_test
+        self.global_model_test_status = chi_test
         self.number_of_outliers = number_of_outliers
         self.drift_ref_epoch_type = drift_ref_epoch_type
-
-    @property
-    def get_results_obs_df(self):
-        """Getter for the observation-related results."""
-        return self.setup_obs_df
-
-    @property
-    def get_results_drift_df(self):
-        """Getter for the drift-related results."""
-        return self.drift_pol_df
-
-    @property
-    def get_results_stat_df(self):
-        """Getter for the station-related results."""
-        return self.stat_obs_df
-
-
-if __name__ == '__main__':
-    test2 = LSMDiff('a', 'b')  # This test will cause an error due to invalid data types!
-    pass

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>513</width>
+    <width>589</width>
     <height>599</height>
    </rect>
   </property>
@@ -16,6 +16,9 @@
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
     <widget class="QTabWidget" name="tabWidget_estimation_settings">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
      <property name="currentIndex">
       <number>0</number>
      </property>
@@ -84,7 +87,7 @@
        <item>
         <widget class="QGroupBox" name="groupBox_parameters">
          <property name="title">
-          <string>Estimated parameters</string>
+          <string>Estimated general parameters</string>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_2">
           <item>
@@ -681,6 +684,94 @@
           <size>
            <width>20</width>
            <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_vg_estimation">
+      <attribute name="title">
+       <string>VG estimation</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_16">
+       <item>
+        <widget class="QGroupBox" name="groupBox_vg_polynomial">
+         <property name="toolTip">
+          <string>Settings for the parameterization of the estimated vertical gravity gradient.</string>
+         </property>
+         <property name="title">
+          <string>Vertical Gradient Polynomial </string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_15">
+          <item>
+           <layout class="QFormLayout" name="formLayout_10">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_vg_polynomial_degree">
+              <property name="toolTip">
+               <string>Degree of the estimated vertical gravity gradient polynomial</string>
+              </property>
+              <property name="text">
+               <string>Degree of the VG polynomial</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QSpinBox" name="spinBox_vg_polynomial_degree">
+              <property name="toolTip">
+               <string>Degree of the estimated vertical gravity gradient polynomial</string>
+              </property>
+              <property name="minimum">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <number>3</number>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_vg_polynomial_ref_height_offset_m">
+              <property name="toolTip">
+               <string>The reference height for the vertical gravity gradient polynomial ist the height of the control point. With this option it is possible to introduce an offset to the reference height.</string>
+              </property>
+              <property name="text">
+               <string>Reference height offset [m]</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_vg_polynomial_ref_height_offset_m">
+              <property name="toolTip">
+               <string>The reference height for the vertical gravity gradient polynomial ist the height of the control point. With this option it is possible to introduce an offset to the reference height.</string>
+              </property>
+              <property name="decimals">
+               <number>3</number>
+              </property>
+              <property name="maximum">
+               <double>99.998999999999995</double>
+              </property>
+              <property name="singleStep">
+               <double>0.001000000000000</double>
+              </property>
+              <property name="stepType">
+               <enum>QAbstractSpinBox::DefaultStepType</enum>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>419</height>
           </size>
          </property>
         </spacer>

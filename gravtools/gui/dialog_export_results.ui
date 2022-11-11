@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>433</width>
-    <height>577</height>
+    <height>606</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,6 +16,9 @@
   <layout class="QVBoxLayout" name="verticalLayout_4">
    <item>
     <widget class="QGroupBox" name="groupBox_general_settings">
+     <property name="toolTip">
+      <string>General export settings.</string>
+     </property>
      <property name="title">
       <string>General settings</string>
      </property>
@@ -32,12 +35,15 @@
         <item row="0" column="1">
          <widget class="QComboBox" name="comboBox_select_lsm_run">
           <property name="toolTip">
-           <string>Select one LSM run for data export.</string>
+           <string>Select one LSM run for data export. If no LSM run is selected, just the observation list csv file can be exported, containing the current observation selection drom the observations tab.</string>
           </property>
          </widget>
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="label_export_path">
+          <property name="toolTip">
+           <string>Export path for all files. The path is defined when creating a new campaign and can be changed via the menu &quot;File/Change output directory&quot;.</string>
+          </property>
           <property name="text">
            <string>Export_path:</string>
           </property>
@@ -45,6 +51,9 @@
         </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label_export_comment">
+          <property name="toolTip">
+           <string>Comment of the selected LSM run.</string>
+          </property>
           <property name="text">
            <string>Comment:</string>
           </property>
@@ -104,12 +113,18 @@
    </item>
    <item>
     <widget class="QGroupBox" name="groupBox_nsb_file">
+     <property name="toolTip">
+      <string>Export options for nsb files that contain the estimation results (gravity at stations) of a network adjustment. This option is only available if station gravity was estimated (e.g. not for estimation of gravity gradients)</string>
+     </property>
      <property name="title">
       <string>nsb file</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
        <widget class="QCheckBox" name="checkBox_write_nsb_file">
+        <property name="toolTip">
+         <string>Write a nsb file.</string>
+        </property>
         <property name="text">
          <string>Write nsb file</string>
         </property>
@@ -195,6 +210,9 @@
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
        <widget class="QCheckBox" name="checkBox_write_log_file">
+        <property name="toolTip">
+         <string/>
+        </property>
         <property name="text">
          <string>Write log file (text file)</string>
         </property>
@@ -208,8 +226,24 @@
         <property name="enabled">
          <bool>true</bool>
         </property>
+        <property name="toolTip">
+         <string>Save the current drift plot to a PNG file.</string>
+        </property>
         <property name="text">
          <string>Save current drift plot view (PNG file)</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="checkBox_save_vg_plot_png">
+        <property name="toolTip">
+         <string>Save the current VG plot to a PNG file (only available if the VG was estimated).</string>
+        </property>
+        <property name="text">
+         <string>Save the current VG plot view (PNG file)</string>
         </property>
         <property name="checked">
          <bool>true</bool>
@@ -222,7 +256,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox_observation_list">
      <property name="toolTip">
-      <string>The observation list file contains either a list of all observations, or of all active or inactive observations. These files are required to save the actual selection of observations (gravitimeter reading) and can be loaded to restore this setup later.</string>
+      <string>The observation list file contains either a list of all observations, or of all active or inactive observations. If a LSM run is selected, the observation list that was used to calculate the setup observations for this particular run will be exported. If no LSM run is selected, the current observation list that is visualized in the observations tab (obs. plot and obs. table) will be exported. Observation list files (csv) can be loaded by GravTools at any time to restore a particular selection of observations. </string>
      </property>
      <property name="title">
       <string>Observation list (CSV file)</string>
