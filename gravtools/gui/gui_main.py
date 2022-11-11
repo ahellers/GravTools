@@ -1656,6 +1656,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                            gui_simple_mode=self.dlg_options.gui_simple_mode)
         self.setup_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_observations_setups.resizeColumnsToContents()
+        # Show additional infos on the currently visualized setup data in the GUI:
+        self.label_obs_setups_ref_height.setText(f'{self.setup_model.get_ref_heigth_type} ({settings.REFERENCE_HEIGHT_TYPE[self.setup_model.get_ref_heigth_type]})')
+        self.label_obs_setups_tidal_corr.setText(f'{self.setup_model.get_tidal_corr_type} ({settings.TIDE_CORRECTION_TYPES[self.setup_model.get_tidal_corr_type]})')
+
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""

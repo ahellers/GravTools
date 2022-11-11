@@ -325,7 +325,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>2</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
@@ -344,6 +344,58 @@
             <layout class="QVBoxLayout" name="verticalLayout_11">
              <item>
               <widget class="QTableView" name="tableView_observations_setups"/>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox_obs_setups_applied_corrections">
+               <property name="toolTip">
+                <string>Information on the corrections that have been applied on the observations on which the setup data is based on.</string>
+               </property>
+               <property name="title">
+                <string>Applied corrections:</string>
+               </property>
+               <layout class="QFormLayout" name="formLayout_6">
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_obs_setups_1">
+                  <property name="toolTip">
+                   <string>Type of applied tidal corrections.</string>
+                  </property>
+                  <property name="text">
+                   <string>Tidal correction:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="label_obs_setups_tidal_corr">
+                  <property name="toolTip">
+                   <string>Type of applied tidal corrections.</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_obs_setups_2">
+                  <property name="toolTip">
+                   <string>Type of the applied reference height reduction.</string>
+                  </property>
+                  <property name="text">
+                   <string>Obs. reference height:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="label_obs_setups_ref_height">
+                  <property name="toolTip">
+                   <string>Type of the applied reference height reduction.</string>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
              </item>
             </layout>
            </widget>

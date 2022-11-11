@@ -37,10 +37,10 @@ TIDE_CORRECTION_TYPES = {
 }
 
 REFERENCE_HEIGHT_TYPE = {
-    'sensor_height': 'The gravity reverence point at the station is at the sensor height',
-    'instrument_top': 'The gravity value refers to the height og the instrument top',
-    'ground': 'The gravity value refers to the ground point at the station',
-    'control_point': 'The gravity value refers to the control point at the station',
+    'sensor_height': 'The gravity values refer to the sensor height',
+    'instrument_top': 'The gravity values refers to the instrument top',
+    'ground': 'The gravity values refers to the ground point of the station',
+    'control_point': 'The gravity values refers to the control point of the station',
 }
 
 # Reference heights (sensor heights) of different gravimeter types:

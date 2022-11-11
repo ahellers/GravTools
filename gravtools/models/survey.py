@@ -1575,7 +1575,7 @@ class Survey:
                 self.setup_reference_height_type = self.obs_reference_height_type
             elif obs_type == 'reduced':
                 self.setup_tide_correction_type = self.red_tide_correction_type
-                self.setup_reference_height_type = self.obs_reference_height_type
+                self.setup_reference_height_type = self.red_reference_height_type
             self.create_setup_obs_list()
 
             # convert to pd dataframe:
