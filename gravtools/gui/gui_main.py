@@ -748,15 +748,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # Add residuals to legend:
                 # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
                 for station, color in self.station_colors_dict_results.items():
-                    flag_add_to_legend = False
-                    if stations is None:
-                        flag_add_to_legend = True
-                    elif station in stations:
-                        flag_add_to_legend = True
-                    else:
-                        flag_add_to_legend = False
-
-                    if flag_add_to_legend:
+                    if (stations is None) or (station in stations):
                         s_item_tmp = pg.ScatterPlotItem()
                         s_item_tmp.setBrush(color)
                         s_item_tmp.setPen({'color': settings.VG_PLOT_SCATTER_PLOT_PEN_COLOR,
@@ -828,7 +820,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 brush_color = self.station_colors_dict_results[row['station_name']]
             else:
                 if row['station_name'] not in stations:
-                    brush_color = 'w'
+                    brush_color = '#bebebe'  # Grey, HEX-codd
                 else:
                     brush_color = self.station_colors_dict_results[row['station_name']]
             pen = pg.mkPen(color=brush_color, width=1, style=Qt.DashLine)

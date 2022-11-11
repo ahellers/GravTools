@@ -1490,6 +1490,14 @@ class Survey:
                 flag_calculate_delta_t_campaign_h = True
             else:
                 raise TypeError('`ref_delta_t_campaign_dt` needs to be a datetime object!')
+            # - SD == 0? => This would create a divided by zero error!
+            if obs_type == 'reduced':
+                tmp_filter = active_obs_df['sd_g_red_mugal'] <= 0.0
+            elif obs_type == 'observed':
+                tmp_filter = active_obs_df['sd_g_red_mugal'] <= 0.0
+            if tmp_filter.any():
+                error_str = active_obs_df.loc[tmp_filter, ['station_name', 'obs_epoch']].to_string()
+                raise AssertionError(f'The SD of the following observations ({obs_type}) is <= 0.0 µGal (invalid!):\n{error_str}')
 
             # Determine reference time for the survey:
             if active_obs_only_for_ref_epoch:

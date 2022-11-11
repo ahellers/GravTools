@@ -317,36 +317,37 @@ class SetupTableModel(QAbstractTableModel):
 
     def update_view_model(self, survey_name, setup_id, gui_simple_mode=False):
         """Update the `_data` DataFrame that hold the actual data that is displayed."""
-        try:
-            setup_df = self._surveys[survey_name].setup_df
-        except KeyError:
-            QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
-        else:
-            self._data_survey_name = survey_name
-            self.flag_gui_simple_mode = gui_simple_mode
+        if survey_name is not None:
+            try:
+                setup_df = self._surveys[survey_name].setup_df
+            except KeyError:
+                QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
+            else:
+                self._data_survey_name = survey_name
+                self.flag_gui_simple_mode = gui_simple_mode
 
-            # Get list of columns to be depicted via the table model:
-            # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
-            if setup_df is not None:
-                setup_df_columns_set = frozenset(setup_df.columns)
-                table_model_columns = [x for x in self.get_table_columns if x in setup_df_columns_set]
+                # Get list of columns to be depicted via the table model:
+                # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
+                if setup_df is not None:
+                    setup_df_columns_set = frozenset(setup_df.columns)
+                    table_model_columns = [x for x in self.get_table_columns if x in setup_df_columns_set]
 
-            if setup_id is None:  # No setup ID provided => Take all observations in survey
-                if setup_df is None:
-                    self._data = None
-                    self._data_column_names = None
-                else:
-                    # self._data = setup_df.copy(deep=True)
-                    self._data = setup_df.loc[:, table_model_columns].copy(deep=True)
-                    self._data_column_names = self._data.columns.to_list()
-            else:  # Only take observations of the specified setup
-                if setup_df is None:
-                    self._data = None
-                    self._data_column_names = None
-                else:
-                    # self._data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
-                    self._data = setup_df.loc[setup_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
-                    self._data_column_names = self._data.columns.to_list()
+                if setup_id is None:  # No setup ID provided => Take all observations in survey
+                    if setup_df is None:
+                        self._data = None
+                        self._data_column_names = None
+                    else:
+                        # self._data = setup_df.copy(deep=True)
+                        self._data = setup_df.loc[:, table_model_columns].copy(deep=True)
+                        self._data_column_names = self._data.columns.to_list()
+                else:  # Only take observations of the specified setup
+                    if setup_df is None:
+                        self._data = None
+                        self._data_column_names = None
+                    else:
+                        # self._data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
+                        self._data = setup_df.loc[setup_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
+                        self._data_column_names = self._data.columns.to_list()
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
@@ -520,35 +521,36 @@ class ObservationTableModel(QAbstractTableModel):
     def update_view_model(self, survey_name, setup_id, gui_simple_mode=False):
         """Update the `_data` data frame that hold the actual data that is viewed."""
         self.flag_gui_simple_mode = gui_simple_mode
-        try:
-            obs_df = self._surveys[survey_name].obs_df  # Select the survey
-            setup_df = self._surveys[survey_name].setup_df
-        except KeyError:
-            QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
-        else:
-            self._data_survey_name = survey_name
+        if survey_name is not None:
+            try:
+                obs_df = self._surveys[survey_name].obs_df  # Select the survey
+                setup_df = self._surveys[survey_name].setup_df
+            except KeyError:
+                QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
+            else:
+                self._data_survey_name = survey_name
 
-            # Get list of columns to be depicted via the table model:
-            # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
-            obs_df_columns_set = frozenset(obs_df.columns)
-            table_model_columns = [x for x in self.get_table_columns if x in obs_df_columns_set]
+                # Get list of columns to be depicted via the table model:
+                # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
+                obs_df_columns_set = frozenset(obs_df.columns)
+                table_model_columns = [x for x in self.get_table_columns if x in obs_df_columns_set]
 
-            if setup_id is None:  # No setup ID provided => Take all observations in survey
-                # self._data = obs_df.copy(deep=True)
-                self._data = obs_df.loc[:, table_model_columns].copy(deep=True)
-                if setup_df is None:
-                    self._setup_data = None
-                else:
-                    self._setup_data = setup_df.copy(deep=True)
-            else:  # Only take observations of the specified setup
-                # self._data = obs_df[obs_df['setup_id'] == setup_id].copy(deep=True)
-                self._data = obs_df.loc[obs_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
-                if setup_df is None:
-                    self._setup_data = None
-                else:
-                    self._setup_data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
-            # Column names of the actual table model:
-            self._data_column_names = self._data.columns.to_list()
+                if setup_id is None:  # No setup ID provided => Take all observations in survey
+                    # self._data = obs_df.copy(deep=True)
+                    self._data = obs_df.loc[:, table_model_columns].copy(deep=True)
+                    if setup_df is None:
+                        self._setup_data = None
+                    else:
+                        self._setup_data = setup_df.copy(deep=True)
+                else:  # Only take observations of the specified setup
+                    # self._data = obs_df[obs_df['setup_id'] == setup_id].copy(deep=True)
+                    self._data = obs_df.loc[obs_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
+                    if setup_df is None:
+                        self._setup_data = None
+                    else:
+                        self._setup_data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
+                # Column names of the actual table model:
+                self._data_column_names = self._data.columns.to_list()
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
