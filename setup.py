@@ -15,8 +15,7 @@ setuptools.setup(
     version=gravtools.__version__,
     author="Andreas Hellerschmied",
     author_email="andreas.hellerschmied@bev.gv.at",
-    description="Gravgui"
-                "ity surveys utilities.",
+    description="Gravity survey utility tools.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     # url="https://gitlab.com/pypa/sampleproject",
