@@ -123,7 +123,7 @@ class LSMNonDiff(LSM):
         :py:obj:`.LSMNonDiff`
             Contains all information required for adjusting the campaign.
         """
-        return super().from_campaign(campaign, comment='', write_log=True)
+        return super().from_campaign(campaign, comment=comment, write_log=True)
 
     def adjust(self, drift_pol_degree=1,
                sig0_mugal=1,
@@ -437,7 +437,7 @@ class LSMNonDiff(LSM):
                 self.log_str += tmp_str
 
         # outlier detection effectiveness (redundancy components)
-        diag_Qvv = np.diag(mat_Qvv)  # TODO: Still needed?
+        # diag_Qvv = np.diag(mat_Qvv)
         # mat_R = np.diag(mat_P) * diag_Qvv
         # mat_R is exactly the same as "mat_r"
 
@@ -455,11 +455,16 @@ class LSMNonDiff(LSM):
         tau_test_result, tau_critical_value = tau_test(mat_w=mat_w, dof=dof, alpha=alpha_tau, mat_r=mat_r)
         number_of_outliers = tau_test_result.count("failed")
 
+        tau_test_result_obs = tau_test_result[:number_of_observations]
+        tau_test_result_pseudo_obs = tau_test_result[number_of_observations:]
+
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'# Tau-test results:\n'
             tmp_str += f'Critical value: {tau_critical_value:1.3f}\n'
             tmp_str += f' - Number of detected outliers: {number_of_outliers}\n'
+            tmp_str += f' - Number of detected outliers (observations): {tau_test_result_obs.count("failed")}\n'
+            tmp_str += f' - Number of detected outliers (datum constraints): {tau_test_result_pseudo_obs.count("failed")}\n'
             tmp_str += f' - Number low redundancy component: {tau_test_result.count("r too small")}\n'
             tmp_str += f'\n'
             if verbose:
@@ -484,9 +489,6 @@ class LSMNonDiff(LSM):
         w_pseudo_obs_mugal = mat_w[number_of_observations:]
         r_obs_est = mat_r[:number_of_observations]
         r_pseudo_obs = mat_r[number_of_observations:]
-        # TODO: Add Tau criterion data here
-        tau_test_result_obs = tau_test_result[:number_of_observations]
-        tau_test_result_pseudo_obs = tau_test_result[number_of_observations:]
 
         # Station related results:
         for idx, stat_name in enumerate(self.observed_stations):
