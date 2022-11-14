@@ -483,6 +483,8 @@ class Campaign:
                                             ref_delta_t_campaign_dt=self.ref_delta_t_dt,
                                             active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
                                             verbose=verbose)
+            else:
+                survey.reset_setup_data(verbose)  # Remove setup data from previous calculations
 
     def get_epoch_of_first_observation(self, active_obs_only_for_ref_epoch=True):
         """Returns the epoch of the first (active) observation in this campaign.
@@ -943,6 +945,7 @@ class Campaign:
                 if survey_name not in self.surveys:
                     flag_log_str += '  - Does not exist in this campaign.\n'
                 else:
+                    num_obs_in_survey = len(obs_list_df[obs_list_df['survey_name'] == survey_name])
                     for index, row in obs_list_df[obs_list_df['survey_name'] == survey_name].iterrows():
                         obs_epoch = row['obs_epoch']
                         if sys.version_info >= (3, 7):
@@ -963,8 +966,13 @@ class Campaign:
                             if self.surveys[survey_name].obs_df.loc[filter_tmp, 'keep_obs'].bool() != row['keep_obs']:
                                 self.surveys[survey_name].obs_df.loc[filter_tmp, 'keep_obs'] = row['keep_obs']
                                 count_changed += 1
-                    flag_log_str += f'  - Matched observations: {count_matched} of {len(obs_list_df)}\n'
+                    flag_log_str += f'  - Matched observations: {count_matched} of {num_obs_in_survey}\n'
                     flag_log_str += f'  - Changed "keep_obs" flags: {count_changed}\n'
+                    # Activate/deactivate survey according to the kepp_obs flag of their observations:
+                    if self.surveys[survey_name].obs_df['keep_obs'].any() and not self.surveys[survey_name].keep_survey:
+                        _ = self.activate_survey(survey_name=survey_name, verbose=verbose)
+                    elif not self.surveys[survey_name].obs_df['keep_obs'].any() and self.surveys[survey_name].keep_survey:
+                        _ = self.deactivate_survey(survey_name=survey_name, verbose=verbose)
         else:
             flag_log_str = 'Empty observation list file!'
         if verbose:

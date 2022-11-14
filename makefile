@@ -22,6 +22,7 @@ build:
 	python -m build
 
 # Upload package to pypi.org
+pypi_push:
 	twine upload --verbose dist/*
 
 # Convert *.ui files from Qt Designer to Python files:

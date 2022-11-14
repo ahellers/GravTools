@@ -1497,7 +1497,8 @@ class Survey:
                 tmp_filter = active_obs_df['sd_g_red_mugal'] <= 0.0
             if tmp_filter.any():
                 error_str = active_obs_df.loc[tmp_filter, ['station_name', 'obs_epoch']].to_string()
-                raise AssertionError(f'The SD of the following observations ({obs_type}) is <= 0.0 µGal (invalid!):\n{error_str}')
+                raise AssertionError(f'The SD of the following observations ({obs_type}) in the survey {self.name}'
+                                     f' is <= 0.0 µGal (invalid!):\n{error_str}')
 
             # Determine reference time for the survey:
             if active_obs_only_for_ref_epoch:
