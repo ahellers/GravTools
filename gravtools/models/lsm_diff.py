@@ -486,11 +486,16 @@ class LSMDiff(LSM):
         tau_test_result, tau_critical_value = tau_test(mat_w=mat_w, dof=dof, alpha=alpha_tau, mat_r=mat_r)
         number_of_outliers = tau_test_result.count("failed")
 
+        tau_test_result_diff_obs = tau_test_result[:number_of_diff_obs]
+        tau_test_result_pseudo_obs = tau_test_result[number_of_diff_obs:]
+
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'# Tau-test results:\n'
             tmp_str += f'Critical value: {tau_critical_value:1.3f}\n'
-            tmp_str += f' - Number of detected outliers: {number_of_outliers}\n'
+            tmp_str += f' - Number of detected outliers (total): {number_of_outliers}\n'
+            tmp_str += f' - Number of detected outliers (observations): {tau_test_result_diff_obs.count("failed")}\n'
+            tmp_str += f' - Number of detected outliers (datum constraints): {tau_test_result_pseudo_obs.count("failed")}\n'
             tmp_str += f' - Number low redundancy component: {tau_test_result.count("r too small")}\n'
             tmp_str += f'\n'
             if verbose:
@@ -515,9 +520,6 @@ class LSMDiff(LSM):
         w_pseudo_obs_mugal = mat_w[number_of_diff_obs:]
         r_diff_obs = mat_r[:number_of_diff_obs]
         r_pseudo_obs = mat_r[number_of_diff_obs:]
-        # TODO: Add Tau criterion data here
-        tau_test_result_diff_obs = tau_test_result[:number_of_diff_obs]
-        tau_test_result_pseudo_obs = tau_test_result[number_of_diff_obs:]
 
         # Station related results:
         for idx, stat_name in enumerate(self.observed_stations):

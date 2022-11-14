@@ -26,7 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     Andreas Hellerschmied (andreas.hellerschmied@bev.gv.at)
 """
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 __author__ = 'Andreas Hellerschmied'
 __git_repo__ = 'https://gitlab.com/Heller182/grav/'
 __email__ = 'andreas.hellerschmied@bev.gv.at'
