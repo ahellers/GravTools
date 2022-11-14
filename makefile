@@ -9,17 +9,20 @@ test:
 init:
 	pip install -r requirements.txt
 
-# Package test (install in current virtual environment)
+# Package test (install in current virtual environment, editable install with pip)
 test_pack:
-	python3 setup.py develop
+	pip install -e .
 
 # Uninstall test package
 test_pack_uninstall:
-	python3 setup.py develop --uninstall
+	pip uninstall gravtools
 
 # Build package with setuptools (new version):
 build:
-	python3 -m build
+	python -m build
+
+# Upload package to pypi.org
+	twine upload --verbose dist/*
 
 # Convert *.ui files from Qt Designer to Python files:
 py_gui:
