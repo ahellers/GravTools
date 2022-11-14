@@ -1,4 +1,5 @@
-"""Classes for least-squares adjustment of non-differential relative gravimeter observations.
+"""Classes for the estimation of vertical gravity gradient by least-squares adjustment of differential relative
+gravimeter observations.
 
 Copyright (C) 2021  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
@@ -20,6 +21,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import pytz
+# from matplotlib import pyplot as plt
 
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, global_model_test, tau_test
@@ -27,8 +29,13 @@ from gravtools.models import misc
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
 
-class LSMNonDiff(LSM):
-    """Least-squares adjustment of non-differential gravimeter observations with weighted constraints.
+class VGLSM(LSM):
+    """VG estimation by least-squares adjustment of non-differential gravimeter observations.
+
+    Notes
+    -----
+    The estimation of vertical gradients is restricted to th observations of a single survey and one station!
+
 
     Attributes
     ----------
@@ -51,10 +58,12 @@ class LSMNonDiff(LSM):
         'setup_id': 'Setup ID',
         'g_obs_mugal': 'g [µGal]',
         'sd_g_obs_mugal': 'SD [µGal]',
+        'dhf_sensor_m': 'Sensor height [m]',
         'sd_g_obs_est_mugal': 'SD_est [µGal]',
         'v_obs_est_mugal': 'Residuals [µGal]',  # Post fit residuals
         'w_obs_est_mugal': 'Std. Residual []',
         'r_obs_est': 'Redundancy []',
+        'tau_test_result': 'Outlier Test',
         'tau_test_result': 'Outlier Test',
     }
     _SETUP_OBS_COLUMNS = list(_SETUP_OBS_COLUMNS_DICT.keys())
@@ -71,6 +80,17 @@ class LSMNonDiff(LSM):
         'ref_epoch_t0_dt': 't0',
     }
     _DRIFT_POL_DF_COLUMNS = list(_DRIFT_POL_DF_COLUMNS_DICT.keys())
+
+    # Column names of self.vg_pol_df:
+    # - keys: Column names of the pandas dataframe
+    # - values: Short description for table headers, etc., in the GUI
+    _VG_POL_DF_COLUMNS_DICT = {
+        'degree': 'Degree',
+        'coefficient': 'Coefficient',
+        'sd_coeff': 'SD',
+        'coeff_unit': 'Unit',
+    }
+    _VG_POL_DF_COLUMNS = list(_VG_POL_DF_COLUMNS_DICT.keys())
 
     def __init__(self, stat_df, setups, comment='', write_log=True):
         """
@@ -97,7 +117,7 @@ class LSMNonDiff(LSM):
             Flag that indicates whether log string should be written or not.
         """
         # Call constructor from abstract base class:
-        lsm_method = 'LSM_non_diff'
+        lsm_method = 'VG_LSM_nondiff'
         super().__init__(lsm_method, stat_df=stat_df, setups=setups, comment=comment, write_log=write_log)
 
     @classmethod
@@ -120,52 +140,85 @@ class LSMNonDiff(LSM):
 
         Returns
         -------
-        :py:obj:`.LSMNonDiff`
+        :py:obj:`.VGLSM`
             Contains all information required for adjusting the campaign.
         """
+        # Station data:
+        # - Just one station (at different height levels) allowed => Check coordinates!
+        if campaign.stations is None:
+            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any station data!')
+        else:
+            if not hasattr(campaign.stations, 'stat_df'):
+                raise AssertionError(f'The campaign "{campaign.campaign_name}" has not station dataframe!')
+            else:
+                if len(campaign.stations.stat_df) == 0:
+                    raise AssertionError(f'The campaign "{campaign.campaign_name}" has an empty station dataframe!')
+                else:  # Just one station allowed => Check the coordinates (lon, lat)!
+                    stat_df_observed = campaign.stations.stat_df.loc[campaign.stations.stat_df.is_observed]
+                    if (len(stat_df_observed['lat_deg'].unique()) > 1) or (
+                            len(stat_df_observed['long_deg'].unique()) > 1):
+                        raise AssertionError(f'This campaign contains observed stations with differing latitudes and/or'
+                                             f' longitudes. This is an indicator for observations of more than one '
+                                             f'stations which is not allowed.')
+
+        # Survey data:
+        # - Just one survey allowed!
+        if campaign.surveys is None:
+            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any survey data!')
+        else:
+            if len(campaign.surveys) > 1:
+                raise AssertionError(
+                    f'The campaign "{campaign.campaign_name}" contains more than one survey! The VG estimation is '
+                    f'restricted to just one survey.')
+
+        # Check if the reduced setup observations refer to the sensor height of the instrument:
+        # Loop over surveys in campaign (just one...):
+        for survey_name, survey in campaign.surveys.items():
+            if survey.keep_survey:
+                if survey.red_reference_height_type != 'sensor_height':
+                    raise AssertionError(f'In survey {survey_name} the reduced gravity values do not refer to the '
+                                         f'sensor height! Change the reference height to "Sensor" and recalculate the '
+                                         f'setup observation data.')
+
         return super().from_campaign(campaign, comment='', write_log=True)
 
     def adjust(self, drift_pol_degree=1,
+               vg_polynomial_degree=1,
+               vg_polynomial_ref_height_offset_m=0.0,
                sig0_mugal=1,
-               scaling_factor_datum_observations=1.0,
-               add_const_to_sd_of_observations_mugal=0.0,
-               scaling_factor_for_sd_of_observations=1.0,
                confidence_level_chi_test=0.95,
                confidence_level_tau_test=0.95,
-               drift_ref_epoch_type='survey',
                verbose=False
-               ):  # Confidence level):
-        """Run the adjustment based on non-differential observations.
+               ):
+        """Run the VG adjustment based on non-differential observations.
 
         Parameters
         ----------
         drift_pol_degree : int, optional (default=1)
             Degree of estimated drift polynomial.
+        vg_polynomial_degree : int, optional (default=1)
+            Degree of the estimated polynomial of the vertical gravity gradient. Valid values are 1, 2 or 3.
+        vg_polynomial_ref_height_offset_m : float, optional (default=0.0)
+            Vertical offset [m] between the reference height of the control point and the zero-level of the estimated
+            VG polynomial. A positive offset describes an offset above the control point.
         sig0_mugal : int, optional (default=1)
             A priori standard deviation of unit weight of observations [µGal] for the stochastic model of the
             least-squares adjustment.
-        scaling_factor_datum_observations : float, optional (default=1.0)
-            Factor for scaling the standard deviation (SD) of g of datum stations. The scaled SD is used for
-            weighting the direct pseudo observations of g at the datum stations that are introduced as datum
-            constraints.
-        add_const_to_sd_of_observations_mugal : float, optional (default=0.0)
-            The defined additive constant is added to the standard deviation (SD) of setup
-            observations in order to scale the SD and the resulting weights to realistic values. In µGal. The scaling
-            factor `scaling_factor_for_sd_of_observations` is applied before adding this constant!
-        scaling_factor_for_sd_of_observations : float, optional (default=1.0)
-            Scaling factor for the standard deviation of the setup observations. `add_const_to_sd_of_observations_mugal`
-            is applied after applying the scaling factor!
         confidence_level_chi_test : float, optional (default=0.95)
             Confidence level for the goodness-of-fit test.
         confidence_level_tau_test : float, optional (default=0.95)
             Confidence level for the tau test.
-        drift_ref_epoch_type : string ('survey' or 'campaign'), optional (default='survey')
-            Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
-            campaign is the reference epoch of the first (active) observation in each survey (option: 'survey') or the
-            first (active) observation in the whole campaign (option: 'campaign').
         verbose : bool, optional (default=False)
-            If `True`, status messages are printed to the command line, e.g. for debugging and testing
+            If True, status messages are printed to the command line, e.g. for debugging and testing
+
+        Notes
+        -----
         """
+
+        # Initial checks:
+        if (vg_polynomial_degree < 1) or (vg_polynomial_degree > 3):
+            raise AssertionError(f'Invalid degree of the VG polynomial (degree = {vg_polynomial_degree})! Valid values '
+                                 f'are 1 to 3.')
 
         # Prepare lists and indices:
         # - Observations and parameters:
@@ -173,6 +226,7 @@ class LSMNonDiff(LSM):
         survey_names = []
         number_of_observations = 0
         setup_ids = []
+
         for survey_name, setup_data in self.setups.items():
             setup_df = setup_data['setup_df']
             self.observed_stations = self.observed_stations + setup_df['station_name'].to_list()
@@ -182,53 +236,57 @@ class LSMNonDiff(LSM):
         self.observed_stations = misc.unique_ordered_list(
             self.observed_stations)  # Unique list of stations => order of stations in matrices!
         number_of_stations = len(self.observed_stations)
-        number_of_surveys = len(self.setups)
+        number_of_surveys = len(self.setups)  # Has to be 1 anyway
+
+        # ### Station data ###
+        # Get dataframe with subset of observed stations only:
+        filter_tmp = self.stat_df['station_name'].isin(self.observed_stations)
+        self.stat_obs_df = self.stat_df.loc[filter_tmp].copy(deep=True)  # All observed stations
+        # Drop columns that are not required at VG estimation:
+        self.stat_obs_df.drop(columns=['g_mugal', 'sd_g_mugal', 'is_datum'], inplace=True)
+        # Calculate statistical data for the sensor height (relevant information for VG estimation):
+        tmp_df = setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').mean().rename(
+            columns={"dhf_sensor_m": "dhf_sensor_mean_m"})
+        self.stat_obs_df = self.stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+        tmp_df = setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').std().rename(
+            columns={"dhf_sensor_m": "dhf_sensor_std_m"})
+        self.stat_obs_df = self.stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+        tmp_df = setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').min().rename(
+            columns={"dhf_sensor_m": "dhf_sensor_min_m"})
+        self.stat_obs_df = self.stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+        tmp_df = setup_df.loc[:, ['station_name', 'dhf_sensor_m']].groupby('station_name').max().rename(
+            columns={"dhf_sensor_m": "dhf_sensor_max_m"})
+        self.stat_obs_df = self.stat_obs_df.merge(tmp_df, left_on='station_name', right_on='station_name', how='left')
+
+        if number_of_surveys > 1:
+            raise AssertionError(
+                f'Invalid number of surveys ({number_of_surveys})! Only one survey allowed for VG estimation.')
         # Total number of parameters to be estimated:
-        # - 1 g value per station
-        # - Drift polynomial coeff. per survey: Polynomial degree * number of surveys
+        # - Drift polynomial coeff.: Polynomial degree * number of surveys
         # - 1 constant instrumental bias per survey
-        number_of_parameters = number_of_stations + drift_pol_degree * number_of_surveys + number_of_surveys
-        # number_of_diff_obs = number_of_observations - number_of_surveys
+        # - VG polynomial coeff.: Polynomial degree * number of surveys
+        number_of_parameters = drift_pol_degree + vg_polynomial_degree + 1
 
         # Check, if setup IDs are unique:
         if len(set(setup_ids)) != len(setup_ids):
             raise AssertionError('Setup IDs are not unique within the campaign!')
 
-        # - Datum points for weighted constraints:
-        # Get dataframe with subset of observed stations only:
-        filter_tmp = self.stat_df['station_name'].isin(self.observed_stations)
-        self.stat_obs_df = self.stat_df.loc[filter_tmp].copy(deep=True)  # All observed stations
-        stat_df_obs_datum = self.stat_obs_df.loc[self.stat_obs_df['is_datum']]
-        datum_stations = stat_df_obs_datum['station_name'].to_list()
-        number_of_datum_stations = len(datum_stations)
-        if number_of_datum_stations < 1:
-            raise AssertionError('None of the observed (and active) stations is a datum station '
-                                 '(minimum one is required)!')
-        if stat_df_obs_datum.loc[:, 'g_mugal'].isnull().any() or stat_df_obs_datum.loc[:, 'sd_g_mugal'].isnull().any():
-            raise AssertionError('g and/or sd(g) is missing for at least one datum station! Both values are required'
-                                 'for ALL datum stations.')
-
         if verbose or self.write_log:
             time_now_str = dt.datetime.now(tz=pytz.UTC).strftime('%Y-%m-%d, %H:%M:%S %Z')
-            tmp_str = f'#### Adjustment log (non-differential LSM) ####\n'
+            tmp_str = f'#### Adjustment log (VG LGM estimation based on non-differential observations) ####\n'
             tmp_str += f'Processed with GravTools {GRAVTOOLS_VERSION} ({time_now_str})\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
             tmp_str += f'Method: {settings.ADJUSTMENT_METHODS[self.lsm_method]}\n'
-            tmp_str += f'Number of surveys: {number_of_surveys}\n'
-            tmp_str += f'Number of stations: {number_of_stations}\n'
+            tmp_str += f'Number of stations (i.e. height levels): {number_of_stations}\n'
             tmp_str += f'Number of observations: {number_of_observations}\n'
             tmp_str += f'Number of estimated parameters: {number_of_parameters}\n'
-            tmp_str += f'Number of datum stations: {number_of_datum_stations}\n'
-            tmp_str += f'Degree of freedom (w/o datum constraints): {number_of_observations - number_of_parameters}\n'
-            tmp_str += f'Degree of freedom (with datum constraints): {number_of_observations - number_of_parameters + number_of_datum_stations}\n'
+            tmp_str += f'Degree of freedom: {number_of_observations - number_of_parameters}\n'
             tmp_str += f'\n'
             tmp_str += f'Degree of drift polynomial: {drift_pol_degree}\n'
-            tmp_str += f'One reference epoch for each: {drift_ref_epoch_type}\n'
+            tmp_str += f'Degree of VG polynomial: {vg_polynomial_degree}\n'
+            tmp_str += f'VG polynomial height offset [m]: {vg_polynomial_ref_height_offset_m:4.3f}\n'
             tmp_str += f'A priori std. deviation of unit weight [µGal]: {sig0_mugal}\n'
-            tmp_str += f'Scaling factor for datum constraints: {scaling_factor_datum_observations}\n'
-            tmp_str += f'Scaling factor for SD of setup observations: {scaling_factor_for_sd_of_observations}\n'
-            tmp_str += f'Additive const. to SD of setup obs. [µGal]: {add_const_to_sd_of_observations_mugal}\n'
             tmp_str += f'Confidence level Chi-test: {confidence_level_chi_test:4.2f}\n'
             tmp_str += f'Confidence level Tau-test: {confidence_level_tau_test:4.2f}\n'
             tmp_str += f'\n'
@@ -241,18 +299,12 @@ class LSMNonDiff(LSM):
         # Initialize matrices:
         # => Initialize complete matrices first and then populate them. This is most efficient!
         # - Observation model:
-        mat_A0 = np.zeros([number_of_observations, number_of_parameters])  # Model-matrix
-        mat_L0 = np.zeros((number_of_observations, 1))
-        mat_sig_ll0 = np.zeros(number_of_observations)
-        # - Constraints:
-        mat_Ac = np.zeros([number_of_datum_stations, number_of_parameters])  # Model-matrix for constraints
-        mat_Lc = np.zeros((number_of_datum_stations, 1))
-        #  => Convert to diagonal matrix: P0 = np.diag(np.array([1,2,3,4])) = np.diag(mat_p0)
-        mat_sig_llc = np.zeros(number_of_datum_stations)
+        mat_A = np.zeros([number_of_observations, number_of_parameters])  # Design matrix
+        mat_L = np.zeros((number_of_observations, 1))  # Observations
+        mat_sig_ll = np.zeros(number_of_observations)  # Variances of obs.
 
         # Populate matrices:
-        obs_id = -1  # Index of differential observations in vectors mat_L0, rows of mat_A0 and mat_p0
-        pd_drift_col_offset = number_of_stations - 1  # Column offset for drift parameters in A-matrix
+        obs_id = -1  # Index of differential observations in vectors mat_L, rows of mat_A and mat_p0
         survey_count = -1  # Survey counter for indexing the drift parameters in the A-matrix
         g_obs_mugal_list = []
         station_name_list = []
@@ -261,44 +313,39 @@ class LSMNonDiff(LSM):
         obs_id_list = []
         survey_names_list = []
         ref_epoch_dt_list = []  # Reference epochs (datetime objects) of observations
+        dhf_sensor_m_list = []  # Height above the control point for VG estimation
 
         for survey_name, setup_data in self.setups.items():
             setup_df = setup_data['setup_df']
             survey_count += 1
 
-            # Scale and manipulate the SD of setup observations in order to adjust their weights in the adjustment:
-            # - Apply scaling factor to SD of setup observations:
-            setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] * scaling_factor_for_sd_of_observations
-            # - Add additive constant to SD of setup observations in order to scale them to realistic values:
-            setup_df['sd_g_mugal'] = setup_df['sd_g_mugal'] + add_const_to_sd_of_observations_mugal
+            # Add offset to the height of the sensor above the control point:
+            # setup_df['dhf_sensor_m'] = setup_df['dhf_sensor_m'] + vg_polynomial_ref_height_offset_m
             if (setup_df['sd_g_mugal'] < 0).any():
                 raise AssertionError(
-                    f'ERROR: SD of observations ("sd_g_mugal") in survey {survey_name} <= 0 are not allowed! This '
-                    f'may be due to the scaling of the SD of observations with additive factors.')
+                    f'ERROR: SD of observations ("sd_g_mugal") in survey {survey_name} <= 0 are not allowed!')
 
             for index, row in setup_df.iterrows():
-
                 obs_id += 1  # Increment diff. observation ID
                 g_obs_mugal = row['g_mugal']
                 sd_g_obs_mugal = row['sd_g_mugal']
                 station_name = row['station_name']
                 setup_id = row['setup_id']
-                if drift_ref_epoch_type == 'survey':
-                    delta_t_h = row['delta_t_h']  # [hours]
-                elif drift_ref_epoch_type == 'campaign':
-                    delta_t_h = row['delta_t_campaign_h']  # [hours]
-
+                delta_t_h = row['delta_t_h']  # [hours]
                 ref_epoch_dt = row['epoch_dt']
+                dhf_sensor_m = row['dhf_sensor_m'] + vg_polynomial_ref_height_offset_m
 
                 # Populate matrices and vectors:
-                mat_L0[(obs_id, 0)] = g_obs_mugal
-                mat_sig_ll0[obs_id] = sd_g_obs_mugal ** 2
-                # Partial derivative for g at stations:
-                mat_A0[obs_id, self.observed_stations.index(station_name)] = 1
+                mat_L[(obs_id, 0)] = g_obs_mugal
+                mat_sig_ll[obs_id] = sd_g_obs_mugal ** 2
                 # Partial derivative for drift polynomial including constant instrumental bias (pol. degree = 0):
                 for pd_drift_id in range(drift_pol_degree + 1):
-                    mat_A0[obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count*(drift_pol_degree + 1)] = \
+                    mat_A[obs_id, pd_drift_id] = \
                         delta_t_h ** pd_drift_id
+                # Partial derivative for VG polynomial:
+                for pd_vg_id in range(vg_polynomial_degree):
+                    mat_A[obs_id, drift_pol_degree + 1 + pd_vg_id] = \
+                        dhf_sensor_m ** (pd_vg_id + 1)
 
                 # Log data in DataFrame:
                 g_obs_mugal_list.append(g_obs_mugal)
@@ -308,6 +355,7 @@ class LSMNonDiff(LSM):
                 survey_names_list.append(survey_name)
                 setup_id_list.append(setup_id)
                 ref_epoch_dt_list.append(ref_epoch_dt)
+                dhf_sensor_m_list.append(dhf_sensor_m)
 
         None_list_placeholder = [None] * len(survey_names_list)
         self.setup_obs_df = pd.DataFrame(list(zip(survey_names_list,
@@ -317,6 +365,7 @@ class LSMNonDiff(LSM):
                                                   setup_id_list,
                                                   g_obs_mugal_list,
                                                   sd_g_obs_mugal_list,
+                                                  dhf_sensor_m_list,
                                                   None_list_placeholder,
                                                   None_list_placeholder,
                                                   None_list_placeholder,
@@ -325,22 +374,9 @@ class LSMNonDiff(LSM):
                                                   )),
                                          columns=self._SETUP_OBS_COLUMNS)
 
-        # - constraints:
-        datum_station_id = -1
-        for index, row in stat_df_obs_datum.iterrows():
-            datum_station_id += 1
-            station_name = row['station_name']
-            station_id = self.observed_stations.index(station_name)
-            mat_Ac[datum_station_id, station_id] = 1  # Partial derivative
-            mat_Lc[(datum_station_id, 0)] = row['g_mugal']  # g for datum definition
-            sd_mugal_for_weighting = row['sd_g_mugal'] / scaling_factor_datum_observations
-            mat_sig_llc[datum_station_id] = sd_mugal_for_weighting ** 2
-
         # Set up all required matrices:
-        mat_A = np.vstack((mat_A0, mat_Ac))  # Eq. (16)
-        mat_L = np.vstack((mat_L0, mat_Lc))  # Eq. (16)
-        mat_sig_ll = np.diag(np.hstack((mat_sig_ll0, mat_sig_llc)))
-        mat_Qll = mat_sig_ll / (sig0_mugal**2)
+        mat_sig_ll = np.diag(mat_sig_ll)
+        mat_Qll = mat_sig_ll / (sig0_mugal ** 2)
         mat_P = np.linalg.inv(mat_Qll)
 
         if verbose or self.write_log:
@@ -413,7 +449,8 @@ class LSMNonDiff(LSM):
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
         # mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
-        mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
+        mat_sd_vv = np.sqrt(
+            np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
@@ -436,19 +473,15 @@ class LSMNonDiff(LSM):
             if self.write_log:
                 self.log_str += tmp_str
 
-        # outlier detection effectiveness (redundancy components)
-        diag_Qvv = np.diag(mat_Qvv)  # TODO: Still needed?
-        # mat_R = np.diag(mat_P) * diag_Qvv
-        # mat_R is exactly the same as "mat_r"
-
         # Redundanzanteile (redundancy components):
+        # - Measure for the outlier detection effectiveness
         # - AG II, pp. 66-71
         mat_r = np.diag(mat_Qvv @ mat_P)
 
         # Standardisierte Versesserungen (AG II, p. 66)
         # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
         # - Standardabweichung = 1 (standardisiert)
-        mat_w = mat_v[:,0] / mat_sd_vv
+        mat_w = mat_v[:, 0] / mat_sd_vv
 
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
@@ -458,7 +491,7 @@ class LSMNonDiff(LSM):
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f'# Tau-test results:\n'
-            tmp_str += f'Critical value: {tau_critical_value:1.3f}\n'
+            tmp_str += f'Critical value (for testing w): {tau_critical_value:1.3f}\n'
             tmp_str += f' - Number of detected outliers: {number_of_outliers}\n'
             tmp_str += f' - Number low redundancy component: {tau_test_result.count("r too small")}\n'
             tmp_str += f'\n'
@@ -467,35 +500,16 @@ class LSMNonDiff(LSM):
             if self.write_log:
                 self.log_str += tmp_str
 
-        # blunder detection parameters calculation
-        # sv_tau = 1 - confidence_level_tau_test
-        # std_res, tau_val, tau_crt = tau_criterion_test(diag_Qvv, mat_r, mat_v, s02_a_posteriori_mugal2, dof, sv_tau)
-
         # #### Store results ####
-        g_est_mugal = mat_x[0:number_of_stations, 0]
-        sd_g_est_mugal = mat_sd_xx[0:number_of_stations]
-        drift_pol_coeff = mat_x[number_of_stations:, 0]
-        drift_pol_coeff_sd = mat_sd_xx[number_of_stations:]
-        sd_g_obs_est_mugal = mat_sd_ldld[:number_of_observations]
-        sd_pseudo_obs_est_mugal = mat_sd_ldld[number_of_observations:]
-        v_obs_est_mugal = mat_v[:number_of_observations, 0]
-        v_pseudo_obs_mugal = mat_v[number_of_observations:, 0]
-        w_obs_est_mugal = mat_w[:number_of_observations]
-        w_pseudo_obs_mugal = mat_w[number_of_observations:]
-        r_obs_est = mat_r[:number_of_observations]
-        r_pseudo_obs = mat_r[number_of_observations:]
-        # TODO: Add Tau criterion data here
-        tau_test_result_obs = tau_test_result[:number_of_observations]
-        tau_test_result_pseudo_obs = tau_test_result[number_of_observations:]
-
-        # Station related results:
-        for idx, stat_name in enumerate(self.observed_stations):
-            filter_tmp = self.stat_obs_df['station_name'] == stat_name
-            self.stat_obs_df.loc[filter_tmp, 'g_est_mugal'] = g_est_mugal[idx]
-            self.stat_obs_df.loc[filter_tmp, 'sd_g_est_mugal'] = sd_g_est_mugal[idx]
-        # Calculate differences to estimates:
-        self.stat_obs_df['diff_g_est_mugal'] = self.stat_obs_df['g_est_mugal'] - self.stat_obs_df['g_mugal']
-        self.stat_obs_df['diff_sd_g_est_mugal'] = self.stat_obs_df['sd_g_est_mugal'] - self.stat_obs_df['sd_g_mugal']
+        drift_pol_coeff = mat_x[:drift_pol_degree + 1, 0]
+        drift_pol_coeff_sd = mat_sd_xx[:drift_pol_degree + 1]
+        vg_pol_coeff = mat_x[drift_pol_degree + 1:, 0]
+        vg_pol_coeff_sd = mat_sd_xx[drift_pol_degree + 1:]
+        sd_g_obs_est_mugal = mat_sd_ldld
+        v_obs_est_mugal = mat_v
+        w_obs_est_mugal = mat_w
+        r_obs_est = mat_r
+        tau_test_result_obs = tau_test_result
 
         # Drift parameters:
         survey_name_list = []
@@ -512,18 +526,13 @@ class LSMNonDiff(LSM):
                 degree_list.append(degree)  # starts with 1
                 coefficient_list.append(drift_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
                 sd_coeff_list.append(drift_pol_coeff_sd[tmp_idx])
-                if drift_ref_epoch_type == 'survey':
-                    ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_h'])
-                elif drift_ref_epoch_type == 'campaign':
-                    ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_campaign_h'])
-                else:
-                    ref_epoch_t0_dt_list.append(None)  # Should not happen!
+                ref_epoch_t0_dt_list.append(setup_data['ref_epoch_delta_t_h'])
                 if degree == 0:
                     coeff_unit_list.append(f'µGal')
                 else:
                     coeff_unit_list.append(f'µGal/h^{degree}')
                 tmp_idx += 1
-                x_estimate_drift_coeff_names.append(f'{survey_name}-{degree}')
+                x_estimate_drift_coeff_names.append(f'drift-{degree}')
         self.drift_pol_df = pd.DataFrame(list(zip(survey_name_list,
                                                   degree_list,
                                                   coefficient_list,
@@ -532,6 +541,30 @@ class LSMNonDiff(LSM):
                                                   ref_epoch_t0_dt_list)),
                                          columns=self._DRIFT_POL_DF_COLUMNS)
 
+        # VG parameters:
+        degree_list = []
+        coefficient_list = []
+        sd_coeff_list = []
+        coeff_unit_list = []
+        tmp_idx = 0
+        x_estimate_vg_coeff_names = []
+        for degree in range(1, vg_polynomial_degree + 1):
+            degree_list.append(degree)  # starts with 1
+            coefficient_list.append(vg_pol_coeff[tmp_idx])  # * (3600**(degree + 1))  # [µGal/h]
+            sd_coeff_list.append(vg_pol_coeff_sd[tmp_idx])
+            if degree == 0:
+                coeff_unit_list.append(f'µGal')
+            else:
+                coeff_unit_list.append(f'µGal/m^{degree}')
+            tmp_idx += 1
+            x_estimate_vg_coeff_names.append(f'vg-{degree}')
+        self.vg_pol_df = pd.DataFrame(list(zip(degree_list,
+                                               coefficient_list,
+                                               sd_coeff_list,
+                                               coeff_unit_list)),
+                                      columns=self._VG_POL_DF_COLUMNS)
+
+        # Observation-related results:
         for idx, v_obs_mugal in enumerate(v_obs_est_mugal):
             filter_tmp = self.setup_obs_df['obs_id'] == idx
             self.setup_obs_df.loc[filter_tmp, 'v_obs_est_mugal'] = v_obs_mugal
@@ -540,31 +573,29 @@ class LSMNonDiff(LSM):
             self.setup_obs_df.loc[filter_tmp, 'r_obs_est'] = r_obs_est[idx]  # redundancy components
             self.setup_obs_df.loc[filter_tmp, 'tau_test_result'] = tau_test_result_obs[idx]  # str
 
-        # Print results to terminal:
+        # Print results to terminal and to log string:
         if verbose or self.write_log:
             tmp_str = f'\n'
             tmp_str += f' - Station data:\n'
-            tmp_str += self.stat_obs_df[['station_name', 'is_datum', 'g_mugal', 'g_est_mugal',
-                                                'diff_g_est_mugal', 'sd_g_mugal',
-                                                'sd_g_est_mugal']].to_string(index=False,
-                                                                             float_format=lambda x: '{:.1f}'.format(x))
+            tmp_str += self.stat_obs_df[['station_name', 'dhf_sensor_mean_m', 'dhf_sensor_std_m',
+                                         'dhf_sensor_min_m', 'dhf_sensor_max_m']].to_string(index=False,
+                                                                      float_format=lambda x: '{:.4f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Drift polynomial coefficients:\n'
             tmp_str += self.drift_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
+            tmp_str += f'\n\n'
+            tmp_str += f' - VG polynomial coefficients:\n'
+            tmp_str += self.vg_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Observations:\n'
             for survey_name in survey_names:
                 filter_tmp = self.setup_obs_df['survey_name'] == survey_name
                 tmp_str += f'   - Survey: {survey_name}\n'
             tmp_str += self.setup_obs_df.loc[filter_tmp, ['station_name', 'g_obs_mugal',
-                                                            'sd_g_obs_mugal', 'sd_g_obs_est_mugal',
-                                                            'v_obs_est_mugal']].to_string(index=False,
-                                                                                       float_format=lambda x: '{:.1f}'.format(x))
-            tmp_str += f'\n\n'
-            tmp_str += f' - Pseudo observations at datum stations (constraints):\n'
-            tmp_str += f'Station name  sd [µGal]   v [µGal]   w [µGal]   r [0-1]    Tau test result\n'
-            for idx, station_name in enumerate(datum_stations):
-                tmp_str += f'{station_name:10}   {sd_pseudo_obs_est_mugal[idx]:8.3}     {v_pseudo_obs_mugal[idx]:+8.3}     {w_pseudo_obs_mugal[idx]:+5.3}     {r_pseudo_obs[idx]:+5.3}  {tau_test_result_pseudo_obs[idx]}\n'
+                                                          'sd_g_obs_mugal', 'sd_g_obs_est_mugal',
+                                                          'v_obs_est_mugal']].to_string(index=False,
+                                                                                        float_format=lambda
+                                                                                            x: '{:.1f}'.format(x))
             if verbose:
                 print(tmp_str)
             if self.write_log:
@@ -573,16 +604,21 @@ class LSMNonDiff(LSM):
         # Save data/infos to object for later use:
         self.drift_polynomial_degree = drift_pol_degree
         self.sig0_a_priori = sig0_mugal
-        self.scaling_factor_datum_observations = scaling_factor_datum_observations
         self.confidence_level_chi_test = confidence_level_chi_test
         self.confidence_level_tau_test = confidence_level_chi_test
         self.number_of_stations = number_of_stations
-        self.number_of_datum_stations = number_of_datum_stations
         self.number_of_estimates = number_of_parameters
         self.degree_of_freedom = dof
         self.s02_a_posteriori = s02_a_posteriori_mugal2
         self.Cxx = mat_Cxx
-        self.x_estimate_names = self.observed_stations + x_estimate_drift_coeff_names
+        self.x_estimate_names = x_estimate_drift_coeff_names + x_estimate_vg_coeff_names
         self.global_model_test_status = chi_test
         self.number_of_outliers = number_of_outliers
-        self.drift_ref_epoch_type = drift_ref_epoch_type
+        self.drift_ref_epoch_type = 'survey'  # Not relevant anyway, because only ONE survey allowed in the campaign!
+        self.vg_polynomial_ref_height_offset_m = vg_polynomial_ref_height_offset_m
+        self.vg_polynomial_degree = vg_polynomial_degree
+        self.mat_A = mat_A
+        self.mat_x = mat_x
+        # The following attributes are None as initialized:
+        # self.scaling_factor_datum_observations
+        # self.number_of_datum_stations

@@ -91,12 +91,12 @@ class BEVLegacyProcessing(LSM):
 
     @classmethod
     def from_campaign(cls, campaign, comment='', write_log=True):
-        """Constructor that generates and populates the LSM-inherited object from a Campaign class object.
+        """Constructor that generates and populates the LSM object from a Campaign class object.
 
         Notes
         -----
-        From all active surveys in the campaign the setup data (= observations) are loaded, additionally to the station
-        data (station dataframe).
+        Put checks that are dependent on the LSM method into here! All common checks and preparations are implemented
+        in the `from_campaign` method of the parent class `LSM`.
 
         Parameters
         ----------
@@ -109,56 +109,10 @@ class BEVLegacyProcessing(LSM):
 
         Returns
         -------
-        :py:obj:`.LSMDiff`
+        :py:obj:`.BEVLegacyProcessing`
             Contains all information required for adjusting the campaign.
         """
-        # Check if all required data is available in the campaign object:
-
-        # Comment:
-        if not isinstance(comment, str):
-            raise TypeError(f'"comment" needs to be a string!')
-
-        # Station data:
-        if campaign.stations is None:
-            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any station data!')
-        else:
-            if not hasattr(campaign.stations, 'stat_df'):
-                raise AssertionError(f'The campaign "{campaign.campaign_name}" has not station dataframe!')
-            else:
-                if len(campaign.stations.stat_df) == 0:
-                    raise AssertionError(f'The campaign "{campaign.campaign_name}" has an empty station dataframe!')
-
-        # Survey data:
-        if campaign.surveys is None:
-            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any survey data!')
-        else:
-            if len(campaign.surveys) == 0:
-                raise AssertionError(f'The campaign "{campaign.campaign_name}" contains no survey data!')
-
-        # Create setups dict:
-        # Loop over surveys in campaign:
-        setups = {}
-        for survey_name, survey in campaign.surveys.items():
-            if survey.keep_survey:
-                if survey.setup_df is None:
-                    raise AssertionError(f'Setup data is missing for survey "{survey_name}"')
-                else:
-                    if len(survey.setup_df) < 2:
-                        raise AssertionError(f'Survey "{survey_name}" has less than two setup observations! '
-                                             f'A minimum of two setups is required in order to define '
-                                             f'differential observations!')
-                    else:
-                        setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
-                                           'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
-                                           'setup_df': survey.setup_df}
-                        setups[survey_name] = setup_data_dict
-
-        # Check if setup data is available:
-        if len(setups) == 0:
-            raise AssertionError(f'Setup data of campaign "{campaign.campaign_name}" does not contain observations!')
-
-        # Initialize and return LSM object:
-        return cls(campaign.stations.stat_df, setups, comment=comment, write_log=write_log)
+        return super().from_campaign(campaign, comment='', write_log=True)
 
     def adjust(self, drift_pol_degree=1,
                verbose=False
@@ -423,20 +377,5 @@ class BEVLegacyProcessing(LSM):
         # self.confidence_level_chi_test = confidence_level_chi_test
         # self.confidence_level_tau_test = confidence_level_chi_test
         # self.s02_a_posteriori = s02_a_posteriori_mugal2
-
-    @property
-    def get_results_obs_df(self):
-        """Getter for the observation-related results."""
-        return self.setup_obs_df
-
-    @property
-    def get_results_drift_df(self):
-        """Getter for the drift-related results."""
-        return self.drift_pol_df
-
-    @property
-    def get_results_stat_df(self):
-        """Getter for the station-related results."""
-        return self.stat_obs_df
 
 

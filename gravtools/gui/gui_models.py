@@ -88,7 +88,7 @@ class StationTableModel(QAbstractTableModel):
         """Load station data from pandas dataframe to table model."""
         # self._data = stat_df.copy()
         # Get list of columns to be depicted via the table model:
-        # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+        # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
         stat_df_columns_set = frozenset(stat_df.columns)
         table_model_columns = [x for x in self.get_table_columns if x in stat_df_columns_set]
         # if self.flag_gui_simple_mode:
@@ -161,10 +161,11 @@ class StationTableModel(QAbstractTableModel):
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
-                return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
-            if orientation == Qt.Vertical:
-                return str(self._data.index[section])
+            if self._data is not None:
+                if orientation == Qt.Horizontal:
+                    return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
+                if orientation == Qt.Vertical:
+                    return str(self._data.index[section])
 
     def setData(self, index, value, role):
         """Example: https://www.semicolonworld.com/question/58510/how-to-display-a-pandas-data-frame-with-pyqt5"""
@@ -267,6 +268,7 @@ class SetupTableModel(QAbstractTableModel):
         'delta_t_campaign_h': 'd_t camp [h]',
         'sd_setup_mugal': 'SD of obs [µGal]',
         'number_obs': 'Number of obs.',
+        'dhf_sensor_m': 'dhf_sensor [m]',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -286,6 +288,7 @@ class SetupTableModel(QAbstractTableModel):
         'delta_t_h': 3,
         'delta_t_campaign_h': 3,
         'sd_setup_mugal': 1,
+        'dhf_sensor_m': 3,
     }
 
     def __init__(self, surveys):
@@ -302,6 +305,8 @@ class SetupTableModel(QAbstractTableModel):
         self._data_survey_name = ''  # Name of the Survey that is currently represented by `self._data`
         self._data_column_names = None
         self.flag_gui_simple_mode = False
+        self._reference_height_type = ''
+        self._tide_correction_type = ''
 
     def load_surveys(self, surveys):
         """Load observation data (dict of survey objects in the campaign object) to the observation model.
@@ -314,36 +319,43 @@ class SetupTableModel(QAbstractTableModel):
 
     def update_view_model(self, survey_name, setup_id, gui_simple_mode=False):
         """Update the `_data` DataFrame that hold the actual data that is displayed."""
-        try:
-            setup_df = self._surveys[survey_name].setup_df
-        except KeyError:
-            QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
-        else:
-            self._data_survey_name = survey_name
-            self.flag_gui_simple_mode = gui_simple_mode
+        if survey_name is not None:
+            try:
+                setup_df = self._surveys[survey_name].setup_df
+            except KeyError:
+                QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
+            else:
+                self._data_survey_name = survey_name
+                try:
+                    self._reference_height_type = self._surveys[survey_name].setup_reference_height_type
+                    self._tide_correction_type = self._surveys[survey_name].setup_tide_correction_type
+                except AttributeError:
+                    self._reference_height_type = ''
+                    self._tide_correction_type = ''
+                self.flag_gui_simple_mode = gui_simple_mode
 
-            # Get list of columns to be depicted via the table model:
-            # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
-            if setup_df is not None:
-                setup_df_columns_set = frozenset(setup_df.columns)
-                table_model_columns = [x for x in self.get_table_columns if x in setup_df_columns_set]
+                # Get list of columns to be depicted via the table model:
+                # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
+                if setup_df is not None:
+                    setup_df_columns_set = frozenset(setup_df.columns)
+                    table_model_columns = [x for x in self.get_table_columns if x in setup_df_columns_set]
 
-            if setup_id is None:  # No setup ID provided => Take all observations in survey
-                if setup_df is None:
-                    self._data = None
-                    self._data_column_names = None
-                else:
-                    # self._data = setup_df.copy(deep=True)
-                    self._data = setup_df.loc[:, table_model_columns].copy(deep=True)
-                    self._data_column_names = self._data.columns.to_list()
-            else:  # Only take observations of the specified setup
-                if setup_df is None:
-                    self._data = None
-                    self._data_column_names = None
-                else:
-                    # self._data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
-                    self._data = setup_df.loc[setup_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
-                    self._data_column_names = self._data.columns.to_list()
+                if setup_id is None:  # No setup ID provided => Take all observations in survey
+                    if setup_df is None:
+                        self._data = None
+                        self._data_column_names = None
+                    else:
+                        # self._data = setup_df.copy(deep=True)
+                        self._data = setup_df.loc[:, table_model_columns].copy(deep=True)
+                        self._data_column_names = self._data.columns.to_list()
+                else:  # Only take observations of the specified setup
+                    if setup_df is None:
+                        self._data = None
+                        self._data_column_names = None
+                    else:
+                        # self._data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
+                        self._data = setup_df.loc[setup_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
+                        self._data_column_names = self._data.columns.to_list()
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
@@ -402,6 +414,16 @@ class SetupTableModel(QAbstractTableModel):
             return [value for value in self._SHOW_COLUMNS_IN_TABLE if value in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI]
         else:
             return self._SHOW_COLUMNS_IN_TABLE
+
+    @property
+    def get_ref_heigth_type(self):
+        """Returns the reference height type of the setup observations."""
+        return self._reference_height_type
+
+    @property
+    def get_tidal_corr_type(self):
+        """Returns the tidal corrections applied on the setup observations."""
+        return self._tide_correction_type
 
 
 class ObservationTableModel(QAbstractTableModel):
@@ -517,35 +539,36 @@ class ObservationTableModel(QAbstractTableModel):
     def update_view_model(self, survey_name, setup_id, gui_simple_mode=False):
         """Update the `_data` data frame that hold the actual data that is viewed."""
         self.flag_gui_simple_mode = gui_simple_mode
-        try:
-            obs_df = self._surveys[survey_name].obs_df  # Select the survey
-            setup_df = self._surveys[survey_name].setup_df
-        except KeyError:
-            QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
-        else:
-            self._data_survey_name = survey_name
+        if survey_name is not None:
+            try:
+                obs_df = self._surveys[survey_name].obs_df  # Select the survey
+                setup_df = self._surveys[survey_name].setup_df
+            except KeyError:
+                QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" is not available in this campaign.')
+            else:
+                self._data_survey_name = survey_name
 
-            # Get list of columns to be depicted via the table model:
-            # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
-            obs_df_columns_set = frozenset(obs_df.columns)
-            table_model_columns = [x for x in self.get_table_columns if x in obs_df_columns_set]
+                # Get list of columns to be depicted via the table model:
+                # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
+                obs_df_columns_set = frozenset(obs_df.columns)
+                table_model_columns = [x for x in self.get_table_columns if x in obs_df_columns_set]
 
-            if setup_id is None:  # No setup ID provided => Take all observations in survey
-                # self._data = obs_df.copy(deep=True)
-                self._data = obs_df.loc[:, table_model_columns].copy(deep=True)
-                if setup_df is None:
-                    self._setup_data = None
-                else:
-                    self._setup_data = setup_df.copy(deep=True)
-            else:  # Only take observations of the specified setup
-                # self._data = obs_df[obs_df['setup_id'] == setup_id].copy(deep=True)
-                self._data = obs_df.loc[obs_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
-                if setup_df is None:
-                    self._setup_data = None
-                else:
-                    self._setup_data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
-            # Column names of the actual table model:
-            self._data_column_names = self._data.columns.to_list()
+                if setup_id is None:  # No setup ID provided => Take all observations in survey
+                    # self._data = obs_df.copy(deep=True)
+                    self._data = obs_df.loc[:, table_model_columns].copy(deep=True)
+                    if setup_df is None:
+                        self._setup_data = None
+                    else:
+                        self._setup_data = setup_df.copy(deep=True)
+                else:  # Only take observations of the specified setup
+                    # self._data = obs_df[obs_df['setup_id'] == setup_id].copy(deep=True)
+                    self._data = obs_df.loc[obs_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
+                    if setup_df is None:
+                        self._setup_data = None
+                    else:
+                        self._setup_data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
+                # Column names of the actual table model:
+                self._data_column_names = self._data.columns.to_list()
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
@@ -671,11 +694,19 @@ class ObservationTableModel(QAbstractTableModel):
                     if value == Qt.Unchecked:
                         # print(f'row {index.row()}: Unchecked!')
                         self._data.at[row, col] = False
-                        self.dataChanged.emit(idx_min, idx_max)
+                        # Change data in `obs_df`:
+                        self._surveys[self._data_survey_name].obs_df.iloc[
+                            self._data.index[index.row()], Survey.get_obs_df_column_index('keep_obs')] = False
+                        self.dataChanged.emit(idx_min, idx_max)  # Change color of obs. table row
+                        self.dataChanged.emit(index, index, [9999])  # Change obs. plot and tree
                     elif value == Qt.Checked:
                         # print(f'row {index.row()}: Checked!')
                         self._data.at[row, col] = True
-                        self.dataChanged.emit(idx_min, idx_max)
+                        # Change data in `obs_df`:
+                        self._surveys[self._data_survey_name].obs_df.iloc[
+                            self._data.index[index.row()], Survey.get_obs_df_column_index('keep_obs')] = True
+                        self.dataChanged.emit(idx_min, idx_max)  # Change color of obs. table row
+                        self.dataChanged.emit(index, index, [9999])  # Change obs. plot and tree
                     else:
                         QMessageBox.warning(self.parent(), 'Warning!',
                                             f'Invalid value fpr keep observation flag: "{value}"')
@@ -1008,6 +1039,10 @@ class ResultsStationModel(QAbstractTableModel):
         'diff_sd_g_est_mugal': 1,
         'g0_mugal': 1,
         'sig_g0_mugal': 1,
+        'dhf_sensor_mean_m': 4,
+        'dhf_sensor_std_m': 4,
+        'dhf_sensor_min_m': 4,
+        'dhf_sensor_max_m': 4,
     }
 
     # Columns that will be shown in the table view, if available in the data (also defines the order of columns):
@@ -1023,7 +1058,10 @@ class ResultsStationModel(QAbstractTableModel):
         'diff_g_est_mugal': 'delta_g [µGal]',
         'diff_sd_g_est_mugal': 'delta_SD [µGal]',
         'g0_mugal': 'g0 [µGal]',
-        'sig_g0_mugal': 'SD_g0 [µGal]',
+        'dhf_sensor_mean_m': 'dhf mean [m]',
+        'dhf_sensor_std_m': 'dhf SD [m]',
+        'dhf_sensor_min_m': 'dhf min [m]',
+        'dhf_sensor_max_m': 'dhf max [m]',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -1123,11 +1161,129 @@ class ResultsStationModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
-        if role == Qt.DisplayRole:
+        if role == Qt.DisplayRole and self._data is not None:
             if orientation == Qt.Horizontal:
                 return self._SHOW_COLUMNS_IN_TABLE_DICT[str(self._data.columns[section])]
             if orientation == Qt.Vertical:
                 return str(self._data.index[section])
+
+
+class ResultsVGModel(QAbstractTableModel):
+    """Model for displaying the drift-related results."""
+
+    _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
+        'coefficient': 3,
+        'sd_coeff': 3,
+    }
+
+    # Column names (keys) and short description (values):
+    _PLOT_COLUMNS_DICT = {
+        'degree': 'Degree',
+        'coefficient': 'Coefficient',
+        'sd_coeff': 'SD',
+        'coeff_unit': 'Unit',
+    }
+    _PLOT_COLUMNS = list(_PLOT_COLUMNS_DICT.keys())  # Actual list of columns to be shown
+
+    def __init__(self, lsm_runs):
+        """Initialize the VG results table view model.
+
+        Parameters
+        ----------
+        lsm_runs : list of py.obj:`gravtools.lsm.LSM` objects
+        """
+        QAbstractTableModel.__init__(self)
+        self._lsm_runs = []
+        self._data = None
+        self.load_lsm_runs(lsm_runs)
+        self._lsm_run_index = None
+        self._data_column_names = None
+
+    def load_lsm_runs(self, lsm_runs: list):
+        """Load adjustment results.
+
+        Notes
+        -----
+        The data is assigned by reference.
+        """
+        self._lsm_runs = lsm_runs
+
+    def update_view_model(self, lsm_run_index: int):
+        """Update the `_data` DataFrame that hold the actual data that is displayed."""
+        flag_error_init = False
+        if lsm_run_index == -1:  # No data available => Invalid index => Reset model data
+            flag_error_init = True
+        else:
+            try:
+                results_vg_df = self._lsm_runs[lsm_run_index].get_results_vg_df
+            except KeyError:
+                QMessageBox.critical(self.parent(), 'Error!', f'LSM run with index "{lsm_run_index}" not found!')
+            else:
+                if results_vg_df is None:  # E.g. no results in campaign yet
+                    flag_error_init = True
+                else:
+                    self._lsm_run_index = lsm_run_index
+                    self._data = results_vg_df.loc[:, self._PLOT_COLUMNS].copy(deep=True)
+                    self._data_column_names = self._data.columns.to_list()
+        if flag_error_init:
+            self._data = None
+            self._lsm_run_index = None
+            self._data_column_names = None
+
+    def rowCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[0]
+        else:
+            return 0
+
+    def columnCount(self, parent=None):
+        if self._data is not None:
+            return self._data.shape[1]
+        else:
+            return 0
+
+    def data(self, index, role=Qt.DisplayRole):
+        if index.isValid():
+            if role == Qt.DisplayRole:
+                value = self._data.iloc[index.row(), index.column()]
+                column_name = self._data_column_names[index.column()]
+                # Custom formatter (string is expected as return type):
+                if value is None:  #
+                    return NONE_REPRESENTATION_IN_TABLE_VIEW
+                elif isinstance(value, float):
+                    if value != value:  # True, if value is "NaN"
+                        return NONE_REPRESENTATION_IN_TABLE_VIEW
+                    else:
+                        if column_name in self._DECIMAL_PLACES_PER_FLOAT_COLUMN.keys():
+                            num_dec_places = self._DECIMAL_PLACES_PER_FLOAT_COLUMN[column_name]
+                            return '{1:.{0}f}'.format(num_dec_places, value)
+                        else:
+                            return str(value)
+                else:  # all other
+                    return str(value)
+
+            if role == Qt.TextAlignmentRole:
+                value = self._data.iloc[index.row(), index.column()]
+                if isinstance(value, int) or isinstance(value, float):
+                    # Align right, vertical middle.
+                    return Qt.AlignVCenter + Qt.AlignRight
+        return None
+
+    def headerData(self, section, orientation, role):
+        # section is the index of the column/row.
+        if role == Qt.DisplayRole:
+            if self._data is not None:
+                if orientation == Qt.Horizontal:
+                    return self._PLOT_COLUMNS_DICT[str(self._data.columns[section])]
+                if orientation == Qt.Vertical:
+                    return str(self._data.index[section])
+
+    def get_short_column_description(self, column_name: str) -> str:
+        """Returns the short description of the model column."""
+        try:
+            return self._PLOT_COLUMNS_DICT[column_name]
+        except AttributeError:
+            return ''
 
 
 class ResultsDriftModel(QAbstractTableModel):
@@ -1138,7 +1294,6 @@ class ResultsDriftModel(QAbstractTableModel):
         'sd_coeff': 3,
     }
 
-    # Column names (keys) and short description (values):
     # Column names (keys) and short description (values):
     _PLOT_COLUMNS_DICT = {
         'survey_name': 'Survey',
@@ -1159,9 +1314,9 @@ class ResultsDriftModel(QAbstractTableModel):
         """
         QAbstractTableModel.__init__(self)
         self._lsm_runs = []
-        self._data = None  # Observations (or at subset of them) of the survey with the name `self._data_survey_name`
+        self._data = None
         self.load_lsm_runs(lsm_runs)
-        self._lsm_run_index = None  # Name of the Survey that is currently represented by `self._data`
+        self._lsm_run_index = None
         self._data_column_names = None
 
     def load_lsm_runs(self, lsm_runs: list):
@@ -1169,7 +1324,7 @@ class ResultsDriftModel(QAbstractTableModel):
 
         Notes
         -----
-        The data is assigned by reference, i.e. all changes in `_surveys` will propagate to the data origin.
+        The data is assigned by reference.
         """
         self._lsm_runs = lsm_runs
 
@@ -1248,10 +1403,11 @@ class ResultsDriftModel(QAbstractTableModel):
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.
         if role == Qt.DisplayRole:
-            if orientation == Qt.Horizontal:
-                return self._PLOT_COLUMNS_DICT[str(self._data.columns[section])]
-            if orientation == Qt.Vertical:
-                return str(self._data.index[section])
+            if self._data is not None:
+                if orientation == Qt.Horizontal:
+                    return self._PLOT_COLUMNS_DICT[str(self._data.columns[section])]
+                if orientation == Qt.Vertical:
+                    return str(self._data.index[section])
 
     def get_short_column_description(self, column_name: str) -> str:
         """Returns the short description of the model column."""

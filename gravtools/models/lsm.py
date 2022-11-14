@@ -45,6 +45,14 @@ class LSM:
             dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
         - setup_df : Pandas DataFrame
             Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
+        - tide_correction_type : str, optional (default='')
+            Type of the tidal corrections applied on the reduced observations (column `g_red_mugal` in `obs_df`) that
+            were used to calculate the setup data store in this dict. Valid entries have to be listed in
+            :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
+        - reference_height_type : str, optional (default='')
+            Reference height type of the reduced observations (column `g_red_mugal` in `obs_df`) that
+            were used to calculate the setup data store in this dict. Valid entries have to be listed in
+            :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`.
 
     comment : str, optional (default = '')
         Optional comment on the adjustment run.
@@ -86,6 +94,14 @@ class LSM:
                 dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
             - setup_df : Pandas DataFrame
                 Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
+            - tide_correction_type : str, optional (default='')
+                Type of the tidal corrections applied on the reduced observations (column `g_red_mugal` in `obs_df`) that
+                were used to calculate the setup data store in this dict. Valid entries have to be listed in
+                :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
+        - red_reference_height_type : str, optional (default='')
+                Reference height type of the reduced observations (column `g_red_mugal` in `obs_df`) that
+                were used to calculate the setup data store in this dict. Valid entries have to be listed in
+                :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`.
 
         comment : str, optional (default = '')
             Optional comment on the adjustment run.
@@ -122,8 +138,8 @@ class LSM:
         self.setup_obs_df = None  # Dataframe that contain the observation (setup) related results
         self.observed_stations = None  # Unique list of observed stations; defines the station IDs for matrices
         self.stat_obs_df = None  # Station dataframe that contains estimation results of observed stations
-        self.drift_pol_df = None  # DataFrame that contains the estimated parameters of the drift polynomials an
-        # their statistics for each survey
+        self.drift_pol_df = None  # DataFrame that contains the estimated parameters of the drift polynomials and their statistics for each survey
+        self.vg_pol_df = None  # DataFrame that contains the estimated parameters of the vertical gravity gradient polynomial
 
         # Estimation settings:
         self.drift_polynomial_degree = None
@@ -132,6 +148,8 @@ class LSM:
         self.confidence_level_chi_test = None
         self.confidence_level_tau_test = None
         self.drift_ref_epoch_type = ''  # 'survey' or 'campaign'
+        self.vg_polynomial_degree = None
+        self.vg_polynomial_ref_height_offset_m = 0.0
 
         # General statistics:
         self.number_of_stations = None
@@ -146,13 +164,88 @@ class LSM:
         self.Cxx = None  # Co-variance matrix of estimated parameters
         self.Rxx = None  # Correlation matrix of estimates parameters
         self.x_estimate_names = []  # List of items in the Cxx matrix (index 0 to n)
+        self.mat_A = None  # Design matrix
+        self.mat_x = None  # Estimated parameters
 
         # Iterative adjustment:
         self.number_of_iterations = 0  # `0` indicates no iterations.
 
         # Statistical tests:
         self.number_of_outliers = None
-        self.goodness_of_fit_test_status = ''  # str
+        self.global_model_test_status = ''  # str
+
+    @classmethod
+    def from_campaign(cls, campaign, comment='', write_log=True):
+        """Constructor that generates and populates the LSM object (child!) from a Campaign class object.
+
+        Notes
+        -----
+        Put all checks and data preparations relevant for all LSM methods into this method!
+
+        Parameters
+        ----------
+        campaign : :py:obj:`gravtools.models.survey.Campaign`
+            The campaign object needs to provide setup data for all active surveys and the related station data.
+        comment : str, optional (default = '')
+            Arbitrary comment on the LSM run.
+        write_log : bool, optional (default=True)
+            Flag that indicates whether log string should be written or not.
+
+        Returns
+        -------
+        LSM Object of the child class
+            Contains all information required for adjusting the campaign.
+        """
+        # Check if all required data is available in the campaign object:
+
+        # Comment:
+        if not isinstance(comment, str):
+            raise TypeError(f'"comment" needs to be a string!')
+
+        # Station data:
+        if campaign.stations is None:
+            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any station data!')
+        else:
+            if not hasattr(campaign.stations, 'stat_df'):
+                raise AssertionError(f'The campaign "{campaign.campaign_name}" has not station dataframe!')
+            else:
+                if len(campaign.stations.stat_df) == 0:
+                    raise AssertionError(f'The campaign "{campaign.campaign_name}" has an empty station dataframe!')
+
+        # Survey data:
+        if campaign.surveys is None:
+            raise AssertionError(f'The campaign "{campaign.campaign_name}" does not contain any survey data!')
+        else:
+            if len(campaign.surveys) == 0:
+                raise AssertionError(f'The campaign "{campaign.campaign_name}" contains no survey data!')
+
+        # Create setups dict:
+        # Loop over surveys in campaign:
+        setups = {}
+        for survey_name, survey in campaign.surveys.items():
+            if survey.keep_survey:
+                if survey.setup_df is None:
+                    raise AssertionError(f'Setup data is missing for survey "{survey_name}"')
+                else:
+                    if len(survey.setup_df) < 2:
+                        raise AssertionError(f'Survey "{survey_name}" has less than two setup observations! '
+                                             f'A minimum of two setups is required in order to define '
+                                             f'differential observations!')
+                    else:
+                        setup_data_dict = {'ref_epoch_delta_t_h': survey.ref_delta_t_dt,
+                                           'ref_epoch_delta_t_campaign_h': campaign.ref_delta_t_dt,
+                                           'setup_df': survey.setup_df,
+                                           'tide_correction_type': survey.setup_tide_correction_type,
+                                           'reference_height_type': survey.setup_reference_height_type,
+                                           'setup_obs_list_df': survey.setup_obs_list_df}
+                        setups[survey_name] = setup_data_dict
+
+        # Check if setup data is available:
+        if len(setups) == 0:
+            raise AssertionError(f'Setup data of campaign "{campaign.campaign_name}" does not contain observations!')
+
+        # Initialize and return LSM object:
+        return cls(campaign.stations.stat_df, setups, comment=comment, write_log=write_log)
 
     def adjust_autoscale_s0(self,
                             iteration_approach='Multiplicative',
@@ -178,7 +271,7 @@ class LSM:
 
         Notes
         -----
-        Iterative adjustment works for differential and non-differential LSM adjustment.
+        Iterative adjustment works for differential and non-differential LSM adjustment, not for VG estimation!
 
         Parameters
         ---------
@@ -421,6 +514,29 @@ class LSM:
                             np.sqrt(self.Cxx[i_row, i_row]) * np.sqrt(self.Cxx[i_col, i_col]))
         return mat_Rxx
 
+    @property
+    def get_results_obs_df(self):
+        """Getter for the observation-related results."""
+        return self.setup_obs_df
+
+    @property
+    def get_results_drift_df(self):
+        """Getter for the drift-related results."""
+        return self.drift_pol_df
+
+    @property
+    def get_results_stat_df(self):
+        """Getter for the station-related results."""
+        return self.stat_obs_df
+
+    @property
+    def get_results_vg_df(self):
+        """Getter for the results of vertical gravity gradient estimation."""
+        try:
+            return self.vg_pol_df
+        except AttributeError:  # If "self" has no attribute "vg_pol_df" (not initialized)
+            return None
+
 
 def bin_redundacy_components(mat_r):
     """Bin redundancy components for easier interpretatzion.
@@ -441,13 +557,27 @@ def bin_redundacy_components(mat_r):
 def tau_test(mat_w, dof, alpha, mat_r):
     """Tau-criterion test for outlier detection of a least-squares adjustment.
 
-    See: Pope (1976): The statistics of residuals and the detection of outliers.
+    This test considers that the true variance factor sigma_0² is unknown. It is based on normalized residuals
+    (Studentized residuals) and the Tau distribution.
+
+    If the test fails it indicates that ONE (!) observation is a gross error, i.e. ONE residual is an outlier!
+    If the adjustment is affected by two or more gross errors this test is not applicable. In that case the
+    following pragmatic approach is recommended (e.g. by Caspary, 1987): The observation with the largest test
+    statistic is discarded. Then the adjustment is repeated with the remaining n-1 observations and the test is
+    repeated based on the new results, etc.
+
+    Notes
+    -----
+    Ref.: Pope (1976): The statistics of residuals and the detection of outliers, NOAA Technical Report NOS 65 NGS 1
+    Ref.: Caspari (1987): Concepts of network and deformation analysis. Monograph by UNSW Sydney, pp. 76-77
+    This method implements a two-sided test, as the critical value is calculated with (alpha/2) and the abs. value of
+    the normalized residual w is tested.
 
     Parameters
     ----------
     mat_w: np.array of floats
         Vector with standardized post-fit residuals of all observations in the least-squares adjustment.
-        They are computed as post-fit residuls divides by their standard deviations.
+        They are computed as post-fit residuals divides by their standard deviations.
     dof: int
         Degree of freedom of the least-squares adjustment.
     alpha: float (0 to 1)
@@ -455,14 +585,14 @@ def tau_test(mat_w, dof, alpha, mat_r):
     mat_r: np.array of floats
         Vector with redundancy components derived in the least-squares adjustment for each observation.
     """
-    # Critical value:
-    tsd_crt = stats.t.ppf(1 - alpha / 2, dof - 1)  # calc. t-distribution crit. val.
+    # Critical value (two-sided test: the abs. value of w is tested und the Tau-distribution is symmetric about 0!):
+    tsd_crt = stats.t.ppf(1 - alpha / 2, dof - 1)  # t distribution
     tau_crt = (tsd_crt * np.sqrt(dof)) / np.sqrt(dof - 1 + tsd_crt ** 2)  # Critical value (Pope, 1976, Eq. (6))
     tau_test_result = []
     for idx, w in enumerate(mat_w):
         # Check, if redancy component is larger than threshold:
         if mat_r[idx] > settings.R_POPE_TEST_TRESHOLD:
-            if np.abs(w) > tau_crt:
+            if np.abs(w) > tau_crt:  # Equ. (6-36) in Caspary (1987)
                 tau_test_result.append('failed')
             else:
                 tau_test_result.append('passed')
@@ -479,13 +609,18 @@ def create_hist(mat_v):
     return hist_residuals, bin_edges
 
 
-def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
-    """Statistical testing using chi square.
+def global_model_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
+    """Global model test based on the comparison of a posteriori and a priori variance of unit weight.
+
+    This global model test asserts if the "model is correct and complete". If it fails it indicates that the
+    observations contradict the mathematical adjustment model. However, this test cannot the validity of the model or
+    the correctness of the observation!
 
     Notes
     -----
-    This "global model test" is dewscribed by Caspari (1987): Concepts of network and deformation analysis.
-    pp. 6-8 and pp.68-69.
+    This "global model test" is described by Caspari (1987): Concepts of network and deformation analysis. Monograph
+    by UNSW Sydney, pp. 6-8 and pp.68-69.
+    This method implements a two-sided test.
 
     Parameters
     ----------
@@ -504,11 +639,12 @@ def goodness_of_fit_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori
     alpha = 1 - cf  # Significance level = Probability of committing a type 1 error (H0 wrongly dismissed)
     chi_crit_upper = stats.chi2.ppf(1 - alpha / 2, dof)  # critical value
     chi_crit_lower = stats.chi2.ppf(alpha / 2, dof)  # critical value
-    chi_val = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # tested value
-    # TODO: Why is there an upper AND a lower critical value? In the literature only an upper critical value ist defined!
-    if chi_crit_lower < chi_val < chi_crit_upper:
+    # chi_critical_value = stats.chi2.ppf(alpha, dof)  # critical value
+    test_value = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # Equ. (2-13) in Caspary (1987)
+    if chi_crit_lower < test_value < chi_crit_upper:
+    # if test_value <= test_value:  # Equ. (2-15) in Caspary (1987)
         chi_test_status = 'Passed'
     else:
         chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
-    return chi_crit, chi_val, chi_test_status
+    return chi_crit, test_value, chi_test_status

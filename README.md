@@ -2,29 +2,18 @@
 GravTools is an open source software toolbox for processing relative gravity surveys developed at the Austrian
 Federal Office of Metrology and Surveying (BEV).  
 
-# Installation and setup
+The source code is hosted on github.com: https://github.com/ahellers/GravTools
 
-## Install python package
-Python packages for multiple release versions are available in the *dist* directory. For installation in a virtual 
-python environment follow these steps: 
+# Installation
 
-1. Create a new virtual environment in the directory "venv": `python3 -n venv venv`
-2. Install the GravTools package: `pip install <path to package file>.tar.gz` 
-   * Dependencies listen in setup.py are automatically installed 
+## Install python package from pypi.org (Linux shell)
+For installation in a virtual python environment follow these steps: 
 
-
-## Install python project in local environment
-* **1.  Create virtual environment (venv)**
-  * `python3 -m venv env`
-* **2. Activate virtual environment**
-  * `source env/bin/activate`
-* **3. Clone git repository to local machine**
-  * `git clone https//github.com/ahellers/GravTools.git`
-  * `cd GravTools`
-* **4. Install required python packages using pip**
-  * `pip install -r requirements.txt`
-  
-## Installation on Centos 8:
+1. Create a new virtual environment in the directory "venv": `python3 -n venv env`
+2. Activate the virtual env.: `source env/bin/activate`
+3. Install the GravTools package: `pip install grav-toolbox`
+ 
+## Installation issues on Centos 8:
 * **1. Carry out installation steps describes above** 
 * **2. Install QT5, if required**
   * `sudo yum install qt5-qtbase-devel.x86_64`
@@ -35,31 +24,29 @@ This issue was resolved by installing the QT dev tools (Designer, etc.):
 sudo apt-get install qttools5-dev-tools
 
 ## Test installation with setuptools 
-With command line interface.
+In a virtual environment.
 
-1. **Configure setup.py**
-  * Define entry points (*console_scripts*)
-2. **Activate virtual environment**
-    * e.g. `source env/bin/activate`
-3. **Run setup.py**
-    * `python3 setup.py develop`
-    * With make: `make test_pack`
-    
+* Editable installation with pip: `pip install -e .`
+  * Or: `make test_pack`
+* Uninstall: `pip uninstall grav-toolbox`
+  * Or: `test_pack_uninstall`
 
 # Packaging
-With setuptools.
+With setuptools and the build package.
 
-## Build package with setuptools
-* Define all options in "setup.py"
-* With make: `make build`
+## Create a source and binary distribution (sdist and wheel)
+* Set up setup.cfg and pyproject.toml in the project root directory
+* With make and the predefined makefile: `make build`
 * Without make: `python3 -m build`
 
-The package is located in the "dist" directory.
+The created package (wheel and source distribution) is located in the "dist" directory.
 
-## Install package
-1. Create virtual environment (new directory "venv): `python3 -n venv venv`
-2. Install gravtools package: `pip install <path to package file>.tar.gz` 
-   * Dependencies listen in setup.py are automatically installed 
+## Upload to pypi.org
+
+Define user credentials in /home/.pypirc
+
+* `twine upload --verbose dist/*`
+
 
 # Create a stand-alone Windows executable
 For creating a Windows executable (stand-alone application, without python installation) the 
@@ -129,14 +116,7 @@ Sphinx is used to create an API documentation based on docstrings. Run make in t
 * The command line interface is realized via entry points (console_scripts) in setuptools (python packaging tool)
   * Input arguments are handled with argparse
 * Executable scripts are located in gravtools/scripts
-
-## Dependancies
-* Required python packages are listed in gravtools/requirements.txt
-  * created with `>>>pip freeze > requirements.txt`
-    
-## Packaging and distribution
-* With setuptools 
-
+  
 
 # License and copyright
 
