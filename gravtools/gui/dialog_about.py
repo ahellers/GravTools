@@ -117,7 +117,7 @@ class Ui_Dialog_about(object):
         self.label_2.setText(_translate("Dialog_about", "GravTools - A Software toolbox for processing relative gravity surveys"))
         self.label_8.setText(_translate("Dialog_about", "Version:"))
         self.label_version.setText(_translate("Dialog_about", "version"))
-        self.label_6.setText(_translate("Dialog_about", "Contact"))
+        self.label_6.setText(_translate("Dialog_about", "Contact:"))
         self.label_email.setText(_translate("Dialog_about", "email"))
         self.label_7.setText(_translate("Dialog_about", "Copyright:"))
         self.label_copyright.setText(_translate("Dialog_about", "copyright"))
