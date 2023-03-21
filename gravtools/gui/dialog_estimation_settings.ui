@@ -164,7 +164,7 @@
             <item row="0" column="1">
              <widget class="QDoubleSpinBox" name="doubleSpinBox_weight_factor_datum">
               <property name="toolTip">
-               <string>Weight factor for datum constraints: The standard deviation of g at datum stations is divided by this factr in order to adjust the weights of the pseudo observations introduced as datum constraints.</string>
+               <string>Weight factor for datum constraints: The standard deviation of g at datum stations is divided by this factor in order to adjust the weights of the pseudo observations introduced as datum constraints.</string>
               </property>
               <property name="decimals">
                <number>1</number>
@@ -391,6 +391,45 @@
                </widget>
               </item>
              </layout>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupBox_se_determination">
+         <property name="toolTip">
+          <string>Settings for the determination of uncertainties of the estimates.</string>
+         </property>
+         <property name="title">
+          <string>Standard error determination</string>
+         </property>
+         <layout class="QVBoxLayout" name="verticalLayout_17">
+          <item>
+           <layout class="QFormLayout" name="formLayout_11">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_11">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The standard error &lt;span style=&quot; font-style:italic;&quot;&gt;SE&lt;/span&gt; of the estimated gravity values at stations is calculated by &lt;span style=&quot; font-style:italic;&quot;&gt;SE = sqrt(SD&lt;/span&gt;&lt;span style=&quot; font-style:italic; vertical-align:super;&quot;&gt;2 &lt;/span&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;+ NF&lt;/span&gt;&lt;span style=&quot; font-style:italic; vertical-align:super;&quot;&gt;2&lt;/span&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;)&lt;/span&gt;, where &lt;span style=&quot; font-style:italic;&quot;&gt;SD&lt;/span&gt; is the estimated standard deviation of the station's gravity and &lt;span style=&quot; font-style:italic;&quot;&gt;NF&lt;/span&gt; is the noise floor value specified here.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string>Gravity noise floor [µGal]</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_gravity_noise_floor_mugal">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The standard error &lt;span style=&quot; font-style:italic;&quot;&gt;SE&lt;/span&gt; of the estimated gravity values at stations is calculated by &lt;span style=&quot; font-style:italic;&quot;&gt;SE = sqrt(SD&lt;/span&gt;&lt;span style=&quot; font-style:italic; vertical-align:super;&quot;&gt;2 &lt;/span&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;+ NF&lt;/span&gt;&lt;span style=&quot; font-style:italic; vertical-align:super;&quot;&gt;2&lt;/span&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;)&lt;/span&gt;, where &lt;span style=&quot; font-style:italic;&quot;&gt;SD&lt;/span&gt; is the estimated standard deviation of the station's gravity and &lt;span style=&quot; font-style:italic;&quot;&gt;NF&lt;/span&gt; is the noise floor value specified here.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="decimals">
+               <number>1</number>
+              </property>
+              <property name="value">
+               <double>5.000000000000000</double>
+              </property>
+             </widget>
             </item>
            </layout>
           </item>

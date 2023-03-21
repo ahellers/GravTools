@@ -121,6 +121,9 @@ INIT_OESGN_STATION_AS_DATUM = False  # Initialize OESGN stations as datum statio
 
 # ----- GUI appearance and plot settings -----
 
+# --- Gerneral color settings ---
+DATUM_STATION_COLOR = (255, 204, 204)
+
 # --- Drift plots in the results tab: ---
 # Number of plot items for plotting the drift function (polynomial):
 DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION = 100

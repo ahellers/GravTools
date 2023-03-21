@@ -265,6 +265,7 @@ class LSM:
                             confidence_level_chi_test=0.95,
                             confidence_level_tau_test=0.95,
                             drift_ref_epoch_type='survey',
+                            noise_floor_mugal=0.0,
                             verbose=False,
                             ):  # Confidence level):
         """Run the adjustment iteratively in order to adjust s0 to the target value by adapting the SD of observations.
@@ -326,6 +327,10 @@ class LSM:
             Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
             campaign is the reference epoch of the first (active) observation in each survey (option: 'survey') or the
             first (active) observation in the whole campaign (option: 'campaign').
+        noise_floor_mugal : float, optional (default=0.0)
+            The standard error SE of the estimated gravity values at stations is calculated by SE = sqrt(SD**2 + NF**2),
+            where SD is the estimated standard deviation of the station's gravity and NF is the noise floor value
+            specified here.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line, e.g. for debugging and testing
         """
@@ -366,6 +371,7 @@ class LSM:
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         drift_ref_epoch_type=drift_ref_epoch_type,
+                        noise_floor_mugal=noise_floor_mugal,
                         verbose=False
                         )
 

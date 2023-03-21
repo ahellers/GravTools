@@ -1742,6 +1742,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             max_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_max_multiplicative_factor_to_sd_percent.value()
             min_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_min_multiplicative_factor_to_sd_percent.value()
             initial_step_size_percent = self.dlg_estimation_settings.doubleSpinBox_initial_step_size_percent.value()
+            noise_floor_mugal = self.dlg_estimation_settings.doubleSpinBox_gravity_noise_floor_mugal.value()
 
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
@@ -1767,6 +1768,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         drift_ref_epoch_type=drift_ref_epoch_type,
+                        noise_floor_mugal=noise_floor_mugal,
                         verbose=IS_VERBOSE,
                     )
                 else:  # no autoscale
@@ -1779,6 +1781,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         drift_ref_epoch_type=drift_ref_epoch_type,
+                        noise_floor_mugal=noise_floor_mugal,
                         verbose=IS_VERBOSE
                     )
             elif lsm_method == 'LSM_non_diff':
@@ -1801,6 +1804,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         drift_ref_epoch_type=drift_ref_epoch_type,
+                        noise_floor_mugal=noise_floor_mugal,
                         verbose=IS_VERBOSE,
                     )
                 else:
@@ -1812,6 +1816,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                       confidence_level_chi_test=confidence_level_chi_test,
                                                       confidence_level_tau_test=confidence_level_tau_test,
                                                       drift_ref_epoch_type=drift_ref_epoch_type,
+                                                      noise_floor_mugal=noise_floor_mugal,
                                                       verbose=IS_VERBOSE)
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
