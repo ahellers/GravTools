@@ -269,6 +269,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(False)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -279,6 +280,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(True)
         elif selected_method == 'LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -289,6 +291,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(True)
         elif selected_method == 'VG LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(False)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -299,6 +302,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(True)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(False)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
@@ -310,6 +314,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(True)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
             self.statusBar().showMessage(f"Unknown estimation method selected!")
 
