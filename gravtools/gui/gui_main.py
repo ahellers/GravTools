@@ -48,7 +48,7 @@ from gravtools.gui.dialog_about import Ui_Dialog_about
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
     ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel, ResultsVGModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
-from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__
+from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
 from gravtools.models.survey import Survey
 from gravtools.models.campaign import Campaign
@@ -156,6 +156,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.dlg_about.label_author.setText(__author__)
         self.dlg_about.label_version.setText(__version__)
         self.dlg_about.label_git_repo.setText(__git_repo__)
+        self.dlg_about.label_pypi_repo.setText(__pypi_repo__)
         self.dlg_about.label_email.setText(__email__)
         self.dlg_about.label_copyright.setText(__copyright__)
 
