@@ -26,8 +26,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     Andreas Hellerschmied (andreas.hellerschmied@bev.gv.at)
 """
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 __author__ = 'Andreas Hellerschmied'
-__git_repo__ = 'https://gitlab.com/Heller182/grav/'
+__git_repo__ = 'https://github.com/ahellers/GravTools'
+__pypi_repo__ = 'https://pypi.org/project/grav-toolbox/'
 __email__ = 'andreas.hellerschmied@bev.gv.at'
-__copyright__ = '(c) 2021 Andreas Hellerschmied'
+__copyright__ = '(c) 2022 Andreas Hellerschmied'

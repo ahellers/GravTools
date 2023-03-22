@@ -23,17 +23,27 @@ The graphical layout of the GUI was created by using the Qt Designer (<https://w
 
 import sys
 import os
+import warnings
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
     QHeaderView, QInputDialog
 from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QModelIndex
 from PyQt5 import QtGui
-
 import datetime as dt
 import pyqtgraph as pg
 import pyqtgraph.exporters
 import numpy as np
 import pandas as pd
 import pytz
+
+# optional imports:
+try:
+    import geopandas
+except ImportError:
+    _has_geopandas = False
+    warnings.warn('The optional dependency "geopandas" is not installed. Some features, e.g. GIS file export,'
+                  ' will not be available.', UserWarning)
+else:
+    _has_geopandas = True
 
 from gravtools.gui.MainWindow import Ui_MainWindow
 from gravtools.gui.dialog_new_campaign import Ui_Dialog_new_Campaign
@@ -48,7 +58,7 @@ from gravtools.gui.dialog_about import Ui_Dialog_about
 from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
     ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel, ResultsVGModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
-from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__
+from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
 from gravtools.models.survey import Survey
 from gravtools.models.campaign import Campaign
@@ -109,6 +119,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
         self.pushButton_results_delete_lsm_run.pressed.connect(self.on_pushbutton_results_delete_lsm_run)
+        self.pushButton_results_export_shapefile.pressed.connect(self.on_pushButton_results_export_shapefile)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
@@ -156,6 +167,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.dlg_about.label_author.setText(__author__)
         self.dlg_about.label_version.setText(__version__)
         self.dlg_about.label_git_repo.setText(__git_repo__)
+        self.dlg_about.label_pypi_repo.setText(__pypi_repo__)
         self.dlg_about.label_email.setText(__email__)
         self.dlg_about.label_copyright.setText(__copyright__)
 
@@ -168,6 +180,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Overwrite/change setting from ui file, if necessary:
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
         self.dlg_estimation_settings.comboBox_iteration_approach.addItems(settings.ITERATION_APPROACHES.keys())
+
+        # Configure GUI according to optional dependencies:
+        if _has_geopandas:
+            self.groupBox_gis_data.setEnabled(True)
+            self.lineEdit_results_epsg.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
+
+        else:
+            self.groupBox_gis_data.setEnabled(False)
 
         # Init models:
         self.station_model = None
@@ -185,6 +205,51 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    @pyqtSlot()
+    def on_pushButton_results_export_shapefile(self):
+        """Invoked whenever pressing the button."""
+        # Get the currently selected lsm run object:
+        idx, time_str = self.get_selected_lsm_run()
+        if idx == -1:  # invalid index
+            self.statusBar().showMessage(f'No data selected for export to shapefiles...')
+            return
+        lsm_run = self.campaign.lsm_runs[idx]
+        try:
+            epsg_code = int(self.lineEdit_results_epsg.text())
+        except ValueError:
+            QMessageBox.critical(self, 'Error!', 'Invalid EPSG code. Need to be an integer value.')
+            return
+        print(epsg_code)
+
+        if not os.path.isdir(self.campaign.output_directory):
+            QMessageBox.critical(self, 'Error!', f'Invalid output directory: {self.campaign.output_directory}')
+            return
+
+        # Export station results:
+        filename = os.path.join(self.campaign.output_directory, 'stat_results.shp')
+        try:
+            lsm_run.export_stat_results_shapefile(filename=filename, epsg_code=epsg_code)
+        except AttributeError:
+            QMessageBox.warning(self, f'Export not available!', f'Export of station results to a shapefile is not '
+                                                               f'supported by the lsm method {lsm_run.lsm_method}.')
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        finally:
+            self.statusBar().showMessage(f'Save station results of lsm run "{lsm_run.comment}" to: {filename}')
+
+
+        # Export observations results:
+        filename = os.path.join(self.campaign.output_directory, 'obs_results.shp')
+        try:
+            lsm_run.export_obs_results_shapefile(filename=filename, epsg_code=epsg_code)
+        except AttributeError:
+            QMessageBox.warning(self, f'Export not available!', f'Export of observation results to a shapefile is not '
+                                                                f'supported by the lsm method {lsm_run.lsm_method}.')
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        finally:
+            self.statusBar().showMessage(f'Save observations results of lsm run "{lsm_run.comment}" to: {filename}')
 
     @pyqtSlot()
     def on_action_Change_Campaign_name_triggered(self):
@@ -268,6 +333,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(False)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(False)
         elif selected_method == 'LSM (differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -278,6 +344,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(True)
         elif selected_method == 'LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -288,6 +355,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(False)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(True)
         elif selected_method == 'VG LSM (non-differential observations)':
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(False)
             self.dlg_estimation_settings.groupBox_statistical_tests.setEnabled(True)
@@ -298,6 +366,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(True)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(False)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(False)
         else:
             # Enable all and show warning:
             self.dlg_estimation_settings.groupBox_constraints.setEnabled(True)
@@ -309,6 +378,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_drift_polynomial_advanced.setEnabled(True)
             self.dlg_estimation_settings.groupBox_vg_polynomial.setEnabled(True)
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
+            self.dlg_estimation_settings.groupBox_se_determination.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
             self.statusBar().showMessage(f"Unknown estimation method selected!")
 
@@ -1741,6 +1811,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             max_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_max_multiplicative_factor_to_sd_percent.value()
             min_multiplicative_factor_to_sd_percent = self.dlg_estimation_settings.doubleSpinBox_min_multiplicative_factor_to_sd_percent.value()
             initial_step_size_percent = self.dlg_estimation_settings.doubleSpinBox_initial_step_size_percent.value()
+            noise_floor_mugal = self.dlg_estimation_settings.doubleSpinBox_gravity_noise_floor_mugal.value()
 
             # Initialize LSM object and add it to the campaign object:
             self.campaign.initialize_and_add_lsm_run(lsm_method=lsm_method, comment=comment, write_log=True)
@@ -1766,6 +1837,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         drift_ref_epoch_type=drift_ref_epoch_type,
+                        noise_floor_mugal=noise_floor_mugal,
                         verbose=IS_VERBOSE,
                     )
                 else:  # no autoscale
@@ -1778,6 +1850,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         drift_ref_epoch_type=drift_ref_epoch_type,
+                        noise_floor_mugal=noise_floor_mugal,
                         verbose=IS_VERBOSE
                     )
             elif lsm_method == 'LSM_non_diff':
@@ -1800,6 +1873,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         drift_ref_epoch_type=drift_ref_epoch_type,
+                        noise_floor_mugal=noise_floor_mugal,
                         verbose=IS_VERBOSE,
                     )
                 else:
@@ -1811,6 +1885,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                       confidence_level_chi_test=confidence_level_chi_test,
                                                       confidence_level_tau_test=confidence_level_tau_test,
                                                       drift_ref_epoch_type=drift_ref_epoch_type,
+                                                      noise_floor_mugal=noise_floor_mugal,
                                                       verbose=IS_VERBOSE)
             elif lsm_method == 'MLR_BEV':
                 self.campaign.lsm_runs[-1].adjust(drift_pol_degree=degree_drift_polynomial,
@@ -2179,7 +2254,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                 # Get data:
             if flag_show_reduced_observations:
-                g_mugal = obs_df['g_red_mugal'].values
+                g_mugal = obs_df['g_red_mugal'].astype(float).values
                 sd_g_mugal = obs_df['sd_g_red_mugal'].values
                 corr_tide = obs_df['corr_tide_red_mugal'].values
                 corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
@@ -3152,6 +3227,13 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         # connect signals and slots:
         self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
 
+        # Optional dependency for GIS data export:
+        if _has_geopandas:
+            self.groupBox_gis.setEnabled(True)
+            self.lineEdit_epsg_code.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
+        else:
+            self.groupBox_gis.setEnabled(False)
+
     @pyqtSlot(int)
     def on_comboBox_select_lsm_run_current_index_changed(self, index: int):
         """Invoked whenever the index of the selected item in the combobox changed."""
@@ -3182,7 +3264,10 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
             self.groupBox_other_files.setEnabled(True)
             self.groupBox_nsb_file.setEnabled(True)
             self.groupBox_observation_list.setEnabled(True)
+            if _has_geopandas:
+                self.groupBox_gis.setEnabled(True)
         else:
+            self.groupBox_gis.setEnabled(False)
             self.groupBox_other_files.setEnabled(False)
             self.groupBox_nsb_file.setEnabled(False)
             self.groupBox_observation_list.setEnabled(False)
@@ -3202,7 +3287,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
                 self.groupBox_nsb_file.setEnabled(False)
                 self.checkBox_save_vg_plot_png.setEnabled(True)
             else:
-                raise AssertionError(f'Invali LSM method: {lsm_method}!')
+                raise AssertionError(f'Invalid LSM method: {lsm_method}!')
 
 def main():
     """Main program to start the GUI."""

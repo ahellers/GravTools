@@ -133,6 +133,7 @@ class LSMNonDiff(LSM):
                confidence_level_chi_test=0.95,
                confidence_level_tau_test=0.95,
                drift_ref_epoch_type='survey',
+               noise_floor_mugal=0.0,
                verbose=False
                ):  # Confidence level):
         """Run the adjustment based on non-differential observations.
@@ -163,6 +164,10 @@ class LSMNonDiff(LSM):
             Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
             campaign is the reference epoch of the first (active) observation in each survey (option: 'survey') or the
             first (active) observation in the whole campaign (option: 'campaign').
+        noise_floor_mugal : float, optional (default=0.0)
+            The standard error SE of the estimated gravity values at stations is calculated by SE = sqrt(SD**2 + NF**2),
+            where SD is the estimated standard deviation of the station's gravity and NF is the noise floor value
+            specified here.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line, e.g. for debugging and testing
         """
@@ -229,6 +234,7 @@ class LSMNonDiff(LSM):
             tmp_str += f'Scaling factor for datum constraints: {scaling_factor_datum_observations}\n'
             tmp_str += f'Scaling factor for SD of setup observations: {scaling_factor_for_sd_of_observations}\n'
             tmp_str += f'Additive const. to SD of setup obs. [µGal]: {add_const_to_sd_of_observations_mugal}\n'
+            tmp_str += f'Noise floor for std. error determination [µGal]: {noise_floor_mugal}\n'
             tmp_str += f'Confidence level Chi-test: {confidence_level_chi_test:4.2f}\n'
             tmp_str += f'Confidence level Tau-test: {confidence_level_tau_test:4.2f}\n'
             tmp_str += f'\n'
@@ -495,9 +501,11 @@ class LSMNonDiff(LSM):
             filter_tmp = self.stat_obs_df['station_name'] == stat_name
             self.stat_obs_df.loc[filter_tmp, 'g_est_mugal'] = g_est_mugal[idx]
             self.stat_obs_df.loc[filter_tmp, 'sd_g_est_mugal'] = sd_g_est_mugal[idx]
+            self.stat_obs_df.loc[filter_tmp, 'se_g_est_mugal'] = np.sqrt(
+                sd_g_est_mugal[idx] ** 2 + noise_floor_mugal ** 2)
         # Calculate differences to estimates:
         self.stat_obs_df['diff_g_est_mugal'] = self.stat_obs_df['g_est_mugal'] - self.stat_obs_df['g_mugal']
-        self.stat_obs_df['diff_sd_g_est_mugal'] = self.stat_obs_df['sd_g_est_mugal'] - self.stat_obs_df['sd_g_mugal']
+        self.stat_obs_df['diff_se_g_est_mugal'] = self.stat_obs_df['se_g_est_mugal'] - self.stat_obs_df['sd_g_mugal']
 
         # Drift parameters:
         survey_name_list = []
@@ -548,7 +556,7 @@ class LSMNonDiff(LSM):
             tmp_str += f' - Station data:\n'
             tmp_str += self.stat_obs_df[['station_name', 'is_datum', 'g_mugal', 'g_est_mugal',
                                                 'diff_g_est_mugal', 'sd_g_mugal',
-                                                'sd_g_est_mugal']].to_string(index=False,
+                                                'sd_g_est_mugal', 'se_g_est_mugal']].to_string(index=False,
                                                                              float_format=lambda x: '{:.1f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Drift polynomial coefficients:\n'

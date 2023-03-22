@@ -21,8 +21,16 @@ from scipy import stats
 import datetime as dt
 import pytz
 import copy
-from gravtools import settings
 
+# optional imports:
+try:
+    import geopandas
+except ImportError:
+    _has_geopandas = False
+else:
+    _has_geopandas = True
+
+from gravtools import settings
 
 class LSM:
     """Base class for LSM classes.
@@ -265,6 +273,7 @@ class LSM:
                             confidence_level_chi_test=0.95,
                             confidence_level_tau_test=0.95,
                             drift_ref_epoch_type='survey',
+                            noise_floor_mugal=0.0,
                             verbose=False,
                             ):  # Confidence level):
         """Run the adjustment iteratively in order to adjust s0 to the target value by adapting the SD of observations.
@@ -326,6 +335,10 @@ class LSM:
             Defines whether the reference epoch t0 for the estimation of the drift polynomials for each survey in the
             campaign is the reference epoch of the first (active) observation in each survey (option: 'survey') or the
             first (active) observation in the whole campaign (option: 'campaign').
+        noise_floor_mugal : float, optional (default=0.0)
+            The standard error SE of the estimated gravity values at stations is calculated by SE = sqrt(SD**2 + NF**2),
+            where SD is the estimated standard deviation of the station's gravity and NF is the noise floor value
+            specified here.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line, e.g. for debugging and testing
         """
@@ -366,6 +379,7 @@ class LSM:
                         confidence_level_chi_test=confidence_level_chi_test,
                         confidence_level_tau_test=confidence_level_tau_test,
                         drift_ref_epoch_type=drift_ref_epoch_type,
+                        noise_floor_mugal=noise_floor_mugal,
                         verbose=False
                         )
 
@@ -480,6 +494,32 @@ class LSM:
                                      f'of {min_multiplicative_factor_to_sd_percent:1.3f}%.\n')
 
         self.number_of_iterations = i_iteration
+
+    def export_stat_results_shapefile(self, filename, epsg_code, verbose=True):
+        """Export station-related results from the `stat_obs_df` dataframe to a shapefile.
+
+        Notes
+        -----
+        This method relies on the optional module `geopandas` (optional dependency).
+
+        Parameters
+        ---------
+        filename : str
+            Name and path of the output shapefile.
+        epsg_code: int
+            EPSG code of the station coordinates' CRS.
+        verbose : bool, optional (default=False)
+            `True` implies that status messages are printed to the command line.
+        """
+        if not _has_geopandas:
+            raise ImportError(f'Optional dependency geopandas not available, but needed for writing shapefiles!')
+        if verbose:
+            print(f'Save station results of lsm run "{self.comment}" to: {filename}')
+
+        stat_obs_df = self.stat_obs_df.copy(deep=True)
+        stat_obs_df['comment'] = self.comment
+        stat_obs_gdf = geopandas.GeoDataFrame(stat_obs_df, geometry=geopandas.points_from_xy(stat_obs_df['long_deg'], stat_obs_df['lat_deg']), crs=epsg_code)
+        stat_obs_gdf.to_file(filename)
 
     @property
     def time_str(self):
