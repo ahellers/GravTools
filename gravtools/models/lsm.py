@@ -21,8 +21,16 @@ from scipy import stats
 import datetime as dt
 import pytz
 import copy
-from gravtools import settings
 
+# optional imports:
+try:
+    import geopandas
+except ImportError:
+    _has_geopandas = False
+else:
+    _has_geopandas = True
+
+from gravtools import settings
 
 class LSM:
     """Base class for LSM classes.
@@ -486,6 +494,32 @@ class LSM:
                                      f'of {min_multiplicative_factor_to_sd_percent:1.3f}%.\n')
 
         self.number_of_iterations = i_iteration
+
+    def export_stat_results_shapefile(self, filename, epsg_code, verbose=True):
+        """Export station-related results from the `stat_obs_df` dataframe to a shapefile.
+
+        Notes
+        -----
+        This method relies on the optional module `geopandas` (optional dependency).
+
+        Parameters
+        ---------
+        filename : str
+            Name and path of the output shapefile.
+        epsg_code: int
+            EPSG code of the station coordinates' CRS.
+        verbose : bool, optional (default=False)
+            `True` implies that status messages are printed to the command line.
+        """
+        if not _has_geopandas:
+            raise ImportError(f'Optional dependency geopandas not available, but needed for writing shapefiles!')
+        if verbose:
+            print(f'Save station results of lsm run "{self.comment}" to: {filename}')
+
+        stat_obs_df = self.stat_obs_df.copy(deep=True)
+        stat_obs_df['comment'] = self.comment
+        stat_obs_gdf = geopandas.GeoDataFrame(stat_obs_df, geometry=geopandas.points_from_xy(stat_obs_df['long_deg'], stat_obs_df['lat_deg']), crs=epsg_code)
+        stat_obs_gdf.to_file(filename)
 
     @property
     def time_str(self):

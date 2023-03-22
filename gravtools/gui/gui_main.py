@@ -119,6 +119,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
         self.pushButton_results_delete_lsm_run.pressed.connect(self.on_pushbutton_results_delete_lsm_run)
+        self.pushButton_results_export_shapefile.pressed.connect(self.on_pushButton_results_export_shapefile)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
@@ -204,6 +205,51 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    @pyqtSlot()
+    def on_pushButton_results_export_shapefile(self):
+        """Invoked whenever pressing the button."""
+        # Get the currently selected lsm run object:
+        idx, time_str = self.get_selected_lsm_run()
+        if idx == -1:  # invalid index
+            self.statusBar().showMessage(f'No data selected for export to shapefiles...')
+            return
+        lsm_run = self.campaign.lsm_runs[idx]
+        try:
+            epsg_code = int(self.lineEdit_results_epsg.text())
+        except ValueError:
+            QMessageBox.critical(self, 'Error!', 'Invalid EPSG code. Need to be an integer value.')
+            return
+        print(epsg_code)
+
+        if not os.path.isdir(self.campaign.output_directory):
+            QMessageBox.critical(self, 'Error!', f'Invalid output directory: {self.campaign.output_directory}')
+            return
+
+        # Export station results:
+        filename = os.path.join(self.campaign.output_directory, 'stat_results.shp')
+        try:
+            lsm_run.export_stat_results_shapefile(filename=filename, epsg_code=epsg_code)
+        except AttributeError:
+            QMessageBox.warning(self, f'Export not available!', f'Export of station results to a shapefile is not '
+                                                               f'supported by the lsm method {lsm_run.lsm_method}.')
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        finally:
+            self.statusBar().showMessage(f'Save station results of lsm run "{lsm_run.comment}" to: {filename}')
+
+
+        # Export observations results:
+        filename = os.path.join(self.campaign.output_directory, 'obs_results.shp')
+        try:
+            lsm_run.export_obs_results_shapefile(filename=filename, epsg_code=epsg_code)
+        except AttributeError:
+            QMessageBox.warning(self, f'Export not available!', f'Export of observation results to a shapefile is not '
+                                                                f'supported by the lsm method {lsm_run.lsm_method}.')
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        finally:
+            self.statusBar().showMessage(f'Save observations results of lsm run "{lsm_run.comment}" to: {filename}')
 
     @pyqtSlot()
     def on_action_Change_Campaign_name_triggered(self):
@@ -3181,6 +3227,13 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         # connect signals and slots:
         self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
 
+        # Optional dependency for GIS data export:
+        if _has_geopandas:
+            self.groupBox_gis.setEnabled(True)
+            self.lineEdit_epsg_code.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
+        else:
+            self.groupBox_gis.setEnabled(False)
+
     @pyqtSlot(int)
     def on_comboBox_select_lsm_run_current_index_changed(self, index: int):
         """Invoked whenever the index of the selected item in the combobox changed."""
@@ -3211,7 +3264,10 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
             self.groupBox_other_files.setEnabled(True)
             self.groupBox_nsb_file.setEnabled(True)
             self.groupBox_observation_list.setEnabled(True)
+            if _has_geopandas:
+                self.groupBox_gis.setEnabled(True)
         else:
+            self.groupBox_gis.setEnabled(False)
             self.groupBox_other_files.setEnabled(False)
             self.groupBox_nsb_file.setEnabled(False)
             self.groupBox_observation_list.setEnabled(False)
@@ -3231,7 +3287,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
                 self.groupBox_nsb_file.setEnabled(False)
                 self.checkBox_save_vg_plot_png.setEnabled(True)
             else:
-                raise AssertionError(f'Invali LSM method: {lsm_method}!')
+                raise AssertionError(f'Invalid LSM method: {lsm_method}!')
 
 def main():
     """Main program to start the GUI."""

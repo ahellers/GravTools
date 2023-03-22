@@ -506,7 +506,7 @@
             <item>
              <widget class="QGroupBox" name="groupBox_gis_data">
               <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export  the current content of the observations and the stations table to an ESRI shapefile (&amp;lt;campaign name&amp;gt;_obs.shp and &amp;lt;campaign name&amp;gt;_stat.shp). Please declare the CRS of the station coordinates by a valid EPSG code. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export the current content of the observations and the stations table to an ESRI shapefile (obs_results.shp and stat_results.shp). Please declare the CRS of the station coordinates by a valid EPSG code. The files are written to the campaign's output directory. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
               </property>
               <property name="title">
                <string>GIS data</string>

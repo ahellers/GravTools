@@ -22,6 +22,15 @@ import datetime as dt
 import pytz
 # from matplotlib import pyplot as plt
 
+# optional imports:
+try:
+    import geopandas
+except ImportError:
+    _has_geopandas = False
+else:
+    _has_geopandas = True
+    from shapely.geometry import Point, LineString  # Comes with geopandas
+
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, global_model_test, tau_test
 from gravtools.models import misc
@@ -626,3 +635,60 @@ class LSMDiff(LSM):
         self.global_model_test_status = chi_test
         self.number_of_outliers = number_of_outliers
         self.drift_ref_epoch_type = drift_ref_epoch_type
+
+    def export_obs_results_shapefile(self, filename, epsg_code, verbose=True):
+        """Export observation-related results from the `setup_obs_df` dataframe to a shapefile.
+
+        Notes
+        -----
+        This method relies on the optional module `geopandas` (optional dependency).
+
+        Parameters
+        ---------
+        filename : str
+            Name and path of the output shapefile.
+        epsg_code: int
+            EPSG code of the station coordinates' CRS.
+        verbose : bool, optional (default=False)
+            `True` implies that status messages are printed to the command line.
+        """
+        if not _has_geopandas:
+            raise ImportError(f'Optional dependency "geopandas" not available, but needed for writing shapefiles!')
+        if verbose:
+            print(f'Save observation results of lsm run "{self.comment}" to: {filename}')
+
+        setup_obs_df = self.setup_obs_df.copy(deep=True)
+        setup_obs_df['comment'] = self.comment
+
+        # Get coordinates:
+        stat_obs_df_short = self.stat_obs_df[['station_name', 'long_deg', 'lat_deg']].copy(deep=True)
+        setup_obs_df = setup_obs_df.merge(stat_obs_df_short, left_on='station_name_from', right_on='station_name',
+                                          how='left')
+        setup_obs_df.rename(columns={'long_deg': 'from_long_deg', 'lat_deg': 'from_lat_deg'}, inplace=True)
+        setup_obs_df.drop(columns=['station_name'], inplace=True)
+
+        setup_obs_df = setup_obs_df.merge(stat_obs_df_short, left_on='station_name_to', right_on='station_name',
+                                          how='left')
+        setup_obs_df.rename(columns={'long_deg': 'to_long_deg', 'lat_deg': 'to_lat_deg'}, inplace=True)
+        setup_obs_df.drop(columns=['station_name'], inplace=True)
+
+        # Further changes:
+        setup_obs_df.rename(columns={'station_name_from': 'from_station_name', 'station_name_to': 'to_station_name'}, inplace=True)  # To make it readable in the shapefile (max 10 char for column names!)
+        setup_obs_df['ref_epoch'] = setup_obs_df['ref_epoch_dt'].dt.strftime('%Y-%m-%d %H:%M:%S')
+        setup_obs_df.drop(columns=['ref_epoch_dt'], inplace=True)  # datetime fields cannot be converted to shapefiles!
+
+
+        # Point => LineString
+        # https://stackoverflow.com/questions/55070635/single-row-points-to-linestring
+        # -
+        from_points = [Point(xy) for xy in zip(setup_obs_df['from_long_deg'], setup_obs_df['from_lat_deg'])]
+        to_points = [Point(xy) for xy in zip(setup_obs_df['to_long_deg'], setup_obs_df['to_lat_deg'])]
+
+        lines = [LineString(xy) for xy in zip(from_points, to_points)]
+
+        # Create GeoDataFrame:
+        setup_obs_gdf = geopandas.GeoDataFrame(setup_obs_df)
+        setup_obs_gdf.set_geometry(lines, crs=epsg_code, inplace=True)
+
+        # Save to shapefile:
+        setup_obs_gdf.to_file(filename)
