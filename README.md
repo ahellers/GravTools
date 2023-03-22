@@ -12,6 +12,11 @@ For installation in a virtual python environment follow these steps:
 1. Create a new virtual environment in the directory "venv": `python3 -n venv env`
 2. Activate the virtual env.: `source env/bin/activate`
 3. Install the GravTools package: `pip install grav-toolbox`
+
+### Optional dependency for GIS data export
+GravTools allows to export station- und observation-results to shapefiles for import and analysis in GIS programs.
+To enable these features the optional package "geopandas" needs to be installed by executing:
+`pip install grav-toolbox[gis]`
  
 ## Installation issues on Centos 8:
 * **1. Carry out installation steps describes above** 

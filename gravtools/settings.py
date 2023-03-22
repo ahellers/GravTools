@@ -121,6 +121,9 @@ INIT_OESGN_STATION_AS_DATUM = False  # Initialize OESGN stations as datum statio
 
 # ----- GUI appearance and plot settings -----
 
+# --- Gerneral color settings ---
+DATUM_STATION_COLOR = (255, 204, 204)
+
 # --- Drift plots in the results tab: ---
 # Number of plot items for plotting the drift function (polynomial):
 DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION = 100
@@ -177,6 +180,11 @@ WRITE_COMMENT_TO_NSB = 'gravtools_version'
 #                   (4 should be a good choice, as it is compatible with python 3.6)
 # - 999 => Use the highest version available at the installation (pickle.HIGHEST_VERSION)
 PICKLE_PROTOCOL_VERSION = 4
+
+
+# ----- GIS data export settings: -----
+DEFAULT_EPSG_CODE = 4312  # 4312: MGI, lat/lon, Greenwich
+
 
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----

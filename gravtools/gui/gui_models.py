@@ -140,10 +140,10 @@ class StationTableModel(QAbstractTableModel):
             if role == Qt.BackgroundRole:
                 if column_name == 'is_datum':
                     if value:
-                        return QtGui.QColor('red')
+                        return QtGui.QColor(settings.DATUM_STATION_COLOR[0], settings.DATUM_STATION_COLOR[1],
+                                            settings.DATUM_STATION_COLOR[2])
 
-                is_observed_flag = self._data.iloc[index.row(), 7]  # is_observed
-                if is_observed_flag:
+                if self._data.iloc[index.row(), self._data_column_names.index('is_observed')]:  # is_observed
                     return QtGui.QColor('cyan')
 
             if role == Qt.CheckStateRole:
@@ -644,7 +644,7 @@ class ObservationTableModel(QAbstractTableModel):
                                 return Qt.Unchecked
 
                     except Exception:
-                        print(f'ERROR: row: {index.row()}, col: {ndex.column()}')
+                        print(f'ERROR: row: {index.row()}, col: {index.column()}')
 
     def flags(self, index):
         """Enable editing of table items."""
@@ -1035,8 +1035,10 @@ class ResultsStationModel(QAbstractTableModel):
         'vg_mugalm': 1,
         'g_est_mugal': 1,
         'sd_g_est_mugal': 1,
+        'se_g_est_mugal': 1,
         'diff_g_est_mugal': 1,
         'diff_sd_g_est_mugal': 1,
+        'diff_se_g_est_mugal': 1,
         'g0_mugal': 1,
         'sig_g0_mugal': 1,
         'dhf_sensor_mean_m': 4,
@@ -1055,8 +1057,10 @@ class ResultsStationModel(QAbstractTableModel):
         'is_datum': 'Datum',
         'g_est_mugal': 'g_est [µGal]',
         'sd_g_est_mugal': 'SD_est [µGal]',
+        'se_g_est_mugal': 'SE_est [µGal]',
         'diff_g_est_mugal': 'delta_g [µGal]',
         'diff_sd_g_est_mugal': 'delta_SD [µGal]',
+        'diff_se_g_est_mugal': 'delta_SE [µGal]',
         'g0_mugal': 'g0 [µGal]',
         'dhf_sensor_mean_m': 'dhf mean [m]',
         'dhf_sensor_std_m': 'dhf SD [m]',
@@ -1134,9 +1138,11 @@ class ResultsStationModel(QAbstractTableModel):
 
     def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
+
+            value = self._data.iloc[index.row(), index.column()]
+            column_name = self._data_column_names[index.column()]
+
             if role == Qt.DisplayRole:
-                value = self._data.iloc[index.row(), index.column()]
-                column_name = self._data_column_names[index.column()]
                 # Custom formatter (string is expected as return type):
                 if value is None:  #
                     return NONE_REPRESENTATION_IN_TABLE_VIEW
@@ -1153,10 +1159,14 @@ class ResultsStationModel(QAbstractTableModel):
                     return str(value)
 
             if role == Qt.TextAlignmentRole:
-                value = self._data.iloc[index.row(), index.column()]
                 if isinstance(value, int) or isinstance(value, float):
                     # Align right, vertical middle.
                     return Qt.AlignVCenter + Qt.AlignRight
+
+            if role == Qt.BackgroundRole:
+                if self._data.iloc[index.row(), self._data_column_names.index('is_datum')]:
+                    return QtGui.QColor(settings.DATUM_STATION_COLOR[0], settings.DATUM_STATION_COLOR[1], settings.DATUM_STATION_COLOR[2])
+
         return None
 
     def headerData(self, section, orientation, role):
