@@ -168,7 +168,14 @@ class Station:
             if col_name not in self._STAT_DF_COLUMNS:
                 columns_to_be_dropped.append(col_name)
 
-        stat_df_oesgn = pd.read_fwf(filename, widths=widths, header=None)
+        try:
+            stat_df_oesgn = pd.read_fwf(filename, widths=widths, header=None)
+        except UnicodeDecodeError:
+            # To catch encoding errors with files created/converted on Windows.
+            # See: https://docs.python.org/3/library/codecs.html#standard-encodings
+            # See: https://stackoverflow.com/questions/45529507/unicodedecodeerror-utf-8-codec-cant-decode-byte-0x96-in-position-35-invalid
+            stat_df_oesgn = pd.read_fwf(filename, widths=widths, header=None, encoding='ISO-8859-1')
+
         stat_df_oesgn.columns = column_names
         stat_df_oesgn['is_observed'] = False  # Default = False
         if is_datum:

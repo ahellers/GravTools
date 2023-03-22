@@ -21,14 +21,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pandas as pd
 import numpy as np
-from scipy import stats
+# from scipy import stats
 import datetime as dt
 import pytz
-import copy
+# import copy
 from sklearn.linear_model import LinearRegression
 
 from gravtools.models.lsm import LSM
-from gravtools import settings
+# from gravtools import settings
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
 

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>433</width>
-    <height>606</height>
+    <width>453</width>
+    <height>745</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -195,6 +195,35 @@
             </property>
            </widget>
           </item>
+          <item row="4" column="0">
+           <widget class="QRadioButton" name="radioButton_2">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export the standard deviations (SD) of the gravity estimates.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Export std. deviation (SD)</string>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">buttonGroup_sd_se</string>
+            </attribute>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QRadioButton" name="radioButton">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export the standard errors (SE) of the gravity estimates.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="text">
+             <string>Export std. error (ED)</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">buttonGroup_sd_se</string>
+            </attribute>
+           </widget>
+          </item>
          </layout>
         </item>
        </layout>
@@ -335,6 +364,52 @@
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="groupBox_gis">
+     <property name="title">
+      <string>GIS data</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_6">
+      <item>
+       <widget class="QCheckBox" name="checkBox_gis_write_shapefile">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Write the stations and observation results to an ESRI shapefile (content of the tabs observation and station results table). The coordinate reference system (crs) of the station coordinates has to be specified by an EPSG code!&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Write station and observation results to a shapefile</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="formLayout_4">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_epsg_code">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;EPSG code that specifies the coordinate reference system (CRS) of the station coordinates declared in the input stations file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>EPSG code of the stations coord. CRS</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="lineEdit_epsg_code">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;EPSG code that specifies the coordinate reference system (CRS) of the station coordinates declared in the input stations file.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
@@ -368,8 +443,8 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
+     <x>257</x>
+     <y>735</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
@@ -384,8 +459,8 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
+     <x>325</x>
+     <y>735</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
@@ -393,8 +468,41 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>checkBox_gis_write_shapefile</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_epsg_code</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>67</x>
+     <y>643</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>84</x>
+     <y>676</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_gis_write_shapefile</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEdit_epsg_code</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>226</x>
+     <y>642</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>354</x>
+     <y>673</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <buttongroups>
   <buttongroup name="buttonGroup_dhb_dhf"/>
+  <buttongroup name="buttonGroup_sd_se"/>
  </buttongroups>
 </ui>

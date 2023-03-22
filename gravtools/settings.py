@@ -182,6 +182,11 @@ WRITE_COMMENT_TO_NSB = 'gravtools_version'
 PICKLE_PROTOCOL_VERSION = 4
 
 
+# ----- GIS data export settings: -----
+DEFAULT_EPSG_CODE = 4312  # 4312: MGI, lat/lon, Greenwich
+
+
+
 # ----- SCHWAUS and DRIFT settings (legacy code) -----
 
 # Instrumenten-IDs in der Messdatei einem Instrument zuweisen:

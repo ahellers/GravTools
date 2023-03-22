@@ -80,9 +80,9 @@ class CG5SurveyParameters:
         Client of survey.
     operator : str
         Name of the survey'S operator.
-    long_deg : np.float
+    long_deg : float
         Geographical longitude at begin of survey [°].
-    lat_deg : np.float
+    lat_deg : float
         Geographical latitude at begin of survey [°].
     zone : str
         Timezone of all time records.
@@ -103,8 +103,8 @@ class CG5SurveyParameters:
         self.instrument_sn = kwargs.get('instrument_sn', '')  # string
         self.client = kwargs.get('client', '')  # string
         self.operator = kwargs.get('operator', '')  # string
-        self.long_deg = kwargs.get('long_deg', np.nan)  # np.float
-        self.lat_deg = kwargs.get('lat_deg', np.nan)  # np.float
+        self.long_deg = kwargs.get('long_deg', np.nan)  # float
+        self.lat_deg = kwargs.get('lat_deg', np.nan)  # float
         self.zone = kwargs.get('zone', '')  # string
         self.date_time = kwargs.get('date_time', None)  # datetime object (timezone aware)
 
@@ -145,10 +145,10 @@ class CG5SurveyParameters:
 
         if survey_count == 1:  # OK => Parse data in string:
             # Handle geographic locations:
-            longitude_deg = np.float(survey_dict['long_num'])
+            longitude_deg = float(survey_dict['long_num'])
             if survey_dict['long_dir'] == "W":
                 longitude_deg = -longitude_deg
-            latitude_deg = np.float(survey_dict['lat_num'])
+            latitude_deg = float(survey_dict['lat_num'])
             if survey_dict['lat_dir'] == "S":
                 latitude_deg = -latitude_deg
             instrument_sn = survey_dict['instrument_sn']  # instrument serial number
@@ -189,19 +189,19 @@ class CG5SetupParameters:
 
     Attributes
     ----------
-    gcal1 : np.float
+    gcal1 : float
         Calibration factor GCAL1.
-    tiltxs : np.float
+    tiltxs : float
         XXXXXXXX
-    tiltys : np.float
+    tiltys : float
        XXXXXXXX
-    tiltxo : np.float
+    tiltxo : float
         XXXXXXXX
-    tiltyo : np.float
+    tiltyo : float
         XXXXXXXX
-    tempco : np.float
+    tempco : float
         XXXXXXXX
-    drift : np.float
+    drift : float
         Linear drift factor (long-term drift).
     drift_date_time_start : datetime object (TZ aware)
         Start epoch for the determination of th linear long-term drift.
@@ -216,13 +216,13 @@ class CG5SetupParameters:
         **kwargs : dict
             Keyword arguments that are parsed to class attributes.
         """
-        self.gcal1 = kwargs.get('gcal1', np.nan)  # np.float
-        self.tiltxs = kwargs.get('tiltxs', np.nan)  # np.float
+        self.gcal1 = kwargs.get('gcal1', np.nan)  # float
+        self.tiltxs = kwargs.get('tiltxs', np.nan)  # float
         self.tiltys = kwargs.get('tiltys', np.nan)  # string
-        self.tiltxo = kwargs.get('tiltxo', np.nan)  # np.float
-        self.tiltyo = kwargs.get('tiltyo', np.nan)  # np.float
-        self.tempco = kwargs.get('tempco', np.nan)  # np.float
-        self.drift = kwargs.get('drift', np.nan)  # np.float
+        self.tiltxo = kwargs.get('tiltxo', np.nan)  # float
+        self.tiltyo = kwargs.get('tiltyo', np.nan)  # float
+        self.tempco = kwargs.get('tempco', np.nan)  # float
+        self.drift = kwargs.get('drift', np.nan)  # float
         self.drift_date_time_start = kwargs.get('drift_date_time_start', None)  # datetime object (timezone aware)
 
     @classmethod
@@ -257,14 +257,14 @@ class CG5SetupParameters:
 
         if block_count == 1:  # OK => Parse data in string:
 
-            return cls(gref=np.float(setup_dict['gref']),
-                       gcal1=np.float(setup_dict['gcal1']),
-                       tiltxs=np.float(setup_dict['tiltxs']),
-                       tiltys=np.float(setup_dict['tiltys']),
-                       tiltxo=np.float(setup_dict['tiltxo']),
-                       tiltyo=np.float(setup_dict['tiltyo']),
-                       tempco=np.float(setup_dict['tempco']),
-                       drift=np.float(setup_dict['drift']),
+            return cls(gref=float(setup_dict['gref']),
+                       gcal1=float(setup_dict['gcal1']),
+                       tiltxs=float(setup_dict['tiltxs']),
+                       tiltys=float(setup_dict['tiltys']),
+                       tiltxo=float(setup_dict['tiltxo']),
+                       tiltyo=float(setup_dict['tiltyo']),
+                       tempco=float(setup_dict['tempco']),
+                       drift=float(setup_dict['drift']),
                        drift_date_time_start=dt.datetime.strptime(
                            setup_dict["drift_date_start"] + setup_dict["drift_time_start"],
                            "%Y/%m/%d%H:%M:%S")
@@ -532,11 +532,11 @@ class CG5Survey:
 
         Returns
         -------
-        Height difference [m] : np.float
+        Height difference [m] : float
         """
         if dh_str.startswith('.'):
             dh_str = '-' + dh_str[1:]
-        return np.float(dh_str)
+        return float(dh_str)
 
     def read_obs_file(self, obs_filename):
         """Read CG-5 observation file (txt) and populate the object.
@@ -618,8 +618,8 @@ class CG5Survey:
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
             station_name = self.resolve_station_name(obs_dict['station_name'])
-            dhf_m = np.float(obs_dict['dh_cm']) * 1e-2
-            dhb_m = np.float(obs_dict['dh_cm']) * 1e-2
+            dhf_m = float(obs_dict['dh_cm']) * 1e-2
+            dhb_m = float(obs_dict['dh_cm']) * 1e-2
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
@@ -640,8 +640,8 @@ class CG5Survey:
             obs_dict = obs_block.groupdict()
 
             station_name = self.resolve_station_name(obs_dict['station_name'])
-            dhf_m = np.float(obs_dict['dhf_cm']) * 1e-2
-            dhb_m = np.float(obs_dict['dhb_cm']) * 1e-2
+            dhf_m = float(obs_dict['dhf_cm']) * 1e-2
+            dhb_m = float(obs_dict['dhb_cm']) * 1e-2
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations

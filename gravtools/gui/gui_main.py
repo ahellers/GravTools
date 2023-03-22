@@ -23,17 +23,27 @@ The graphical layout of the GUI was created by using the Qt Designer (<https://w
 
 import sys
 import os
+import warnings
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
     QHeaderView, QInputDialog
 from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QModelIndex
 from PyQt5 import QtGui
-
 import datetime as dt
 import pyqtgraph as pg
 import pyqtgraph.exporters
 import numpy as np
 import pandas as pd
 import pytz
+
+# optional imports:
+try:
+    import geopandas
+except ImportError:
+    _has_geopandas = False
+    warnings.warn('The optional dependency "geopandas" is not installed. Some features, e.g. GIS file export,'
+                  ' will not be available.', UserWarning)
+else:
+    _has_geopandas = True
 
 from gravtools.gui.MainWindow import Ui_MainWindow
 from gravtools.gui.dialog_new_campaign import Ui_Dialog_new_Campaign
@@ -169,6 +179,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Overwrite/change setting from ui file, if necessary:
         self.dlg_estimation_settings.comboBox_adjustment_method.addItems(settings.ADJUSTMENT_METHODS.values())
         self.dlg_estimation_settings.comboBox_iteration_approach.addItems(settings.ITERATION_APPROACHES.keys())
+
+        # Configure GUI according to optional dependencies:
+        if _has_geopandas:
+            self.groupBox_gis_data.setEnabled(True)
+            self.lineEdit_results_epsg.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
+
+        else:
+            self.groupBox_gis_data.setEnabled(False)
 
         # Init models:
         self.station_model = None
@@ -2190,7 +2208,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                 # Get data:
             if flag_show_reduced_observations:
-                g_mugal = obs_df['g_red_mugal'].values
+                g_mugal = obs_df['g_red_mugal'].astype(float).values
                 sd_g_mugal = obs_df['sd_g_red_mugal'].values
                 corr_tide = obs_df['corr_tide_red_mugal'].values
                 corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
