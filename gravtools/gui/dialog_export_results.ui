@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>453</width>
-    <height>745</height>
+    <height>770</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -162,7 +162,7 @@
              <string>Take dhb and dhf from first setup at a station</string>
             </property>
             <property name="checked">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">buttonGroup_dhb_dhf</string>
@@ -176,6 +176,9 @@
             </property>
             <property name="text">
              <string>Use mean dhb and dhf at stations</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
             </property>
             <attribute name="buttonGroup">
              <string notr="true">buttonGroup_dhb_dhf</string>
@@ -196,7 +199,7 @@
            </widget>
           </item>
           <item row="4" column="0">
-           <widget class="QRadioButton" name="radioButton_2">
+           <widget class="QRadioButton" name="radioButton_export_sd">
             <property name="toolTip">
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export the standard deviations (SD) of the gravity estimates.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
@@ -209,12 +212,12 @@
            </widget>
           </item>
           <item row="3" column="0">
-           <widget class="QRadioButton" name="radioButton">
+           <widget class="QRadioButton" name="radioButton_export_se">
             <property name="toolTip">
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Export the standard errors (SE) of the gravity estimates.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>Export std. error (ED)</string>
+             <string>Export std. error (SE)</string>
             </property>
             <property name="checked">
              <bool>true</bool>
@@ -502,7 +505,7 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_dhb_dhf"/>
   <buttongroup name="buttonGroup_sd_se"/>
+  <buttongroup name="buttonGroup_dhb_dhf"/>
  </buttongroups>
 </ui>

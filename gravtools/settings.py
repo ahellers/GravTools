@@ -97,6 +97,12 @@ LSM_METHODS_NSD_FILE_EXPORT = [
     'MLR_BEV',
 ]
 
+# List of LSM methods where export of gis files is allowed:
+LSM_METHODS_GIS_EXPORT = [
+    'LSM_diff',
+    'LSM_non_diff',
+]
+
 # List of LSM methods where VG plots are created (and should be saved as PNG files):
 LSM_METHODS_VG_PLOT = [
     'VG_LSM_nondiff',

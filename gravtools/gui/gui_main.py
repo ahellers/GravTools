@@ -235,7 +235,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                                f'supported by the lsm method {lsm_run.lsm_method}.')
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
-        finally:
+        else:
             self.statusBar().showMessage(f'Save station results of lsm run "{lsm_run.comment}" to: {filename}')
 
 
@@ -248,7 +248,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                                 f'supported by the lsm method {lsm_run.lsm_method}.')
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
-        finally:
+        else:
             self.statusBar().showMessage(f'Save observations results of lsm run "{lsm_run.comment}" to: {filename}')
 
     @pyqtSlot()
@@ -2108,6 +2108,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                     vertical_offset_mode = 'first'
                                 else:
                                     raise AssertionError(f'Undefined vertical offset mode!')
+                                if dlg.radioButton_export_se.isChecked():
+                                    formal_error_type = 'se'
+                                    if IS_VERBOSE:
+                                        print(f' - Write gravity standard errors (SE) to the nsb file.')
+                                elif dlg.radioButton_export_sd.isChecked():
+                                    if IS_VERBOSE:
+                                        print(f' - Write gravity standard deviations (SD) to the nsb file.')
+                                    formal_error_type = 'sd'
+                                else:
+                                    raise AssertionError(f'Invalid formal error type! Valid: "sd" or "se".')
+
                                 if dlg.checkBox_nsb_remove_datum_stations.checkState() == Qt.Checked:
                                     exclude_datum_stations = True
                                 else:
@@ -2116,6 +2127,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                              lsm_run_index=lsm_run_idx,
                                                              vertical_offset_mode=vertical_offset_mode,
                                                              exclude_datum_stations=exclude_datum_stations,
+                                                             formal_error_type=formal_error_type,
                                                              verbose=IS_VERBOSE)
                         except Exception as e:
                             QMessageBox.critical(self, 'Error!', str(e))
@@ -2177,6 +2189,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         except Exception as e:
                             QMessageBox.critical(self, 'Error!', str(e))
                             flag_export_successful = False
+
+                    # Save shapefile:
+                    if lsm_run.lsm_method in settings.LSM_METHODS_GIS_EXPORT:
+                        if dlg.checkBox_gis_write_shapefile:
+                            try:
+                                epsg_code = int(self.lineEdit_results_epsg.text())
+                            except ValueError:
+                                QMessageBox.critical(self, 'Error!', 'Invalid EPSG code. Need to be an integer value.')
+                            else:
+                                try:
+                                    filename_shp = os.path.join(self.campaign.output_directory, filename + '_obs.shp')
+                                    lsm_run.export_obs_results_shapefile(filename=filename_shp, epsg_code=epsg_code)
+                                except Exception as e:
+                                    QMessageBox.critical(self, 'Error!', str(e))
+                                    flag_export_successful = False
+                                try:
+                                    filename_shp = os.path.join(self.campaign.output_directory, filename + '_stat.shp')
+                                    lsm_run.export_obs_results_shapefile(filename=filename_shp, epsg_code=epsg_code)
+                                except Exception as e:
+                                    QMessageBox.critical(self, 'Error!', str(e))
+                                    flag_export_successful = False
 
             if flag_export_successful:
                 self.statusBar().showMessage(f"Export to {output_path} successful!")
@@ -3233,6 +3266,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
             self.lineEdit_epsg_code.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
         else:
             self.groupBox_gis.setEnabled(False)
+            self.checkBox_gis_write_shapefile.setChecked(Qt.Unchecked)
 
     @pyqtSlot(int)
     def on_comboBox_select_lsm_run_current_index_changed(self, index: int):
