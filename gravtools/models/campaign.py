@@ -582,7 +582,7 @@ class Campaign:
             raise ValueError('`ref_delta_t_dt` needs to be a datetime object.')
 
     def write_nsb_file(self, filename: str, lsm_run_index, vertical_offset_mode: str = 'first',
-                       exclude_datum_stations=False, verbose=False):
+                       exclude_datum_stations=False, formal_error_type='se', verbose=False):
         """Write the results of an LSM run to an nsb file (input for NSDB database).
 
         Notes
@@ -603,11 +603,19 @@ class Campaign:
             taken from the first setup at a station. (2) 'mean' indicates that mean values over all setups are taken.
         exclude_datum_stations : boolean, optional (default=False)
             `True` indicates that datum stations are excluded from the nsb file.
+        formal_error_type : str, optional (default=`se`, alternative: `sd`)
+            Select which formal errors (of station gravities) are exported to the nsd file. The user may choose
+            between post-fit standard deviations (`sd`) and standard errors ('se'). The standard errors consider the
+            noise floor defined in the estimation settings.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
         # Init.:
         nsb_string = ''
+        formal_error_type_options = ('sd', 'se')
+
+        if formal_error_type not in formal_error_type_options:
+            raise AssertionError(f'Invalid formal error type! Valid: "sd" and "se".')
 
         # Get and prepare data:
         # - lsm_run
@@ -678,11 +686,16 @@ class Campaign:
                     else:
                         raise AssertionError(f'Invalid choice for the nsb file comment: {WRITE_COMMENT_TO_NSB}!')
 
+                    if formal_error_type == 'se':
+                        formal_error = row['se_g_est_mugal']
+                    elif formal_error_type == 'sd':
+                        formal_error = row['sd_g_est_mugal']
+
                     nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s}{:>5s} {:4.0f} {:4.0f}\n'.format(
                         station_name,
                         date_str,
                         row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
-                        row['sd_g_est_mugal'],
+                        formal_error,
                         GRAVIMETER_TYPES_KZG_LOOKUPTABLE[gravimeter_type],
                         comment_str,
                         (dhb_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
