@@ -227,7 +227,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         # Export station results:
-        filename = os.path.join(self.campaign.output_directory, 'stat_results.shp')
+        filename = 'stat_results_' + lsm_run.lsm_method + '.shp'
+        filename = os.path.join(self.campaign.output_directory, filename)
         try:
             lsm_run.export_stat_results_shapefile(filename=filename, epsg_code=epsg_code)
         except AttributeError:
@@ -240,7 +241,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
         # Export observations results:
-        filename = os.path.join(self.campaign.output_directory, 'obs_results.shp')
+        filename = 'obs_results_' + lsm_run.lsm_method + '.shp'
+        filename = os.path.join(self.campaign.output_directory, filename)
         try:
             lsm_run.export_obs_results_shapefile(filename=filename, epsg_code=epsg_code)
         except AttributeError:
@@ -485,7 +487,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.update_stations_map(auto_range=False)
                 # Set datum status ind the campaign data:
                 station_record = self.station_model._data.iloc[topLeft.row()]
-                if not isinstance(station_record.is_datum, bool):
+                if not (isinstance(station_record.is_datum, bool) or isinstance(station_record.is_datum, np.bool_)):
                     QMessageBox.critical(self, 'Error!', 'The is_datum flag is not a bool type!')
                 else:
                     self.campaign.stations.set_datum_stations([station_record.station_name],
@@ -1554,7 +1556,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_results_observation_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_drift_table_view(idx, survey_name=survey_name)
             self.update_results_vg_table_view(idx)
-            self.update_results_obs_plots()
+            self.update_results_obs_plots()  #TODO!! Error wegen dtype Änderung!!
             self.update_drift_plot()
             self.update_vg_plot()
         else:  # invalid index => Reset results views

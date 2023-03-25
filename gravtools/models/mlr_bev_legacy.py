@@ -319,8 +319,8 @@ class BEVLegacyProcessing(LSM):
         # self.stat_obs_df['g_est_full_mugal'] = self.stat_obs_df['g_est_mugal'] + 9.8e8  # Get absolute gravity value at station [µGal]
 
         # Add g0 and sig_go to "self.stat_obs_df":
-        self.stat_obs_df['g0_mugal'] = None
-        self.stat_obs_df['sig_g0_mugal'] = None
+        self.stat_obs_df['g0_mugal'] = np.NAN
+        self.stat_obs_df['sig_g0_mugal'] = np.NAN
         self.stat_obs_df.update(stat_df_datum[['g0_mugal', 'sig_g0_mugal']])
 
         # Write log:
