@@ -66,6 +66,23 @@ class Station:
             String that lists the names of the surveys in which the station was observed in (separated by ';')
     """
 
+    _STAT_DF_COLUMNS_DTYPES = {
+        'station_name': 'str',  # Station name, str
+        'long_deg': 'float',  # longitude [deg], float
+        'lat_deg': 'float',  # latitude [deg], float
+        'height_m': 'float',  # Height [m]
+        'g_mugal': 'float',  # gravity [µGal]
+        'sd_g_mugal': 'float',  # standard deviation of the gravity [µGal]
+        'vg_mugalm': 'float',  # vertical gradient [µGal/m]
+        'is_observed': 'bool',  # flag: True, if station was observed in at least one survey in the current campaign.
+        'source_type': 'str',  # Source of the station data, str
+        'source_name': 'str',  # Name of the data source
+        'is_datum': 'bool',  # flag, that indicates whether this is a datum station, bool
+        'in_survey': 'str',  # Names of surveys in which ths station was observed (separator = ;), str
+    }
+    _STAT_DF_COLUMNS = list(_STAT_DF_COLUMNS_DTYPES.keys())
+
+
     _STAT_DF_COLUMNS = (
         'station_name',  # Station name, str
         'long_deg',  # longitude [deg], float
@@ -106,6 +123,7 @@ class Station:
 
         # Init. station dataframe:
         self.stat_df = pd.DataFrame(columns=self._STAT_DF_COLUMNS)
+        self.stat_df = self.stat_df.astype(self._STAT_DF_COLUMNS_DTYPES)
 
         # Loop over station_files and append the content to stat_df:
         for file_name, file_type in station_files.items():
@@ -331,6 +349,7 @@ class Station:
         tmp_df['source_type'] = 'obs_file'
         tmp_df['source_name'] = survey.name  # survey name
         tmp_df.reset_index(drop=True, inplace=True)
+        tmp_df = tmp_df.astype(self._STAT_DF_COLUMNS_DTYPES)
 
         self.add_stations(tmp_df, data_source_type='obs_file', verbose=verbose)
 

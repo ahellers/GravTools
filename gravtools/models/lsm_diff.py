@@ -53,23 +53,57 @@ class LSMDiff(LSM):
     # Column names of self.setup_obs_df:
     # - keys: Column names of the pandas dataframe
     # - values: Short description for table headers, etc., in the GUI
-    _SETUP_DIFF_COLUMNS_DICT = {
-        'survey_name': 'Survey',
-        'ref_epoch_dt': 'Epoch',
-        'diff_obs_id': 'Obs. ID',
-        'station_name_from': 'Station from',
-        'station_name_to': 'Station to',
-        'setup_id_from': 'Setup ID from',
-        'setup_id_to': 'Setup ID to',
-        'g_diff_mugal': 'g [µGal]',
-        'sd_g_diff_mugal': 'SD [µGal]',
-        'sd_g_diff_est_mugal': 'SD_est [µGal]',
-        'v_diff_mugal': 'Residuals [µGal]',  # Post fit residuals
-        'w_diff_mugal': 'Std. Residual []',
-        'r_diff_obs': 'Redundancy []',
-        'tau_test_result': 'Outlier Test',
+    # _SETUP_DIFF_COLUMNS_DICT = {
+    #     'survey_name': 'Survey',
+    #     'ref_epoch_dt': 'Epoch',
+    #     'diff_obs_id': 'Obs. ID',
+    #     'station_name_from': 'Station from',
+    #     'station_name_to': 'Station to',
+    #     'setup_id_from': 'Setup ID from',
+    #     'setup_id_to': 'Setup ID to',
+    #     'g_diff_mugal': 'g [µGal]',
+    #     'sd_g_diff_mugal': 'SD [µGal]',
+    #     'sd_g_diff_est_mugal': 'SD_est [µGal]',
+    #     'v_diff_mugal': 'Residuals [µGal]',  # Post fit residuals
+    #     'w_diff_mugal': 'Std. Residual []',
+    #     'r_diff_obs': 'Redundancy []',
+    #     'tau_test_result': 'Outlier Test',
+    # }
+    _SETUP_DIFF_COLUMNS_DTYPES = {
+        'survey_name': 'str',
+        'ref_epoch_dt': 'datetime64[ns, UTC]',
+        'diff_obs_id': 'int',
+        'station_name_from': 'str',
+        'station_name_to': 'str',
+        'setup_id_from': 'int',
+        'setup_id_to': 'int',
+        'g_diff_mugal': 'float',
+        'sd_g_diff_mugal': 'float',
+        'sd_g_diff_est_mugal': 'float',
+        'v_diff_mugal': 'float',  # Post fit residuals
+        'w_diff_mugal': 'float',
+        'r_diff_obs': 'float',
+        'tau_test_result': 'str',
     }
-    _SETUP_DIFF_COLUMNS = list(_SETUP_DIFF_COLUMNS_DICT.keys())
+    _SETUP_DIFF_COLUMNS = list(_SETUP_DIFF_COLUMNS_DTYPES.keys())
+
+    # Short colum names with max. 10 char suitable for shapefiles
+    _SETUP_DIFF_COLUMNS_SHORT = {
+        'survey_name': 'survey',
+        'ref_epoch_dt': 'epoch_dt',  # dropped an
+        'diff_obs_id': 'obs_id',
+        'station_name_from': 'stat_from',
+        'station_name_to': 'stat_to',
+        'setup_id_from': 'setup_from',
+        'setup_id_to': 'setup_to',
+        'g_diff_mugal': 'dg',
+        'sd_g_diff_mugal': 'sd_dg',
+        'sd_g_diff_est_mugal': 'sd_dg_est',
+        'v_diff_mugal': 'v',  # Post fit residuals
+        'w_diff_mugal': 'w',
+        'r_diff_obs': 'r',
+        'tau_test_result': 'tau_test',
+    }
 
     # Column names of self.drift_pol_df:
     # - keys: Column names of the pandas dataframe
@@ -369,6 +403,7 @@ class LSMDiff(LSM):
                                                   None_list_placeholder,
                                                   )),
                                          columns=self._SETUP_DIFF_COLUMNS)
+        self.setup_obs_df = self.setup_obs_df.astype(self._SETUP_DIFF_COLUMNS_DTYPES)
 
         # - constraints:
         datum_station_id = -1
@@ -658,31 +693,36 @@ class LSMDiff(LSM):
             print(f'Save observation results of lsm run "{self.comment}" to: {filename}')
 
         setup_obs_df = self.setup_obs_df.copy(deep=True)
+
+        # Change dtypes (just to be save!):
+        setup_obs_df = setup_obs_df.astype(self._SETUP_DIFF_COLUMNS_DTYPES)
+
         setup_obs_df['comment'] = self.comment
 
         # Get coordinates:
         stat_obs_df_short = self.stat_obs_df[['station_name', 'long_deg', 'lat_deg']].copy(deep=True)
         setup_obs_df = setup_obs_df.merge(stat_obs_df_short, left_on='station_name_from', right_on='station_name',
                                           how='left')
-        setup_obs_df.rename(columns={'long_deg': 'from_long_deg', 'lat_deg': 'from_lat_deg'}, inplace=True)
+        setup_obs_df.rename(columns={'long_deg': 'from_long', 'lat_deg': 'from_lat'}, inplace=True)
         setup_obs_df.drop(columns=['station_name'], inplace=True)
 
         setup_obs_df = setup_obs_df.merge(stat_obs_df_short, left_on='station_name_to', right_on='station_name',
                                           how='left')
-        setup_obs_df.rename(columns={'long_deg': 'to_long_deg', 'lat_deg': 'to_lat_deg'}, inplace=True)
+        setup_obs_df.rename(columns={'long_deg': 'to_long', 'lat_deg': 'to_lat'}, inplace=True)
         setup_obs_df.drop(columns=['station_name'], inplace=True)
 
         # Further changes:
-        setup_obs_df.rename(columns={'station_name_from': 'from_station_name', 'station_name_to': 'to_station_name'}, inplace=True)  # To make it readable in the shapefile (max 10 char for column names!)
         setup_obs_df['ref_epoch'] = setup_obs_df['ref_epoch_dt'].dt.strftime('%Y-%m-%d %H:%M:%S')
-        setup_obs_df.drop(columns=['ref_epoch_dt'], inplace=True)  # datetime fields cannot be converted to shapefiles!
 
+        # Rename columns to short names with max 10 chars suitable for shapefiles:
+        setup_obs_df.rename(columns=self._SETUP_DIFF_COLUMNS_SHORT, inplace=True)
+        setup_obs_df.drop(columns=['epoch_dt'], inplace=True)  # datetime fields cannot be converted to shapefiles!
 
         # Point => LineString
         # https://stackoverflow.com/questions/55070635/single-row-points-to-linestring
         # -
-        from_points = [Point(xy) for xy in zip(setup_obs_df['from_long_deg'], setup_obs_df['from_lat_deg'])]
-        to_points = [Point(xy) for xy in zip(setup_obs_df['to_long_deg'], setup_obs_df['to_lat_deg'])]
+        from_points = [Point(xy) for xy in zip(setup_obs_df['from_long'], setup_obs_df['from_lat'])]
+        to_points = [Point(xy) for xy in zip(setup_obs_df['to_long'], setup_obs_df['to_lat'])]
 
         lines = [LineString(xy) for xy in zip(from_points, to_points)]
 

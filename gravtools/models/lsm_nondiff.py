@@ -26,6 +26,14 @@ from gravtools.models.lsm import LSM, create_hist, global_model_test, tau_test
 from gravtools.models import misc
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
+# optional imports:
+try:
+    import geopandas
+except ImportError:
+    _has_geopandas = False
+else:
+    _has_geopandas = True
+
 
 class LSMNonDiff(LSM):
     """Least-squares adjustment of non-differential gravimeter observations with weighted constraints.
@@ -43,21 +51,51 @@ class LSMNonDiff(LSM):
     # Column names of self.setup_obs_df:
     # - keys: Column names of the pandas dataframe
     # - values: Short description for table headers, etc., in the GUI
-    _SETUP_OBS_COLUMNS_DICT = {
-        'survey_name': 'Survey',
-        'ref_epoch_dt': 'Epoch',
-        'obs_id': 'Obs. ID',
-        'station_name': 'Station',
-        'setup_id': 'Setup ID',
-        'g_obs_mugal': 'g [µGal]',
-        'sd_g_obs_mugal': 'SD [µGal]',
-        'sd_g_obs_est_mugal': 'SD_est [µGal]',
-        'v_obs_est_mugal': 'Residuals [µGal]',  # Post fit residuals
-        'w_obs_est_mugal': 'Std. Residual []',
-        'r_obs_est': 'Redundancy []',
-        'tau_test_result': 'Outlier Test',
+    #_SETUP_OBS_COLUMNS_DICT = {
+    #    'survey_name': 'Survey',
+    #    'ref_epoch_dt': 'Epoch',
+    #    'obs_id': 'Obs. ID',
+    #    'station_name': 'Station',
+    #    'setup_id': 'Setup ID',
+    #    'g_obs_mugal': 'g [µGal]',
+    #    'sd_g_obs_mugal': 'SD [µGal]',
+    #    'sd_g_obs_est_mugal': 'SD_est [µGal]',
+    #    'v_obs_est_mugal': 'Residuals [µGal]',  # Post fit residuals
+    #    'w_obs_est_mugal': 'Std. Residual []',
+    #    'r_obs_est': 'Redundancy []',
+    #    'tau_test_result': 'Outlier Test',
+    #}
+    _SETUP_OBS_COLUMNS_DTYPES = {
+        'survey_name': 'str',
+        'ref_epoch_dt': 'datetime64[ns, UTC]',
+        'obs_id': 'int',
+        'station_name': 'str',
+        'setup_id': 'int',
+        'g_obs_mugal': 'float',
+        'sd_g_obs_mugal': 'float',
+        'sd_g_obs_est_mugal': 'float',
+        'v_obs_est_mugal': 'float',  # Post fit residuals
+        'w_obs_est_mugal': 'float',
+        'r_obs_est': 'float',
+        'tau_test_result': 'str',
     }
-    _SETUP_OBS_COLUMNS = list(_SETUP_OBS_COLUMNS_DICT.keys())
+    _SETUP_OBS_COLUMNS = list(_SETUP_OBS_COLUMNS_DTYPES.keys())
+
+    # Short colum names with max. 10 char suitable for shapefiles:
+    _SETUP_OBS_COLUMNS_SHORT = {
+        'survey_name': 'survey',
+        'ref_epoch_dt': 'epoch_dt',
+        'obs_id': 'obs_id',
+        'station_name': 'station',
+        'setup_id': 'setup',
+        'g_obs_mugal': 'g',
+        'sd_g_obs_mugal': 'sd_g',
+        'sd_g_obs_est_mugal': 'sd_g_est',
+        'v_obs_est_mugal': 'v',  # Post fit residuals
+        'w_obs_est_mugal': 'w',
+        'r_obs_est': 'r',
+        'tau_test_result': 'tau_test',
+    }
 
     # Column names of self.drift_pol_df:
     # - keys: Column names of the pandas dataframe
@@ -330,6 +368,7 @@ class LSMNonDiff(LSM):
                                                   None_list_placeholder,
                                                   )),
                                          columns=self._SETUP_OBS_COLUMNS)
+        self.setup_obs_df = self.setup_obs_df.astype(self._SETUP_OBS_COLUMNS_DTYPES)
 
         # - constraints:
         datum_station_id = -1
@@ -596,3 +635,43 @@ class LSMNonDiff(LSM):
         self.global_model_test_status = chi_test
         self.number_of_outliers = number_of_outliers
         self.drift_ref_epoch_type = drift_ref_epoch_type
+
+    def export_obs_results_shapefile(self, filename, epsg_code, verbose=True):
+        """Export observation-related results from the `setup_obs_df` dataframe to a shapefile.
+
+        Notes
+        -----
+        This method relies on the optional module `geopandas` (optional dependency).
+
+        Parameters
+        ---------
+        filename : str
+            Name and path of the output shapefile.
+        epsg_code: int
+            EPSG code of the station coordinates' CRS.
+        verbose : bool, optional (default=False)
+            `True` implies that status messages are printed to the command line.
+        """
+        if not _has_geopandas:
+            raise ImportError(f'Optional dependency "geopandas" not available, but needed for writing shapefiles!')
+        if verbose:
+            print(f'Save observation results of lsm run "{self.comment}" to: {filename}')
+        setup_obs_df = self.setup_obs_df.copy(deep=True)
+        # Change dtypes (just to be save!):
+        setup_obs_df = setup_obs_df.astype(self._SETUP_OBS_COLUMNS_DTYPES)
+        setup_obs_df['comment'] = self.comment
+
+        # Get coordinates:
+        stat_obs_df_short = self.stat_obs_df[['station_name', 'long_deg', 'lat_deg']].copy(deep=True)
+        setup_obs_df = setup_obs_df.merge(stat_obs_df_short, left_on='station_name', right_on='station_name',
+                                          how='left')
+
+        # Rename columns to short names with max 10 chars suitable for shapefiles:
+        setup_obs_df.rename(columns=self._SETUP_OBS_COLUMNS_SHORT, inplace=True)
+        setup_obs_df.drop(columns=['epoch_dt'], inplace=True)  # datetime fields cannot be converted to shapefiles!
+
+        setup_obs_gdf = geopandas.GeoDataFrame(setup_obs_df,
+                                              geometry=geopandas.points_from_xy(setup_obs_df['long_deg'],
+                                                                                setup_obs_df['lat_deg']),
+                                              crs=epsg_code)
+        setup_obs_gdf.to_file(filename)
