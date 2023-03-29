@@ -822,6 +822,27 @@ class Survey:
             raise TypeError('"flag_activate" has to be a boolean variable!')
         self.obs_df.loc[self.obs_df['setup_id'] == setup_id, 'keep_obs'] = flag_activate
 
+    def keep_survey_based_on_obs_status(self, verbose=False):
+        """Activate or deactivate a setup with the specified ID based on the activation status of its observations.
+
+        Parameters
+        ----------
+        setup_id : int
+            ID of the setup that will be activated or deactivated.
+        verbose : bool, optional (default=False)
+            If True, status messages are printed.
+
+        """
+        if self.obs_df['keep_obs'].any():
+            self.keep_survey = True
+            if verbose:
+                print(f'Survey {self.name} activated.')
+        else:
+            self.keep_survey = True
+            if verbose:
+                print(f'Survey {self.name} deactivated.')
+
+
     def activate_observation(self, obs_idx, flag_activate):
         """Activate or deactivate teh observation with the specified dataframe index.
 

@@ -2442,6 +2442,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 survey_name = self.observation_model.data_survey_name
                 survey = self.campaign.surveys[survey_name]
                 survey.activate_observation(row, flag_keep_obs)
+                survey.keep_survey_based_on_obs_status(verbose=IS_VERBOSE)
 
                 # Change check state of obs tree widget according to "keep_obs" flags of setup
                 setup_id = self.observation_model.get_data.at[row, 'setup_id']
