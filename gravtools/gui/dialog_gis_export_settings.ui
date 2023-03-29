@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog_gis_settings</class>
+ <widget class="QDialog" name="Dialog_gis_settings">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>674</width>
+    <height>342</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>GIS data export settings</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_3">
+   <item>
+    <widget class="QGroupBox" name="groupBox_general_settings">
+     <property name="title">
+      <string>General settings</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <layout class="QFormLayout" name="formLayout_2">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label">
+          <property name="toolTip">
+           <string notr="true">EPSG code that defines the coordiante reference system of the station coordinates loaded from the station data file or from the observation input file(s).</string>
+          </property>
+          <property name="text">
+           <string>EPSG code of station coordinates</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="lineEdit_stat_coord_epsg">
+          <property name="toolTip">
+           <string>EPSG code that defines the coordiante reference system of the station coordinates loaded from the station data file or from the observation input file(s).</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_export_lsm_run_results">
+     <property name="toolTip">
+      <string>Settings for the GIs data export in the Results tab (export of LSM run results for data visualization).</string>
+     </property>
+     <property name="title">
+      <string>Export for visualizing LSM run results</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QRadioButton" name="radioButton_campaign_output_dir">
+        <property name="text">
+         <string>Write GIS files to campaign output directory</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup_output_dir</string>
+        </attribute>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioButton_selected_output_dir">
+        <property name="text">
+         <string>Write GIS files to different output directroy</string>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup_output_dir</string>
+        </attribute>
+       </widget>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="0" column="0">
+         <widget class="QPushButton" name="pushButton_select_gis_output_dir">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>Select export directory</string>
+          </property>
+          <property name="text">
+           <string>Select export directory</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLineEdit" name="lineEdit_gis_output_dir">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>Export directory (derfault: campaign output directory)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QCheckBox" name="checkBox_export_stat_results_shp">
+          <property name="text">
+           <string>Export station results (shapefile)</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLineEdit" name="lineEdit_filename_stat_results_shp">
+          <property name="toolTip">
+           <string>Filename without &quot;.shp&quot;</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QCheckBox" name="checkBox_export_obs_results_shp">
+          <property name="text">
+           <string>Export observation results (shapefile)</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLineEdit" name="lineEdit_filename_obs_results_shp">
+          <property name="toolTip">
+           <string>Filename without &quot;.shp&quot;</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QCheckBox" name="checkBox_add_lsm_method_filename">
+          <property name="toolTip">
+           <string>Add the LSM Method to the fileanem string. This is need e.g. to distinguished shapefiles created by from LSM runs using different estimation methods.</string>
+          </property>
+          <property name="text">
+           <string>Add LSM Method to filename</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <spacer name="verticalSpacer_3">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <spacer name="verticalSpacer_2">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>6</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>radioButton_selected_output_dir</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>pushButton_select_gis_output_dir</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>336</x>
+     <y>403</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>104</x>
+     <y>434</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButton_selected_output_dir</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEdit_gis_output_dir</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>336</x>
+     <y>403</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>422</x>
+     <y>434</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_export_obs_results_shp</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEdit_filename_obs_results_shp</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>162</x>
+     <y>284</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>480</x>
+     <y>285</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_export_stat_results_shp</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>lineEdit_filename_stat_results_shp</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>145</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>480</x>
+     <y>261</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <buttongroups>
+  <buttongroup name="buttonGroup_output_dir"/>
+ </buttongroups>
+</ui>

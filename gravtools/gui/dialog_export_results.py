@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Dialog_export_results(object):
     def setupUi(self, Dialog_export_results):
         Dialog_export_results.setObjectName("Dialog_export_results")
-        Dialog_export_results.resize(453, 770)
+        Dialog_export_results.resize(453, 745)
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(Dialog_export_results)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self.groupBox_general_settings = QtWidgets.QGroupBox(Dialog_export_results)
@@ -150,17 +150,6 @@ class Ui_Dialog_export_results(object):
         self.checkBox_gis_write_shapefile = QtWidgets.QCheckBox(self.groupBox_gis)
         self.checkBox_gis_write_shapefile.setObjectName("checkBox_gis_write_shapefile")
         self.verticalLayout_6.addWidget(self.checkBox_gis_write_shapefile)
-        self.formLayout_4 = QtWidgets.QFormLayout()
-        self.formLayout_4.setObjectName("formLayout_4")
-        self.label_epsg_code = QtWidgets.QLabel(self.groupBox_gis)
-        self.label_epsg_code.setEnabled(False)
-        self.label_epsg_code.setObjectName("label_epsg_code")
-        self.formLayout_4.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_epsg_code)
-        self.lineEdit_epsg_code = QtWidgets.QLineEdit(self.groupBox_gis)
-        self.lineEdit_epsg_code.setEnabled(False)
-        self.lineEdit_epsg_code.setObjectName("lineEdit_epsg_code")
-        self.formLayout_4.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.lineEdit_epsg_code)
-        self.verticalLayout_6.addLayout(self.formLayout_4)
         self.verticalLayout_4.addWidget(self.groupBox_gis)
         spacerItem3 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout_4.addItem(spacerItem3)
@@ -173,8 +162,6 @@ class Ui_Dialog_export_results(object):
         self.retranslateUi(Dialog_export_results)
         self.buttonBox.accepted.connect(Dialog_export_results.accept) # type: ignore
         self.buttonBox.rejected.connect(Dialog_export_results.reject) # type: ignore
-        self.checkBox_gis_write_shapefile.toggled['bool'].connect(self.label_epsg_code.setEnabled) # type: ignore
-        self.checkBox_gis_write_shapefile.toggled['bool'].connect(self.lineEdit_epsg_code.setEnabled) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(Dialog_export_results)
 
     def retranslateUi(self, Dialog_export_results):
@@ -223,6 +210,3 @@ class Ui_Dialog_export_results(object):
         self.groupBox_gis.setTitle(_translate("Dialog_export_results", "GIS data"))
         self.checkBox_gis_write_shapefile.setToolTip(_translate("Dialog_export_results", "<html><head/><body><p>Write the stations and observation results to an ESRI shapefile (content of the tabs observation and station results table). The coordinate reference system (crs) of the station coordinates has to be specified by an EPSG code!</p></body></html>"))
         self.checkBox_gis_write_shapefile.setText(_translate("Dialog_export_results", "Write station and observation results to a shapefile"))
-        self.label_epsg_code.setToolTip(_translate("Dialog_export_results", "<html><head/><body><p>EPSG code that specifies the coordinate reference system (CRS) of the station coordinates declared in the input stations file.</p></body></html>"))
-        self.label_epsg_code.setText(_translate("Dialog_export_results", "EPSG code of the stations coord. CRS"))
-        self.lineEdit_epsg_code.setToolTip(_translate("Dialog_export_results", "<html><head/><body><p>EPSG code that specifies the coordinate reference system (CRS) of the station coordinates declared in the input stations file.</p></body></html>"))
