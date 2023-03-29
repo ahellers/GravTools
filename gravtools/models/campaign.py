@@ -902,7 +902,7 @@ class Campaign:
                 tmp_filter = export_df['keep_obs']
             elif export_type == 'inactive_only':
                 tmp_filter = ~export_df['keep_obs']
-            export_obs_df = export_df.loc[tmp_filter, :]
+            export_df = export_df.loc[tmp_filter, :]
 
         # Export to CSV file:
         if verbose:
