@@ -523,25 +523,7 @@
                 </widget>
                </item>
                <item>
-                <layout class="QFormLayout" name="formLayout_7">
-                 <item row="0" column="0">
-                  <widget class="QLabel" name="label_11">
-                   <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Please declare the CRS of the station coordinates by a valid EPSG code. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                   </property>
-                   <property name="text">
-                    <string>EPSG</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="1">
-                  <widget class="QLineEdit" name="lineEdit_results_epsg">
-                   <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Please declare the CRS of the station coordinates by a valid EPSG code. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
+                <layout class="QFormLayout" name="formLayout_7"/>
                </item>
               </layout>
              </widget>
@@ -1050,9 +1032,10 @@
      <bool>true</bool>
     </property>
     <property name="title">
-     <string>Estimation settings</string>
+     <string>Settings</string>
     </property>
     <addaction name="action_Estimation_settings"/>
+    <addaction name="action_Gis_Export_settings"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -1164,7 +1147,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Settings</string>
+    <string>Estimation settings</string>
    </property>
   </action>
   <action name="actionEstimate_long_term_drift">
@@ -1231,6 +1214,14 @@
   <action name="action_License">
    <property name="text">
     <string>License</string>
+   </property>
+  </action>
+  <action name="action_Gis_Export_settings">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>GIS export settings</string>
    </property>
   </action>
  </widget>
