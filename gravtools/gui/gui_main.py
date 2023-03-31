@@ -56,8 +56,14 @@ from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.dialog_about import Ui_Dialog_about
 from gravtools.gui.dialog_gis_export_settings import Ui_Dialog_gis_settings
-from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
-    ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel, ResultsVGModel
+from gravtools.gui.gui_model_station_table import StationTableModel
+from gravtools.gui.gui_model_setup_table import SetupTableModel
+from gravtools.gui.gui_model_observation_table import ObservationTableModel
+from gravtools.gui.gui_model_results_stat_table import ResultsStationModel
+from gravtools.gui.gui_model_results_obs_table import ResultsObservationModel
+from gravtools.gui.gui_model_results_drift_table import ResultsDriftModel
+from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorrelationMatrixModel
+from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
@@ -1347,6 +1353,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if results_obs_df is not None:  # Data available for plotting
             # Get data:
             data = results_obs_df[column_name].values
+            if isinstance(data, np.object):
+                data = data.astype(float)
             obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
                 '1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
             plot_name = self.results_observation_model.get_short_column_description(column_name)
@@ -2295,7 +2303,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             cleared (e.g. new campaign and no observation data available).
         """
         obs_df = self.observation_model.get_data
-        # Wipe plots, if survey_name is Mone:
+        # Wipe plots, if survey_name is None:
         self.plot_obs_g.clear()
         self.plot_obs_sd_g.clear()
         self.plot_obs_corrections.clear()
