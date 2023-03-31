@@ -64,6 +64,7 @@ from gravtools.gui.gui_model_results_obs_table import ResultsObservationModel
 from gravtools.gui.gui_model_results_drift_table import ResultsDriftModel
 from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorrelationMatrixModel
 from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
+from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
@@ -208,6 +209,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.results_station_model = None
         self.results_observation_model = None
         self.results_drift_model = None
+        self.survey_model = None
 
         # Get system fonts:
         self.system_default_fixed_width_font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
@@ -459,6 +461,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_setup_view_model()
                 if self.treeWidget_observations.topLevelItemCount() > 0:
                     self.treeWidget_observations.topLevelItem(0).setSelected(True)
+                self.set_up_survey_view_model()
                 # - Results tab:
                 self.set_up_results_stations_view_model()
                 self.set_up_results_correlation_matrix_view_model()
@@ -2817,6 +2820,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.populate_survey_tree_widget()
             self.set_up_setup_view_model()
             self.plot_observations(survey_name=None)  # wipe observbations plot
+            self.set_up_survey_view_model()
             # - Results tab:
             self.set_up_results_stations_view_model()
             self.set_up_results_correlation_matrix_view_model()
@@ -2914,7 +2918,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.groupBox_stations_map_view_options.setEnabled(False)
 
     def refresh_stations_table_model_and_view(self):
-        """Refrech the station table model and the respective table view."""
+        """Refresh the station table model and the respective table view."""
         self.station_model.load_stat_df(self.campaign.stations.stat_df)
         self.station_model.layoutChanged.emit()  # Refresh the table view, after changing the model's size.
         self.tableView_Stations.resizeColumnsToContents()
@@ -2922,7 +2926,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def set_up_station_view_model(self):
         """Set up station data view model and show station data table view."""
-        # Set model:
         try:
             self.station_model = StationTableModel(self.campaign.stations.stat_df,
                                                    gui_simple_mode=self.dlg_options.gui_simple_mode)
@@ -2959,6 +2962,45 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def connect_proxy_station_model_to_table_view(self):
         """Connect proxy model from table view for stations."""
         self.tableView_Stations.setModel(self.proxy_station_model)
+
+    def set_up_survey_view_model(self):
+        """Set up the survey view model."""
+        # Set model:
+        try:
+            self.survey_model = SurveyTableModel(self.campaign.surveys,
+                                                   gui_simple_mode=self.dlg_options.gui_simple_mode)
+            # self.survey_model.dataChanged.connect(self.on_survey_model_data_changed)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No surveys available!')
+            self.statusBar().showMessage(f"No surveys available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.tableView_surveys.setModel(self.survey_model)
+            self.tableView_surveys.resizeColumnsToContents()  # TODO: This line might takes a lot of time to execute!
+
+    def on_survey_model_data_changed(self, topLeft, bottomRight, role):
+            """Invoked, whenever data in the survey view model changed."""
+            pass
+            print(role)
+
+        # def on_station_model_data_changed(self, topLeft, bottomRight, role):
+        #     """Invoked, whenever data in the station view model changed."""
+        #     # Did the "is_datum" flag change? => Update stations map!
+        #     if not topLeft == bottomRight:
+        #         QMessageBox.critical(self, 'Error!', 'Selection of multiple stations is not allowed!')
+        #     else:
+        #         is_datum_idx = self.station_model.get_data.columns.to_list().index('is_datum')
+        #         if bottomRight.column() >= is_datum_idx and topLeft.column() <= is_datum_idx:
+        #             self.update_stations_map(auto_range=False)
+        #             # Set datum status ind the campaign data:
+        #             station_record = self.station_model._data.iloc[topLeft.row()]
+        #             if not (isinstance(station_record.is_datum, bool) or isinstance(station_record.is_datum, np.bool_)):
+        #                 QMessageBox.critical(self, 'Error!', 'The is_datum flag is not a bool type!')
+        #             else:
+        #                 self.campaign.stations.set_datum_stations([station_record.station_name],
+        #                                                           is_datum=station_record.is_datum, verbose=IS_VERBOSE)
+
 
     @pyqtSlot()
     def on_menu_file_load_survey_from_cg5_observation_file(self):

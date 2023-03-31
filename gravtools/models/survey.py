@@ -27,6 +27,7 @@ from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, 
     GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
+from gravtools.models.misc import format_seconds_to_hhmmss
 
 
 class Survey:
@@ -1619,4 +1620,40 @@ class Survey:
         active or inactive (`keep_obs` flag).
         """
         self.setup_obs_list_df = self.obs_df.loc[:, self._SETUP_OBS_LIST_DF_COLUMNS].copy(deep=True)
+
+    @property
+    def number_of_setups(self):
+        """Returns the number of setups in the Survey"""
+        return len(self.obs_df['setup_id'].unique())
+
+    @property
+    def number_of_observations(self):
+        """Returns the number of setups in the Survey"""
+        return len(self.obs_df)
+
+    @property
+    def start_time(self):
+        """Returns datetime of the first observation in the survey."""
+        return self.obs_df['obs_epoch'].min()
+
+    @property
+    def start_time_hhmmss_str(self):
+        """Returns the time of the first observation in hh:mm:ss format as string."""
+        return self.obs_df['obs_epoch'].min().strftime('%H:%M:%S')
+
+    @property
+    def end_time(self):
+        """Returns datetime of the last observation in the survey."""
+        return self.obs_df['obs_epoch'].max()
+
+    @property
+    def end_time_hhmmss_str(self):
+        """Returns the time of the last observation in hh:mm:ss format as string."""
+        return self.obs_df['obs_epoch'].max().strftime('%H:%M:%S')
+
+    @property
+    def duration_hhmmss_str(self):
+        """Returns the timespan (Timedalta) between first and last observation in the survey in hh:mm:ss format."""
+        duration = self.obs_df['obs_epoch'].max() - self.obs_df['obs_epoch'].min()
+        return format_seconds_to_hhmmss(duration.seconds)
 
