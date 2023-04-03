@@ -231,7 +231,7 @@ class LSM:
         # Loop over surveys in campaign:
         setups = {}
         for survey_name, survey in campaign.surveys.items():
-            if survey.keep_survey:
+            if survey.keep_survey and survey.is_active:
                 if survey.setup_df is None:
                     raise AssertionError(f'Setup data is missing for survey "{survey_name}"')
                 else:

@@ -2484,7 +2484,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 survey_name = self.observation_model.data_survey_name
                 survey = self.campaign.surveys[survey_name]
                 survey.activate_observation(row, flag_keep_obs)
-                survey.keep_survey_based_on_obs_status(verbose=IS_VERBOSE)
 
                 # Change check state of obs tree widget according to "keep_obs" flags of setup
                 setup_id = self.observation_model.get_data.at[row, 'setup_id']
@@ -2522,20 +2521,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         flag_checked_state = checked_state_to_bool(item.checkState(0))
         # Is parent (survey) or child (setup):
         if item.parent() is None:  # Is survey item
-            survey_name = item.text(0)
-            setup_id = None
-            if flag_checked_state:
-                self.campaign.activate_survey(survey_name, verbose=False)
-            else:
-                self.campaign.deactivate_survey(survey_name, verbose=False)
             self.on_obs_tree_widget_item_selected()
-            # if IS_VERBOSE:
-            #     print('-----------Parent changed---------------------')
         else:  # Is a setup item
             # Update table view and data in dataframe:
             survey_name = item.parent().text(0)
             setup_id = int(item.text(0))
             self.campaign.surveys[survey_name].activate_setup(setup_id, flag_checked_state)
+            self.survey_model.emit_data_changed_survey(survey_name)
         self.treeWidget_observations.blockSignals(False)
 
     @pyqtSlot()
@@ -2629,10 +2621,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             parent.setText(0, survey_name)
             parent.setText(2, str(num_of_obs_in_survey))
             parent.setFlags(parent.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-            if survey.keep_survey:
-                parent.setCheckState(0, Qt.Checked)
-            else:
-                parent.setCheckState(0, Qt.Unchecked)
 
             # Loop over instrument setups in survey:
             setup_ids = obs_df['setup_id'].unique()
@@ -2717,6 +2705,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def apply_options(self):
         """Apply options that are set in the options dialog."""
+        if self.campaign is None:
+            return
         # Simple or advanced GUI appearance:
         # - Update the results tab in order to change the appearance.
         self.update_results_tab()
@@ -2728,10 +2718,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         survey_name, setup_id = self.get_obs_tree_widget_selected_item()
         self.update_obs_table_view(survey_name, setup_id)
         self.update_setup_table_view(survey_name, setup_id)
+        self.set_up_survey_view_model()
 
     def on_menu_help_about(self):
         """Launch the about dialog."""
-        return_value = self.dlg_about.exec()
+        _ = self.dlg_about.exec()
 
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
@@ -2969,7 +2960,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         try:
             self.survey_model = SurveyTableModel(self.campaign.surveys,
                                                    gui_simple_mode=self.dlg_options.gui_simple_mode)
-            # self.survey_model.dataChanged.connect(self.on_survey_model_data_changed)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No surveys available!')
             self.statusBar().showMessage(f"No surveys available.")
@@ -2977,30 +2967,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.critical(self, 'Error!', str(e))
         else:
             self.tableView_surveys.setModel(self.survey_model)
-            self.tableView_surveys.resizeColumnsToContents()  # TODO: This line might takes a lot of time to execute!
-
-    def on_survey_model_data_changed(self, topLeft, bottomRight, role):
-            """Invoked, whenever data in the survey view model changed."""
-            pass
-            print(role)
-
-        # def on_station_model_data_changed(self, topLeft, bottomRight, role):
-        #     """Invoked, whenever data in the station view model changed."""
-        #     # Did the "is_datum" flag change? => Update stations map!
-        #     if not topLeft == bottomRight:
-        #         QMessageBox.critical(self, 'Error!', 'Selection of multiple stations is not allowed!')
-        #     else:
-        #         is_datum_idx = self.station_model.get_data.columns.to_list().index('is_datum')
-        #         if bottomRight.column() >= is_datum_idx and topLeft.column() <= is_datum_idx:
-        #             self.update_stations_map(auto_range=False)
-        #             # Set datum status ind the campaign data:
-        #             station_record = self.station_model._data.iloc[topLeft.row()]
-        #             if not (isinstance(station_record.is_datum, bool) or isinstance(station_record.is_datum, np.bool_)):
-        #                 QMessageBox.critical(self, 'Error!', 'The is_datum flag is not a bool type!')
-        #             else:
-        #                 self.campaign.stations.set_datum_stations([station_record.station_name],
-        #                                                           is_datum=station_record.is_datum, verbose=IS_VERBOSE)
-
+            self.tableView_surveys.resizeColumnsToContents()
 
     @pyqtSlot()
     def on_menu_file_load_survey_from_cg5_observation_file(self):

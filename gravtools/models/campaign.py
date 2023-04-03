@@ -466,11 +466,6 @@ class Campaign:
         """
         # Get reference epoch:
         self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
-        # if set_epoch_of_first_obs_as_reference:
-        #     # Get epoch of first observation:
-        #     self.ref_delta_t_dt = self.get_epoch_of_first_observation(active_obs_only_for_ref_epoch)
-        # else:
-        #     self.ref_delta_t_dt = None
 
         # Loop over all surveys in the campaign:
         if verbose:
@@ -478,7 +473,7 @@ class Campaign:
         for survey_name, survey in self.surveys.items():
             if verbose:
                 print(f' - Survey: {survey_name}')
-            if survey.keep_survey:
+            if survey.is_active and survey.keep_survey:
                 survey.calculate_setup_data(obs_type=obs_type,
                                             ref_delta_t_campaign_dt=self.ref_delta_t_dt,
                                             active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
@@ -981,11 +976,8 @@ class Campaign:
                                 count_changed += 1
                     flag_log_str += f'  - Matched observations: {count_matched} of {num_obs_in_survey}\n'
                     flag_log_str += f'  - Changed "keep_obs" flags: {count_changed}\n'
-                    # Activate/deactivate survey according to the kepp_obs flag of their observations:
-                    if self.surveys[survey_name].obs_df['keep_obs'].any() and not self.surveys[survey_name].keep_survey:
-                        _ = self.activate_survey(survey_name=survey_name, verbose=verbose)
-                    elif not self.surveys[survey_name].obs_df['keep_obs'].any() and self.surveys[survey_name].keep_survey:
-                        _ = self.deactivate_survey(survey_name=survey_name, verbose=verbose)
+                    # Activate/deactivate survey according to the keep_obs flag of their observations:
+
         else:
             flag_log_str = 'Empty observation list file!'
         if verbose:

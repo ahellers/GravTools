@@ -41,8 +41,12 @@ class SurveyTableModel(QAbstractTableModel):
         'institution': 'Institution',
         'gravimeter_type': 'Gravimeter',
         'gravimeter_serial_number': 'S/N',
-        'number_of_setups': 'n/o setups',
-        'number_of_observations': 'n/o obs.',
+        'number_of_setups': 'Setups',
+        'number_of_observations': 'Obs.',
+        'number_of_active_observations': 'Active obs.',
+        'observed_stations_str': 'Stations',
+        'data_file_name': 'Filename',
+        'data_file_type': 'Filetype',
     }
     # _ATTRIBUTE_NAMES = list(_SHOW_ATTRIBUTES_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -57,13 +61,15 @@ class SurveyTableModel(QAbstractTableModel):
         'gravimeter_serial_number',
         'number_of_setups',
         'number_of_observations',
+        'number_of_active_observations',
         'start_time_hhmmss_str',
         'end_time_hhmmss_str',
         'duration_hhmmss_str',
+        'observed_stations_str',
     ]
 
     _ATTRIBUTES_TOOLTIPS = {
-        'name': 'Survey name',
+        # 'name': 'Survey name',
         'keep_survey': '`True` implies that the observations of this survey are used to calculate setup observations.',
         'date': 'Date',
         'operator': 'Operator',
@@ -71,10 +77,14 @@ class SurveyTableModel(QAbstractTableModel):
         'gravimeter_type': 'Gravimeter type',
         'gravimeter_serial_number': 'Serial number of the gravimeter',
         'number_of_setups': 'Number of setups in this survey',
-        'number_of_observations': 'Number of observations in this setup',
+        'number_of_observations': 'Total number of observations',
+        'number_of_active_observations': 'Number of active observations',
         'start_time_hhmmss_str': 'Start time',
         'end_time_hhmmss_str': 'End time',
         'duration_hhmmss_str': 'Duration',
+        'observed_stations_str': 'Stations observed in the survey',
+        'data_file_name': 'Name of the survey data file (data source)',
+        'data_file_type': 'Type of the survey data file',
     }
 
     # Number of decimal pla
@@ -85,12 +95,9 @@ class SurveyTableModel(QAbstractTableModel):
 
     def __init__(self, surveys: dict, gui_simple_mode=False):
         QAbstractTableModel.__init__(self)
-        # self._data = None
-        # self._attribute_names = []
         self._show_attributes_in_table_dict = {}
         self._survey_name_list = []
         self.flag_gui_simple_mode = gui_simple_mode
-        # self.load_survey(surveys)
         self._data = surveys
         self._survey_name_list = list(surveys.keys())
         if not gui_simple_mode:
@@ -100,23 +107,6 @@ class SurveyTableModel(QAbstractTableModel):
                 if key in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI:
                     self._show_attributes_in_table_dict[key] = value
         self._attribute_names = list(self._show_attributes_in_table_dict.keys())  # Actual list of columns to be shown
-
-    # def load_surveys(self, surveys):
-    #     """Load Survey object."""
-    #     self._data = surveys
-    #     self._survey_name_list = list(surveys.keys())
-    #
-    #     # self._data = stat_df.copy()
-    #     # Get list of columns to be depicted via the table model:
-    #     # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
-    #     stat_df_columns_set = frozenset(stat_df.columns)
-    #     table_model_columns = [x for x in self.get_table_columns if x in stat_df_columns_set]
-    #     # if self.flag_gui_simple_mode:
-    #     #     self._data = stat_df.loc[:, table_model_columns]
-    #     # else:
-    #     #     self._data = stat_df.loc[:, table_model_columns]
-    #     self._data = stat_df.loc[:, table_model_columns]
-    #     self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):
         return len(self._data)  # Number of surveys
@@ -132,8 +122,6 @@ class SurveyTableModel(QAbstractTableModel):
                 value = getattr(self._data[survey_name], attribute_name)
             except AttributeError:
                 value = 'n.a.'  # Not available
-            # attribute_name = self._attribute_names[index.column()]
-            # value = self._data[survey_name]   .iloc[index.row(), index.column()]
 
             if role == Qt.DisplayRole:
 
@@ -169,6 +157,10 @@ class SurveyTableModel(QAbstractTableModel):
                 if not self._data[survey_name].keep_survey:
                     return QtGui.QColor('red')
 
+                if attribute_name == 'number_of_active_observations':
+                    if self._data[survey_name].number_of_active_observations == 0:
+                        return QtGui.QColor('red')
+
             if role == Qt.CheckStateRole:
                 try:
                     if attribute_name == 'keep_survey':
@@ -203,45 +195,22 @@ class SurveyTableModel(QAbstractTableModel):
         """Example: https://www.semicolonworld.com/question/58510/how-to-display-a-pandas-data-frame-with-pyqt5"""
         if not index.isValid():
             return False
-        if role == Qt.EditRole:
-            # Get column and row indices for dataframe:
-            row = self._data.index[index.row()]
-            col = self._data.columns[index.column()]
-
-            # Handle data type in a generic way, if required:
-            # - list of available dtypes: https://stackoverflow.com/questions/37561991/what-is-dtypeo-in-pandas
-            # dtype_col = self._data[col].dtype  # dtype of the dataframe columns
-            # if dtype != object:  # "string"
-            #     value = None if value == '' else dtype.type(value)  # changes dtype of the dataframe...
-
-            if col == 'is_datum':
-                # convert "value" (str) to bool and set itm in dataframe:
-                if value == 'True':
-                    self._data.at[row, col] = True
-                    self.dataChanged.emit(index, index)  # Is it necessary?
-                elif value == 'False':
-                    self._data.at[row, col] = False
-                    self.dataChanged.emit(index, index)  # Is it necessary?
-                else:
-                    QMessageBox.warning(self.parent(), 'Warning!',
-                                        f'Input "{value}" not valid! Only "True" or "False" allowed.')
-                    return False
-                return True  # Data successfully set
 
         if role == Qt.CheckStateRole:
-            row = self._data.index[index.row()]
-            col = self._data.columns[index.column()]
-            if col == 'is_datum':
+            survey_name = self._survey_name_list[index.row()]
+            attribute_name = self._attribute_names[index.column()]
+            if attribute_name == 'keep_survey':
                 if value == Qt.Unchecked:
-                    self._data.at[row, col] = False
-                    self.dataChanged.emit(index, index)  # Update only one item
+                    self._data[survey_name].keep_survey = False
                 elif value == Qt.Checked:
-                    self._data.at[row, col] = True
-                    self.dataChanged.emit(index, index)  # Update only one item
+                    self._data[survey_name].keep_survey = True
                 else:
                     QMessageBox.warning(self.parent(), 'Warning!',
                                         f'Invalid value fpr keep observation flag: "{value}"')
                     return False
+                index_left = index.siblingAtColumn(0)
+                index_right = index.siblingAtColumn(self.columnCount() - 1)
+                self.dataChanged.emit(index_left, index_right)  # Update the row
 
             return True  # Data successfully set
 
@@ -263,10 +232,12 @@ class SurveyTableModel(QAbstractTableModel):
     def get_data(self):
         return self._data
 
-    # @property
-    # def get_table_columns(self):
-    #     """Returns a list with all columns names of the dataframe that should be copied to the view model."""
-    #     if self.flag_gui_simple_mode:
-    #         return [value for value in self._SHOW_COLUMNS_IN_TABLE if value in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI]
-    #     else:
-    #         return self._SHOW_COLUMNS_IN_TABLE
+    def row_index_of_survey(self, survey_name: str):
+        """Returns the row index of a survey in the current model"""
+        return self._survey_name_list.index(survey_name)
+
+    def emit_data_changed_survey(self, survey_name: str):
+        """Emits the data changed signal for the row of specifies survey."""
+        index_left = self.index(self.row_index_of_survey(survey_name), 0)
+        index_right = self.index(self.row_index_of_survey(survey_name), self.columnCount() - 1)
+        self.dataChanged.emit(index_left, index_right)

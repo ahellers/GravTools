@@ -174,7 +174,7 @@ class VGLSM(LSM):
         # Check if the reduced setup observations refer to the sensor height of the instrument:
         # Loop over surveys in campaign (just one...):
         for survey_name, survey in campaign.surveys.items():
-            if survey.keep_survey:
+            if survey.keep_survey and survey.is_active:
                 if survey.red_reference_height_type != 'sensor_height':
                     raise AssertionError(f'In survey {survey_name} the reduced gravity values do not refer to the '
                                          f'sensor height! Change the reference height to "Sensor" and recalculate the '
