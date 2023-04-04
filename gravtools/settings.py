@@ -190,6 +190,9 @@ PICKLE_PROTOCOL_VERSION = 4
 
 # ----- GIS data export settings: -----
 DEFAULT_EPSG_CODE = 4312  # 4312: MGI, lat/lon, Greenwich
+# Default filenames for shapefile export from the results tab:
+DEFUALT_FILENAME_OBERVATION_RESULTS_SHP = 'obs_results_'  # + <LSM run method>.shp
+DEFUALT_FILENAME_STATION_RESULTS_SHP = 'stat_results_'  # + <LSM run method>.shp
 
 
 

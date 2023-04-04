@@ -15,8 +15,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Tuple
-
 import pandas as pd
 import numpy as np
 import datetime as dt
@@ -25,11 +23,11 @@ import os
 import gravtools.models.lsm_diff
 import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
-    REFERENCE_HEIGHT_TYPE, NAME_OBS_FILE_BEV, VERBOSE, \
-    PATH_OBS_FILE_BEV, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
+    REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
     GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
+from gravtools.models.misc import format_seconds_to_hhmmss
 
 
 class Survey:
@@ -108,8 +106,9 @@ class Survey:
         `setup_df` dataframe. Valid entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
         `Empty string`, if corrected setup data has not been calculated so far (`setup_df` = None).
     keep_survey : bool (default=True)
-        Flag that indicates whether this survey will be considered in the data analysis (adjustment).`True` is the
-        default and implies that this survey is considered.
+        Flag that indicates whether this survey will be used to derive setup observations.`True` is the
+        default and implies that this survey is considered. This flag is independent of the `keep_obs` flags
+        in the `obs_df` dataframe (used to flag individual observations).
     obs_df : :py:obj:`pandas.core.frame.DataFrame`, optional (default=None)
         Contains all observation data that belongs to this survey. One observation per line. If `None`, no observations
         have been assigned to the survey. All Columns are listed in :py:obj:`.Survey._OBS_DF_COLUMNS`:
@@ -1601,4 +1600,94 @@ class Survey:
         active or inactive (`keep_obs` flag).
         """
         self.setup_obs_list_df = self.obs_df.loc[:, self._SETUP_OBS_LIST_DF_COLUMNS].copy(deep=True)
+
+    @property
+    def number_of_setups(self):
+        """Returns the number of setups in the survey"""
+        if self.obs_df is not None:
+            return len(self.obs_df['setup_id'].unique())
+        else:
+            return None
+
+    @property
+    def number_of_observations(self):
+        """Returns the total number of observations in the survey"""
+        if self.obs_df is not None:
+            return len(self.obs_df)
+        else:
+            return None
+
+    @property
+    def number_of_active_observations(self):
+        """Returns the number of active observations in the survey"""
+        if self.obs_df is not None:
+            return len(self.obs_df[self.obs_df['keep_obs']])
+        else:
+            return None
+
+    @property
+    def start_time(self):
+        """Returns datetime of the first observation in the survey."""
+        if self.obs_df is not None:
+            return self.obs_df['obs_epoch'].min()
+        else:
+            return None
+
+    @property
+    def start_time_hhmmss_str(self):
+        """Returns the time of the first observation in hh:mm:ss format as string."""
+        if self.obs_df is not None:
+            return self.obs_df['obs_epoch'].min().strftime('%H:%M:%S')
+        else:
+            return ''
+
+    @property
+    def end_time(self):
+        """Returns datetime of the last observation in the survey."""
+        if self.obs_df is not None:
+            return self.obs_df['obs_epoch'].max()
+        else:
+            return None
+
+    @property
+    def end_time_hhmmss_str(self):
+        """Returns the time of the last observation in hh:mm:ss format as string."""
+        if self.obs_df is not None:
+            return self.obs_df['obs_epoch'].max().strftime('%H:%M:%S')
+        else:
+            return ''
+
+    @property
+    def duration_hhmmss_str(self):
+        """Returns the timespan (Timedalta) between first and last observation in the survey in hh:mm:ss format."""
+        if self.obs_df is not None:
+            duration = self.obs_df['obs_epoch'].max() - self.obs_df['obs_epoch'].min()
+            return format_seconds_to_hhmmss(duration.seconds)
+        else:
+            return ''
+
+    @property
+    def is_active(self):
+        """`True` indicates that the survey contains at least one active observation."""
+        if self.obs_df is not None:
+            return self.obs_df['keep_obs'].any()
+        else:
+            return False
+
+    @property
+    def observed_stations(self):
+        """Returns a list of all stations observed in this survey."""
+        if self.obs_df is not None:
+            return self.obs_df['station_name'].unique().tolist()
+        else:
+            return None
+
+    @property
+    def observed_stations_str(self):
+        """Returns a string with a list of all stations observed in this survey."""
+        if self.obs_df is not None:
+            return f', '.join(self.observed_stations)
+        else:
+            return None
+
 

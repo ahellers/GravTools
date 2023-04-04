@@ -55,8 +55,16 @@ from gravtools.gui.dialog_setup_data import Ui_Dialog_setup_data
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.dialog_about import Ui_Dialog_about
-from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
-    ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel, ResultsVGModel
+from gravtools.gui.dialog_gis_export_settings import Ui_Dialog_gis_settings
+from gravtools.gui.gui_model_station_table import StationTableModel
+from gravtools.gui.gui_model_setup_table import SetupTableModel
+from gravtools.gui.gui_model_observation_table import ObservationTableModel
+from gravtools.gui.gui_model_results_stat_table import ResultsStationModel
+from gravtools.gui.gui_model_results_obs_table import ResultsObservationModel
+from gravtools.gui.gui_model_results_drift_table import ResultsDriftModel
+from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorrelationMatrixModel
+from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
+from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
@@ -111,6 +119,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Flag_observations.triggered.connect(self.on_manu_observations_flag_observations)
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
         self.action_Estimation_settings.triggered.connect(self.on_menu_estimation_settings)
+        self.action_Gis_Export_settings.triggered.connect(self.on_menu_gis_export_settings)
         self.action_Setup_data_options.triggered.connect(self.on_menu_observations_setup_data)
         self.action_Export_Results.triggered.connect(self.on_menu_file_export_results)
         self.action_Options.triggered.connect(self.on_menu_file_options)
@@ -161,6 +170,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_corrections = DialogCorrections()
         self.dlg_autoselect_settings = DialogAutoselectSettings()
         self.dlg_estimation_settings = DialogEstimationSettings()
+        self.dlg_gis_export_settings = DialogGisExportSettings()
         self.dlg_options = DialogOptions()
         self.dlg_setup_data = DialogSetupData()
         self.dlg_about = DialogAbout()
@@ -183,11 +193,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Configure GUI according to optional dependencies:
         if _has_geopandas:
+            self.action_Gis_Export_settings.setEnabled(True)
             self.groupBox_gis_data.setEnabled(True)
-            self.lineEdit_results_epsg.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
-
+            self.dlg_gis_export_settings.lineEdit_stat_coord_epsg.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
+            self.dlg_gis_export_settings.lineEdit_filename_obs_results_shp.setText(f'{settings.DEFUALT_FILENAME_OBERVATION_RESULTS_SHP}')
+            self.dlg_gis_export_settings.lineEdit_filename_stat_results_shp.setText(f'{settings.DEFUALT_FILENAME_STATION_RESULTS_SHP}')
         else:
             self.groupBox_gis_data.setEnabled(False)
+            self.action_Gis_Export_settings.setEnabled(False)
 
         # Init models:
         self.station_model = None
@@ -196,6 +209,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.results_station_model = None
         self.results_observation_model = None
         self.results_drift_model = None
+        self.survey_model = None
 
         # Get system fonts:
         self.system_default_fixed_width_font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
@@ -216,42 +230,54 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
         lsm_run = self.campaign.lsm_runs[idx]
         try:
-            epsg_code = int(self.lineEdit_results_epsg.text())
+            epsg_code = int(self.dlg_gis_export_settings.lineEdit_stat_coord_epsg.text())
         except ValueError:
             QMessageBox.critical(self, 'Error!', 'Invalid EPSG code. Need to be an integer value.')
             return
-        print(epsg_code)
 
-        if not os.path.isdir(self.campaign.output_directory):
-            QMessageBox.critical(self, 'Error!', f'Invalid output directory: {self.campaign.output_directory}')
-            return
-
-        # Export station results:
-        filename = 'stat_results_' + lsm_run.lsm_method + '.shp'
-        filename = os.path.join(self.campaign.output_directory, filename)
-        try:
-            lsm_run.export_stat_results_shapefile(filename=filename, epsg_code=epsg_code)
-        except AttributeError:
-            QMessageBox.warning(self, f'Export not available!', f'Export of station results to a shapefile is not '
-                                                               f'supported by the lsm method {lsm_run.lsm_method}.')
-        except Exception as e:
-            QMessageBox.critical(self, 'Error!', str(e))
+        # Get output directory:
+        if self.dlg_gis_export_settings.radioButton_campaign_output_dir.isChecked():
+            gis_output_dir = self.campaign.output_directory
         else:
-            self.statusBar().showMessage(f'Save station results of lsm run "{lsm_run.comment}" to: {filename}')
-
-
-        # Export observations results:
-        filename = 'obs_results_' + lsm_run.lsm_method + '.shp'
-        filename = os.path.join(self.campaign.output_directory, filename)
-        try:
-            lsm_run.export_obs_results_shapefile(filename=filename, epsg_code=epsg_code)
-        except AttributeError:
-            QMessageBox.warning(self, f'Export not available!', f'Export of observation results to a shapefile is not '
-                                                                f'supported by the lsm method {lsm_run.lsm_method}.')
-        except Exception as e:
-            QMessageBox.critical(self, 'Error!', str(e))
+            gis_output_dir = self.dlg_gis_export_settings.lineEdit_gis_output_dir.text()
+        if not os.path.isdir(gis_output_dir):
+            QMessageBox.critical(self, 'Error!',
+                                 f'Invalid output directory for GIS files: {gis_output_dir}')
         else:
-            self.statusBar().showMessage(f'Save observations results of lsm run "{lsm_run.comment}" to: {filename}')
+            # Export station results:
+            if self.dlg_gis_export_settings.checkBox_export_stat_results_shp.checkState() == Qt.Checked:
+                if self.dlg_gis_export_settings.checkBox_add_lsm_method_filename.checkState() == Qt.Checked:
+                    filename = self.dlg_gis_export_settings.lineEdit_filename_stat_results_shp.text() + lsm_run.lsm_method + '.shp'
+                else:
+                    filename = self.dlg_gis_export_settings.lineEdit_filename_stat_results_shp.text() + '.shp'
+                filename = os.path.join(gis_output_dir, filename)
+                try:
+                    lsm_run.export_stat_results_shapefile(filename=filename, epsg_code=epsg_code)
+                except AttributeError:
+                    QMessageBox.warning(self, f'Export not available!', f'Export of station results to a shapefile is not '
+                                                                       f'supported by the lsm method {lsm_run.lsm_method}.')
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                else:
+                    self.statusBar().showMessage(f'Save station results of lsm run "{lsm_run.comment}" to: {filename}')
+
+            # Export observations results:
+            if self.dlg_gis_export_settings.checkBox_export_obs_results_shp.checkState() == Qt.Checked:
+                if self.dlg_gis_export_settings.checkBox_add_lsm_method_filename.checkState() == Qt.Checked:
+                    filename = self.dlg_gis_export_settings.lineEdit_filename_obs_results_shp.text() + lsm_run.lsm_method + '.shp'
+                else:
+                    filename = self.dlg_gis_export_settings.lineEdit_filename_obs_results_shp.text() + '.shp'
+                filename = os.path.join(gis_output_dir, filename)
+                try:
+                    lsm_run.export_obs_results_shapefile(filename=filename, epsg_code=epsg_code)
+                except AttributeError:
+                    QMessageBox.warning(self, f'Export not available!', f'Export of observation results to a shapefile is not '
+                                                                        f'supported by the lsm method {lsm_run.lsm_method}.')
+                except Exception as e:
+                    QMessageBox.critical(self, 'Error!', str(e))
+                else:
+                    self.statusBar().showMessage(f'Save observations results of lsm run "{lsm_run.comment}" to: {filename}')
+
 
     @pyqtSlot()
     def on_action_Change_Campaign_name_triggered(self):
@@ -435,6 +461,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_setup_view_model()
                 if self.treeWidget_observations.topLevelItemCount() > 0:
                     self.treeWidget_observations.topLevelItem(0).setSelected(True)
+                self.set_up_survey_view_model()
                 # - Results tab:
                 self.set_up_results_stations_view_model()
                 self.set_up_results_correlation_matrix_view_model()
@@ -1329,6 +1356,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if results_obs_df is not None:  # Data available for plotting
             # Get data:
             data = results_obs_df[column_name].values
+            if isinstance(data, np.object):
+                data = data.astype(float)
             obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
                 '1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
             plot_name = self.results_observation_model.get_short_column_description(column_name)
@@ -2031,6 +2060,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Launch dialog for defining the estimation settings."""
         return_value = self.dlg_estimation_settings.exec()
 
+    def on_menu_gis_export_settings(self):
+        """Launch dialog for defining gis export settings."""
+        return_value = self.dlg_gis_export_settings.exec()
+
     @pyqtSlot()
     def on_menu_file_export_results(self):
         """Launch dialog for exporting results of an LSM run."""
@@ -2195,23 +2228,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     # Save shapefile:
                     if lsm_run.lsm_method in settings.LSM_METHODS_GIS_EXPORT:
                         if dlg.checkBox_gis_write_shapefile:
-                            try:
-                                epsg_code = int(self.lineEdit_results_epsg.text())
-                            except ValueError:
-                                QMessageBox.critical(self, 'Error!', 'Invalid EPSG code. Need to be an integer value.')
+                            if self.dlg_gis_export_settings.radioButton_campaign_output_dir.isChecked():
+                                gis_output_dir = self.campaign.output_directory
+                            else:
+                                gis_output_dir = self.dlg_gis_export_settings.lineEdit_gis_output_dir.text()
+                            if not os.path.isdir(gis_output_dir):
+                                QMessageBox.critical(self, 'Error!',
+                                                     f'Invalid output directory for GIS files: {gis_output_dir}')
                             else:
                                 try:
-                                    filename_shp = os.path.join(self.campaign.output_directory, filename + '_obs.shp')
-                                    lsm_run.export_obs_results_shapefile(filename=filename_shp, epsg_code=epsg_code)
-                                except Exception as e:
-                                    QMessageBox.critical(self, 'Error!', str(e))
-                                    flag_export_successful = False
-                                try:
-                                    filename_shp = os.path.join(self.campaign.output_directory, filename + '_stat.shp')
-                                    lsm_run.export_obs_results_shapefile(filename=filename_shp, epsg_code=epsg_code)
-                                except Exception as e:
-                                    QMessageBox.critical(self, 'Error!', str(e))
-                                    flag_export_successful = False
+                                    epsg_code = int(self.dlg_gis_export_settings.lineEdit_stat_coord_epsg.text())
+                                except ValueError:
+                                    QMessageBox.critical(self, 'Error!', 'Invalid EPSG code. Need to be an integer value.')
+                                else:
+                                    try:
+                                        filename_shp = os.path.join(gis_output_dir, filename + '_obs.shp')
+                                        lsm_run.export_obs_results_shapefile(filename=filename_shp, epsg_code=epsg_code)
+                                    except Exception as e:
+                                        QMessageBox.critical(self, 'Error!', str(e))
+                                        flag_export_successful = False
+                                    try:
+                                        filename_shp = os.path.join(gis_output_dir, filename + '_stat.shp')
+                                        lsm_run.export_obs_results_shapefile(filename=filename_shp, epsg_code=epsg_code)
+                                    except Exception as e:
+                                        QMessageBox.critical(self, 'Error!', str(e))
+                                        flag_export_successful = False
+
 
             if flag_export_successful:
                 self.statusBar().showMessage(f"Export to {output_path} successful!")
@@ -2264,7 +2306,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             cleared (e.g. new campaign and no observation data available).
         """
         obs_df = self.observation_model.get_data
-        # Wipe plots, if survey_name is Mone:
+        # Wipe plots, if survey_name is None:
         self.plot_obs_g.clear()
         self.plot_obs_sd_g.clear()
         self.plot_obs_corrections.clear()
@@ -2479,20 +2521,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         flag_checked_state = checked_state_to_bool(item.checkState(0))
         # Is parent (survey) or child (setup):
         if item.parent() is None:  # Is survey item
-            survey_name = item.text(0)
-            setup_id = None
-            if flag_checked_state:
-                self.campaign.activate_survey(survey_name, verbose=False)
-            else:
-                self.campaign.deactivate_survey(survey_name, verbose=False)
             self.on_obs_tree_widget_item_selected()
-            # if IS_VERBOSE:
-            #     print('-----------Parent changed---------------------')
         else:  # Is a setup item
             # Update table view and data in dataframe:
             survey_name = item.parent().text(0)
             setup_id = int(item.text(0))
             self.campaign.surveys[survey_name].activate_setup(setup_id, flag_checked_state)
+            self.survey_model.emit_data_changed_survey(survey_name)
         self.treeWidget_observations.blockSignals(False)
 
     @pyqtSlot()
@@ -2586,10 +2621,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             parent.setText(0, survey_name)
             parent.setText(2, str(num_of_obs_in_survey))
             parent.setFlags(parent.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-            if survey.keep_survey:
-                parent.setCheckState(0, Qt.Checked)
-            else:
-                parent.setCheckState(0, Qt.Unchecked)
 
             # Loop over instrument setups in survey:
             setup_ids = obs_df['setup_id'].unique()
@@ -2674,6 +2705,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def apply_options(self):
         """Apply options that are set in the options dialog."""
+        if self.campaign is None:
+            return
         # Simple or advanced GUI appearance:
         # - Update the results tab in order to change the appearance.
         self.update_results_tab()
@@ -2685,10 +2718,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         survey_name, setup_id = self.get_obs_tree_widget_selected_item()
         self.update_obs_table_view(survey_name, setup_id)
         self.update_setup_table_view(survey_name, setup_id)
+        self.set_up_survey_view_model()
 
     def on_menu_help_about(self):
         """Launch the about dialog."""
-        return_value = self.dlg_about.exec()
+        _ = self.dlg_about.exec()
 
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
@@ -2777,6 +2811,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.populate_survey_tree_widget()
             self.set_up_setup_view_model()
             self.plot_observations(survey_name=None)  # wipe observbations plot
+            self.set_up_survey_view_model()
             # - Results tab:
             self.set_up_results_stations_view_model()
             self.set_up_results_correlation_matrix_view_model()
@@ -2874,7 +2909,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.groupBox_stations_map_view_options.setEnabled(False)
 
     def refresh_stations_table_model_and_view(self):
-        """Refrech the station table model and the respective table view."""
+        """Refresh the station table model and the respective table view."""
         self.station_model.load_stat_df(self.campaign.stations.stat_df)
         self.station_model.layoutChanged.emit()  # Refresh the table view, after changing the model's size.
         self.tableView_Stations.resizeColumnsToContents()
@@ -2882,7 +2917,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def set_up_station_view_model(self):
         """Set up station data view model and show station data table view."""
-        # Set model:
         try:
             self.station_model = StationTableModel(self.campaign.stations.stat_df,
                                                    gui_simple_mode=self.dlg_options.gui_simple_mode)
@@ -2919,6 +2953,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def connect_proxy_station_model_to_table_view(self):
         """Connect proxy model from table view for stations."""
         self.tableView_Stations.setModel(self.proxy_station_model)
+
+    def set_up_survey_view_model(self):
+        """Set up the survey view model."""
+        # Set model:
+        try:
+            self.survey_model = SurveyTableModel(self.campaign.surveys,
+                                                   gui_simple_mode=self.dlg_options.gui_simple_mode)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No surveys available!')
+            self.statusBar().showMessage(f"No surveys available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.tableView_surveys.setModel(self.survey_model)
+            self.tableView_surveys.resizeColumnsToContents()
 
     @pyqtSlot()
     def on_menu_file_load_survey_from_cg5_observation_file(self):
@@ -3187,6 +3236,46 @@ class DialogEstimationSettings(QDialog, Ui_Dialog_estimation_settings):
         self.setupUi(self)
 
 
+class DialogGisExportSettings(QDialog, Ui_Dialog_gis_settings):
+    """Dialog to define the gis export settings."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+
+        # Connect signals and slots:
+        self.pushButton_select_gis_output_dir.clicked.connect(self.get_output_directory_dialog)
+
+    def get_output_directory_dialog(self):
+        """Open dialog to get the output directory."""
+        if self.lineEdit_gis_output_dir.text():
+            initial_folder_path = os.path.dirname(os.path.abspath(self.lineEdit_gis_output_dir.text()))
+        else:
+            try:
+                initial_folder_path = self.campaign_output_dir
+            except:
+                initial_folder_path = os.getcwd()
+        output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path,
+                                                           QtGui.QFileDialog.ShowDirsOnly)
+
+        if output_dir_name:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            output_dir_name = QDir.toNativeSeparators(output_dir_name)
+            if IS_VERBOSE:
+                print(f'GIS output directory selectzed: {output_dir_name}')
+
+        # Check, if path exists:
+        if os.path.isdir(output_dir_name):
+            self.lineEdit_gis_output_dir.setText(output_dir_name)
+        else:
+            QMessageBox.critical(self, "ERROR", f"The output directory does not exist: {output_dir_name}")
+            self.lineEdit_gis_output_dir.setText('')
+
+
 class DialogSetupData(QDialog, Ui_Dialog_setup_data):
     """Dialog to define setup data options."""
 
@@ -3265,7 +3354,6 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         # Optional dependency for GIS data export:
         if _has_geopandas:
             self.groupBox_gis.setEnabled(True)
-            self.lineEdit_epsg_code.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
         else:
             self.groupBox_gis.setEnabled(False)
             self.checkBox_gis_write_shapefile.setChecked(Qt.Unchecked)
