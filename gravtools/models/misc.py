@@ -69,3 +69,22 @@ def print_matrix(matrix):
         temp = (' '.join(f'{s:10.2f}' for s in item))
         print(temp)
 
+
+def format_seconds_to_hhmmss(seconds):
+    """Convert timespan in seconds to hh:mm:ss format.
+
+    Parameters
+    ----------
+    seconds : float
+        Timespan in seconds.
+
+    Returns
+    -------
+    String: hh:mm:ss
+
+    """
+    hours = seconds // (60*60)
+    seconds %= (60*60)
+    minutes = seconds // 60
+    seconds %= 60
+    return f'{hours:02d}:{minutes:02d}:{seconds:02d}'

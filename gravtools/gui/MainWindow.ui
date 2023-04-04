@@ -325,8 +325,18 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>2</number>
+            <number>0</number>
            </property>
+           <widget class="QWidget" name="tab_observations_plots">
+            <attribute name="title">
+             <string>Observation plots</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
+             <item>
+              <widget class="GraphicsLayoutWidget" name="GraphicsLayoutWidget_observations"/>
+             </item>
+            </layout>
+           </widget>
            <widget class="QWidget" name="tab_observations_table">
             <attribute name="title">
              <string>Observations table</string>
@@ -334,6 +344,16 @@
             <layout class="QVBoxLayout" name="verticalLayout_6">
              <item>
               <widget class="QTableView" name="tableView_observations"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_surveys">
+            <attribute name="title">
+             <string>Surveys</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_37">
+             <item>
+              <widget class="QTableView" name="tableView_surveys"/>
              </item>
             </layout>
            </widget>
@@ -396,16 +416,6 @@
                 </item>
                </layout>
               </widget>
-             </item>
-            </layout>
-           </widget>
-           <widget class="QWidget" name="tab_observations_plots">
-            <attribute name="title">
-             <string>Plots</string>
-            </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_8">
-             <item>
-              <widget class="GraphicsLayoutWidget" name="GraphicsLayoutWidget_observations"/>
              </item>
             </layout>
            </widget>
@@ -551,7 +561,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>3</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">

@@ -56,8 +56,15 @@ from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.dialog_about import Ui_Dialog_about
 from gravtools.gui.dialog_gis_export_settings import Ui_Dialog_gis_settings
-from gravtools.gui.gui_models import StationTableModel, ObservationTableModel, SetupTableModel, ResultsStationModel, \
-    ResultsObservationModel, ResultsDriftModel, ResultsCorrelationMatrixModel, ResultsVGModel
+from gravtools.gui.gui_model_station_table import StationTableModel
+from gravtools.gui.gui_model_setup_table import SetupTableModel
+from gravtools.gui.gui_model_observation_table import ObservationTableModel
+from gravtools.gui.gui_model_results_stat_table import ResultsStationModel
+from gravtools.gui.gui_model_results_obs_table import ResultsObservationModel
+from gravtools.gui.gui_model_results_drift_table import ResultsDriftModel
+from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorrelationMatrixModel
+from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
+from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
@@ -202,6 +209,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.results_station_model = None
         self.results_observation_model = None
         self.results_drift_model = None
+        self.survey_model = None
 
         # Get system fonts:
         self.system_default_fixed_width_font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
@@ -453,6 +461,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_setup_view_model()
                 if self.treeWidget_observations.topLevelItemCount() > 0:
                     self.treeWidget_observations.topLevelItem(0).setSelected(True)
+                self.set_up_survey_view_model()
                 # - Results tab:
                 self.set_up_results_stations_view_model()
                 self.set_up_results_correlation_matrix_view_model()
@@ -1347,6 +1356,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if results_obs_df is not None:  # Data available for plotting
             # Get data:
             data = results_obs_df[column_name].values
+            if isinstance(data, np.object):
+                data = data.astype(float)
             obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
                 '1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
             plot_name = self.results_observation_model.get_short_column_description(column_name)
@@ -2295,7 +2306,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             cleared (e.g. new campaign and no observation data available).
         """
         obs_df = self.observation_model.get_data
-        # Wipe plots, if survey_name is Mone:
+        # Wipe plots, if survey_name is None:
         self.plot_obs_g.clear()
         self.plot_obs_sd_g.clear()
         self.plot_obs_corrections.clear()
@@ -2473,7 +2484,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 survey_name = self.observation_model.data_survey_name
                 survey = self.campaign.surveys[survey_name]
                 survey.activate_observation(row, flag_keep_obs)
-                survey.keep_survey_based_on_obs_status(verbose=IS_VERBOSE)
 
                 # Change check state of obs tree widget according to "keep_obs" flags of setup
                 setup_id = self.observation_model.get_data.at[row, 'setup_id']
@@ -2511,20 +2521,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         flag_checked_state = checked_state_to_bool(item.checkState(0))
         # Is parent (survey) or child (setup):
         if item.parent() is None:  # Is survey item
-            survey_name = item.text(0)
-            setup_id = None
-            if flag_checked_state:
-                self.campaign.activate_survey(survey_name, verbose=False)
-            else:
-                self.campaign.deactivate_survey(survey_name, verbose=False)
             self.on_obs_tree_widget_item_selected()
-            # if IS_VERBOSE:
-            #     print('-----------Parent changed---------------------')
         else:  # Is a setup item
             # Update table view and data in dataframe:
             survey_name = item.parent().text(0)
             setup_id = int(item.text(0))
             self.campaign.surveys[survey_name].activate_setup(setup_id, flag_checked_state)
+            self.survey_model.emit_data_changed_survey(survey_name)
         self.treeWidget_observations.blockSignals(False)
 
     @pyqtSlot()
@@ -2618,10 +2621,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             parent.setText(0, survey_name)
             parent.setText(2, str(num_of_obs_in_survey))
             parent.setFlags(parent.flags() | Qt.ItemIsTristate | Qt.ItemIsUserCheckable)
-            if survey.keep_survey:
-                parent.setCheckState(0, Qt.Checked)
-            else:
-                parent.setCheckState(0, Qt.Unchecked)
 
             # Loop over instrument setups in survey:
             setup_ids = obs_df['setup_id'].unique()
@@ -2706,6 +2705,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def apply_options(self):
         """Apply options that are set in the options dialog."""
+        if self.campaign is None:
+            return
         # Simple or advanced GUI appearance:
         # - Update the results tab in order to change the appearance.
         self.update_results_tab()
@@ -2717,10 +2718,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         survey_name, setup_id = self.get_obs_tree_widget_selected_item()
         self.update_obs_table_view(survey_name, setup_id)
         self.update_setup_table_view(survey_name, setup_id)
+        self.set_up_survey_view_model()
 
     def on_menu_help_about(self):
         """Launch the about dialog."""
-        return_value = self.dlg_about.exec()
+        _ = self.dlg_about.exec()
 
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
@@ -2809,6 +2811,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.populate_survey_tree_widget()
             self.set_up_setup_view_model()
             self.plot_observations(survey_name=None)  # wipe observbations plot
+            self.set_up_survey_view_model()
             # - Results tab:
             self.set_up_results_stations_view_model()
             self.set_up_results_correlation_matrix_view_model()
@@ -2906,7 +2909,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.groupBox_stations_map_view_options.setEnabled(False)
 
     def refresh_stations_table_model_and_view(self):
-        """Refrech the station table model and the respective table view."""
+        """Refresh the station table model and the respective table view."""
         self.station_model.load_stat_df(self.campaign.stations.stat_df)
         self.station_model.layoutChanged.emit()  # Refresh the table view, after changing the model's size.
         self.tableView_Stations.resizeColumnsToContents()
@@ -2914,7 +2917,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot()
     def set_up_station_view_model(self):
         """Set up station data view model and show station data table view."""
-        # Set model:
         try:
             self.station_model = StationTableModel(self.campaign.stations.stat_df,
                                                    gui_simple_mode=self.dlg_options.gui_simple_mode)
@@ -2951,6 +2953,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def connect_proxy_station_model_to_table_view(self):
         """Connect proxy model from table view for stations."""
         self.tableView_Stations.setModel(self.proxy_station_model)
+
+    def set_up_survey_view_model(self):
+        """Set up the survey view model."""
+        # Set model:
+        try:
+            self.survey_model = SurveyTableModel(self.campaign.surveys,
+                                                   gui_simple_mode=self.dlg_options.gui_simple_mode)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No surveys available!')
+            self.statusBar().showMessage(f"No surveys available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.tableView_surveys.setModel(self.survey_model)
+            self.tableView_surveys.resizeColumnsToContents()
 
     @pyqtSlot()
     def on_menu_file_load_survey_from_cg5_observation_file(self):
