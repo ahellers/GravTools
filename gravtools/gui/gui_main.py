@@ -237,7 +237,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Get output directory:
         if self.dlg_gis_export_settings.radioButton_campaign_output_dir.isChecked():
-            gis_output_dir = self.campaign.output_directory
+            if self.dlg_gis_export_settings.lineEdit_output_subdir.text():
+                gis_output_dir = os.path.join(self.campaign.output_directory,
+                                              self.dlg_gis_export_settings.lineEdit_output_subdir.text())
+                if not os.path.isdir(gis_output_dir):
+                    try:
+                        os.mkdir(gis_output_dir)
+                    except PermissionError:
+                        QMessageBox.critical(self, 'Error!',
+                                             f'Cannot create the output directory for GIS results: {gis_output_dir}')
+                        return
+            else:
+                gis_output_dir = self.campaign.output_directory
         else:
             gis_output_dir = self.dlg_gis_export_settings.lineEdit_gis_output_dir.text()
         if not os.path.isdir(gis_output_dir):
@@ -3248,6 +3259,8 @@ class DialogGisExportSettings(QDialog, Ui_Dialog_gis_settings):
 
         # Connect signals and slots:
         self.pushButton_select_gis_output_dir.clicked.connect(self.get_output_directory_dialog)
+        # Set up GUI widgets:
+        self.lineEdit_output_subdir.setText(settings.GIS_RESULTS_OUTPUT_SUBDIR)
 
     def get_output_directory_dialog(self):
         """Open dialog to get the output directory."""

@@ -103,6 +103,9 @@ LSM_METHODS_GIS_EXPORT = [
     'LSM_non_diff',
 ]
 
+# Default subdirectory in the campaign's output directory for exporting the results as shapefiles:
+GIS_RESULTS_OUTPUT_SUBDIR = 'GIS_results'
+
 # List of LSM methods where VG plots are created (and should be saved as PNG files):
 LSM_METHODS_VG_PLOT = [
     'VG_LSM_nondiff',
