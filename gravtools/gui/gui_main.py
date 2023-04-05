@@ -3031,6 +3031,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.statusBar().showMessage(f"No survey data added.")
             finally:
                 self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.
+                self.set_up_survey_view_model()
                 self.on_checkBox_filter_observed_stat_only_toggled(
                     state=self.checkBox_filter_observed_stat_only.checkState())
                 self.enable_station_view_options_based_on_model()
