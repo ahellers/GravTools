@@ -255,6 +255,7 @@ class LSMNonDiff(LSM):
             time_now_str = dt.datetime.now(tz=pytz.UTC).strftime('%Y-%m-%d, %H:%M:%S %Z')
             tmp_str = f'#### Adjustment log (non-differential LSM) ####\n'
             tmp_str += f'Processed with GravTools {GRAVTOOLS_VERSION} ({time_now_str})\n'
+            tmp_str += f'Comment: {self.comment}\n'
             tmp_str += f'\n'
             tmp_str += f'---- Input data and settings ----\n'
             tmp_str += f'Method: {settings.ADJUSTMENT_METHODS[self.lsm_method]}\n'

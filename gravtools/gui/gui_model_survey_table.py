@@ -234,10 +234,18 @@ class SurveyTableModel(QAbstractTableModel):
 
     def row_index_of_survey(self, survey_name: str):
         """Returns the row index of a survey in the current model"""
-        return self._survey_name_list.index(survey_name)
+        if self.no_data:
+            return None
+        else:
+            return self._survey_name_list.index(survey_name)
 
     def emit_data_changed_survey(self, survey_name: str):
         """Emits the data changed signal for the row of specifies survey."""
-        index_left = self.index(self.row_index_of_survey(survey_name), 0)
-        index_right = self.index(self.row_index_of_survey(survey_name), self.columnCount() - 1)
-        self.dataChanged.emit(index_left, index_right)
+        if not self.no_data:
+            index_left = self.index(self.row_index_of_survey(survey_name), 0)
+            index_right = self.index(self.row_index_of_survey(survey_name), self.columnCount() - 1)
+            self.dataChanged.emit(index_left, index_right)
+
+    @property
+    def no_data(self):
+        return not self._data
