@@ -348,6 +348,7 @@ class Station:
         tmp_df['is_observed'] = True
         tmp_df['source_type'] = 'obs_file'
         tmp_df['source_name'] = survey.name  # survey name
+        tmp_df['in_survey'] = ''
         tmp_df.reset_index(drop=True, inplace=True)
         tmp_df = tmp_df.astype(self._STAT_DF_COLUMNS_DTYPES)
 
