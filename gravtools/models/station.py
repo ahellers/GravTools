@@ -411,7 +411,7 @@ class Station:
         # Add missing stations to stat_df by matching the station names only (location parameters of observed stations
         # may differ!):
         # - From station files => Drop existing entries with the same name in any case!
-        if data_source_type == 'oesgn_table':
+        if data_source_type == 'oesgn_table' or data_source_type == 'csv_stat_file':
             stat_df_new = pd.concat([stat_df_old, stat_df_add]).drop_duplicates(
                 subset=['station_name'],
                 keep='last'
@@ -450,16 +450,16 @@ class Station:
         verbose : bool, optional
             Print notifications, if `True` (default=`False`)
         """
-        #TODO!
-        # stat_df_new = self._read_oesgn_table(filename, is_datum=is_datum)
-        # Read csv file here...
         if verbose:
             print(f'Read station csv file: {filename}')
-        stat_df_new = pd.read_csv(filename, comment='#') # TODO: correct?
-
+        stat_df_new = pd.read_csv(filename, comment='#')
         stat_df_new = self._stat_df_add_columns(stat_df_new)
         stat_df_new = self._stat_df_reorder_columns(stat_df_new)
-        self.add_stations(stat_df_new, data_source_type='oesgn_table', verbose=verbose)
+        stat_df_new['is_observed'] = False  # Default = False
+        stat_df_new['is_datum'] = False
+        stat_df_new['source_type'] = 'csv_stat_file'
+        stat_df_new['source_name'] = os.path.basename(filename)
+        self.add_stations(stat_df_new, data_source_type='csv_stat_file', verbose=verbose)
 
     def set_datum_stations(self, station_names: list, is_datum: bool, verbose=False):
         """

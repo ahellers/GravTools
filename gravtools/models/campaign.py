@@ -390,6 +390,18 @@ class Campaign:
         """
         self.stations.add_stations_from_oesgn_table(filename=oesgn_filename, is_datum=is_datum, verbose=verbose)
 
+    def add_stations_from_csv_file(self, csv_filename, verbose=False):
+        """Add station from a CSV file.
+
+        Parameters
+        ----------
+        csv_filename : string, specifying the path and filename of the station csv file
+            Stations in this csv file are added to the campaign.
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+        """
+        self.stations.add_stations_from_csv_file(filename=csv_filename, verbose=verbose)
+
     def synchronize_stations_and_surveys(self, verbose=False):
         """Synchronize information between station and survey data in the campaign.
 
