@@ -662,13 +662,25 @@ class Campaign:
                         dhf_m = np.mean(dhf_list_m)
 
                     # Get gravimeter S/N and gravimeter type of first survey in the list:
-                    if verbose:
-                        if len(observed_in_surveys) > 1:
+
+                    if len(observed_in_surveys) > 1:
+                        if verbose:
                             print(f'WARNING: station {station_name} was observed in {len(observed_in_surveys)} surveys! Hence, '
-                                  f'the gravimeter serial number and type may be ambiguous in the nsb file!')
-                    gravimeter_type = self.surveys[observed_in_surveys[0]].gravimeter_type
-                    gravimeter_serial_number = self.surveys[observed_in_surveys[0]].gravimeter_serial_number
-                    date_str = self.surveys[observed_in_surveys[0]].date.strftime('%Y%m%d')
+                                  f'the gravimeter serial number/type and the observation date may be ambiguous in the nsb file!')
+                            print(
+                                f' - {station_name} was observed the following surveys: {", ".join(observed_in_surveys)}')
+                        # Get the latest survey in which the station was observed:
+                        latest_survey_name = ''
+                        latest_survey_date = dt.date(1900,1,1)
+                        for survey in observed_in_surveys:
+                            if self.surveys[survey].date > latest_survey_date:
+                                latest_survey_date = self.surveys[survey].date
+                                latest_survey_name = survey
+                    else:
+                        latest_survey_name = observed_in_surveys[0]
+                    gravimeter_type = self.surveys[latest_survey_name].gravimeter_type
+                    gravimeter_serial_number = self.surveys[latest_survey_name].gravimeter_serial_number
+                    date_str = self.surveys[latest_survey_name].date.strftime('%Y%m%d')
 
                     # Comment string:
                     # - Max. 5 characters!

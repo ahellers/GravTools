@@ -2238,7 +2238,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                     # Save shapefile:
                     if lsm_run.lsm_method in settings.LSM_METHODS_GIS_EXPORT:
-                        if dlg.checkBox_gis_write_shapefile:
+                        if dlg.checkBox_gis_write_shapefile.isChecked():
                             if self.dlg_gis_export_settings.radioButton_campaign_output_dir.isChecked():
                                 gis_output_dir = self.campaign.output_directory
                             else:

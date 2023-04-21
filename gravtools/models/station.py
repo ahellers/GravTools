@@ -162,11 +162,11 @@ class Station:
             8,  # Geograph. Breite [deg] 34
             8,  # Geograph. Länge [deg] 42
             8,  # Höhe [m] 50
-            7,  # g [µGal] 58
-            3,  # mittlerer Fehler von g [?] 65
+            7,  # g - 9.8e8 [µGal] 58
+            3,  # mittlerer Fehler von g [µGal] 65
             4,  # Vertikalgradient der Schwere [µGal/m] 68
             6,  # Datum 73
-            12,  # Punktidentität 79
+            12, # Punktidentität 79
         )
         column_names = (
             'station_name',
@@ -438,6 +438,28 @@ class Station:
             stations_added = number_of_stations - number_of_existing_stations
             print(f"{number_of_new_stations} stations loaded. "
                   f"{stations_added} stations added ({number_of_new_stations - stations_added} already listed).")
+
+
+    def add_stations_from_csv_file(self, filename, verbose=False):
+        """Adds (appends) all stations of the input OESGN table to the station dataframe.
+
+        Parameters
+        ----------
+        filename : str
+            Name (and path) of the OESGN table file.
+        verbose : bool, optional
+            Print notifications, if `True` (default=`False`)
+        """
+        #TODO!
+        # stat_df_new = self._read_oesgn_table(filename, is_datum=is_datum)
+        # Read csv file here...
+        if verbose:
+            print(f'Read station csv file: {filename}')
+        stat_df_new = pd.read_csv(filename, comment='#') # TODO: correct?
+
+        stat_df_new = self._stat_df_add_columns(stat_df_new)
+        stat_df_new = self._stat_df_reorder_columns(stat_df_new)
+        self.add_stations(stat_df_new, data_source_type='oesgn_table', verbose=verbose)
 
     def set_datum_stations(self, station_names: list, is_datum: bool, verbose=False):
         """

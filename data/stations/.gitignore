@@ -1,0 +1,5 @@
+*
+!.gitignore
+# Template files:
+!stations.csv
+!OESGN.tab
