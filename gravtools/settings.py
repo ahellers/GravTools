@@ -25,8 +25,9 @@ SURVEY_DATA_SOURCE_TYPES = {
 }
 
 STATION_DATA_SOURCE_TYPES = {
-    'oesgn_table': 'Control points of the Austrian gravity base network (OESGN).',
-    'obs_file': 'From an observation file'
+    'oesgn_table': 'Austrian gravity base network stations (OESGN).',
+    'csv_stat_file': 'CVS station file',
+    'obs_file': 'From an observation file',
 }
 
 TIDE_CORRECTION_TYPES = {

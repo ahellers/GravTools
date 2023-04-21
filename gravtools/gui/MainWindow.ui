@@ -1005,6 +1005,16 @@
      <addaction name="action_from_CG5_observation_file"/>
      <addaction name="action_from_BEV_observation_file"/>
     </widget>
+    <widget class="QMenu" name="menu_Add_Stations">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Add Stations</string>
+     </property>
+     <addaction name="action_from_oesgn_table"/>
+     <addaction name="action_from_csv_file"/>
+    </widget>
     <addaction name="action_New_Campaign"/>
     <addaction name="action_Change_output_directory"/>
     <addaction name="action_Change_Campaign_name"/>
@@ -1012,6 +1022,7 @@
     <addaction name="action_Load_Campaign"/>
     <addaction name="separator"/>
     <addaction name="menuAdd_Survey"/>
+    <addaction name="menu_Add_Stations"/>
     <addaction name="action_Add_Stations"/>
     <addaction name="separator"/>
     <addaction name="action_Export_Results"/>
@@ -1232,6 +1243,16 @@
    </property>
    <property name="text">
     <string>GIS export settings</string>
+   </property>
+  </action>
+  <action name="action_from_oesgn_table">
+   <property name="text">
+    <string>From OESGN file</string>
+   </property>
+  </action>
+  <action name="action_from_csv_file">
+   <property name="text">
+    <string>From CSV file</string>
    </property>
   </action>
  </widget>
