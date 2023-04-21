@@ -114,7 +114,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Connect signals and slots
         self.action_Exit.triggered.connect(self.exit_application)
         self.action_New_Campaign.triggered.connect(self.on_menu_file_new_campaign)
-        self.action_Add_Stations.triggered.connect(self.on_menu_file_load_stations)
         self.action_Corrections.triggered.connect(self.on_menu_observations_corrections)
         self.action_Flag_observations.triggered.connect(self.on_manu_observations_flag_observations)
         self.action_Autoselection_settings.triggered.connect(self.on_menu_observations_autoselection_settings)
@@ -130,6 +129,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_results_delete_lsm_run.pressed.connect(self.on_pushbutton_results_delete_lsm_run)
         self.pushButton_results_export_shapefile.pressed.connect(self.on_pushButton_results_export_shapefile)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
+        self.action_from_oesgn_table.triggered.connect(self.on_menu_file_load_stations_from_oesgn_table)
+        self.action_from_csv_file.triggered.connect(self.on_menu_file_load_stations_from_csv_file)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
         self.checkBox_obs_plot_setup_data.stateChanged.connect(self.on_checkBox_obs_plot_setup_data_state_changed)
@@ -451,7 +452,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                 # Enable/disable main menu items:
                 self.menuAdd_Survey.setEnabled(True)
-                self.action_Add_Stations.setEnabled(True)
+                self.menu_Add_Stations.setEnabled(True)
                 self.action_Export_Results.setEnabled(True)
                 self.action_Save_Campaign.setEnabled(True)
                 self.action_Change_output_directory.setEnabled(True)
@@ -2238,7 +2239,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                     # Save shapefile:
                     if lsm_run.lsm_method in settings.LSM_METHODS_GIS_EXPORT:
-                        if dlg.checkBox_gis_write_shapefile:
+                        if dlg.checkBox_gis_write_shapefile.isChecked():
                             if self.dlg_gis_export_settings.radioButton_campaign_output_dir.isChecked():
                                 gis_output_dir = self.campaign.output_directory
                             else:
@@ -2804,7 +2805,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             )
             # Enable/disable main menu items:
             self.menuAdd_Survey.setEnabled(True)
-            self.action_Add_Stations.setEnabled(True)
+            self.menu_Add_Stations.setEnabled(True)
             self.action_Export_Results.setEnabled(True)
             self.action_Save_Campaign.setEnabled(True)
             self.action_Change_output_directory.setEnabled(True)
@@ -2849,64 +2850,96 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.groupBox_obs_view_options.setEnabled(False)
             self.groupBox_obs_data_manipulation.setEnabled(False)
 
-    @pyqtSlot()
-    def on_menu_file_load_stations(self):
-        """Launch dialog to load stations to project."""
-        dlg = DialogLoadStations(campaign_output_dir=self.campaign.output_directory)
-        return_value = dlg.exec()
-        if return_value == QDialog.Accepted:
-            # Load Stations to campaign
-            number_of_stations_old = self.campaign.stations.get_number_of_stations
-            try:
-                # WARNING: The following line is required in order to prevent a memory error with
-                # "QSortFilterProxyModelPrivate::proxy_to_source()"
-                # => When adding stations to the model do the follwong steps:
-                # 1.) connect the station model ("self.station_model")
-                # 2.) Add station data
-                # 3.) Set up an connect the proxy model for sorting and filtering ("self.set_up_proxy_station_model")
-                self.connect_station_model_to_table_view()
+    def on_menu_file_load_stations_from_oesgn_table(self):
+        """Load stations from OESGN table file."""
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        oesgn_filename, _ = QFileDialog.getOpenFileName(self,
+                                                               'Select OESGN table file',
+                                                               self.campaign.output_directory,
+                                                               "OESGN table file (*.tab)",
+                                                               options=options)
+        if oesgn_filename:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            oesgn_filename = QDir.toNativeSeparators(oesgn_filename)
+            self.load_stations(file_type='oesgn', filename=oesgn_filename)
 
-                # WARNING: Whenever new station data is loaded with "self.campaign.add_stations_from_oesgn_table_file",
-                # the reference between the "view model" () and the "campaign stations dataframe"
-                # (self.campaign.stations.stat_df) is broken!
-                # => Therefore, these two have to be reassigned in order to mirror the same data! This is done by
-                #    calling the method "self.station_model.load_stat_df(self.campaign.stations.stat_df)".
-                self.campaign.add_stations_from_oesgn_table_file(dlg.lineEdit_oesgn_table_file_path.text(),
+    def on_menu_file_load_stations_from_csv_file(self):
+        """Load stations from a CSV file."""
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        csv_filename, _ = QFileDialog.getOpenFileName(self,
+                                                        'Select station CSV file',
+                                                        self.campaign.output_directory,
+                                                        "Station CSV file (*.csv)",
+                                                        options=options)
+        if csv_filename:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            csv_filename = QDir.toNativeSeparators(csv_filename)
+            self.load_stations(file_type='csv', filename=csv_filename)
+
+    def load_stations(self, file_type, filename):
+        """Load stations from stations file to the campaign and update the GUI."""
+
+        # Load Stations to campaign
+        number_of_stations_old = self.campaign.stations.get_number_of_stations
+        try:
+            # WARNING: The following line is required in order to prevent a memory error with
+            # "QSortFilterProxyModelPrivate::proxy_to_source()"
+            # => When adding stations to the model do the follwong steps:
+            # 1.) connect the station model ("self.station_model")
+            # 2.) Add station data
+            # 3.) Set up an connect the proxy model for sorting and filtering ("self.set_up_proxy_station_model")
+            self.connect_station_model_to_table_view()
+
+            # WARNING: Whenever new station data is loaded with "self.campaign.add_stations_from_oesgn_table_file",
+            # the reference between the "view model" () and the "campaign stations dataframe"
+            # (self.campaign.stations.stat_df) is broken!
+            # => Therefore, these two have to be reassigned in order to mirror the same data! This is done by
+            #    calling the method "self.station_model.load_stat_df(self.campaign.stations.stat_df)".
+            if file_type == 'oesgn':
+                self.campaign.add_stations_from_oesgn_table_file(filename,
                                                                  is_datum=settings.INIT_OESGN_STATION_AS_DATUM,
                                                                  verbose=IS_VERBOSE)
-                self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
-                self.refresh_stations_table_model_and_view()
-                self.set_up_proxy_station_model()
-                self.on_checkBox_filter_observed_stat_only_toggled(
-                    state=self.checkBox_filter_observed_stat_only.checkState())
-
-            except FileNotFoundError:
-                QMessageBox.critical(self, 'File not found error', f'"{dlg.lineEdit_oesgn_table_file_path.text()}" '
-                                                                   f'not found.')
-                self.statusBar().showMessage(f"No stations added.")
-            except Exception as e:
-                QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"No stations added.")
+            elif file_type == 'csv':
+                self.campaign.add_stations_from_csv_file(filename, verbose=IS_VERBOSE)
             else:
-                self.enable_station_view_options_based_on_model()
-                # Show observed stations only based on Checkbox state:
-                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
-                                                                   auto_range_stations_plot=True)
-                # self.update_stations_map() => Called in self.on_checkBox_filter_observed_stat_only_toggled() above!
-                number_of_stations_added = self.campaign.stations.get_number_of_stations - number_of_stations_old
+                raise AssertionError(f'Unknown station file type: {file_type}!')
+            self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
+            self.refresh_stations_table_model_and_view()
+            self.set_up_proxy_station_model()
+            self.on_checkBox_filter_observed_stat_only_toggled(
+                state=self.checkBox_filter_observed_stat_only.checkState())
 
-                # Re-calculate observation corrections, based on the new station data (VG is relevant for height
-                # reduction!):
-                self.apply_observation_corrections()
-
-                # Update the observations table and plot (in case the reduced obs. changed):
-                survey_name, setup_id = self.get_obs_tree_widget_selected_item()
-                self.update_obs_table_view(survey_name, setup_id)
-                self.plot_observations(survey_name)
-
-                self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
-        else:
+        except FileNotFoundError:
+            QMessageBox.critical(self, 'File not found error', f'"{filename}" not found.')
             self.statusBar().showMessage(f"No stations added.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+            self.statusBar().showMessage(f"No stations added.")
+        else:
+            self.enable_station_view_options_based_on_model()
+            # Show observed stations only based on Checkbox state:
+            self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
+                                                               auto_range_stations_plot=True)
+            # self.update_stations_map() => Called in self.on_checkBox_filter_observed_stat_only_toggled() above!
+            number_of_stations_added = self.campaign.stations.get_number_of_stations - number_of_stations_old
+
+            # Re-calculate observation corrections, based on the new station data (VG is relevant for height
+            # reduction!):
+            self.apply_observation_corrections()
+
+            # Update the observations table and plot (in case the reduced obs. changed):
+            survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+            self.update_obs_table_view(survey_name, setup_id)
+            self.plot_observations(survey_name)
+
+            self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
+
 
     def enable_station_view_options_based_on_model(self):
         """Enable or disable the station view options based on the number of stations in the model."""

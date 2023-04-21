@@ -162,11 +162,11 @@ class Station:
             8,  # Geograph. Breite [deg] 34
             8,  # Geograph. Länge [deg] 42
             8,  # Höhe [m] 50
-            7,  # g [µGal] 58
-            3,  # mittlerer Fehler von g [?] 65
+            7,  # g - 9.8e8 [µGal] 58
+            3,  # mittlerer Fehler von g [µGal] 65
             4,  # Vertikalgradient der Schwere [µGal/m] 68
             6,  # Datum 73
-            12,  # Punktidentität 79
+            12, # Punktidentität 79
         )
         column_names = (
             'station_name',
@@ -411,7 +411,7 @@ class Station:
         # Add missing stations to stat_df by matching the station names only (location parameters of observed stations
         # may differ!):
         # - From station files => Drop existing entries with the same name in any case!
-        if data_source_type == 'oesgn_table':
+        if data_source_type == 'oesgn_table' or data_source_type == 'csv_stat_file':
             stat_df_new = pd.concat([stat_df_old, stat_df_add]).drop_duplicates(
                 subset=['station_name'],
                 keep='last'
@@ -438,6 +438,28 @@ class Station:
             stations_added = number_of_stations - number_of_existing_stations
             print(f"{number_of_new_stations} stations loaded. "
                   f"{stations_added} stations added ({number_of_new_stations - stations_added} already listed).")
+
+
+    def add_stations_from_csv_file(self, filename, verbose=False):
+        """Adds (appends) all stations of the input OESGN table to the station dataframe.
+
+        Parameters
+        ----------
+        filename : str
+            Name (and path) of the OESGN table file.
+        verbose : bool, optional
+            Print notifications, if `True` (default=`False`)
+        """
+        if verbose:
+            print(f'Read station csv file: {filename}')
+        stat_df_new = pd.read_csv(filename, comment='#')
+        stat_df_new = self._stat_df_add_columns(stat_df_new)
+        stat_df_new = self._stat_df_reorder_columns(stat_df_new)
+        stat_df_new['is_observed'] = False  # Default = False
+        stat_df_new['is_datum'] = False
+        stat_df_new['source_type'] = 'csv_stat_file'
+        stat_df_new['source_name'] = os.path.basename(filename)
+        self.add_stations(stat_df_new, data_source_type='csv_stat_file', verbose=verbose)
 
     def set_datum_stations(self, station_names: list, is_datum: bool, verbose=False):
         """

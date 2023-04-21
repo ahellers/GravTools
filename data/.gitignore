@@ -2,8 +2,10 @@
 !.gitignore
 
 # ÖSGN Tables:
-!OESGN.TAB
+!stations/OESGN.tab
 !OESGN_Tab_erweitert.txt
 
 !BEV
 !CG5
+!stations
+
