@@ -24,7 +24,7 @@ import gravtools.models.lsm_diff
 import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
     REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
-    GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE
+    GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.models.misc import format_seconds_to_hhmmss
@@ -105,6 +105,11 @@ class Survey:
         Reference height reduction type applied on the observations that are used to calculate the setup data in the
         `setup_df` dataframe. Valid entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
         `Empty string`, if corrected setup data has not been calculated so far (`setup_df` = None).
+    setup_calc_method : str, optional (default='')
+        Method for the calculation of setup data. `variance_weighted_mean` implies that setup observations
+        (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
+        individual observations. `individual_obs` implies that the original observations are used as setup data
+        without any aggregation.
     keep_survey : bool (default=True)
         Flag that indicates whether this survey will be used to derive setup observations.`True` is the
         default and implies that this survey is considered. This flag is independent of the `keep_obs` flags
@@ -293,15 +298,13 @@ class Survey:
                  red_reference_height_type='',  # of "g_red_mugal"
                  setup_tide_correction_type='',
                  setup_reference_height_type='',
+                 setup_calc_method='',
                  keep_survey=True,  # Flag
                  setup_df=None,
                  ref_delta_t_dt=None,  # Datetime object (UTC)
                  setup_obs_list_df=None  #
                  ):
         """Default constructor of class Survey."""
-
-
-
 
         # Check input arguments:
         # name:
@@ -471,6 +474,19 @@ class Survey:
                 self.setup_reference_height_type = setup_reference_height_type  # ''
         else:
             raise TypeError('"setup_reference_height_type" needs to be a string')
+
+        # setup_calc_method:
+        if isinstance(setup_calc_method, str):
+            if setup_calc_method:
+                if setup_calc_method in SETUP_CALC_METHODS.keys():
+                    self.setup_calc_method = setup_calc_method
+                else:
+                    raise ValueError('"setup_calc_method" needs to be a key in SETUP_CALC_METHODS '
+                                     '({})'.format(', '.join(SETUP_CALC_METHODS.keys())))
+            else:
+                self.setup_calc_method = setup_calc_method  # ''
+        else:
+            raise TypeError('"setup_calc_method" needs to be a string')
 
         # keep_survey
         if isinstance(keep_survey, bool):
@@ -1430,11 +1446,13 @@ class Survey:
             self.setup_df = None
             self.setup_reference_height_type = ''
             self.setup_tide_correction_type = ''
+            self.setup_calc_method = ''
             self.setup_obs_list_df = None
 
     def calculate_setup_data(self, obs_type='reduced',
                              ref_delta_t_campaign_dt=None,
                              active_obs_only_for_ref_epoch=True,
+                             method='variance_weighted_mean',
                              verbose=False):
         """Accumulate all active observation within each setup and calculate a single representative pseudo observation.
 
@@ -1448,6 +1466,11 @@ class Survey:
             available/defined. In the latter case `delta_t_campaign_h` is `None` for all setup observations.
         active_obs_only_for_ref_epoch: bool, optional (default=True)
             `True` implies that the relative reference epochs are determined by considering active observations only.
+        method : str, optional (default=`variance_weighted_mean`)
+            Select method for the calculation of setup data. `variance_weighted_mean` implies that setup observations
+            (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
+            individual observations. `individual_obs` implies that the original observations are used as setup data
+            without any aggregation.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
@@ -1463,6 +1486,8 @@ class Survey:
         # Initial checks:
         if obs_type not in _VALID_OBS_TYPES:
             raise AssertionError(f'Invalid observation type: {obs_type} (valid: "reduced" or "observed").')
+        if method not in SETUP_CALC_METHODS:
+            raise AssertionError(f'Invalid method: {method} (valid: "variance_weighted_mean" or "individual_obs").')
         if self.obs_df is None:
             raise AssertionError('Observation dataframe is empty!')
 
@@ -1505,70 +1530,93 @@ class Survey:
             else:
                 ref_delta_t_dt = self.obs_df['obs_epoch'].min()  # First observation epoch (also inactive obs)
 
-            # Initialize columns lists for creating dataframe:
-            station_name_list = []
-            setup_id_list = []
-            g_mugal_list = []
-            sd_g_red_mugal_list = []
-            obs_epoch_list_unix = []
-            obs_epoch_list_dt = []
-            delta_t_h_list = []
-            delta_t_campaign_h_list = []
-            sd_setup_mugal_list = []
-            number_obs_list = []
-            dhf_sensor_m_list = []
-
             # Loop over setups:
-            setup_ids = active_obs_df['setup_id'].unique()
-            for setup_id in setup_ids:
-                tmp_filter = active_obs_df['setup_id'] == setup_id
+            if method == 'variance_weighted_mean':
+                # Initialize columns lists for creating dataframe:
+                station_name_list = []
+                setup_id_list = []
+                g_mugal_list = []
+                sd_g_red_mugal_list = []
+                obs_epoch_list_unix = []
+                obs_epoch_list_dt = []
+                delta_t_h_list = []
+                delta_t_campaign_h_list = []
+                sd_setup_mugal_list = []
+                number_obs_list = []
+                dhf_sensor_m_list = []
+
+                setup_ids = active_obs_df['setup_id'].unique()
+                for setup_id in setup_ids:
+                    tmp_filter = active_obs_df['setup_id'] == setup_id
+                    if obs_type == 'observed':
+                        g_mugal = active_obs_df.loc[tmp_filter, 'g_obs_mugal'].to_numpy()
+                        sd_g_mugal = active_obs_df.loc[tmp_filter, 'sd_g_obs_mugal'].to_numpy()
+                    elif obs_type == 'reduced':
+                        g_mugal = active_obs_df.loc[tmp_filter, 'g_red_mugal'].to_numpy()
+                        sd_g_mugal = active_obs_df.loc[tmp_filter, 'sd_g_red_mugal'].to_numpy()
+                    weights = 1 / sd_g_mugal ** 2
+                    g_setup_mugal = np.sum(g_mugal * weights) / np.sum(weights)
+                    sd_g_setup_mugal = np.sqrt(1 / np.sum(weights))
+                    if len(active_obs_df.loc[tmp_filter, 'station_name'].unique()) > 1:
+                        raise AssertionError(
+                            f'Setup with ID "{setup_id}" in survey "{self.name}" contains '
+                            f'{len(active_obs_df.loc[tmp_filter, "station_name"].unique())} stations (only 1 allowed)!'
+                        )
+
+                    # Standard deviation of active observations within setup:
+                    # - If less than 2 active observations in setup => Calculation not possible => NaN
+                    if len(g_mugal) >= 2:
+                        sd_setup_mugal_list.append(g_mugal.std(ddof=1))  # degree of freedom = (len(g_mugal) - 1)
+                    else:
+                        sd_setup_mugal_list.append(np.nan)
+
+                    number_obs_list.append(len(g_mugal))  # Number of observations
+
+                    # Get vertical distance between sensor height and control point:
+                    dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type])
+
+                    # observation epoch (UNIX timestamps in full seconds):
+                    obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
+                    unix_obs_epochs = obs_epochs_series.values.astype(np.int64) / 10 ** 9
+                    unix_setup_epoch = np.sum(unix_obs_epochs * weights) / np.sum(weights)
+
+                    # Reference epoch as datetime object (TZ=<UTC>):
+                    dt_setup_epoch = dt.datetime.utcfromtimestamp(unix_setup_epoch)
+                    dt_setup_epoch = dt_setup_epoch.replace(tzinfo=dt.timezone.utc)  # TZ = <UTC>
+
+                    station_name_list.append(active_obs_df.loc[tmp_filter, 'station_name'].unique()[0])
+                    setup_id_list.append(setup_id)
+                    g_mugal_list.append(g_setup_mugal)
+                    sd_g_red_mugal_list.append(sd_g_setup_mugal)
+                    obs_epoch_list_unix.append(unix_setup_epoch)
+                    obs_epoch_list_dt.append(dt_setup_epoch)
+                    delta_t_h_list.append((unix_setup_epoch - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
+                    if flag_calculate_delta_t_campaign_h:
+                        delta_t_campaign_h_list.append((unix_setup_epoch - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
+                    else:
+                        delta_t_campaign_h_list.append(None)
+            elif method == 'individual_obs':
+                station_name_list = active_obs_df['station_name'].to_list()
+                setup_id_list = active_obs_df['setup_id'].to_list()
                 if obs_type == 'observed':
-                    g_mugal = active_obs_df.loc[tmp_filter, 'g_obs_mugal'].to_numpy()
-                    sd_g_mugal = active_obs_df.loc[tmp_filter, 'sd_g_obs_mugal'].to_numpy()
+                    g_mugal_list = active_obs_df['g_obs_mugal'].to_list()
+                    sd_g_red_mugal_list = active_obs_df['sd_g_obs_mugal'].to_list()
                 elif obs_type == 'reduced':
-                    g_mugal = active_obs_df.loc[tmp_filter, 'g_red_mugal'].to_numpy()
-                    sd_g_mugal = active_obs_df.loc[tmp_filter, 'sd_g_red_mugal'].to_numpy()
-                weights = 1 / sd_g_mugal ** 2
-                g_setup_mugal = np.sum(g_mugal * weights) / np.sum(weights)
-                sd_g_setup_mugal = np.sqrt(1 / np.sum(weights))
-                if len(active_obs_df.loc[tmp_filter, 'station_name'].unique()) > 1:
-                    raise AssertionError(
-                        f'Setup with ID "{setup_id}" in survey "{self.name}" contains '
-                        f'{len(active_obs_df.loc[tmp_filter, "station_name"].unique())} stations (only 1 allowed)!'
-                    )
+                    g_mugal_list = active_obs_df['g_red_mugal'].to_list()
+                    sd_g_red_mugal_list = active_obs_df['sd_g_red_mugal'].to_list()
 
-                # Standard deviation of active observations within setup:
-                # - If less than 2 active observations in setup => Calculation not possible => NaN
-                if len(g_mugal) >= 2:
-                    sd_setup_mugal_list.append(g_mugal.std(ddof=1))  # degree of freedom = (len(g_mugal) - 1)
-                else:
-                    sd_setup_mugal_list.append(np.nan)
+                obs_epoch_unix_array = active_obs_df['obs_epoch'].values.astype(np.int64) / 10 ** 9
+                obs_epoch_list_unix = list(obs_epoch_unix_array)
+                obs_epoch_list_dt = pd.to_datetime(obs_epoch_unix_array, unit='s').tz_localize('utc').to_list()
 
-                number_obs_list.append(len(g_mugal))  # Number of observations
-
-                # Get vertical distance between sensor height and control point:
-                dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type])
-
-                # observation epoch (UNIX timestamps in full seconds):
-                obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
-                unix_obs_epochs = obs_epochs_series.values.astype(np.int64) / 10 ** 9
-                unix_setup_epoch = np.sum(unix_obs_epochs * weights) / np.sum(weights)
-
-                # Reference epoch as datetime object (TZ=<UTC>):
-                dt_setup_epoch = dt.datetime.utcfromtimestamp(unix_setup_epoch)
-                dt_setup_epoch = dt_setup_epoch.replace(tzinfo=dt.timezone.utc)  # TZ = <UTC>
-
-                station_name_list.append(active_obs_df.loc[tmp_filter, 'station_name'].unique()[0])
-                setup_id_list.append(setup_id)
-                g_mugal_list.append(g_setup_mugal)
-                sd_g_red_mugal_list.append(sd_g_setup_mugal)
-                obs_epoch_list_unix.append(unix_setup_epoch)
-                obs_epoch_list_dt.append(dt_setup_epoch)
-                delta_t_h_list.append((unix_setup_epoch - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
+                delta_t_h_list = list((obs_epoch_unix_array - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
                 if flag_calculate_delta_t_campaign_h:
-                    delta_t_campaign_h_list.append((unix_setup_epoch - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
+                    delta_t_campaign_h_list = list((obs_epoch_unix_array - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
                 else:
-                    delta_t_campaign_h_list.append(None)
+                    delta_t_campaign_h_list = [None] * len(g_mugal_list)
+                sd_setup_mugal_list = [np.nan] * len(g_mugal_list)
+                number_obs_list = [1] * len(g_mugal_list)
+                dhf_sensor_m_list = active_obs_df['dhf_m'] + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type]
 
             if obs_type == 'observed':
                 self.setup_tide_correction_type = self.obs_tide_correction_type
@@ -1576,6 +1624,7 @@ class Survey:
             elif obs_type == 'reduced':
                 self.setup_tide_correction_type = self.red_tide_correction_type
                 self.setup_reference_height_type = self.red_reference_height_type
+            self.setup_calc_method = method
             self.create_setup_obs_list()
 
             # convert to pd dataframe:
@@ -1596,7 +1645,7 @@ class Survey:
     def create_setup_obs_list(self):
         """Create list of all observations that contribute to the calculation of setup data in this Survey object.
 
-        The list is created as pabdas dataframe. It holds information whether an observation in the `obs_df` is
+        The list is created as pandas dataframe. It holds information whether an observation in the `obs_df` is
         active or inactive (`keep_obs` flag).
         """
         self.setup_obs_list_df = self.obs_df.loc[:, self._SETUP_OBS_LIST_DF_COLUMNS].copy(deep=True)

@@ -168,8 +168,9 @@ class BEVLegacyProcessing(LSM):
         ref_epoch_t0_dt = ref_epoch_t0_dt_list[0]
 
         # Check, if setup IDs are unique:
-        if len(set(setup_ids)) != len(setup_ids):
-            raise AssertionError('Setup IDs are not unique within the campaign!')
+        if self.check_for_unique_setup_id:
+            if len(set(setup_ids)) != len(setup_ids):
+                raise AssertionError('Setup IDs are not unique within the campaign!')
 
         # Write log:
         if verbose or self.write_log:

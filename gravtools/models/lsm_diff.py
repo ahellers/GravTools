@@ -50,25 +50,6 @@ class LSMDiff(LSM):
         vectors used in the adjustment scheme.
     """
 
-    # Column names of self.setup_obs_df:
-    # - keys: Column names of the pandas dataframe
-    # - values: Short description for table headers, etc., in the GUI
-    # _SETUP_DIFF_COLUMNS_DICT = {
-    #     'survey_name': 'Survey',
-    #     'ref_epoch_dt': 'Epoch',
-    #     'diff_obs_id': 'Obs. ID',
-    #     'station_name_from': 'Station from',
-    #     'station_name_to': 'Station to',
-    #     'setup_id_from': 'Setup ID from',
-    #     'setup_id_to': 'Setup ID to',
-    #     'g_diff_mugal': 'g [µGal]',
-    #     'sd_g_diff_mugal': 'SD [µGal]',
-    #     'sd_g_diff_est_mugal': 'SD_est [µGal]',
-    #     'v_diff_mugal': 'Residuals [µGal]',  # Post fit residuals
-    #     'w_diff_mugal': 'Std. Residual []',
-    #     'r_diff_obs': 'Redundancy []',
-    #     'tau_test_result': 'Outlier Test',
-    # }
     _SETUP_DIFF_COLUMNS_DTYPES = {
         'survey_name': 'str',
         'ref_epoch_dt': 'datetime64[ns, UTC]',
@@ -246,8 +227,9 @@ class LSMDiff(LSM):
         number_of_diff_obs = number_of_observations - number_of_surveys
 
         # Check, if setup IDs are unique:
-        if len(set(setup_ids)) != len(setup_ids):
-            raise AssertionError('Setup IDs are not unique within the campaign!')
+        if self.check_for_unique_setup_id:
+            if len(set(setup_ids)) != len(setup_ids):
+                raise AssertionError('Setup IDs are not unique within the campaign!')
 
         # - Datum points for weighted constraints:
         # Get dataframe with subset of observed stations only:

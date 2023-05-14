@@ -451,6 +451,7 @@ class Campaign:
     def calculate_setup_data(self,
                              obs_type='reduced',
                              active_obs_only_for_ref_epoch=True,
+                             method='variance_weighted_mean',
                              verbose=False):
         """Calculate accumulated pseudo observations for each active setup in all active surveys.
 
@@ -473,6 +474,11 @@ class Campaign:
             each survey. Stored in `self.ref_delta_t_dt` (datetime object).
         active_obs_only_for_ref_epoch: bool, optional (default=True)
             `True` implies that the relative reference epochs are determined by considering active observations only.
+        method : str, optional (default=`variance_weighted_mean`)
+            Select method for the calculation of setup data. `variance_weighted_mean` implies that setup observations
+            (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
+            individual observations. `individual_obs` implies that the original observations are used as setup data
+            without any aggregation.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
@@ -489,6 +495,7 @@ class Campaign:
                 survey.calculate_setup_data(obs_type=obs_type,
                                             ref_delta_t_campaign_dt=self.ref_delta_t_dt,
                                             active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
+                                            method=method,
                                             verbose=verbose)
             else:
                 survey.reset_setup_data(verbose)  # Remove setup data from previous calculations

@@ -268,8 +268,9 @@ class VGLSM(LSM):
         number_of_parameters = drift_pol_degree + vg_polynomial_degree + 1
 
         # Check, if setup IDs are unique:
-        if len(set(setup_ids)) != len(setup_ids):
-            raise AssertionError('Setup IDs are not unique within the campaign!')
+        if self.check_for_unique_setup_id:
+            if len(set(setup_ids)) != len(setup_ids):
+                raise AssertionError('Setup IDs are not unique within the campaign!')
 
         if verbose or self.write_log:
             time_now_str = dt.datetime.now(tz=pytz.UTC).strftime('%Y-%m-%d, %H:%M:%S %Z')
