@@ -1,11 +1,15 @@
 *
 !.gitignore
 
-# ÖSGN Tables:
-!stations/OESGN.tab
-!OESGN_Tab_erweitert.txt
+# Station data:
+!stations
 
+# Observation data:
 !BEV
 !CG5
-!stations
+
+# Tide data:
+!tfs_files
+
+
 

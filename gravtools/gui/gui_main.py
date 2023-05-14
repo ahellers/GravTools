@@ -688,7 +688,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Invoke plotting method according to the LSM method:
             if lsm_run.lsm_method == 'VG_LSM_nondiff':
-                # TODO: Get parameters from GUI!!
                 # Get plot settings from the GUI:
                 plot_residuals = self.checkBox_results_vg_plot_show_residuals.checkState() == Qt.Checked
                 if self.radioButton_results_vg_plot_details.isChecked() and not self.radioButton_results_vg_plot_full_polynomial.isChecked():
@@ -1055,10 +1054,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
             # setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
             setup_df.sort_values(by='delta_t_campaign_h', inplace=True)
-            setup_obs_df_short = lsm_run.setup_obs_df.loc[lsm_run.setup_obs_df['survey_name'] == survey_name, ['setup_id', 'v_obs_est_mugal']].copy(deep=True)
             # Merge df => Colum with post-fit residuals ("v_obs_est_mugal") added to "setup_df":
-            setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', on='setup_id')
-
+            if setup_data['setup_calc_method'] != 'individual_obs':
+                setup_obs_df_short = lsm_run.setup_obs_df.loc[
+                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['setup_id', 'v_obs_est_mugal']].copy(deep=True)
+                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', on='setup_id')  # WEG!
+            else:
+                setup_obs_df_short = lsm_run.setup_obs_df.loc[
+                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(
+                    deep=True)
+                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', left_on='epoch_dt',
+                                    right_on='ref_epoch_dt')
             # Evaluate drift polynomial:
             coeff_list = drift_pol_df_short['coefficient'].to_list()
             coeff_list.reverse()
@@ -1597,7 +1603,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_results_observation_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_drift_table_view(idx, survey_name=survey_name)
             self.update_results_vg_table_view(idx)
-            self.update_results_obs_plots()  #TODO!! Error wegen dtype Änderung!!
+            self.update_results_obs_plots()
             self.update_drift_plot()
             self.update_vg_plot()
         else:  # invalid index => Reset results views
@@ -1789,10 +1795,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Get GUI settings:
         active_obs_only_for_ref_epoch = self.dlg_setup_data.checkBox_drift_ref_epoch_active_obs_only.checkState() == Qt.Checked
+        if self.dlg_setup_data.radioButton_variance_weighted_mean.isChecked():
+            method = 'variance_weighted_mean'
+        elif self.dlg_setup_data.radioButton_individual_obs.isChecked():
+            method = 'individual_obs'
+        else:
+            method = 'variance_weighted_mean' # Use default
 
         try:
             self.campaign.calculate_setup_data(obs_type='reduced',
                                                active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
+                                               method=method,
                                                verbose=IS_VERBOSE)
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))

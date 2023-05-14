@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>512</width>
-    <height>122</height>
+    <height>249</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,6 +22,47 @@
      <property name="text">
       <string>Consider only active observations for the reference epoch</string>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_computation_method">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the method for the computation of setup observations.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="title">
+      <string>Setup data computation method</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QRadioButton" name="radioButton_variance_weighted_mean">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Computa setup observations as the variance weighted mean ob all consecutive observations within one setup. This is the default option for the adjustment of gravity surveys comprising multiple stations or the estimatuion of vertical gravity gradients.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Variance weighted mean</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup_computation_method</string>
+        </attribute>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioButton_individual_obs">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Trest each individual observation as setup observation, i.e. do aggregate individual observations at all. This option may be used for analysing  stationary long-term observations at a single station, e.g. for the analysis of tides of the instrument's drift behaviour.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Individual observations</string>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup_computation_method</string>
+        </attribute>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
@@ -41,4 +82,7 @@
  </widget>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup_computation_method"/>
+ </buttongroups>
 </ui>

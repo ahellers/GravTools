@@ -83,6 +83,12 @@ BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
     '5': 'cg5_longman1959'
 }
 
+# Methods for calculation of setup observations:
+SETUP_CALC_METHODS = {
+    'variance_weighted_mean': 'Variance weighted mean of observations within a setup.',
+    'individual_obs': 'Each observation is treated as setup.'
+}
+
 # Available adjustment methods:
 ADJUSTMENT_METHODS = {
     'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
