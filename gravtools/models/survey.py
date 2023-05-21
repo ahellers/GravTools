@@ -61,7 +61,7 @@ class Survey:
     in the Attributes section.
 
     The observation reference time in GravTools is equal to the start time of an instrument reading - in accordance with
-    the CG-5 observation files. This has to be taken into account when calcualting time dependent corrections, such as
+    the CG-5 observation files. This has to be taken into account when calculating time dependent corrections, such as
     tidal corrections.
 
     Attributes

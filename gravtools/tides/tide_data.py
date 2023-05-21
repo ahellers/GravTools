@@ -97,6 +97,11 @@ class AbstractTideData(ABC):
         """Returns the end time of the tidal timeseries as string."""
         return self.endtime.strftime('%Y-%d-%d %H:%M:%S')
 
+    @property
+    def filename_without_path(self) -> str:
+        """Returns the filename without path."""
+        pass
+
     def __str__(self):
         return f'Tidal data loaded from {self.filename} ({self.filetype}) with {self.number_channels} channels ' \
                f'and {self.number_records} datasets ({self.starttime_str} to {self.endtime_str})'

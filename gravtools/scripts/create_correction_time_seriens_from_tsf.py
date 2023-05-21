@@ -1,4 +1,4 @@
-"""Example script for loading TSoft TSF files with tidal data.
+"""Example script for creating a corretcion time series by loading data from TSF files.
 
 Copyright (C) 2023  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
@@ -17,26 +17,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from gravtools.tides.tide_data_tfs import TSF
+from gravtools.tides.correction_time_series import CorrectionTimeSeries
 
 def main():
     """Main function"""
 
     # Load file with integer seconds time reference:
-    FILENAME_TFS = '../../data/tfs_files/TEST_SITE_1.TSF'
-    tfs_data = TSF.from_tfs_file(FILENAME_TFS)
-    print(tfs_data.filename)
-    print(tfs_data)
-    print(tfs_data.get_channel_df(1))
+    FILENAME_TFS = '../../data/tfs_files/l230406.TSF'
 
-    # Load file with integer sub-seconds time reference:
-    FILENAME_TFS = '../../data/tfs_files/TEST_SITE_1_subsecond.TSF'
-    tfs_data = TSF.from_tfs_file(FILENAME_TFS)
-    print(tfs_data.filename)
-    print(tfs_data)
-    print(tfs_data.get_channel_df('last'))
-    print(tfs_data.get_channel_df('TEST_SITE_1:Theory Sol. Earth:WDD'))
+    corr_time_series = CorrectionTimeSeries()
+    corr_time_series.load_tfs_file('l230406', FILENAME_TFS, instrument='Theory-Loading')
+
+    corr_time_series.surveys['l230406'].stations['BEV_U3'].tidal_correction.to_df()
+
+    corr_time_series.load_tfs_file('l230406', FILENAME_TFS, instrument='Theory-Loading')
+
 
     print('end')
+
+
+
+
 
 if __name__ == '__main__':
     main()

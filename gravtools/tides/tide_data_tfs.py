@@ -1,6 +1,6 @@
-"""Class for TFS-formatted tidal data.
+"""Class for TSF-formatted tidal data.
 
-TFS Files are created e.g. by TSoft
+TSF Files are created e.g. by TSoft
 
 Copyright (C) 2023  Andreas Hellerschmied <andreas.hellerschmied@bev.gv.at>
 
@@ -22,6 +22,7 @@ import re
 import datetime as dt
 import io
 from dataclasses import dataclass
+import os
 
 import pandas as pd
 from typing import Dict, Literal
@@ -44,7 +45,7 @@ class ChannelMetadata:
         return self.location + ':' + self.instrument_name + ':' + self.data_type
 
 
-class TFS(AbstractTideData):
+class TSF(AbstractTideData):
     """Class for tidal data loaded from TSF files.
 
     TSF files are the native format for the TSoft which allows to calculate time-series of synthetic tide for a
@@ -283,10 +284,8 @@ class TFS(AbstractTideData):
     @property
     def get_tide_corr_df(self):
         """Returns the complete tidal gravity time-series as pandas DataFrame"""
-        pass
+        return self.data_df
 
-    def get_tidal_gravity_correction(self, epoch_dt):
-        pass
 
     @property
     def filename(self) -> str:
@@ -343,6 +342,31 @@ class TFS(AbstractTideData):
                     return self.data_df.loc[:, ['epoch_dt', ch.channel_name]]
         raise RuntimeError(f'"{channel}" is not a valid TSF data record channel name or number!')
 
+    def get_channel_np(self, channel: [int, str]):
+        """Return the time reference and the data of the specified channel as numpy array.
+
+        Parameters
+        ----------
+        channel : str or int or 'last'
+            If `channel` is as string the argument is interpreted as channel name and the according channel data is
+            returned. If `channel` is an integer, it is interpreted as the number of the channel to be returned. `last`
+            indicates that the last channel in the TSF file should be returned.
+
+        Returns
+        -------
+        numpy.array of reference epochs (DateTime), numpy.array of channel data.
+        """
+        if isinstance(channel, str):
+            if channel == 'last':
+                channel = max([num.channel_number for num in self.channel_metadata])
+            elif channel in self.data_df.columns and channel in self.channel_names:
+                return self.data_df.loc[:, 'epoch_dt'].to_numpy(), self.data_df.loc[:, channel].to_numpy()
+        if isinstance(channel, int):
+            for ch in self.channel_metadata:
+                if ch.channel_number == channel:
+                    return self.data_df.loc[:, 'epoch_dt'].to_numpy(), self.data_df.loc[:, ch.channel_name].to_numpy()
+        raise RuntimeError(f'"{channel}" is not a valid TSF data record channel name or number!')
+
 
     @property
     def channel_names(self):
@@ -353,6 +377,31 @@ class TFS(AbstractTideData):
     def channel_names(self):
         """Returns a list of the names of all data channels."""
         return [ch.channel_name for ch in self.channel_metadata]
+
+    @property
+    def locations(self):
+        """Returns a list of the locations of all stations."""
+        return [ch.location for ch in self.channel_metadata]
+
+    @property
+    def instruments(self):
+        """Returns a list of the instruments of all stations."""
+        return [ch.instrument_name for ch in self.channel_metadata]
+
+    @property
+    def data_types(self):
+        """Returns a list of the data types of all stations."""
+        return [ch.data_type for ch in self.channel_metadata]
+
+    @property
+    def units(self):
+        """Returns a list of the units of all stations."""
+        return [ch.unit for ch in self.channel_metadata]
+
+    @property
+    def filename_without_path(self):
+        """Returns the TSF filename without path."""
+        return os.path.basename(self.filename)
 
 
 
