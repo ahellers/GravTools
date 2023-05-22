@@ -17,11 +17,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 from dataclasses import dataclass
-import numpy as np
 import typing
-from datetime import datetime
+from datetime import datetime, timezone
+import warnings
 
 import pandas as pd
+import scipy
+import numpy as np
 
 import gravtools.tides.correction_time_series
 from gravtools.tides.tide_data_tfs import TSF
@@ -130,27 +132,39 @@ class TimeSeries:
     data_source: str
     description: str = ''
 
-    def interpolate_time_series(self, time: datetime, method: str):  # TODO: Options for "method"!
+    def interpolate(self, interp_times: [np.array, typing.List[datetime]], kind: str = 'quadratic') -> np.ndarray :
         """Return an interpolated value for the given interpolation epoch.
 
         Parameters
         ----------
-        time: datetime
-            Interpolation epoch given as `datetime` object.
-        method: str, optional (default=?????)
-            Specifies, which interpolation method is used.
+        interp_times: list(datetime) or np.array(datetime)
+            Interpolation epoch given as `datetime` object w.r.t. UTC! The interpolation times have to bin within the
+            time range of the data series.
+        kind: str or int, optional (default='quadratic')
+            Specifies, which interpolation method is used. This argument is directly passed to
+            `scipy.interpolate.inter1`. For options see scipy reference.
 
         Returns
         -------
-        float: Interpolated value for the given time. 'numpy.nan' is returned, if the interpolation was not successfull.
+        `numpy.ndarray`: Interpolated value for the given interpolation times.
         """
-        pass
+        # Convert datetimes to UNIX timestamps, because numerical values are needed for interpolation:
+        interp_times_unix = np.fromiter((t.replace(tzinfo=timezone.utc).timestamp() for t in interp_times), float)
+        x = self.ref_time_unix
+        y = self.data
+        interp_func = scipy.interpolate.interp1d(x, y, kind=kind)
+        return interp_func(interp_times_unix)
 
     def to_df(self):
         """Returns the time series as pandas DataFrame with the time reference as index (sorted!)."""
         df = pd.DataFrame({'epoch_dt': self.ref_time_dt,'data': self.data})
         df.set_index('epoch_dt', inplace=True)
         return df
+
+    @property
+    def ref_time_unix(self):
+        """Returns the reference times as UNIX timestamps (seconds since Jan 1, 1970)."""
+        return self.ref_time_dt.astype('int64')/1e9
 
 @dataclass
 class StationCorrections:
@@ -193,12 +207,12 @@ class SurveyCorrections:
         if station_name in self.stations.keys():
             if not overwrite:
                 if warn:
-                    raise Warning(f'Station correction data for station {station_name} already exists! Overwriting '
+                    warnings.warn(f'Station correction data for station {station_name} already exists! Overwriting '
                                   f'data is not permitted!')
                 return False
             else:
                 if warn:
-                    raise Warning(f'Station correction data for station {station_name} already exists! Overwriting '
+                    warnings.warn(f'Station correction data for station {station_name} already exists! Overwriting '
                                   f'data is permitted and the existing data will be overwritten!')
                 self.stations['station_name'] = station_correction
                 return True
