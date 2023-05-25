@@ -66,6 +66,7 @@ from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorr
 from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
 from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
+from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
 from gravtools.models.survey import Survey
@@ -131,6 +132,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.action_from_oesgn_table.triggered.connect(self.on_menu_file_load_stations_from_oesgn_table)
         self.action_from_csv_file.triggered.connect(self.on_menu_file_load_stations_from_csv_file)
+        self.action_Correction_time_series.triggered.connect(self.action_correction_time_series_triggered)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
         self.checkBox_obs_plot_setup_data.stateChanged.connect(self.on_checkBox_obs_plot_setup_data_state_changed)
@@ -168,13 +170,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # self.observations_splitter.setSizes([1000, 10])
 
         # Initialize dialogs if necessary at the start of the application:
-        self.dlg_corrections = DialogCorrections()
-        self.dlg_autoselect_settings = DialogAutoselectSettings()
-        self.dlg_estimation_settings = DialogEstimationSettings()
-        self.dlg_gis_export_settings = DialogGisExportSettings()
-        self.dlg_options = DialogOptions()
-        self.dlg_setup_data = DialogSetupData()
-        self.dlg_about = DialogAbout()
+        self.dlg_corrections = DialogCorrections(self)
+        self.dlg_autoselect_settings = DialogAutoselectSettings(self)
+        self.dlg_estimation_settings = DialogEstimationSettings(self)
+        self.dlg_gis_export_settings = DialogGisExportSettings(self)
+        self.dlg_options = DialogOptions(self)
+        self.dlg_setup_data = DialogSetupData(self)
+        self.dlg_about = DialogAbout(self)
+        self.dlg_correction_time_series = DialogCorrectionTimeSeries(self)
         # self.dlg_about.label_author.setText(__author__)
         self.dlg_about.label_version.setText(__version__)
         self.dlg_about.label_git_repo.setText(__git_repo__)
@@ -220,6 +223,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    def action_correction_time_series_triggered(self):
+        """Launch dialog for managing correction time series data."""
+        _ = self.dlg_correction_time_series.exec()
 
     @pyqtSlot()
     def on_pushButton_results_export_shapefile(self):
@@ -481,6 +488,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_results_drift_view_model()
                 self.set_up_results_vg_view_model()
                 self.update_results_tab(select_latest_item=True)
+                # - Corrections time series dialog:
+                self.dlg_correction_time_series.reset_update_gui()
 
                 self.statusBar().showMessage(
                     f"Previously saved campaign loaded rom pickle file (name: {self.campaign.campaign_name}, "
@@ -1366,7 +1375,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         Notes
         -----
-        If input parameters `` or/and `` is/are `None` or '', the plot content is deleted and the plot is resetted.
+        If input parameters `` or/and `` is/are `None` or '', the plot content is deleted and the plot is reseted.
         """
         # Clear plot in any case:
         self.plot_obs_results.clear()
@@ -2844,6 +2853,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_up_results_drift_view_model()
             self.set_up_results_vg_view_model()
             self.update_results_tab(select_latest_item=True)
+            # - Corrections time series dialog:
+            self.dlg_correction_time_series.reset_update_gui()
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
                                          f"output directory: {self.campaign.output_directory})")

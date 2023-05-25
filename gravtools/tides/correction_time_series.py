@@ -42,7 +42,7 @@ class CorrectionTimeSeries:
         self.surveys = {}
 
     def load_tfs_file(self, survey_name: str, filename_tsf: str, location: str ='', instrument: str ='',
-                      data_type: str =''):
+                      data_type: str ='', overwrite_channel: bool=True, is_correction: bool='False'):
         """Load time series data from a TSoft TSF file for one survey.
 
         Parameters
@@ -57,6 +57,17 @@ class CorrectionTimeSeries:
             If not empty, only channels with matching instruments are loaded.
         data_type: str, optional (default='')
             If not empty, only channels with matching data types are loaded.
+        overwrite_channel: bool, optional (default=`True`)
+            `True` implies that an existing StationCorrection object of a station will be overwritten.
+        is_correction: bool, optional (default=`False`)
+            `True` implies that the channel data loaded from the TSF file model the gravity effect of phenomena, rather
+            than corrections for gravity observations. Both options have the opposite sign: while corrections have to be
+            added to gravity observations, effects have to be subtracted, in order to reduce observations.
+            See TSoft manual (version 2.2.4 Release date 2015-09-09), p. 15: "The loading calculation by Tsoft will
+            result in the correction, not the effect.
+            On the other hand the prediction of the solid Earth tides using the WDD parameter set
+            provided by Tsoft directly will result in the effect. Therefore both must be treated with
+            different sign in order to reduce a gravity time series correctly."
         """
         # Load TSF file:
         tsf_data = TSF.from_tfs_file(filename_tsf)
@@ -92,10 +103,12 @@ class CorrectionTimeSeries:
             ch_epoch_dt, ch_data  = tsf_data.get_channel_np(channel=channel_number)
             time_series = TimeSeries(ref_time_dt=ch_epoch_dt, data=ch_data, unit=channel_metadata.unit,
                                      data_source=f'{tsf_data.filename_without_path} ({tsf_data.filetype})',
-                                     description=ch_channel_name)
+                                     description=ch_channel_name,
+                                     is_correction=is_correction)
 
 
-            stations_corrections_dict[ch_location] = StationCorrections(station_name=ch_location, tidal_correction=time_series)
+            stations_corrections_dict[ch_location] = StationCorrections(station_name=ch_location,
+                                                                        tidal_correction=time_series)
 
         # Checks:
         if len(retrieved_channel_locations) == 0:
@@ -117,20 +130,102 @@ class CorrectionTimeSeries:
             # Add station corrections to existing survey correction object:
             for stat_name, stat_corr in stations_corrections_dict.items():
                 _ = self.surveys[survey_name].add_station_correction(station_name=stat_name,
-                                                                     station_correction=stat_corr)
+                                                                     station_correction=stat_corr,
+                                                                     overwrite=overwrite_channel)
         else:
             # Create survey correction object and add the station correction data:
             self.surveys[survey_name] = SurveyCorrections(survey_name=survey_name, stations=stations_corrections_dict)
 
+    def delete_survey_correction(self, survey_name):
+        """Removes a survey correction object.
+
+        Parameters
+        ----------
+        survey_name: str
+            Survey name.
+        """
+        del self.surveys[survey_name]
 
 @dataclass
 class TimeSeries:
-    """Time series data."""
+    """Time series data.
+
+    Parameters
+    ----------
+    ref_time_dt: `numpy.array` of `datetime` objects
+        Reference times for the time series.
+    data: `numpy.array`
+        Data series. Has to have the same length as `ref_times_dt`
+    unit: str
+        Unit of the data.
+    data_source: str
+        Description of the data source, e.g. file name and/or file type, etc.
+    description: str, optional (default='')
+        Optional description of the time series.
+    is_correction: bool, optional (default=`False`)
+            `True` implies that the channel data loaded from the TSF file model the gravity effect of phenomena, rather
+            than corrections for gravity observations. Both options have the opposite sign: while corrections have to be
+            added to gravity observations, effects have to be subtracted, in order to reduce observations.
+    """
     ref_time_dt: np.array  # np.array of DateTime objects
     data: np.array
     unit: str
     data_source: str
     description: str = ''
+    is_correction: bool = True
+
+    @property
+    def start_datetime(self):
+        """Returns the start date and time."""
+        return min(self.ref_time_dt)
+
+    @property
+    def start_datetime_str(self):
+        """Returns the start date and time as string."""
+        return pd.to_datetime(self.start_datetime).strftime('%Y-%m-%d %H:%M:%S.%f')
+
+    @property
+    def end_datetime(self):
+        """Returns the end date and time."""
+        return max(self.ref_time_dt)
+
+    @property
+    def end_datetime_str(self):
+        """Returns the end date and time as string."""
+        return pd.to_datetime(self.end_datetime).strftime('%Y-%m-%d %H:%M:%S.%f')
+
+    @property
+    def duration_timedelta64_ns(self):
+        """Returns the duration as `numpy.timedelta64[ns]` object."""
+        return max(self.ref_time_dt) - min(self.ref_time_dt)
+
+    def duration_dhms(self):
+        """Returns the duration as days, hours, minutes and seconds."""
+        dt = max(self.ref_time_dt) - min(self.ref_time_dt)
+        days = dt.astype('timedelta64[D]').astype(int)
+        hours = dt.astype('timedelta64[h]').astype(int) - days * 24
+        minutes = dt.astype('timedelta64[m]').astype(int) - days*24*60 - hours*60
+        seconds = dt.astype('timedelta64[s]').astype(float) - days*24*60*60 - hours*60*60 - minutes*60
+        return days, hours, minutes, seconds
+
+    @property
+    def duration_dhms_str(self):
+        """Returns the duration as string (days, hours, minutes and seconds)"""
+        days, hours, minutes, seconds = self.duration_dhms()
+        return f'{days} days, {hours} hours, {minutes} minutes, {seconds} seconds'
+
+    @property
+    def number_of_datapoints(self):
+        """Returns the number of datapoints."""
+        return len(self.data)
+
+    @property
+    def model_type(self):
+        """Returns the model type, i.e. whether effects or corrections are modeled."""
+        if self.is_correction:
+            return 'Correction'
+        else:
+            return 'Effect'
 
     def interpolate(self, interp_times: [np.array, typing.List[datetime]], kind: str = 'quadratic') -> np.ndarray :
         """Return an interpolated value for the given interpolation epoch.
@@ -165,6 +260,7 @@ class TimeSeries:
     def ref_time_unix(self):
         """Returns the reference times as UNIX timestamps (seconds since Jan 1, 1970)."""
         return self.ref_time_dt.astype('int64')/1e9
+
 
 @dataclass
 class StationCorrections:
@@ -214,11 +310,27 @@ class SurveyCorrections:
                 if warn:
                     warnings.warn(f'Station correction data for station {station_name} already exists! Overwriting '
                                   f'data is permitted and the existing data will be overwritten!')
-                self.stations['station_name'] = station_correction
+                self.stations[station_name] = station_correction
                 return True
         else:
-            self.stations['station_name'] = station_correction
+            self.stations[station_name] = station_correction
             return True
+
+    def delete_station_correction(self, station_name):
+        """Removes a station correction object.
+
+        Parameters
+        ----------
+        station_name: str
+            Station name.
+        """
+        del self.stations[station_name]
+
+    @property
+    def number_of_stations(self):
+        """Returns the number of station correction objects."""
+        return len(self.stations)
+
 
 
 

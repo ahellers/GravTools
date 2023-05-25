@@ -31,6 +31,7 @@ from gravtools.models.lsm_nondiff import LSMNonDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
 from gravtools.models.station import Station
+from gravtools.tides.correction_time_series import CorrectionTimeSeries
 from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
     GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, EXPORT_OBS_LIST_COLUMNS, \
     MAX_SD_FOR_EXPORT_TO_NSB_FILE, WRITE_COMMENT_TO_NSB, PICKLE_PROTOCOL_VERSION
@@ -48,6 +49,7 @@ class Campaign:
     - Station data (datum and non-datum stations)
     - Reductions and corrections
       - All observations (from surveys) are corrected and reduced in the same way
+    - Time series data for the correction of gravity observations (optional)
 
     Attributes
     ----------
@@ -65,6 +67,9 @@ class Campaign:
     ref_delta_t_dt : datetime object
         Reference epoch for relative times within the campaign, e.g. for the determination of the drift polynomials.
         This reference time is equalt to the first (active) observation in the campaign considering all surveys.
+    correction_time_series : :py:obj:`CorrectionTimeSeries`
+        Contains time series data for correcting gravity observations.
+
     gravtools_version : str
         Version of the gravtools software that was used to create the dataset.
     """
@@ -154,6 +159,9 @@ class Campaign:
 
         # Version of gravtools:
         self.gravtools_version = GRAVTOOLS_VERSION
+
+        # Correction time series object:
+        self.correction_time_series = CorrectionTimeSeries()
 
     def add_survey(self, survey_add: Survey, verbose=False) -> bool:
         """Add a survey to campaign and specify whether to use it for ths analysis.
