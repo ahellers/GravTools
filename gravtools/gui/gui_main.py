@@ -26,7 +26,7 @@ import os
 import warnings
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
     QHeaderView, QInputDialog
-from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QModelIndex
+from PyQt5.QtCore import QDir, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp
 from PyQt5 import QtGui
 import datetime as dt
 import pyqtgraph as pg
@@ -48,7 +48,6 @@ else:
 from gravtools.gui.MainWindow import Ui_MainWindow
 from gravtools.gui.dialog_new_campaign import Ui_Dialog_new_Campaign
 from gravtools.gui.dialog_load_stations import Ui_Dialog_load_stations
-from gravtools.gui.dialog_corrections import Ui_Dialog_corrections
 from gravtools.gui.dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settings
 from gravtools.gui.dialog_setup_data import Ui_Dialog_setup_data
@@ -67,6 +66,7 @@ from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
 from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
+from gravtools.gui.dlg_corrections import DialogCorrections
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
 from gravtools.models.survey import Survey
@@ -3272,18 +3272,6 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             oesgn_filename = QDir.toNativeSeparators(oesgn_filename)
             self.lineEdit_oesgn_table_file_path.setText(oesgn_filename)
-
-
-class DialogCorrections(QDialog, Ui_Dialog_corrections):
-    """Dialog to select and apply observation corrections."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        # Run the .setupUi() method to show the GUI
-        self.setupUi(self)
-        # connect signals and slots:
-        pass
 
 
 class DialogAutoselectSettings(QDialog, Ui_Dialog_autoselection_settings):

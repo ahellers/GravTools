@@ -34,8 +34,25 @@ TIDE_CORRECTION_TYPES = {
     'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
     'longman1959': 'Tidal corrections by the model of Longman (1959)',
     'no_tide_corr': 'No tide correction applied',
+    'from_time_series': 'Interpolated from correction time series',
     'unknown': 'Unknown whether a tide correction was applied',
 }
+
+# Interpolation methods provided by scipy.interpolation.interp1, e.g. used for the interpolation of correction time
+# series data.
+SCIPY_INTERP1_INTERPOLATION_METHODS = {
+    'linear': 'Linear interpolation.',
+    'nearest': '"Snaps" to the nearest data point. Rounds down at half-integers (e.g. 0.5, 1.5)',
+    'nearest-up': '"Snaps" to the nearest data point. Rounds up at half-integers (e.g. 0.5, 1.5)',
+    'zero': 'Zero order spline. It`s value at any point is the last raw value seen.',
+    'slinear': 'First order spline interpolation (similar to "linear").',
+    'quadratic': 'Second order spline interpolation.',
+    'cubic': 'Third order spline interpolation.',
+    'previous': 'Return previous value.',
+    'next': 'Return next value.',
+}
+# Default interpolation method:
+SCIPY_INTERP1_INTERPOLATION_DEFAULT_METHOD = 'quadratic'
 
 REFERENCE_HEIGHT_TYPE = {
     'sensor_height': 'The gravity values refer to the sensor height',
@@ -241,15 +258,8 @@ NAME_OESGN_TABLE = 'OESGN.TAB'
 
 # BEV observation files:
 PATH_OBS_FILE_BEV = '/home/heller/pyProjects/GravTools/data/BEV/'
-# NAME_OBS_FILE_BEV = '20200527_tideCorr'
-# NAME_OBS_FILE_BEV = '20200527_sd'
-# NAME_OBS_FILE_BEV = '20200527_2'
-# NAME_OBS_FILE_BEV = '20200527'
-# NAME_OBS_FILE_BEV = 'n20200701_1'
 NAME_OBS_FILE_BEV = 'f200701_1'
-# NAME_OBS_FILE_BEV = 'e201001'
 
 # CG-5 observation files (text)
 PATH_OBS_FILE_CG5 = '/home/heller/pyProjects/GravTools/data/CG5/'
-# NAME_OBS_FILE_CG5 = '2020-06-18_DACH.TXT'
 NAME_OBS_FILE_CG5 = '20200907_test.TXT'

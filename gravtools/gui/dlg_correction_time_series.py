@@ -20,8 +20,7 @@ import os
 import pytz
 import datetime as dt
 
-from PyQt5.QtWidgets import QDialog, QMessageBox, QHeaderView, QTreeWidgetItem
-from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QDialog, QMessageBox, QTreeWidgetItem
 import pyqtgraph as pg
 
 from gravtools.gui.dialog_correction_time_series import Ui_DialogCorrectionTimeSeries
