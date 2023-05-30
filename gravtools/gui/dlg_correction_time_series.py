@@ -27,7 +27,6 @@ import pyqtgraph as pg
 from gravtools.gui.dialog_correction_time_series import Ui_DialogCorrectionTimeSeries
 from gravtools.gui.dlg_load_tsf_file import DialogLoadTsfFile
 from gravtools import __version__
-from gravtools.tides.correction_time_series import CorrectionTimeSeries
 
 # Set splitter stretch:
 _SPLITTER_STRETCH_LEFT = 1
@@ -77,15 +76,7 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
             QMessageBox.critical(self, 'Error!', 'No Campaign available! Please create a campaign first.')
             return
 
-        if not hasattr(self.parent().campaign, 'correction_time_series'):
-            self.parent().campaign.correction_time_series = CorrectionTimeSeries
-            QMessageBox.warning(self, 'Warning!', f'The campaign "{self.parent().campaign.campaign_name}" had no '
-                                                  f'"correction_time_series" attribute. This '
-                                                  f'may happens when loading campaign data from previous GravTools '
-                                                  f'versions. Current version: {__version__}. '
-                                                  f'Campaign data version: {self.parent().campaign.gravtools_version}. '
-                                                  f'However, "correction_time_series" was added to the campaign. Please'
-                                                  f'save the campaign to keep the changes!')
+        self.check_correction_time_series_object()
 
         # Launch file selection dialog:
         return_value = self.dlg_load_tsf_file.exec()
@@ -121,6 +112,20 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
             QMessageBox.critical(self, 'Error!', str(e))
 
         self.reset_update_gui()
+
+    def check_correction_time_series_object(self, parent=None):
+        """Adds a correction time series object to the campaign, if missing."""
+        if not hasattr(self.parent().campaign, 'correction_time_series'):
+            self.parent().campaign.add_empty_correction_time_series()
+            if parent is None:
+                parent = self
+            QMessageBox.warning(parent, 'Warning!', f'The campaign "{self.parent().campaign.campaign_name}" had no '
+                                                  f'"correction_time_series" attribute. This '
+                                                  f'may happens when loading campaign data from previous GravTools '
+                                                  f'versions. Current version: {__version__}. '
+                                                  f'Campaign data version: {self.parent().campaign.gravtools_version}. '
+                                                  f'However, "correction_time_series" was added to the campaign. Please'
+                                                  f'save the campaign to keep the changes!')
 
     def reset_update_gui(self):
         """Update the GUI after changing data, e.g. loading from TSF files or deleting data."""
@@ -182,6 +187,7 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
 
     def stacked_widget_show_survey_details(self, survey_name):
         """Show survey details in the stacked widget."""
+
         correction_time_series = self.parent().campaign.correction_time_series
         self.stackedWidget_item_details.setCurrentIndex(1)
         self.label_survey_name.setText(survey_name)

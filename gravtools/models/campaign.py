@@ -163,6 +163,16 @@ class Campaign:
         # Correction time series object:
         self.correction_time_series = CorrectionTimeSeries()
 
+    def add_empty_correction_time_series(self):
+        """Adds an empty `CorrectionTimeSeries` object to the campaign.
+
+        Notes
+        -----
+        This is required, e.g. if a campaign object os loaded into GravTools from a previous GRavTools version without
+        support of time series corrections.
+        """
+        self.correction_time_series = CorrectionTimeSeries()
+
     def add_survey(self, survey_add: Survey, verbose=False) -> bool:
         """Add a survey to campaign and specify whether to use it for ths analysis.
 

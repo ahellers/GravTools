@@ -489,7 +489,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_results_vg_view_model()
                 self.update_results_tab(select_latest_item=True)
                 # - Corrections time series dialog:
+                self.dlg_correction_time_series.check_correction_time_series_object(parent=self)
                 self.dlg_correction_time_series.reset_update_gui()
+
+
 
                 self.statusBar().showMessage(
                     f"Previously saved campaign loaded rom pickle file (name: {self.campaign.campaign_name}, "
