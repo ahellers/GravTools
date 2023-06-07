@@ -1042,7 +1042,6 @@
      <string>Observations</string>
     </property>
     <addaction name="separator"/>
-    <addaction name="action_Corrections"/>
     <addaction name="action_Autoselection_settings"/>
     <addaction name="actionEstimate_long_term_drift"/>
     <addaction name="action_Setup_data_options"/>
@@ -1064,9 +1063,17 @@
     </property>
     <addaction name="action_About"/>
    </widget>
+   <widget class="QMenu" name="menuCorrections">
+    <property name="title">
+     <string>Corrections</string>
+    </property>
+    <addaction name="action_Corrections"/>
+    <addaction name="action_Correction_time_series"/>
+   </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Observations"/>
    <addaction name="menuEstimation_settings"/>
+   <addaction name="menuCorrections"/>
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar">
@@ -1137,7 +1144,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>Corrections</string>
+    <string>Correction settings</string>
    </property>
   </action>
   <action name="actionShow_Stations">
@@ -1253,6 +1260,14 @@
   <action name="action_from_csv_file">
    <property name="text">
     <string>From CSV file</string>
+   </property>
+  </action>
+  <action name="action_Correction_time_series">
+   <property name="text">
+    <string>Correction time series</string>
+   </property>
+   <property name="toolTip">
+    <string>Manage correction time series data</string>
    </property>
   </action>
  </widget>
