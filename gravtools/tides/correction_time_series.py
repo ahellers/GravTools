@@ -27,6 +27,7 @@ import numpy as np
 
 import gravtools.tides.correction_time_series
 from gravtools.tides.tide_data_tfs import TSF
+from gravtools import settings
 
 class CorrectionTimeSeries:
     """Class for correction data provided as time series per station and survey.
@@ -163,9 +164,12 @@ class TimeSeries:
     description: str, optional (default='')
         Optional description of the time series.
     is_correction: bool, optional (default=`False`)
-            `True` implies that the channel data loaded from the TSF file model the gravity effect of phenomena, rather
-            than corrections for gravity observations. Both options have the opposite sign: while corrections have to be
-            added to gravity observations, effects have to be subtracted, in order to reduce observations.
+        `True` implies that the channel data loaded from the TSF file model the gravity effect of phenomena, rather
+        than corrections for gravity observations. Both options have the opposite sign: while corrections have to be
+        added to gravity observations, effects have to be subtracted, in order to reduce observations.
+    created_utc_dt: `datetime` object
+        Date and time in UTC of creating this time series, e.g. loading it from a file.
+
     """
     ref_time_dt: np.array  # np.array of DateTime objects
     data: np.array
@@ -173,6 +177,21 @@ class TimeSeries:
     data_source: str
     description: str = ''
     is_correction: bool = True
+    # created_utc_dt: datetime = None  # Is initialized in __post_init__
+
+    def __post_init__(self):
+        """Executed at the very end of __init__"""
+        self.created_utc_dt = datetime.now(tz=timezone.utc)
+
+    @property
+    def created_datetime_utc(self):
+        """Returns the time and date (in UTC) when the times series was created as datetime object."""
+        return self.created_utc_dt
+
+    @property
+    def created_datetime_utc_str(self):
+        """Returns the time and date (in UTC) when the times series was created as string."""
+        return self.created_utc_dt.strftime('%Y-%m-%d %H:%M:%S.%f')
 
     @property
     def start_datetime(self):
@@ -227,7 +246,8 @@ class TimeSeries:
         else:
             return 'Effect'
 
-    def interpolate(self, interp_times: [np.array, typing.List[datetime]], kind: str = 'quadratic') -> np.ndarray :
+    def interpolate(self, interp_times: [np.array, typing.List[datetime]], kind: str = 'quadratic',
+                    return_correction: bool = False) -> np.ndarray :
         """Return an interpolated value for the given interpolation epoch.
 
         Parameters
@@ -238,6 +258,8 @@ class TimeSeries:
         kind: str or int, optional (default='quadratic')
             Specifies, which interpolation method is used. This argument is directly passed to
             `scipy.interpolate.inter1`. For options see scipy reference.
+        return_correction: bool, optional (default=`False`)
+            If `True`, corrections are returned considering the `self.is_correction` attribute.
 
         Returns
         -------
@@ -248,7 +270,11 @@ class TimeSeries:
         x = self.ref_time_unix
         y = self.data
         interp_func = scipy.interpolate.interp1d(x, y, kind=kind)
-        return interp_func(interp_times_unix)
+        interp_values = interp_func(interp_times_unix)
+        if return_correction:
+            if not self.is_correction:
+                interp_values = interp_values * -1  # Convert from effect to correction!
+        return interp_values
 
     def to_df(self):
         """Returns the time series as pandas DataFrame with the time reference as index (sorted!)."""
@@ -330,6 +356,20 @@ class SurveyCorrections:
     def number_of_stations(self):
         """Returns the number of station correction objects."""
         return len(self.stations)
+
+    @property
+    def station_names(self):
+        """Returns the names of all stations."""
+        return list(self.stations.keys())
+
+staticmethod
+def convert_to_mugal(data, data_unit: str):
+    """Converts data to from a given unit to µGal."""
+    if data_unit not in settings.UNIT_CONVERSION_TO_MUGAL:
+        raise RuntimeError(f'Conversion factor from {data_unit} to µGal not defined. Please add the factor to'
+                           f'gravtools.settings.UNIT_CONVERSION_TO_MUGAL.')
+    return data * settings.UNIT_CONVERSION_TO_MUGAL[data_unit]
+
 
 
 

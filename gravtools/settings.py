@@ -38,6 +38,13 @@ TIDE_CORRECTION_TYPES = {
     'unknown': 'Unknown whether a tide correction was applied',
 }
 
+# Conversion factors of different units of gravity to µGal:
+# - Keys: Units as used e.g. in TSF files by Tsoft
+# - Values: Multiplicative conversion factors to µGal
+UNIT_CONVERSION_TO_MUGAL = {
+    'nm/s^2': 1e-1  # 1 nm/s^2 * 0.1 = 1 µGal
+}
+
 # Interpolation methods provided by scipy.interpolation.interp1, e.g. used for the interpolation of correction time
 # series data.
 SCIPY_INTERP1_INTERPOLATION_METHODS = {

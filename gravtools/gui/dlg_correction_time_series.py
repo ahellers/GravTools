@@ -178,6 +178,7 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
         self.label_station_data_source.setText(tidal_correction.data_source)
         self.label_station_description.setText(tidal_correction.description)
         self.label_station_unit.setText(tidal_correction.unit)
+        self.label_station_created.setText(tidal_correction.created_datetime_utc_str)
         self.label_station_model_type.setText(tidal_correction.model_type)
         self.label_station_start.setText(tidal_correction.start_datetime_str)
         self.label_station_end.setText(tidal_correction.end_datetime_str)

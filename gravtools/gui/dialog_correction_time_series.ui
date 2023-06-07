@@ -119,7 +119,7 @@
        <item>
         <widget class="QStackedWidget" name="stackedWidget_item_details">
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="page_empty">
           <layout class="QVBoxLayout" name="verticalLayout">
@@ -151,6 +151,9 @@
             <layout class="QFormLayout" name="formLayout">
              <item row="0" column="0">
               <widget class="QLabel" name="label">
+               <property name="toolTip">
+                <string>Survey name.</string>
+               </property>
                <property name="text">
                 <string>Survey name:</string>
                </property>
@@ -158,6 +161,9 @@
              </item>
              <item row="0" column="1">
               <widget class="QLabel" name="label_survey_name">
+               <property name="toolTip">
+                <string>Survey name.</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
@@ -165,13 +171,19 @@
              </item>
              <item row="1" column="0">
               <widget class="QLabel" name="label_2">
+               <property name="toolTip">
+                <string>Number of stations in the survey.</string>
+               </property>
                <property name="text">
-                <string>Number of stations</string>
+                <string>Number of stations:</string>
                </property>
               </widget>
              </item>
              <item row="1" column="1">
               <widget class="QLabel" name="label_num_of_stations">
+               <property name="toolTip">
+                <string>Number of stations in the survey.</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
@@ -187,6 +199,9 @@
             <layout class="QFormLayout" name="formLayout_2">
              <item row="1" column="0">
               <widget class="QLabel" name="label_3">
+               <property name="toolTip">
+                <string>Data source, e.g. file name.</string>
+               </property>
                <property name="text">
                 <string>Data source:</string>
                </property>
@@ -194,6 +209,9 @@
              </item>
              <item row="1" column="1">
               <widget class="QLabel" name="label_station_data_source">
+               <property name="toolTip">
+                <string>Data source, e.g. file name.</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
@@ -201,6 +219,9 @@
              </item>
              <item row="2" column="0">
               <widget class="QLabel" name="label_4">
+               <property name="toolTip">
+                <string>Description of the time series data.</string>
+               </property>
                <property name="text">
                 <string>Description:</string>
                </property>
@@ -208,6 +229,9 @@
              </item>
              <item row="2" column="1">
               <widget class="QLabel" name="label_station_description">
+               <property name="toolTip">
+                <string>Description of the time series data.</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
@@ -215,6 +239,9 @@
              </item>
              <item row="3" column="0">
               <widget class="QLabel" name="label_5">
+               <property name="toolTip">
+                <string>Unit.</string>
+               </property>
                <property name="text">
                 <string>Unit:</string>
                </property>
@@ -222,76 +249,109 @@
              </item>
              <item row="3" column="1">
               <widget class="QLabel" name="label_station_unit">
-               <property name="text">
-                <string/>
+               <property name="toolTip">
+                <string>Unit.</string>
                </property>
-              </widget>
-             </item>
-             <item row="4" column="0">
-              <widget class="QLabel" name="label_10">
-               <property name="text">
-                <string>Model type:</string>
-               </property>
-              </widget>
-             </item>
-             <item row="4" column="1">
-              <widget class="QLabel" name="label_station_model_type">
                <property name="text">
                 <string/>
                </property>
               </widget>
              </item>
              <item row="5" column="0">
-              <widget class="QLabel" name="label_7">
+              <widget class="QLabel" name="label_10">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Indicates wheter the time series data represent the &lt;span style=&quot; font-style:italic;&quot;&gt;effect&lt;/span&gt; on the observed gravity, or &lt;span style=&quot; font-style:italic;&quot;&gt;corrections&lt;/span&gt; for the observed gravity (opposite signs!). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
                <property name="text">
-                <string>Start:</string>
+                <string>Model type:</string>
                </property>
               </widget>
              </item>
              <item row="5" column="1">
-              <widget class="QLabel" name="label_station_start">
+              <widget class="QLabel" name="label_station_model_type">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Indicates wheter the time series data represent the &lt;span style=&quot; font-style:italic;&quot;&gt;effect&lt;/span&gt; on the observed gravity, or &lt;span style=&quot; font-style:italic;&quot;&gt;corrections&lt;/span&gt; for the observed gravity (opposite signs!). &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
               </widget>
              </item>
              <item row="6" column="0">
-              <widget class="QLabel" name="label_8">
+              <widget class="QLabel" name="label_7">
+               <property name="toolTip">
+                <string>Start date and time.</string>
+               </property>
                <property name="text">
-                <string>End:</string>
+                <string>Start:</string>
                </property>
               </widget>
              </item>
              <item row="6" column="1">
-              <widget class="QLabel" name="label_station_end">
+              <widget class="QLabel" name="label_station_start">
+               <property name="toolTip">
+                <string>Start date and time.</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
               </widget>
              </item>
              <item row="7" column="0">
-              <widget class="QLabel" name="label_9">
+              <widget class="QLabel" name="label_8">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;End date and time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
                <property name="text">
-                <string>Duration:</string>
+                <string>End:</string>
                </property>
               </widget>
              </item>
              <item row="7" column="1">
-              <widget class="QLabel" name="label_station_duration">
+              <widget class="QLabel" name="label_station_end">
+               <property name="toolTip">
+                <string>End date and time.</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
               </widget>
              </item>
              <item row="8" column="0">
+              <widget class="QLabel" name="label_9">
+               <property name="toolTip">
+                <string>Duration</string>
+               </property>
+               <property name="text">
+                <string>Duration:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="1">
+              <widget class="QLabel" name="label_station_duration">
+               <property name="toolTip">
+                <string>Duration</string>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="0">
               <widget class="QLabel" name="label_12">
+               <property name="toolTip">
+                <string>Total number of data points.</string>
+               </property>
                <property name="text">
                 <string>No. datapoints:</string>
                </property>
               </widget>
              </item>
-             <item row="8" column="1">
+             <item row="9" column="1">
               <widget class="QLabel" name="label_station_nuber_of_datapoints">
+               <property name="toolTip">
+                <string>Total number of data points.</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
@@ -299,6 +359,9 @@
              </item>
              <item row="0" column="0">
               <widget class="QLabel" name="label_11">
+               <property name="toolTip">
+                <string>Station name.</string>
+               </property>
                <property name="text">
                 <string>Station name:</string>
                </property>
@@ -306,6 +369,29 @@
              </item>
              <item row="0" column="1">
               <widget class="QLabel" name="label_station_station_name">
+               <property name="toolTip">
+                <string>Station name.</string>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_13">
+               <property name="toolTip">
+                <string>Date and time (UTC) when the time series data was loaded to GravTools.</string>
+               </property>
+               <property name="text">
+                <string>Created (UTC):</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QLabel" name="label_station_created">
+               <property name="toolTip">
+                <string>Date and time (UTC) when the time series data was loaded to GravTools.</string>
+               </property>
                <property name="text">
                 <string/>
                </property>
@@ -314,7 +400,11 @@
             </layout>
            </item>
            <item>
-            <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_time_series"/>
+            <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_time_series">
+             <property name="toolTip">
+              <string>Plot of the time series.</string>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>

@@ -186,25 +186,17 @@ class Campaign:
             Contains all information of s specific survey independent of the data source.
         verbose : bool, optional (default=False)
             If True, status messages are printed to the command line.
-
-        Returns
-        -------
-        bool
-            True, if the survey was successfully added; False, if not.
         """
         # Check if a survey with the dame name ("survey_add.name") already exists in this campaign:
         # - Raise warning:
         if survey_add.name in self.surveys.keys():
-            if verbose:
-                print(f'Warnung: the current campaign already contains a survey named {survey_add.name}.')
-                print(' - Survey names need to be unique within a campaign.')
-            return False
+            raise RuntimeError(f'The campaign already contains a survey named {survey_add.name}. Survey names need to '
+                               f'be unique within a campaign!')
         else:
             # Add survey:
             self.surveys[survey_add.name] = survey_add
             if verbose:
                 print(f"Survey {survey_add.name} added to the campaign.")
-            return True
 
     def remove_survey(self, survey_name: str, verbose=False) -> bool:
         """Remove survey with the specified name from the campaign
@@ -340,7 +332,10 @@ class Campaign:
         """int : Returns the number of stations in this campaign."""
         return self.stations.get_number_of_stations
 
-    def reduce_observations_in_all_surveys(self, target_ref_height=None, target_tide_corr=None, verbose=False):
+    def reduce_observations_in_all_surveys(self, target_ref_height=None,
+                                           target_tide_corr=None,
+                                           tide_corr_timeseries_interpol_method='',
+                                           verbose=False):
         """Reduce the observed gravity by applying the specified corrections.
 
         Notes
@@ -359,19 +354,12 @@ class Campaign:
             The target tidal correction type specifies what kind of tidal correction will be applied. Valid types have
             to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
             tidal corrections are not considered here (tidal corrections are inherited from input data).
+        tide_corr_timeseries_interpol_method : str, optional (default='')
+            Interpolation method used to calculate tidal corrections from time series data. If tidal corrections are
+            obtained from other sources or models, this attribute is irrelevant and has to be empty!
         verbose : bool, optional (default=False)
             If True, status messages are printed to the command line.
-
-        Returns
-        -------
-        flag_corrections_applied_correctly : bool, default = True
-            `False` indicates that an error occurred when applying the observation corrections.
-        error_msg : str, default = ''
-            Message that describes the error in case an error occurred.
-
         """
-        flag_corrections_applied_correctly = True
-        error_msg = ''
         if verbose:
             print(f'## Reduce all observation in this campaign:')
         for survey_name, survey in self.surveys.items():
@@ -381,18 +369,12 @@ class Campaign:
                 if verbose:
                     print(f' - Get vertical gradients')
                 survey.obs_df_populate_vg_from_stations(self.stations, verbose=verbose)
-            flag_corrections_applied_correctly, error_msg = survey.reduce_observations(
+            survey.reduce_observations(
                 target_ref_height=target_ref_height,
                 target_tide_corr=target_tide_corr,
+                tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
+                correction_time_series=self.correction_time_series,
                 verbose=verbose)
-            # Check, if corrections were applied correctly and return error message if an error occurred:
-            if not flag_corrections_applied_correctly:
-                error_msg = f'Survey: {survey_name}: ' + error_msg
-                if verbose:
-                    print(error_msg)
-                return flag_corrections_applied_correctly, error_msg
-                # raise AssertionError('Reduction to reference height failed!')
-        return flag_corrections_applied_correctly, error_msg
 
     def add_stations_from_oesgn_table_file(self, oesgn_filename, is_datum=False, verbose=False):
         """Add station from an OESGN table file.

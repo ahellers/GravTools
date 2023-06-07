@@ -1073,8 +1073,8 @@
    <addaction name="menu_File"/>
    <addaction name="menu_Observations"/>
    <addaction name="menuEstimation_settings"/>
-   <addaction name="menuHelp"/>
    <addaction name="menuCorrections"/>
+   <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar">
    <property name="inputMethodHints">

@@ -24,10 +24,12 @@ import gravtools.models.lsm_diff
 import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
     REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
-    GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS
+    GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS, \
+    UNIT_CONVERSION_TO_MUGAL
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.models.misc import format_seconds_to_hhmmss
+from gravtools.tides.correction_time_series import convert_to_mugal
 
 
 class Survey:
@@ -46,6 +48,7 @@ class Survey:
       - Corrections of the CG-5 instruments provided in the observation files (Longman, 1959)
       - No corrections
       - Longman (1959) model, evaluated in GravTools for the longitude, latitude , altitude and UTC time stamp of each observation. The correction is calculated for the middle of the readint time (obs_epoch + duration_sec/2)
+      - Interpolated from correction time series (e.g. loaded from Tsoft TSF files)
 
     - Reduction of the observed gravity to different reference height levels
 
@@ -67,7 +70,7 @@ class Survey:
     Attributes
     ----------
     name : str
-        Name of the survey. This parameter is mandatory!
+        Name of the survey
     date :
         Date of te survey.
     operator : str, optional (default='')
@@ -97,6 +100,16 @@ class Survey:
         Reference level type of the reduced observations (column `g_red_mugal` in `obs_df`). Valid entries have to be
         listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`. `Empty string`, if corrected observations are not
         available.
+    red_tide_correction_description : str, optional (default='')
+        Optional description of the tide correction e.g. obtained from time series data. The reduced observations are
+        stored in the column `g_red_mugal` and the corrections in column `corr_tide_red_mugal` in `obs_df`. Only
+    red_tide_corr_timeseries_interpol_method : str, optional (default='')
+        Interpolation method used to calculate tidal corrections from time series data. If tidal corrections are
+        obtained from other sources or models, this attribute is irrelevant and has to be empty!
+    red_tide_corr_timeseries_creation_dt : `datetime`, optional (default=`None`)
+        If tidal corrections are obtained from time series data, the time when the data was created, i.e. loaded into
+        GravTools, is stored here as `datetime` object. This is required to uniquely identify the applies tidal
+        corrections from time series data.
     setup_tide_correction_type : str, optional (default='')
         Type of the tidal corrections applied on the observations that are used to calculate the setup data in the
         `setup_df` dataframe. Valid entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
@@ -296,6 +309,9 @@ class Survey:
                  obs_reference_height_type='',  # of "g_obs_mugal"
                  red_tide_correction_type='',  # of "g_red_mugal"
                  red_reference_height_type='',  # of "g_red_mugal"
+                 red_tide_correction_description='',  # of "g_red_mugal"
+                 red_tide_corr_timeseries_interpol_method='',  # of "g_red_mugal"
+                 red_tide_corr_timeseries_creation_dt=None,  # of "g_red_mugal"
                  setup_tide_correction_type='',
                  setup_reference_height_type='',
                  setup_calc_method='',
@@ -448,6 +464,24 @@ class Survey:
                 self.red_reference_height_type = red_reference_height_type  # None
         else:
             raise TypeError('"red_tide_correction_type" needs to be a string')
+
+        # red_tide_correction_description
+        if isinstance(red_tide_correction_description, str):
+            self.red_tide_correction_description = red_tide_correction_description
+        else:
+            raise TypeError('"red_tide_correction_description" needs to be a string')
+
+        # red_tide_corr_timeseries_interpol_method
+        if isinstance(red_tide_corr_timeseries_interpol_method, str):
+            self.red_tide_corr_timeseries_interpol_method = red_tide_corr_timeseries_interpol_method
+        else:
+            raise TypeError('"red_tide_corr_timeseries_interpol_method" needs to be a string')
+
+        # red_tide_corr_timeseries_creation_dt
+        if red_tide_corr_timeseries_creation_dt is not None:
+            if not isinstance(red_tide_corr_timeseries_creation_dt, dt.datetime):
+                raise TypeError('`red_tide_corr_timeseries_creation_dt` needs to be a datetime object.')
+        self.red_tide_corr_timeseries_creation_dt = red_tide_corr_timeseries_creation_dt
 
         # setup_tide_correction_type:
         if isinstance(setup_tide_correction_type, str):
@@ -979,8 +1013,13 @@ class Survey:
         if not self.is_valid_obs_df():
             raise AssertionError('The DataFrame "obs_df" is not valid.')
 
-    def reduce_observations(self, target_ref_height: str = None, target_tide_corr: str = None,
-                            verbose: bool = False) -> [bool, str]:
+    def reduce_observations(self,
+                            target_ref_height: str = None,
+                            target_tide_corr: str = None,
+                            tide_corr_timeseries_interpol_method = '',
+                            correction_time_series=None,
+                            verbose: bool = False,
+                            ) -> [bool, str]:
         """Reduce the observed gravity values by applying the selected corrections.
 
         The following corrections can be applied:
@@ -1007,19 +1046,18 @@ class Survey:
             The target tidal correction type specifies what kind of tidal correction will be applied. Valid types have
             to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
             tidal corrections are not considered here (tidal corrections are inherited from input data).
+        tide_corr_timeseries_interpol_method : str, optional (default='')
+            Interpolation method used to calculate tidal corrections from time series data. If tidal corrections are
+            obtained from other sources or models, this attribute is irrelevant and has to be empty!
+        correction_time_series : `CorrectionTimeSeries` object, optional (default=None)
+            Correction time series object that contains time series of tidal corrections for stations in surveys. This
+            argument is required, if tidal corrections should be derived from time series data, i.e. if
+            `self.target_tide_corr = from_time_series`.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
-
-        Returns
-        -------
-        flag_corrections_applied_correctly : bool
-            `False` indicates that an error occurred when applying the observation corrections.
-        error_msg : str, default = ''
-            Message that describes the error in case an error occurred.
         """
         # Init.:
-        flag_corrections_applied = True
-        error_msg = ''
+        tide_corr_timeseries_interpol_method_out = ''
 
         # Create a copy auf obs_df in order prevent problems with manipulation assigned py reference variables:
         obs_df = self.obs_df.copy(deep=True)
@@ -1038,14 +1076,10 @@ class Survey:
             all(~obs_df['sd_g_red_mugal'].isna().values),
             all(~obs_df['corr_tide_red_mugal'].isna().values)])
         if not (flag_all_field_are_nan or flag_no_field_is_nan):
-            # raise AssertionError('In "obs_df" the columns "g_red_mugal", "sd_g_red_mugal" and "corr_tide_red_mugal" '
-            #                      'are not initialized consistently!'
             error_msg = 'In "obs_df" the columns "g_red_mugal", "sd_g_red_mugal" and "corr_tide_red_mugal" are not ' \
                         'initialized consistently! '
-            flag_corrections_applied = False
-            if verbose:
-                print(error_msg)
-            return flag_corrections_applied, error_msg
+            raise RuntimeError(f'Survey "{self.name}":' + error_msg)
+
 
         if verbose:
             print(f'## Calculate reduced observations by applying the specified corrections:')
@@ -1058,7 +1092,6 @@ class Survey:
         if target_ref_height is None:  # Do nothing
             if verbose:
                 print(f' - Reference heights are not changed!')
-            flag_corrections_applied = True
         else:
             # Check if the target reference height type is valid:
             if target_ref_height not in REFERENCE_HEIGHT_TYPE:
@@ -1068,7 +1101,6 @@ class Survey:
             if self.obs_reference_height_type == target_ref_height:
                 if verbose:
                     print(f' - Observations are already referenced to: {target_ref_height}')
-                flag_corrections_applied = True
             else:
                 # Check, if VG are available in obs_df:
                 if obs_df.vg_mugalm.isna().any():
@@ -1076,10 +1108,7 @@ class Survey:
                                 f'{", ".join(obs_df[obs_df.vg_mugalm.isna()].station_name.unique())}. ' \
                                 f'Without vertical gradient the observed gravity cannot be reduced to another height ' \
                                 f'level! '
-                    flag_corrections_applied = False
-                    if verbose:
-                        print(error_msg)
-                    return flag_corrections_applied, error_msg
+                    raise RuntimeError(f'Survey "{self.name}":' + error_msg)
 
                 # Reduction:
                 # Distance between instrument top and sensor level:
@@ -1148,114 +1177,173 @@ class Survey:
                         # sd_g_red_mugal = sd_g_red_mugal  # Keep SD
                 if verbose:
                     print('...done!')
-                flag_corrections_applied = True
 
         # 2.) Check tidal corrections:
+        # Check if the target tidal correction type is valid:
+        if target_tide_corr not in TIDE_CORRECTION_TYPES:
+            error_msg = f'"{target_tide_corr}" is unknown ab invalid!'
+            raise RuntimeError(f'Survey "{self.name}":' + error_msg)
+        tide_correction_description = TIDE_CORRECTION_TYPES[target_tide_corr]
         if verbose:
-            print(f'Tidal corrections "{target_tide_corr}" ({TIDE_CORRECTION_TYPES[target_tide_corr]}):')
-
+            print(f'Tidal corrections "{target_tide_corr}" ({tide_correction_description}):')
         if target_tide_corr is None:  # Do nothing
             if verbose:
                 print(f' - Tidal corrections are not changed!')
-            corr_tide_red_mugal = obs_df['corr_tide_mugal']
-            flag_corrections_applied = True
         else:
-            # Check if the target tidal correction type is valid:
-            if target_tide_corr not in TIDE_CORRECTION_TYPES:
-                # raise ValueError(f'"{target_tide_corr}" is unknown ab invalid!')
-                error_msg = f'"{target_tide_corr}" is unknown ab invalid!'
-                flag_corrections_applied = False
-                if verbose:
-                    print(error_msg)
-                return flag_corrections_applied, error_msg
-
-            # Check if reduction is necessary or possible:
-            if self.obs_tide_correction_type == target_tide_corr:
+            # Check if reduction is necessary and/or possible:
+            # - If time series data is used, corrections have to be calculated anyway, because the time series
+            #   may have changed since their last determination!
+            if (self.obs_tide_correction_type == target_tide_corr) & (target_tide_corr != 'from_time_series'):
                 if verbose:
                     print(f' - Observations are already reduced by: {target_tide_corr}')
                 corr_tide_red_mugal = obs_df['corr_tide_mugal']
-                flag_corrections_applied = True
-
             elif self.obs_tide_correction_type == 'unknown':
                 error_msg = 'Unknown tidal corrections at input data!'
-                flag_corrections_applied = False
-                if verbose:
-                    print(error_msg)
-                return flag_corrections_applied, error_msg
+                raise RuntimeError(f'Survey "{self.name}":' + error_msg)
             else:
-                # Reduction:
-                if self.obs_tide_correction_type == 'no_tide_corr':  # status of unreduced observations
-                    if target_tide_corr == 'cg5_longman1959':  # Add instrumental corrections
+                if self.obs_tide_correction_type == 'no_tide_corr':
+                    if target_tide_corr == 'cg5_longman1959':
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
-                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
+                        # TODO: Was steht in der Spalte "TIDE", wenn im CG5 KEINE Korrektur angebracht wurde?
+                        # - Wenn die richtige Korretkur NICHT vorliegt => raise Error!
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
                     elif target_tide_corr == 'longman1959':
-                        # Calculate corrections:
-                        tmp_df = self.obs_df[['obs_epoch', 'duration_sec', 'lon_deg', 'lat_deg', 'alt_m']].copy(
-                            deep=True)
-                        # Shift obs reference epoch from start to the middle of the gravity reading
-                        # (= evaluation time for the tide model):
-                        tmp_df['obs_epoch'] = tmp_df['obs_epoch'] + pd.to_timedelta(tmp_df['duration_sec'], 'sec') / 2
-                        # Remove TZ info for longman evaluation:
-                        tmp_df['obs_epoch'] = tmp_df['obs_epoch'].dt.tz_localize(None)
-                        tmp_df['tmp_index'] = tmp_df.index
-                        tmp_df = tmp_df.set_index('obs_epoch')
-                        tmp_df = gravtools.tides.longman1959.solve_tide_df(tmp_df, lat='lat_deg', lon='lon_deg',
-                                                                           alt='alt_m')
-                        tmp_df['longman_tide_corr_mugal'] = tmp_df['g0'] * 1e3  # Convert from mGal to µGal
-                        tmp_df = tmp_df.set_index('tmp_index')  # Restore numerical index
-                        # Apply correction:
-                        g_red_mugal = g_red_mugal - tmp_df['longman_tide_corr_mugal']
-                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
-                        corr_tide_red_mugal = tmp_df['longman_tide_corr_mugal']
-                    # elif target_tide_corr == '......':
+                        corr_tide_red_mugal = self.get_tidal_corrections_from_longman1959()
+                        g_red_mugal = g_red_mugal + corr_tide_red_mugal
+                    elif target_tide_corr == 'from_time_series':
+                        corr_tide_red_mugal = self.get_tidal_corrections_from_timeseries(
+                            correction_time_series=correction_time_series,
+                            interpolation_method=tide_corr_timeseries_interpol_method)
+                        g_red_mugal = g_red_mugal + corr_tide_red_mugal
+                        tide_corr_timeseries_interpol_method_out = tide_corr_timeseries_interpol_method
+
                 elif self.obs_tide_correction_type == 'cg5_longman1959':
-                    if target_tide_corr == 'no_tide_corr':  # Subtract instrumental corrections
-                        g_red_mugal = g_red_mugal - obs_df['corr_tide_mugal']
-                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
-                        corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                    g_red_mugal = g_red_mugal - obs_df['corr_tide_mugal']  # Undo instrumental corrections => No tide corr!
+                    if target_tide_corr == 'no_tide_corr':
+                        corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
                         corr_tide_red_mugal.values[:] = 0
                     elif target_tide_corr == 'longman1959':
-                        # Calculate corrections:
-                        tmp_df = self.obs_df[['obs_epoch', 'duration_sec', 'lon_deg', 'lat_deg', 'alt_m']].copy(
-                            deep=True)
-                        # Shift obs reference epoch from start to the middle of the gravity reading
-                        # (= evaluation time for the tide model):
-                        tmp_df['obs_epoch'] = tmp_df['obs_epoch'] + pd.to_timedelta(tmp_df['duration_sec'], 'sec') / 2
-                        # Remove TZ info for longman evaluation:
-                        tmp_df['obs_epoch'] = tmp_df['obs_epoch'].dt.tz_localize(None)
-                        tmp_df['tmp_index'] = tmp_df.index
-                        tmp_df = tmp_df.set_index('obs_epoch')
-                        tmp_df = gravtools.tides.longman1959.solve_tide_df(tmp_df, lat='lat_deg', lon='lon_deg', alt='alt_m')
-                        tmp_df['longman_tide_corr_mugal'] = tmp_df['g0']*1e3  # Convert from mGal to µGal
-                        tmp_df = tmp_df.set_index('tmp_index')  # Restore numerical index
-                        # Apply correction:
-                        g_red_mugal = g_red_mugal - tmp_df['longman_tide_corr_mugal']
-                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
-                        corr_tide_red_mugal = tmp_df['longman_tide_corr_mugal']
-                    # elif target_tide_corr == '......':
+                        corr_tide_red_mugal = self.get_tidal_corrections_from_longman1959()
+                        g_red_mugal = g_red_mugal + corr_tide_red_mugal
+                    elif target_tide_corr == 'from_time_series':
+                        corr_tide_red_mugal = self.get_tidal_corrections_from_timeseries(
+                            correction_time_series=correction_time_series,
+                            interpolation_method=tide_corr_timeseries_interpol_method)
+                        g_red_mugal = g_red_mugal + corr_tide_red_mugal
+                        tide_corr_timeseries_interpol_method_out = tide_corr_timeseries_interpol_method
+
                 elif self.obs_tide_correction_type == 'longman1959':
-                    if target_tide_corr == 'no_tide_corr':  # Subtract instrumental corrections
-                        g_red_mugal = g_red_mugal - obs_df['corr_tide_mugal']
-                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
-                        corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                    # This should never be the case!
+                    g_red_mugal = g_red_mugal - obs_df[
+                        'corr_tide_red_mugal']  # Undo corrections => No tide corr!
+                    if target_tide_corr == 'no_tide_corr':
+                        corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
                         corr_tide_red_mugal.values[:] = 0
-                    elif target_tide_corr == 'cg5_longman1959':  # Add instrumental corrections
+                    elif target_tide_corr == 'cg5_longman1959':
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
-                        # sd_g_red_mugal = sd_g_red_mugal # Keep SD
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                    elif target_tide_corr == 'from_time_series':
+                        corr_tide_red_mugal = self.get_tidal_corrections_from_timeseries(correction_time_series=correction_time_series,
+                                                                                         interpolation_method=tide_corr_timeseries_interpol_method)
+                        g_red_mugal = g_red_mugal + corr_tide_red_mugal
+                        tide_corr_timeseries_interpol_method_out = tide_corr_timeseries_interpol_method
+                else:
+                    raise RuntimeError(f'Tidal corrections of observation data ("{self.obs_tide_correction_type}") not '
+                                       f'supported!')
                 if verbose:
                     print('...done!')
-                flag_corrections_applied = True
 
-        # Apply changes, if everything worked out in here:
-        if flag_corrections_applied:
+            # Apply changes, if no exceptions were raised:
             self.red_tide_correction_type = target_tide_corr
             self.red_reference_height_type = target_ref_height
+            self.red_tide_correction_description = tide_correction_description
+            self.red_tide_corr_timeseries_interpol_method = tide_corr_timeseries_interpol_method_out
             self.obs_df['g_red_mugal'] = g_red_mugal
             self.obs_df['sd_g_red_mugal'] = sd_g_red_mugal
             self.obs_df['corr_tide_red_mugal'] = corr_tide_red_mugal
-        return flag_corrections_applied, error_msg
+
+    def get_tidal_corrections_from_timeseries(self, correction_time_series, interpolation_method : str) -> np.ndarray  :
+        """Derives tidal corrections for observations from time series data.
+
+        Notes
+        -----
+        The derived corrections have to be ADDED to the observations in order to reduce tidal effects!
+
+        Parameters
+        ----------
+        correction_time_series : `CorrectionTimeSeries` object, optional (default=None)
+            Correction time series object that contains time series of tidal corrections for stations in surveys. This
+            argument is required, if tidal corrections should be derived from time series data, i.e. if
+            `self.target_tide_corr = from_time_series`.
+        interpolation_method : str, optional (default='')
+            Interpolation method used to calculate tidal corrections from time series data. If tidal corrections are
+            obtained from other sources or models, this attribute is irrelevant and has to be empty!
+
+        Returns
+        -------
+        `pandas.Series`: Interpolated value for the given interpolation times.
+        """
+        # Check, if time series data is available for all stations in the survey:
+        # - Survey:
+        if self.name not in correction_time_series.surveys:
+            raise RuntimeError(f'No correction time series data available for survey "{self.name}".')
+        # - Stations in Survey:
+        missing_stations = list(set(correction_time_series.surveys[self.name].station_names) - set(self.observed_stations))
+        if len(missing_stations) > 0:
+            raise RuntimeError(f'No correction time series data available for the stations: ' + ', '.join(missing_stations))
+
+        # Prep input obervation dataframe: Keep required columns only:
+        tmp_df = self.obs_df[['station_name', 'obs_epoch', 'duration_sec']].copy(deep=True)
+        # Shift obs reference epoch from start to the middle of the gravity reading
+        # (= evaluation time for the tide model):
+        tmp_df['obs_epoch'] = tmp_df['obs_epoch'] + pd.to_timedelta(tmp_df['duration_sec'], 'sec') / 2
+        tmp_df.drop(columns=['duration_sec'], inplace=True)
+        tmp_df['ts_tide_corr_mugal'] = np.nan
+
+        # Loop over stations, interpolate corrections and add them to tmp_df:
+        # - Check temporal data availability (scipy.interpolate.interp1 raises an error anyway)
+        # - consider interpolation_method
+        # - consider the model type (correction or effect)
+        # - consider the units => µGal
+        for station in self.observed_stations:
+            tmp_filter = tmp_df['station_name'] == station
+            obs_epochs_dt64 = tmp_df.loc[tmp_filter, 'obs_epoch'].to_numpy()
+            interp = correction_time_series.surveys[self.name].stations[station].tidal_correction.interpolate(interp_times=obs_epochs_dt64,
+                                                                                                              kind=interpolation_method,
+                                                                                                              return_correction=True)
+            interp_mugal = convert_to_mugal(interp,
+                                      correction_time_series.surveys[self.name].stations[station].tidal_correction.unit)
+            tmp_df.loc[tmp_filter, 'ts_tide_corr_mugal'] = interp_mugal
+        tide_corr_timeseries_mugal = tmp_df['ts_tide_corr_mugal'].to_numpy()
+        return tide_corr_timeseries_mugal
+
+    def get_tidal_corrections_from_longman1959(self) -> np.ndarray  :
+        """Derives tidal corrections for observations from the Longman (1959) model.
+
+        Notes
+        -----
+        The derived corrections have to be ADDED to the observations in order to reduce tidal effects!
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        `pandas.Series`: Tidal corrections.
+        """
+        tmp_df = self.obs_df[['obs_epoch', 'duration_sec', 'lon_deg', 'lat_deg', 'alt_m']].copy(
+            deep=True)
+        # Shift obs reference epoch from start to the middle of the gravity reading
+        # (= evaluation time for the tide model):
+        tmp_df['obs_epoch'] = tmp_df['obs_epoch'] + pd.to_timedelta(tmp_df['duration_sec'], 'sec') / 2
+        # Remove TZ info for longman evaluation:
+        tmp_df['obs_epoch'] = tmp_df['obs_epoch'].dt.tz_localize(None)
+        tmp_df['tmp_index'] = tmp_df.index
+        tmp_df = tmp_df.set_index('obs_epoch')
+        tmp_df = gravtools.tides.longman1959.solve_tide_df(tmp_df, lat='lat_deg', lon='lon_deg', alt='alt_m')
+        tmp_df['longman_tide_corr_mugal'] = tmp_df['g0'] * 1e3  # Convert from mGal to µGal
+        tmp_df = tmp_df.set_index('tmp_index')  # Restore numerical index
+        return tmp_df['longman_tide_corr_mugal']
 
     def autselect_tilt(self, threshold_arcsec: int, setup_id: int = None, verbose: bool = False):
         """Deactivate all observations of the survey or of a setup with a tilt larger than the defined threshold.
@@ -1711,7 +1799,10 @@ class Survey:
         """Returns the timespan (Timedalta) between first and last observation in the survey in hh:mm:ss format."""
         if self.obs_df is not None:
             duration = self.obs_df['obs_epoch'].max() - self.obs_df['obs_epoch'].min()
-            return format_seconds_to_hhmmss(duration.seconds)
+            if duration.days == 0:
+                return format_seconds_to_hhmmss(duration.seconds)
+            else:
+                return f'{duration.days}d ' + format_seconds_to_hhmmss(duration.seconds)
         else:
             return ''
 

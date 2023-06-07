@@ -2372,6 +2372,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 sd_g_mugal = obs_df['sd_g_red_mugal'].values
                 corr_tide = obs_df['corr_tide_red_mugal'].values
                 corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
+                try:
+                    corr_description_str = self.campaign.surveys[survey_name].red_tide_correction_description
+                except AttributeError:
+                    pass
+                else:
+                    if corr_description_str:
+                        corr_tide_name = corr_tide_name + ': ' + corr_description_str
                 ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
             else:
                 g_mugal = obs_df['g_obs_mugal'].values
@@ -2765,15 +2772,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Launch diaglog to select and apply observation corrections."""
         return_value = self.dlg_corrections.exec()
         if return_value == QDialog.Accepted:
-            flag_corrections_ok, error_msg = self.apply_observation_corrections()
-            if flag_corrections_ok:
-                # Load survey from campaing data to observations vie model:
+            try:
+                self.apply_observation_corrections()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"Error: No observation corrections applied.")
+            else:
+                # Load survey from campaign data to observations vie model:
                 self.observation_model.load_surveys(self.campaign.surveys)
                 self.on_obs_tree_widget_item_selected()
                 self.statusBar().showMessage(f"Observation corrections applied.")
-            else:
-                QMessageBox.critical('Error!', error_msg)
-                self.statusBar().showMessage(f"Error: No observation corrections applied.")
         else:
             self.statusBar().showMessage(f"No observation corrections applied.")
 
@@ -2781,6 +2789,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Apply observation corrections according to the selected settings."""
         flag_selection_ok = True
         error_msg = ''
+        tide_corr_timeseries_interpol_method = ''
         if self.dlg_corrections.radioButton_corr_ref_heights_ground.isChecked():
             target_ref_height = 'ground'
         elif self.dlg_corrections.radioButton_corr_ref_heights_control_point.isChecked():
@@ -2800,20 +2809,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             target_tide_corr = 'cg5_longman1959'
         elif self.dlg_corrections.radioButton_corr_tides_longman1959.isChecked():
             target_tide_corr = 'longman1959'
+        elif self.dlg_corrections.radioButton_corr_tides_time_series.isChecked():
+            target_tide_corr = 'from_time_series'
+            tide_corr_timeseries_interpol_method = self.dlg_corrections.comboBox_tides_interpolation_method.currentText()
         else:
             flag_selection_ok = False
             error_msg = f'Invalid selection of tidal correction in GUI (observation corrections dialog).'
             # QMessageBox.critical('Error!', error_msg)
 
         if flag_selection_ok:
-            flag_corrections_ok, error_msg = self.campaign.reduce_observations_in_all_surveys(
+            self.campaign.reduce_observations_in_all_surveys(
                 target_ref_height=target_ref_height,
                 target_tide_corr=target_tide_corr,
+                tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                 verbose=IS_VERBOSE)
-        else:
-            flag_corrections_ok = False
-
-        return flag_corrections_ok, error_msg
 
     @pyqtSlot()
     def on_menu_file_new_campaign(self):
@@ -2958,15 +2967,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Re-calculate observation corrections, based on the new station data (VG is relevant for height
             # reduction!):
-            self.apply_observation_corrections()
+            try:
+                self.apply_observation_corrections()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"Error: No observation corrections applied.")
+            else:
+                self.statusBar().showMessage(f"Observation corrections applied.")
+            finally:
+                # Update the observations table and plot (in case the reduced obs. changed):
+                survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+                self.update_obs_table_view(survey_name, setup_id)
+                self.plot_observations(survey_name)
 
-            # Update the observations table and plot (in case the reduced obs. changed):
-            survey_name, setup_id = self.get_obs_tree_widget_selected_item()
-            self.update_obs_table_view(survey_name, setup_id)
-            self.plot_observations(survey_name)
-
-            self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
-
+                self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
 
     def enable_station_view_options_based_on_model(self):
         """Enable or disable the station view options based on the number of stations in the model."""
@@ -3045,72 +3059,71 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Launch file selection dialog to select a CG5 observation file and load the data to the campaign."""
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        cg5_obs_file_filename, _ = QFileDialog.getOpenFileName(self,
+        cg5_obs_file_filenames, _ = QFileDialog.getOpenFileNames(self,
                                                                'Select CG5 observation file',
                                                                self.campaign.output_directory,
                                                                "CG5 observation file (*.TXT)",
                                                                options=options)
-        if cg5_obs_file_filename:
-            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
-            # operating system.
+        if not cg5_obs_file_filenames:
+            self.statusBar().showMessage(f"No survey data added.")
+            return
+
+        added_surveys_list = []
+        # Add surveys to the campaing:
+        for cg5_obs_file_filename in cg5_obs_file_filenames:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the
+            # underlying operating system.
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             cg5_obs_file_filename = QDir.toNativeSeparators(cg5_obs_file_filename)
             # Add survey data to Campaign:
             try:
                 new_cg5_survey = Survey.from_cg5_obs_file(cg5_obs_file_filename)
-                flag_no_duplicate = self.campaign.add_survey(survey_add=new_cg5_survey, verbose=IS_VERBOSE)
+                if new_cg5_survey.obs_tide_correction_type == 'unknown':
+                    raise RuntimeError('Type of tidal correction is unknown!')
+                self.campaign.add_survey(survey_add=new_cg5_survey, verbose=IS_VERBOSE)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', f'Error while loading {cg5_obs_file_filename}: ' + str(e))
+                # self.statusBar().showMessage(f"No survey data added.")
+                continue
+            else:
+                added_surveys_list.append(new_cg5_survey.name + f' ({new_cg5_survey.get_number_of_observations()} obs.)')
+
+        if  not added_surveys_list:
+            self.statusBar().showMessage(f"No survey data added.")
+            return
+
+        # Calculate reduced observation data:
+        if settings.CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA:
+            try:
+                self.apply_observation_corrections()
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"No survey data added.")
+                self.statusBar().showMessage(f"Error: No observation corrections applied.")
             else:
-                if flag_no_duplicate:
-                    # No problems occurred:
-                    # Check if all expected information is available in the survey and raise warning:
-                    if new_cg5_survey.obs_tide_correction_type == 'unknown':
-                        QMessageBox.warning(self, 'Warning!',
-                                            'Type of tidal correction is unknown! '
-                                            'Check, if the "CG-5 OPTIONS" block in the input file is missing. '
-                                            ' => Reduced observations not calculated yet!')
-                    else:
-                        # Calculate reduced observation data:
-                        if settings.CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA:
-                            flag_corrections_ok, error_msg = self.apply_observation_corrections()
-                            if flag_corrections_ok:
-                                # Load survey from campaing data to observations vie model:
-                                # self.observation_model.load_surveys(self.campaign.surveys)
-                                # self.on_obs_tree_widget_item_selected()
-                                self.statusBar().showMessage(f"Observation corrections applied.")
-                            else:
-                                QMessageBox.critical('Error!', error_msg)
-                                self.statusBar().showMessage(f"Error: No observation corrections applied.")
-                    self.connect_station_model_to_table_view()  # Disconnect sort & filter proxy model from station view.
-                    self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
-                    self.refresh_stations_table_model_and_view()
-                    self.populate_survey_tree_widget()
-                    # Select the added survey in the tree view:
-                    for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
-                        if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
-                            self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
-                    self.enable_menu_observations_based_on_campaign_data()
-                    self.statusBar().showMessage(f"Survey {new_cg5_survey.name} "
-                                                 f"({new_cg5_survey.get_number_of_observations()} observations) added.")
-                else:
-                    QMessageBox.warning(self,
-                                        'Warning!',
-                                        f'the current campaign already contains a survey named {new_cg5_survey.name}. '
-                                        f'Survey names have to be unique within a campaign.')
-                    self.statusBar().showMessage(f"No survey data added.")
-            finally:
-                self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.
-                self.set_up_survey_view_model()
-                self.on_checkBox_filter_observed_stat_only_toggled(
-                    state=self.checkBox_filter_observed_stat_only.checkState())
-                self.enable_station_view_options_based_on_model()
-                # Show observed stations only based on Checkbox state:
-                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
-                                                                   auto_range_stations_plot=True)
-        else:
-            self.statusBar().showMessage(f"No survey data added.")
+                self.statusBar().showMessage(f"Observation corrections applied.")
+
+        self.connect_station_model_to_table_view()
+        self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
+        self.refresh_stations_table_model_and_view()
+        self.populate_survey_tree_widget()
+        # Select the added survey in the tree view:
+        for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
+            if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
+                self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
+        self.enable_menu_observations_based_on_campaign_data()
+
+        #
+        self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.
+        self.set_up_survey_view_model()
+        self.on_checkBox_filter_observed_stat_only_toggled(
+            state=self.checkBox_filter_observed_stat_only.checkState())
+        self.enable_station_view_options_based_on_model()
+        # Show observed stations only based on Checkbox state:
+        self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
+                                                           auto_range_stations_plot=True)
+        self.statusBar().showMessage(
+            f'{len(added_surveys_list)} survey added to campaign: ' + ','.join(added_surveys_list))
+
 
     @pyqtSlot()
     def on_manu_observations_flag_observations(self):

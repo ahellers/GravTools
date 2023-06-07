@@ -618,8 +618,8 @@ class Ui_MainWindow(object):
         self.menubar.addAction(self.menu_File.menuAction())
         self.menubar.addAction(self.menu_Observations.menuAction())
         self.menubar.addAction(self.menuEstimation_settings.menuAction())
-        self.menubar.addAction(self.menuHelp.menuAction())
         self.menubar.addAction(self.menuCorrections.menuAction())
+        self.menubar.addAction(self.menuHelp.menuAction())
 
         self.retranslateUi(MainWindow)
         self.tabWidget_Main.setCurrentIndex(1)
