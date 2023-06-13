@@ -452,6 +452,8 @@ class Campaign:
                              obs_type='reduced',
                              active_obs_only_for_ref_epoch=True,
                              method='variance_weighted_mean',
+                             method_sd='sd_from_obs_file',
+                             default_sd_mugal=100.0,
                              verbose=False):
         """Calculate accumulated pseudo observations for each active setup in all active surveys.
 
@@ -467,11 +469,6 @@ class Campaign:
         obs_type : str, 'observed' or 'reduced' (default)
             Defines whether the observed (as loaded from an observation file) or the reduced observations from
             `self.obs_df` are used to determine the weighted mean values per setup.
-        set_epoch_of_first_obs_as_reference: bool, optional (default=True)
-            If `True`, the epoch of the first observation in all surveys in the campaign is used as reference epoch
-            for all surveys. `False` implies that the reference epoch is based on the first (active, if
-            `active_obs_only_for_ref_epoch` is `True`) observation in each survey and determined individually for
-            each survey. Stored in `self.ref_delta_t_dt` (datetime object).
         active_obs_only_for_ref_epoch: bool, optional (default=True)
             `True` implies that the relative reference epochs are determined by considering active observations only.
         method : str, optional (default=`variance_weighted_mean`)
@@ -479,6 +476,15 @@ class Campaign:
             (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
             individual observations. `individual_obs` implies that the original observations are used as setup data
             without any aggregation.
+        method_sd : str, optional (default='sd_from_obs_file')
+            Method for the determination of standard deviations (SD) of setup observations. `sd_from_obs_file` implies that
+            SD are taken from the observation file. `sd_default_per_obs` and `sd_default_per_setup` imply that the
+            given default SD is used, where the default SD is applied the individual observations in the first case and
+            to setups in the second case. If applied to observations, the number of observations per setup still plays a
+            role for weighting the setup observations in the adjustment.
+        default_sd_mugal : float, optional (default=100.0)
+            Default standard deviation [µGal] that is used to determine the SD of setup observations when `method_sd` is
+            `sd_default_per_obs` or `sd_default_per_setup`
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
@@ -496,6 +502,8 @@ class Campaign:
                                             ref_delta_t_campaign_dt=self.ref_delta_t_dt,
                                             active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
                                             method=method,
+                                            method_sd=method_sd,
+                                            default_sd_mugal=default_sd_mugal,
                                             verbose=verbose)
             else:
                 survey.reset_setup_data(verbose)  # Remove setup data from previous calculations
