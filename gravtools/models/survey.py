@@ -25,7 +25,7 @@ import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
     REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
     GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS, \
-    UNIT_CONVERSION_TO_MUGAL
+    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.models.misc import format_seconds_to_hhmmss
@@ -123,6 +123,12 @@ class Survey:
         (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
         individual observations. `individual_obs` implies that the original observations are used as setup data
         without any aggregation.
+    setup_sd_method : str, optional (default='')
+        Method for the determination of standard deviations (SD) of setup observations. `sd_from_obs_file` implies that
+        SD are taken from the observation file. `sd_default_per_obs` and `sd_default_per_setup` imply that the
+        given default SD is used, where the default SD is applied the individual observations in the first case and
+        to setups in the second case. If applied to observations, the number of observations per setup still palys a
+        role for weighting the setup observations in the adjustment.
     keep_survey : bool (default=True)
         Flag that indicates whether this survey will be used to derive setup observations.`True` is the
         default and implies that this survey is considered. This flag is independent of the `keep_obs` flags
@@ -315,6 +321,7 @@ class Survey:
                  setup_tide_correction_type='',
                  setup_reference_height_type='',
                  setup_calc_method='',
+                 setup_sd_method='',
                  keep_survey=True,  # Flag
                  setup_df=None,
                  ref_delta_t_dt=None,  # Datetime object (UTC)
@@ -521,6 +528,19 @@ class Survey:
                 self.setup_calc_method = setup_calc_method  # ''
         else:
             raise TypeError('"setup_calc_method" needs to be a string')
+
+        # setup_sd_method:
+        if isinstance(setup_sd_method, str):
+            if setup_sd_method:
+                if setup_sd_method in SETUP_SD_METHODS.keys():
+                    self.setup_sd_method = setup_sd_method
+                else:
+                    raise ValueError('"setup_sd_method" needs to be a key in SETUP_SD_METHODS '
+                                     '({})'.format(', '.join(SETUP_SD_METHODS.keys())))
+            else:
+                self.setup_sd_method = setup_sd_method  # ''
+        else:
+            raise TypeError('"setup_sd_method" needs to be a string')
 
         # keep_survey
         if isinstance(keep_survey, bool):
@@ -1541,6 +1561,8 @@ class Survey:
                              ref_delta_t_campaign_dt=None,
                              active_obs_only_for_ref_epoch=True,
                              method='variance_weighted_mean',
+                             method_sd='sd_from_obs_file',
+                             default_sd_mugal=100.0,
                              verbose=False):
         """Accumulate all active observation within each setup and calculate a single representative pseudo observation.
 
@@ -1559,6 +1581,15 @@ class Survey:
             (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
             individual observations. `individual_obs` implies that the original observations are used as setup data
             without any aggregation.
+        method_sd : str, optional (default='sd_from_obs_file')
+            Method for the determination of standard deviations (SD) of setup observations. `sd_from_obs_file` implies that
+            SD are taken from the observation file. `sd_default_per_obs` and `sd_default_per_setup` imply that the
+            given default SD is used, where the default SD is applied the individual observations in the first case and
+            to setups in the second case. If applied to observations, the number of observations per setup still plays a
+            role for weighting the setup observations in the adjustment.
+        default_sd_mugal : float, optional (default=100.0)
+            Default standard deviation [µGal] that is used to determine the SD of setup observations when `method_sd` is
+            `sd_default_per_obs` or `sd_default_per_setup`
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
@@ -1583,6 +1614,16 @@ class Survey:
         tmp_filter = self.obs_df['keep_obs']
         active_obs_df = self.obs_df[tmp_filter].copy(deep=True)
 
+        # Modify SD according to input options:
+        if method_sd == 'sd_from_obs_file':
+            pass  # keep SD
+        elif method_sd == 'sd_default_per_obs':
+            if verbose:
+                print(f'Use default SD of {default_sd_mugal} µGal for weighting observations instead of SD from '
+                      f'observation files.')
+            active_obs_df['sd_g_red_mugal'] = default_sd_mugal
+            active_obs_df['sd_g_obs_mugal'] = default_sd_mugal
+
         # Check, if at least one observation is active:
         if len(active_obs_df) == 0:
             # raise AssertionError(f'No active observations in survey {self.name}')
@@ -1606,7 +1647,7 @@ class Survey:
             if obs_type == 'reduced':
                 tmp_filter = active_obs_df['sd_g_red_mugal'] <= 0.0
             elif obs_type == 'observed':
-                tmp_filter = active_obs_df['sd_g_red_mugal'] <= 0.0
+                tmp_filter = active_obs_df['sd_g_obs_mugal'] <= 0.0
             if tmp_filter.any():
                 error_str = active_obs_df.loc[tmp_filter, ['station_name', 'obs_epoch']].to_string()
                 raise AssertionError(f'The SD of the following observations ({obs_type}) in the survey {self.name}'
@@ -1713,7 +1754,13 @@ class Survey:
                 self.setup_tide_correction_type = self.red_tide_correction_type
                 self.setup_reference_height_type = self.red_reference_height_type
             self.setup_calc_method = method
+            self.setup_sd_method = method_sd
             self.create_setup_obs_list()
+
+            if method_sd == 'sd_default_per_setup':
+                if verbose:
+                    print(f'Use a default SD of {default_sd_mugal} µGal for all setup observations.')
+                sd_g_red_mugal_list = [default_sd_mugal for item in sd_g_red_mugal_list]
 
             # convert to pd dataframe:
             self.setup_df = pd.DataFrame(list(zip(station_name_list,

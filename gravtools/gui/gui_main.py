@@ -1801,7 +1801,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.label_obs_setups_ref_height.setText('')
             self.label_obs_setups_tidal_corr.setText('')
 
-
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
 
@@ -1813,11 +1812,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             method = 'individual_obs'
         else:
             method = 'variance_weighted_mean' # Use default
+        if self.dlg_setup_data.radioButton_sd_from_obsfile.isChecked():
+            method_sd = 'sd_from_obs_file'
+        elif self.dlg_setup_data.radioButton_sd_default_per_obs.isChecked():
+            method_sd = 'sd_default_per_obs'
+        elif self.dlg_setup_data.radioButton_sd_defaul_per_setup.isChecked():
+            method_sd = 'sd_default_per_setup'
+        else:
+            method_sd = 'sd_from_obs_file'
+        default_sd_mugal = self.dlg_setup_data.spinBox_sd_default.value()
 
         try:
             self.campaign.calculate_setup_data(obs_type='reduced',
                                                active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
                                                method=method,
+                                               method_sd=method_sd,
+                                               default_sd_mugal=default_sd_mugal,
                                                verbose=IS_VERBOSE)
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))

@@ -113,6 +113,13 @@ SETUP_CALC_METHODS = {
     'individual_obs': 'Each observation is treated as setup.'
 }
 
+# Methods for calculation of standard deviations (SD) of setup observations:
+SETUP_SD_METHODS = {
+    'sd_from_obs_file': 'Apply the standard deviations from observation files.',
+    'sd_default_per_obs': 'Apply the default standard deviation to all individual observations.',
+    'sd_default_per_setup': 'Apply the default standard deviation to setup obsertvations.'
+}
+
 # Available adjustment methods:
 ADJUSTMENT_METHODS = {
     'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
