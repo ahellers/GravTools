@@ -168,6 +168,18 @@ INIT_OESGN_STATION_AS_DATUM = False  # Initialize OESGN stations as datum statio
 
 # ----- GUI appearance and plot settings -----
 
+# Methods for the determination of histogram bin edges:
+NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS = {
+    'auto': 'Maximum of the ‘sturges’ and ‘fd’ estimators. Provides good all around performance.',
+    'fd': 'Freedman Diaconis Estimator: Robust (resilient to outliers) estimator that takes into account data variability and data size.',
+    'doane': 'An improved version of Sturges’ estimator that works better with non-normal datasets.',
+    'scott': 'Estimator based on leave-one-out cross-validation estimate of the integrated squared error. Can be regarded as a generalization of Scott’s rule.',
+    'rice': 'Estimator does not take variability into account, only data size. Commonly overestimates number of bins required.',
+    'sturges': 'R’s default method, only accounts for data size. Only optimal for gaussian data and underestimates number of bins for large non-gaussian datasets.',
+    'sqrt': 'Square root (of data size) estimator, used by Excel and other programs for its speed and simplicity.',
+    'Num. of bins': 'User defined number of bins (min. = 2, max. = 1000).'
+}
+
 # --- Gerneral color settings ---
 DATUM_STATION_COLOR = (255, 204, 204)
 
