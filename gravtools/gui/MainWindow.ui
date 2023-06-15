@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>1337</width>
-    <height>746</height>
+    <height>753</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -561,7 +561,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>3</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -773,32 +773,109 @@
             <attribute name="title">
              <string>Observations Plots</string>
             </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_13">
+            <layout class="QVBoxLayout" name="verticalLayout_38">
              <item>
               <widget class="GraphicsLayoutWidget" name="graphicsLayoutWidget_results_observations_plots"/>
              </item>
              <item>
-              <widget class="QGroupBox" name="groupBox_plot_settings">
-               <property name="title">
-                <string>Plot settings</string>
-               </property>
-               <layout class="QVBoxLayout" name="verticalLayout_25">
-                <item>
-                 <layout class="QFormLayout" name="formLayout_4">
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label_results_obs_plot_selec_data_column">
+              <layout class="QHBoxLayout" name="horizontalLayout">
+               <item>
+                <widget class="QGroupBox" name="groupBox_plot_settings">
+                 <property name="title">
+                  <string>Plot settings</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_25">
+                  <item>
+                   <layout class="QFormLayout" name="formLayout_4">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_results_obs_plot_selec_data_column">
+                      <property name="text">
+                       <string>Select data column:</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QComboBox" name="comboBox_results_obs_plot_select_data_column"/>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <widget class="QRadioButton" name="radioButton_results_obs_plot_timeseries">
                     <property name="text">
-                     <string>Select data column:</string>
+                     <string>Time series</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
                     </property>
                    </widget>
                   </item>
-                  <item row="0" column="1">
-                   <widget class="QComboBox" name="comboBox_results_obs_plot_select_data_column"/>
+                  <item>
+                   <widget class="QRadioButton" name="radioButton_results_obs_plot_histogram">
+                    <property name="text">
+                     <string>Histogram</string>
+                    </property>
+                   </widget>
                   </item>
                  </layout>
-                </item>
-               </layout>
-              </widget>
+                </widget>
+               </item>
+               <item>
+                <widget class="QGroupBox" name="groupBox_histogram_settings">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="title">
+                  <string>Histogram settings</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_13">
+                  <item>
+                   <layout class="QFormLayout" name="formLayout_8">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_11">
+                      <property name="text">
+                       <string>Method</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QComboBox" name="comboBox_results_obs_plot_hist_method"/>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_results_obs_plot_number_bins">
+                      <property name="text">
+                       <string>Number of bins</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QSpinBox" name="spinBox_results_obs_plot_number_bins">
+                      <property name="minimum">
+                       <number>2</number>
+                      </property>
+                      <property name="maximum">
+                       <number>1000</number>
+                      </property>
+                      <property name="value">
+                       <number>10</number>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_results_obs_plot_show_outliers">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>Show outliers</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+              </layout>
              </item>
             </layout>
            </widget>
@@ -1279,7 +1356,24 @@
   </customwidget>
  </customwidgets>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>radioButton_results_obs_plot_histogram</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>groupBox_histogram_settings</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>491</x>
+     <y>668</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>1017</x>
+     <y>625</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
  <buttongroups>
   <buttongroup name="buttonGroup_results_vg_plot_type_selection"/>
  </buttongroups>

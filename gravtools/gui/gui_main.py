@@ -157,6 +157,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
         self.checkBox_results_vg_plot_show_residuals.stateChanged.connect(
             self.checkBox_results_vg_plot_show_residuals_state_changed)
+        self.radioButton_results_obs_plot_timeseries.toggled.connect(self.update_results_obs_plots)
+        self.radioButton_results_obs_plot_histogram.toggled.connect(self.update_results_obs_plots)
+        self.comboBox_results_obs_plot_hist_method.currentIndexChanged.connect(self.update_results_obs_plots)
+        self.comboBox_results_obs_plot_hist_method.currentIndexChanged.connect(
+            self.on_histogram_bin_method_currentIndexChanged)
+        self.spinBox_results_obs_plot_number_bins.valueChanged.connect(self.update_results_obs_plots)
         # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
         # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
 
@@ -164,6 +170,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_survey_tree_widget()
         self.set_up_obseration_plots_widget()
         self.set_up_obseration_results_plots_widget()
+        self.set_up_obseration_results_plots_hist_method_comboBox()
         self.set_up_drift_plot_widget()
         self.set_up_stations_map()
         self.set_up_vg_plot_widget()
@@ -1362,18 +1369,61 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
         self.drift_plot.autoRange()
 
+    def set_up_obseration_results_plots_hist_method_comboBox(self):
+        """Set up the histogram method combo box."""
+        self.comboBox_results_obs_plot_hist_method.addItems(list(settings.NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS.keys()))
+        # self.histogram_bin_method_selection(0)  # default: i. item in dict
+
     def set_up_obseration_results_plots_widget(self):
         """Set up `self.graphicsLayoutWidget_results_observations_plots`."""
         self.glw_obs_results = self.graphicsLayoutWidget_results_observations_plots
         self.glw_obs_results.setBackground('w')  # white background color
 
         # Create sub-plots:
+        # - Initialize time series or histogram:
+        if self.radioButton_results_obs_plot_timeseries.isChecked():
+            self.init_observation_results_plots_timerseries()
+        elif self.radioButton_results_obs_plot_histogram.isChecked():
+            self.init_observation_results_plots_histogram()
+        else:
+            pass
+
+    def init_observation_results_plots_timerseries(self):
+        """Initialize the time series plot for observation results."""
+        if self.glw_obs_results.getItem(0,0) is not None:
+            self.glw_obs_results.removeItem(self.glw_obs_results.getItem(0, 0))
         self.plot_obs_results = self.glw_obs_results.addPlot(0, 0, name='obs_results',
                                                              axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.plot_obs_results.setLabel(axis='left', text='')
         self.plot_obs_results.addLegend()
 
-    def plot_observation_results(self, results_obs_df=None, column_name=''):
+    def init_observation_results_plots_histogram(self):
+        """Initialize the histogram plot for observation results."""
+        if self.glw_obs_results.getItem(0,0) is not None:
+            self.glw_obs_results.removeItem(self.glw_obs_results.getItem(0, 0))
+        self.plot_obs_results = self.glw_obs_results.addPlot(0, 0, name='obs_results')
+        self.plot_obs_results.setLabel(axis='left', text='')
+
+    def get_hist_bin_method(self):
+        """Get selected bin method from GUI."""
+        bins = self.comboBox_results_obs_plot_hist_method.currentText()
+        if bins == 'Num. of bins':
+            bins = self.spinBox_results_obs_plot_number_bins.value()
+        return bins
+
+    def on_histogram_bin_method_currentIndexChanged(self):
+        """Select bin determination method."""
+        hist_bin_method = self.comboBox_results_obs_plot_hist_method.currentText()
+        self.comboBox_results_obs_plot_hist_method.setToolTip(
+            settings.NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS[hist_bin_method])
+        if hist_bin_method == 'Num. of bins':
+            self.label_results_obs_plot_number_bins.setEnabled(True)
+            self.spinBox_results_obs_plot_number_bins.setEnabled(True)
+        else:
+            self.label_results_obs_plot_number_bins.setEnabled(False)
+            self.spinBox_results_obs_plot_number_bins.setEnabled(False)
+
+    def plot_observation_results(self, results_obs_df=None, column_name='', type='timeseries'):
         """Plots observation data to the GraphicsLayoutWidget.
 
         Notes
@@ -1382,21 +1432,40 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         # Clear plot in any case:
         self.plot_obs_results.clear()
+        # Plot time series:
+        if self.radioButton_results_obs_plot_timeseries.isChecked():
+            self.init_observation_results_plots_timerseries()
+            if results_obs_df is not None:  # Data available for plotting
+                # Get data:
+                data = results_obs_df[column_name].values
+                if isinstance(data, np.object):
+                    data = data.astype(float)
+                obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
+                    '1970-01-01T00:00:00')) / np.timedelta64(1, 's')
+                plot_name = self.results_observation_model.get_short_column_description(column_name)
+                self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=plot_name, color='b',
+                                  symbol='o', symbol_size=10)
+                self.plot_obs_results.showGrid(x=True, y=True)
+                column_description = self.results_observation_model.get_plotable_columns()[column_name]
+                self.plot_obs_results.setLabel(axis='left', text=column_description)
+                self.plot_obs_results.autoRange()
 
-        if results_obs_df is not None:  # Data available for plotting
-            # Get data:
-            data = results_obs_df[column_name].values
-            if isinstance(data, np.object):
-                data = data.astype(float)
-            obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
-                '1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
-            plot_name = self.results_observation_model.get_short_column_description(column_name)
-            self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=plot_name, color='b',
-                              symbol='o', symbol_size=10)
-            self.plot_obs_results.showGrid(x=True, y=True)
-            column_description = self.results_observation_model.get_plotable_columns()[column_name]
-            self.plot_obs_results.setLabel(axis='left', text=column_description)
-            self.plot_obs_results.autoRange()
+        # Plot histogram:
+        elif self.radioButton_results_obs_plot_histogram.isChecked():
+            self.init_observation_results_plots_histogram()
+            if results_obs_df is not None:  # Data available for plotting
+                # Get bin method:
+                bins = self.get_hist_bin_method()
+                # Get data:
+                data = results_obs_df[column_name].values
+                if isinstance(data, np.object):
+                    data = data.astype(float)
+                y, x = np.histogram(data, bins=bins)
+                self.plot_obs_results.plot(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
+                self.plot_obs_results.showGrid(x=True, y=True)
+                self.plot_obs_results.autoRange()
+        else:
+            pass
 
     def update_results_obs_plots(self):
         """Update the observation results plots in the results tab."""
@@ -2362,7 +2431,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if obs_df is not None and survey_name is not None:
             setup_df = self.observation_model.get_setup_data
             obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64(
-                '1970-01-01T00:00:00Z')) / np.timedelta64(1,
+                '1970-01-01T00:00:00')) / np.timedelta64(1,
                                                           's')
             # Plot reduced or unreduced observations:
             flag_show_reduced_observations = False
