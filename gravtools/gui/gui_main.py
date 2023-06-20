@@ -26,7 +26,7 @@ import os
 import warnings
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
     QHeaderView, QInputDialog
-from PyQt5.QtCore import QDir, QAbstractTableModel, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QModelIndex
+from PyQt5.QtCore import QDir, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp
 from PyQt5 import QtGui
 import datetime as dt
 import pyqtgraph as pg
@@ -48,7 +48,6 @@ else:
 from gravtools.gui.MainWindow import Ui_MainWindow
 from gravtools.gui.dialog_new_campaign import Ui_Dialog_new_Campaign
 from gravtools.gui.dialog_load_stations import Ui_Dialog_load_stations
-from gravtools.gui.dialog_corrections import Ui_Dialog_corrections
 from gravtools.gui.dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settings
 from gravtools.gui.dialog_setup_data import Ui_Dialog_setup_data
@@ -66,6 +65,8 @@ from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorr
 from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
 from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
+from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
+from gravtools.gui.dlg_corrections import DialogCorrections
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
 from gravtools.models.survey import Survey
@@ -131,6 +132,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.action_from_oesgn_table.triggered.connect(self.on_menu_file_load_stations_from_oesgn_table)
         self.action_from_csv_file.triggered.connect(self.on_menu_file_load_stations_from_csv_file)
+        self.action_Correction_time_series.triggered.connect(self.action_correction_time_series_triggered)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
         self.checkBox_obs_plot_setup_data.stateChanged.connect(self.on_checkBox_obs_plot_setup_data_state_changed)
@@ -155,6 +157,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
         self.checkBox_results_vg_plot_show_residuals.stateChanged.connect(
             self.checkBox_results_vg_plot_show_residuals_state_changed)
+        self.radioButton_results_obs_plot_timeseries.toggled.connect(self.update_results_obs_plots)
+        self.radioButton_results_obs_plot_histogram.toggled.connect(self.update_results_obs_plots)
+        self.comboBox_results_obs_plot_hist_method.currentIndexChanged.connect(self.update_results_obs_plots)
+        self.comboBox_results_obs_plot_hist_method.currentIndexChanged.connect(
+            self.on_histogram_bin_method_currentIndexChanged)
+        self.spinBox_results_obs_plot_number_bins.valueChanged.connect(self.update_results_obs_plots)
         # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
         # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
 
@@ -162,19 +170,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_survey_tree_widget()
         self.set_up_obseration_plots_widget()
         self.set_up_obseration_results_plots_widget()
+        self.set_up_obseration_results_plots_hist_method_comboBox()
         self.set_up_drift_plot_widget()
         self.set_up_stations_map()
         self.set_up_vg_plot_widget()
         # self.observations_splitter.setSizes([1000, 10])
 
         # Initialize dialogs if necessary at the start of the application:
-        self.dlg_corrections = DialogCorrections()
-        self.dlg_autoselect_settings = DialogAutoselectSettings()
-        self.dlg_estimation_settings = DialogEstimationSettings()
-        self.dlg_gis_export_settings = DialogGisExportSettings()
-        self.dlg_options = DialogOptions()
-        self.dlg_setup_data = DialogSetupData()
-        self.dlg_about = DialogAbout()
+        self.dlg_corrections = DialogCorrections(self)
+        self.dlg_autoselect_settings = DialogAutoselectSettings(self)
+        self.dlg_estimation_settings = DialogEstimationSettings(self)
+        self.dlg_gis_export_settings = DialogGisExportSettings(self)
+        self.dlg_options = DialogOptions(self)
+        self.dlg_setup_data = DialogSetupData(self)
+        self.dlg_about = DialogAbout(self)
+        self.dlg_correction_time_series = DialogCorrectionTimeSeries(self)
         # self.dlg_about.label_author.setText(__author__)
         self.dlg_about.label_version.setText(__version__)
         self.dlg_about.label_git_repo.setText(__git_repo__)
@@ -220,6 +230,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    def action_correction_time_series_triggered(self):
+        """Launch dialog for managing correction time series data."""
+        _ = self.dlg_correction_time_series.exec()
 
     @pyqtSlot()
     def on_pushButton_results_export_shapefile(self):
@@ -481,6 +495,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_results_drift_view_model()
                 self.set_up_results_vg_view_model()
                 self.update_results_tab(select_latest_item=True)
+                # - Corrections time series dialog:
+                self.dlg_correction_time_series.check_correction_time_series_object(parent=self)
+                self.dlg_correction_time_series.reset_update_gui()
+
+
 
                 self.statusBar().showMessage(
                     f"Previously saved campaign loaded rom pickle file (name: {self.campaign.campaign_name}, "
@@ -688,7 +707,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Invoke plotting method according to the LSM method:
             if lsm_run.lsm_method == 'VG_LSM_nondiff':
-                # TODO: Get parameters from GUI!!
                 # Get plot settings from the GUI:
                 plot_residuals = self.checkBox_results_vg_plot_show_residuals.checkState() == Qt.Checked
                 if self.radioButton_results_vg_plot_details.isChecked() and not self.radioButton_results_vg_plot_full_polynomial.isChecked():
@@ -1055,10 +1073,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # setup_df = pd.merge(setup_df, stat_obs_df_short, on='station_name')
             # setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
             setup_df.sort_values(by='delta_t_campaign_h', inplace=True)
-            setup_obs_df_short = lsm_run.setup_obs_df.loc[lsm_run.setup_obs_df['survey_name'] == survey_name, ['setup_id', 'v_obs_est_mugal']].copy(deep=True)
             # Merge df => Colum with post-fit residuals ("v_obs_est_mugal") added to "setup_df":
-            setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', on='setup_id')
-
+            if setup_data['setup_calc_method'] != 'individual_obs':
+                setup_obs_df_short = lsm_run.setup_obs_df.loc[
+                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['setup_id', 'v_obs_est_mugal']].copy(deep=True)
+                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', on='setup_id')  # WEG!
+            else:
+                setup_obs_df_short = lsm_run.setup_obs_df.loc[
+                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(
+                    deep=True)
+                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', left_on='epoch_dt',
+                                    right_on='ref_epoch_dt')
             # Evaluate drift polynomial:
             coeff_list = drift_pol_df_short['coefficient'].to_list()
             coeff_list.reverse()
@@ -1344,41 +1369,122 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
         self.drift_plot.autoRange()
 
+    def set_up_obseration_results_plots_hist_method_comboBox(self):
+        """Set up the histogram method combo box."""
+        self.comboBox_results_obs_plot_hist_method.addItems(list(settings.NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS.keys()))
+        # self.histogram_bin_method_selection(0)  # default: i. item in dict
+
     def set_up_obseration_results_plots_widget(self):
         """Set up `self.graphicsLayoutWidget_results_observations_plots`."""
         self.glw_obs_results = self.graphicsLayoutWidget_results_observations_plots
         self.glw_obs_results.setBackground('w')  # white background color
 
         # Create sub-plots:
+        # - Initialize time series or histogram:
+        if self.radioButton_results_obs_plot_timeseries.isChecked():
+            self.init_observation_results_plots_timerseries()
+        elif self.radioButton_results_obs_plot_histogram.isChecked():
+            self.init_observation_results_plots_histogram()
+        else:
+            pass
+
+    def init_observation_results_plots_timerseries(self):
+        """Initialize the time series plot for observation results."""
+        if self.glw_obs_results.getItem(0,0) is not None:
+            self.glw_obs_results.removeItem(self.glw_obs_results.getItem(0, 0))
         self.plot_obs_results = self.glw_obs_results.addPlot(0, 0, name='obs_results',
                                                              axisItems={'bottom': TimeAxisItem(orientation='bottom')})
         self.plot_obs_results.setLabel(axis='left', text='')
         self.plot_obs_results.addLegend()
 
-    def plot_observation_results(self, results_obs_df=None, column_name=''):
+    def init_observation_results_plots_histogram(self):
+        """Initialize the histogram plot for observation results."""
+        if self.glw_obs_results.getItem(0,0) is not None:
+            self.glw_obs_results.removeItem(self.glw_obs_results.getItem(0, 0))
+        self.plot_obs_results = self.glw_obs_results.addPlot(0, 0, name='obs_results')
+        self.plot_obs_results.setLabel(axis='left', text='')
+
+    def get_hist_bin_method(self):
+        """Get selected bin method from GUI."""
+        bins = self.comboBox_results_obs_plot_hist_method.currentText()
+        if bins == 'Num. of bins':
+            bins = self.spinBox_results_obs_plot_number_bins.value()
+        return bins
+
+    def on_histogram_bin_method_currentIndexChanged(self):
+        """Select bin determination method."""
+        hist_bin_method = self.comboBox_results_obs_plot_hist_method.currentText()
+        self.comboBox_results_obs_plot_hist_method.setToolTip(
+            settings.NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS[hist_bin_method])
+        if hist_bin_method == 'Num. of bins':
+            self.label_results_obs_plot_number_bins.setEnabled(True)
+            self.spinBox_results_obs_plot_number_bins.setEnabled(True)
+        else:
+            self.label_results_obs_plot_number_bins.setEnabled(False)
+            self.spinBox_results_obs_plot_number_bins.setEnabled(False)
+
+    def plot_observation_results(self, results_obs_df=None, column_name='', type='timeseries'):
         """Plots observation data to the GraphicsLayoutWidget.
 
         Notes
         -----
-        If input parameters `` or/and `` is/are `None` or '', the plot content is deleted and the plot is resetted.
+        If input parameters `` or/and `` is/are `None` or '', the plot content is deleted and the plot is reseted.
         """
         # Clear plot in any case:
         self.plot_obs_results.clear()
+        # Plot time series:
+        if self.radioButton_results_obs_plot_timeseries.isChecked():
+            self.init_observation_results_plots_timerseries()
+            if results_obs_df is not None:  # Data available for plotting
+                # Get data:
+                data = results_obs_df[column_name].values
+                if isinstance(data, np.object):
+                    data = data.astype(float)
+                obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
+                    '1970-01-01T00:00:00')) / np.timedelta64(1, 's')
+                plot_name = self.results_observation_model.get_short_column_description(column_name)
+                self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=plot_name, color='b',
+                                  symbol='o', symbol_size=10)
+                self.plot_obs_results.showGrid(x=True, y=True)
+                column_description = self.results_observation_model.get_plotable_columns()[column_name]
+                self.plot_obs_results.setLabel(axis='left', text=column_description)
+                self.plot_obs_results.autoRange()
 
-        if results_obs_df is not None:  # Data available for plotting
-            # Get data:
-            data = results_obs_df[column_name].values
-            if isinstance(data, np.object):
-                data = data.astype(float)
-            obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
-                '1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
-            plot_name = self.results_observation_model.get_short_column_description(column_name)
-            self.plot_xy_data(self.plot_obs_results, obs_epoch_timestamps, data, plot_name=plot_name, color='b',
-                              symbol='o', symbol_size=10)
-            self.plot_obs_results.showGrid(x=True, y=True)
-            column_description = self.results_observation_model.get_plotable_columns()[column_name]
-            self.plot_obs_results.setLabel(axis='left', text=column_description)
-            self.plot_obs_results.autoRange()
+        # Plot histogram:
+        elif self.radioButton_results_obs_plot_histogram.isChecked():
+            self.init_observation_results_plots_histogram()
+            if results_obs_df is not None:  # Data available for plotting
+                # Get bin method:
+                bins = self.get_hist_bin_method()
+                # Get data:
+                data = results_obs_df[column_name].values
+                if isinstance(data, np.object):
+                    data = data.astype(float)
+                y, x = np.histogram(data, bins=bins)
+                self.plot_obs_results.plot(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
+                self.plot_obs_results.showGrid(x=True, y=True)
+
+                # Add legend with statistics:
+                mean = np.mean(data)
+                median = np.median(data)
+                std = np.std(data)
+                q25 = np.quantile(data, 0.25)
+                q75 = np.quantile(data, 0.75)
+                iqr = q75 - q25
+                legend = self.plot_obs_results.addLegend()
+                legend.setLabelTextColor('k')
+                style1 = pg.PlotDataItem(pen='w')
+                style2 = pg.PlotDataItem(pen='w')
+                style3 = pg.PlotDataItem(pen='w')
+                style4 = pg.PlotDataItem(pen='w')
+                legend.addItem(style1, f'Mean = {mean:0.3f}')
+                legend.addItem(style2, f'Std. = {std:0.3f}')
+                legend.addItem(style3, f'Median = {median:0.3f}')
+                legend.addItem(style4, f'IQR = {iqr:0.3f}')
+
+                self.plot_obs_results.autoRange()
+        else:
+            pass
 
     def update_results_obs_plots(self):
         """Update the observation results plots in the results tab."""
@@ -1597,7 +1703,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_results_observation_table_view(idx, station_name=station_name, survey_name=survey_name)
             self.update_results_drift_table_view(idx, survey_name=survey_name)
             self.update_results_vg_table_view(idx)
-            self.update_results_obs_plots()  #TODO!! Error wegen dtype Änderung!!
+            self.update_results_obs_plots()
             self.update_drift_plot()
             self.update_vg_plot()
         else:  # invalid index => Reset results views
@@ -1783,16 +1889,33 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.label_obs_setups_ref_height.setText('')
             self.label_obs_setups_tidal_corr.setText('')
 
-
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
 
         # Get GUI settings:
         active_obs_only_for_ref_epoch = self.dlg_setup_data.checkBox_drift_ref_epoch_active_obs_only.checkState() == Qt.Checked
+        if self.dlg_setup_data.radioButton_variance_weighted_mean.isChecked():
+            method = 'variance_weighted_mean'
+        elif self.dlg_setup_data.radioButton_individual_obs.isChecked():
+            method = 'individual_obs'
+        else:
+            method = 'variance_weighted_mean' # Use default
+        if self.dlg_setup_data.radioButton_sd_from_obsfile.isChecked():
+            method_sd = 'sd_from_obs_file'
+        elif self.dlg_setup_data.radioButton_sd_default_per_obs.isChecked():
+            method_sd = 'sd_default_per_obs'
+        elif self.dlg_setup_data.radioButton_sd_defaul_per_setup.isChecked():
+            method_sd = 'sd_default_per_setup'
+        else:
+            method_sd = 'sd_from_obs_file'
+        default_sd_mugal = self.dlg_setup_data.spinBox_sd_default.value()
 
         try:
             self.campaign.calculate_setup_data(obs_type='reduced',
                                                active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
+                                               method=method,
+                                               method_sd=method_sd,
+                                               default_sd_mugal=default_sd_mugal,
                                                verbose=IS_VERBOSE)
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
@@ -2266,7 +2389,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                         QMessageBox.critical(self, 'Error!', str(e))
                                         flag_export_successful = False
 
-
             if flag_export_successful:
                 self.statusBar().showMessage(f"Export to {output_path} successful!")
             else:
@@ -2327,7 +2449,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if obs_df is not None and survey_name is not None:
             setup_df = self.observation_model.get_setup_data
             obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64(
-                '1970-01-01T00:00:00Z')) / np.timedelta64(1,
+                '1970-01-01T00:00:00')) / np.timedelta64(1,
                                                           's')
             # Plot reduced or unreduced observations:
             flag_show_reduced_observations = False
@@ -2347,6 +2469,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 sd_g_mugal = obs_df['sd_g_red_mugal'].values
                 corr_tide = obs_df['corr_tide_red_mugal'].values
                 corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
+                try:
+                    corr_description_str = self.campaign.surveys[survey_name].red_tide_correction_description
+                except AttributeError:
+                    pass
+                else:
+                    if corr_description_str:
+                        corr_tide_name = corr_tide_name + ': ' + corr_description_str
                 ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
             else:
                 g_mugal = obs_df['g_obs_mugal'].values
@@ -2740,15 +2869,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Launch diaglog to select and apply observation corrections."""
         return_value = self.dlg_corrections.exec()
         if return_value == QDialog.Accepted:
-            flag_corrections_ok, error_msg = self.apply_observation_corrections()
-            if flag_corrections_ok:
-                # Load survey from campaing data to observations vie model:
+            try:
+                self.apply_observation_corrections()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"Error: No observation corrections applied.")
+            else:
+                # Load survey from campaign data to observations vie model:
                 self.observation_model.load_surveys(self.campaign.surveys)
                 self.on_obs_tree_widget_item_selected()
                 self.statusBar().showMessage(f"Observation corrections applied.")
-            else:
-                QMessageBox.critical('Error!', error_msg)
-                self.statusBar().showMessage(f"Error: No observation corrections applied.")
         else:
             self.statusBar().showMessage(f"No observation corrections applied.")
 
@@ -2756,6 +2886,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Apply observation corrections according to the selected settings."""
         flag_selection_ok = True
         error_msg = ''
+        tide_corr_timeseries_interpol_method = ''
         if self.dlg_corrections.radioButton_corr_ref_heights_ground.isChecked():
             target_ref_height = 'ground'
         elif self.dlg_corrections.radioButton_corr_ref_heights_control_point.isChecked():
@@ -2775,20 +2906,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             target_tide_corr = 'cg5_longman1959'
         elif self.dlg_corrections.radioButton_corr_tides_longman1959.isChecked():
             target_tide_corr = 'longman1959'
+        elif self.dlg_corrections.radioButton_corr_tides_time_series.isChecked():
+            target_tide_corr = 'from_time_series'
+            tide_corr_timeseries_interpol_method = self.dlg_corrections.comboBox_tides_interpolation_method.currentText()
         else:
             flag_selection_ok = False
             error_msg = f'Invalid selection of tidal correction in GUI (observation corrections dialog).'
             # QMessageBox.critical('Error!', error_msg)
 
         if flag_selection_ok:
-            flag_corrections_ok, error_msg = self.campaign.reduce_observations_in_all_surveys(
+            self.campaign.reduce_observations_in_all_surveys(
                 target_ref_height=target_ref_height,
                 target_tide_corr=target_tide_corr,
+                tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                 verbose=IS_VERBOSE)
-        else:
-            flag_corrections_ok = False
-
-        return flag_corrections_ok, error_msg
 
     @pyqtSlot()
     def on_menu_file_new_campaign(self):
@@ -2831,6 +2962,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_up_results_drift_view_model()
             self.set_up_results_vg_view_model()
             self.update_results_tab(select_latest_item=True)
+            # - Corrections time series dialog:
+            self.dlg_correction_time_series.reset_update_gui()
 
             self.statusBar().showMessage(f"New Campaign created (name: {self.campaign.campaign_name}, "
                                          f"output directory: {self.campaign.output_directory})")
@@ -2931,15 +3064,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Re-calculate observation corrections, based on the new station data (VG is relevant for height
             # reduction!):
-            self.apply_observation_corrections()
+            try:
+                self.apply_observation_corrections()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"Error: No observation corrections applied.")
+            else:
+                self.statusBar().showMessage(f"Observation corrections applied.")
+            finally:
+                # Update the observations table and plot (in case the reduced obs. changed):
+                survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+                self.update_obs_table_view(survey_name, setup_id)
+                self.plot_observations(survey_name)
 
-            # Update the observations table and plot (in case the reduced obs. changed):
-            survey_name, setup_id = self.get_obs_tree_widget_selected_item()
-            self.update_obs_table_view(survey_name, setup_id)
-            self.plot_observations(survey_name)
-
-            self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
-
+                self.statusBar().showMessage(f"{number_of_stations_added} stations added.")
 
     def enable_station_view_options_based_on_model(self):
         """Enable or disable the station view options based on the number of stations in the model."""
@@ -3018,72 +3156,71 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Launch file selection dialog to select a CG5 observation file and load the data to the campaign."""
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        cg5_obs_file_filename, _ = QFileDialog.getOpenFileName(self,
+        cg5_obs_file_filenames, _ = QFileDialog.getOpenFileNames(self,
                                                                'Select CG5 observation file',
                                                                self.campaign.output_directory,
                                                                "CG5 observation file (*.TXT)",
                                                                options=options)
-        if cg5_obs_file_filename:
-            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
-            # operating system.
+        if not cg5_obs_file_filenames:
+            self.statusBar().showMessage(f"No survey data added.")
+            return
+
+        added_surveys_list = []
+        # Add surveys to the campaing:
+        for cg5_obs_file_filename in cg5_obs_file_filenames:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the
+            # underlying operating system.
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             cg5_obs_file_filename = QDir.toNativeSeparators(cg5_obs_file_filename)
             # Add survey data to Campaign:
             try:
                 new_cg5_survey = Survey.from_cg5_obs_file(cg5_obs_file_filename)
-                flag_no_duplicate = self.campaign.add_survey(survey_add=new_cg5_survey, verbose=IS_VERBOSE)
+                if new_cg5_survey.obs_tide_correction_type == 'unknown':
+                    raise RuntimeError('Type of tidal correction is unknown!')
+                self.campaign.add_survey(survey_add=new_cg5_survey, verbose=IS_VERBOSE)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', f'Error while loading {cg5_obs_file_filename}: ' + str(e))
+                # self.statusBar().showMessage(f"No survey data added.")
+                continue
+            else:
+                added_surveys_list.append(new_cg5_survey.name + f' ({new_cg5_survey.get_number_of_observations()} obs.)')
+
+        if  not added_surveys_list:
+            self.statusBar().showMessage(f"No survey data added.")
+            return
+
+        # Calculate reduced observation data:
+        if settings.CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA:
+            try:
+                self.apply_observation_corrections()
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"No survey data added.")
+                self.statusBar().showMessage(f"Error: No observation corrections applied.")
             else:
-                if flag_no_duplicate:
-                    # No problems occurred:
-                    # Check if all expected information is available in the survey and raise warning:
-                    if new_cg5_survey.obs_tide_correction_type == 'unknown':
-                        QMessageBox.warning(self, 'Warning!',
-                                            'Type of tidal correction is unknown! '
-                                            'Check, if the "CG-5 OPTIONS" block in the input file is missing. '
-                                            ' => Reduced observations not calculated yet!')
-                    else:
-                        # Calculate reduced observation data:
-                        if settings.CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA:
-                            flag_corrections_ok, error_msg = self.apply_observation_corrections()
-                            if flag_corrections_ok:
-                                # Load survey from campaing data to observations vie model:
-                                # self.observation_model.load_surveys(self.campaign.surveys)
-                                # self.on_obs_tree_widget_item_selected()
-                                self.statusBar().showMessage(f"Observation corrections applied.")
-                            else:
-                                QMessageBox.critical('Error!', error_msg)
-                                self.statusBar().showMessage(f"Error: No observation corrections applied.")
-                    self.connect_station_model_to_table_view()  # Disconnect sort & filter proxy model from station view.
-                    self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
-                    self.refresh_stations_table_model_and_view()
-                    self.populate_survey_tree_widget()
-                    # Select the added survey in the tree view:
-                    for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
-                        if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
-                            self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
-                    self.enable_menu_observations_based_on_campaign_data()
-                    self.statusBar().showMessage(f"Survey {new_cg5_survey.name} "
-                                                 f"({new_cg5_survey.get_number_of_observations()} observations) added.")
-                else:
-                    QMessageBox.warning(self,
-                                        'Warning!',
-                                        f'the current campaign already contains a survey named {new_cg5_survey.name}. '
-                                        f'Survey names have to be unique within a campaign.')
-                    self.statusBar().showMessage(f"No survey data added.")
-            finally:
-                self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.
-                self.set_up_survey_view_model()
-                self.on_checkBox_filter_observed_stat_only_toggled(
-                    state=self.checkBox_filter_observed_stat_only.checkState())
-                self.enable_station_view_options_based_on_model()
-                # Show observed stations only based on Checkbox state:
-                self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
-                                                                   auto_range_stations_plot=True)
-        else:
-            self.statusBar().showMessage(f"No survey data added.")
+                self.statusBar().showMessage(f"Observation corrections applied.")
+
+        self.connect_station_model_to_table_view()
+        self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
+        self.refresh_stations_table_model_and_view()
+        self.populate_survey_tree_widget()
+        # Select the added survey in the tree view:
+        for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
+            if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
+                self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
+        self.enable_menu_observations_based_on_campaign_data()
+
+        #
+        self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.
+        self.set_up_survey_view_model()
+        self.on_checkBox_filter_observed_stat_only_toggled(
+            state=self.checkBox_filter_observed_stat_only.checkState())
+        self.enable_station_view_options_based_on_model()
+        # Show observed stations only based on Checkbox state:
+        self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
+                                                           auto_range_stations_plot=True)
+        self.statusBar().showMessage(
+            f'{len(added_surveys_list)} survey added to campaign: ' + ','.join(added_surveys_list))
+
 
     @pyqtSlot()
     def on_manu_observations_flag_observations(self):
@@ -3245,18 +3382,6 @@ class DialogLoadStations(QDialog, Ui_Dialog_load_stations):
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             oesgn_filename = QDir.toNativeSeparators(oesgn_filename)
             self.lineEdit_oesgn_table_file_path.setText(oesgn_filename)
-
-
-class DialogCorrections(QDialog, Ui_Dialog_corrections):
-    """Dialog to select and apply observation corrections."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        # Run the .setupUi() method to show the GUI
-        self.setupUi(self)
-        # connect signals and slots:
-        pass
 
 
 class DialogAutoselectSettings(QDialog, Ui_Dialog_autoselection_settings):

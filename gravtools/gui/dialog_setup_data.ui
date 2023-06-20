@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>512</width>
-    <height>122</height>
+    <width>436</width>
+    <height>330</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -17,11 +17,133 @@
    <item>
     <widget class="QCheckBox" name="checkBox_drift_ref_epoch_active_obs_only">
      <property name="toolTip">
-      <string>Consider only active observations in the determination of the drift polynomial reference epoch(s).</string>
+      <string>Consider only active observations for the determination of the drift polynomial reference epoch(s).</string>
      </property>
      <property name="text">
       <string>Consider only active observations for the reference epoch</string>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_obs_computation_method">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the method for the computation of setup observations.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="title">
+      <string>Setup observations computation method</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QRadioButton" name="radioButton_variance_weighted_mean">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Computa setup observations as the variance weighted mean ob all consecutive observations within one setup. This is the default option for the adjustment of gravity surveys comprising multiple stations or the estimatuion of vertical gravity gradients.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Variance weighted mean</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup_computation_method</string>
+        </attribute>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioButton_individual_obs">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Trest each individual observation as setup observation, i.e. do aggregate individual observations at all. This option may be used for analysing  stationary long-term observations at a single station, e.g. for the analysis of tides of the instrument's drift behaviour.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Individual observations</string>
+        </property>
+        <attribute name="buttonGroup">
+         <string notr="true">buttonGroup_computation_method</string>
+        </attribute>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_sd_options">
+     <property name="toolTip">
+      <string notr="true">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Options for the determination of standard deviations of setup observations.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="title">
+      <string>Setup SD options</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="QRadioButton" name="radioButton_sd_from_obsfile">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use the standard deviations (SD) provided in the observation files. The SD of setup observations are calculated according to the variance weighte mean gravity observations. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Use SD from observation files</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioButton_sd_default_per_obs">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply the default standard deviation (SD) to individual observations. The SD of setup observations are calculated according to the variance weighte mean gravity observations. Hence, setups with a higher number of individual observations get a lower SD according the &lt;span style=&quot; font-style:italic;&quot;&gt;sqrt(n)&lt;/span&gt; rule.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Apply default SD to individual observations in setups</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="radioButton_sd_defaul_per_setup">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply the default standard deviation (SD) to setup observations. Hence, the SD provided in the observation files are dismissed and all setup observations have equal weights, neglecting the number of repeated observations per setup.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Apply default SD to setup observations</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_sd_default">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>Default standard deviation (SD) [µGal]. Min = 1 µGal, max. = 999999 µGal. </string>
+          </property>
+          <property name="text">
+           <string>Default SD [µGal]</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QSpinBox" name="spinBox_sd_default">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Default standard deviation (SD) [µGal]. Min = 1 µGal, max. = 999999 µGal.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>999999</number>
+          </property>
+          <property name="value">
+           <number>100</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
@@ -40,5 +162,41 @@
   </layout>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>radioButton_sd_from_obsfile</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_sd_default</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>217</x>
+     <y>183</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>80</x>
+     <y>272</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>radioButton_sd_from_obsfile</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinBox_sd_default</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>217</x>
+     <y>183</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>279</x>
+     <y>272</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <buttongroups>
+  <buttongroup name="buttonGroup_computation_method"/>
+ </buttongroups>
 </ui>

@@ -34,8 +34,32 @@ TIDE_CORRECTION_TYPES = {
     'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
     'longman1959': 'Tidal corrections by the model of Longman (1959)',
     'no_tide_corr': 'No tide correction applied',
+    'from_time_series': 'Interpolated from correction time series',
     'unknown': 'Unknown whether a tide correction was applied',
 }
+
+# Conversion factors of different units of gravity to µGal:
+# - Keys: Units as used e.g. in TSF files by Tsoft
+# - Values: Multiplicative conversion factors to µGal
+UNIT_CONVERSION_TO_MUGAL = {
+    'nm/s^2': 1e-1  # 1 nm/s^2 * 0.1 = 1 µGal
+}
+
+# Interpolation methods provided by scipy.interpolation.interp1, e.g. used for the interpolation of correction time
+# series data.
+SCIPY_INTERP1_INTERPOLATION_METHODS = {
+    'linear': 'Linear interpolation.',
+    'nearest': '"Snaps" to the nearest data point. Rounds down at half-integers (e.g. 0.5, 1.5)',
+    'nearest-up': '"Snaps" to the nearest data point. Rounds up at half-integers (e.g. 0.5, 1.5)',
+    'zero': 'Zero order spline. It`s value at any point is the last raw value seen.',
+    'slinear': 'First order spline interpolation (similar to "linear").',
+    'quadratic': 'Second order spline interpolation.',
+    'cubic': 'Third order spline interpolation.',
+    'previous': 'Return previous value.',
+    'next': 'Return next value.',
+}
+# Default interpolation method:
+SCIPY_INTERP1_INTERPOLATION_DEFAULT_METHOD = 'quadratic'
 
 REFERENCE_HEIGHT_TYPE = {
     'sensor_height': 'The gravity values refer to the sensor height',
@@ -81,6 +105,19 @@ GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE = {
 #  observation files:
 BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
     '5': 'cg5_longman1959'
+}
+
+# Methods for calculation of setup observations:
+SETUP_CALC_METHODS = {
+    'variance_weighted_mean': 'Variance weighted mean of observations within a setup.',
+    'individual_obs': 'Each observation is treated as setup.'
+}
+
+# Methods for calculation of standard deviations (SD) of setup observations:
+SETUP_SD_METHODS = {
+    'sd_from_obs_file': 'Apply the standard deviations from observation files.',
+    'sd_default_per_obs': 'Apply the default standard deviation to all individual observations.',
+    'sd_default_per_setup': 'Apply the default standard deviation to setup obsertvations.'
 }
 
 # Available adjustment methods:
@@ -130,6 +167,18 @@ INIT_OESGN_STATION_AS_DATUM = False  # Initialize OESGN stations as datum statio
 
 
 # ----- GUI appearance and plot settings -----
+
+# Methods for the determination of histogram bin edges:
+NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS = {
+    'auto': 'Maximum of the ‘sturges’ and ‘fd’ estimators. Provides good all around performance.',
+    'fd': 'Freedman Diaconis Estimator: Robust (resilient to outliers) estimator that takes into account data variability and data size.',
+    'doane': 'An improved version of Sturges’ estimator that works better with non-normal datasets.',
+    'scott': 'Estimator based on leave-one-out cross-validation estimate of the integrated squared error. Can be regarded as a generalization of Scott’s rule.',
+    'rice': 'Estimator does not take variability into account, only data size. Commonly overestimates number of bins required.',
+    'sturges': 'R’s default method, only accounts for data size. Only optimal for gaussian data and underestimates number of bins for large non-gaussian datasets.',
+    'sqrt': 'Square root (of data size) estimator, used by Excel and other programs for its speed and simplicity.',
+    'Num. of bins': 'User defined number of bins (min. = 2, max. = 1000).'
+}
 
 # --- Gerneral color settings ---
 DATUM_STATION_COLOR = (255, 204, 204)
@@ -235,15 +284,8 @@ NAME_OESGN_TABLE = 'OESGN.TAB'
 
 # BEV observation files:
 PATH_OBS_FILE_BEV = '/home/heller/pyProjects/GravTools/data/BEV/'
-# NAME_OBS_FILE_BEV = '20200527_tideCorr'
-# NAME_OBS_FILE_BEV = '20200527_sd'
-# NAME_OBS_FILE_BEV = '20200527_2'
-# NAME_OBS_FILE_BEV = '20200527'
-# NAME_OBS_FILE_BEV = 'n20200701_1'
 NAME_OBS_FILE_BEV = 'f200701_1'
-# NAME_OBS_FILE_BEV = 'e201001'
 
 # CG-5 observation files (text)
 PATH_OBS_FILE_CG5 = '/home/heller/pyProjects/GravTools/data/CG5/'
-# NAME_OBS_FILE_CG5 = '2020-06-18_DACH.TXT'
 NAME_OBS_FILE_CG5 = '20200907_test.TXT'

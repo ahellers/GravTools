@@ -38,3 +38,5 @@ py_gui:
 	pyuic5 -o gravtools/gui/dialog_setup_data.py gravtools/gui/dialog_setup_data.ui
 	pyuic5 -o gravtools/gui/dialog_about.py gravtools/gui/dialog_about.ui
 	pyuic5 -o gravtools/gui/dialog_gis_export_settings.py gravtools/gui/dialog_gis_export_settings.ui
+	pyuic5 -o gravtools/gui/dialog_correction_time_series.py gravtools/gui/dialog_correction_time_series.ui
+	pyuic5 -o gravtools/gui/dialog_load_tsf_file.py gravtools/gui/dialog_load_tsf_file.ui

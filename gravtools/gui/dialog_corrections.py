@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Dialog_corrections(object):
     def setupUi(self, Dialog_corrections):
         Dialog_corrections.setObjectName("Dialog_corrections")
-        Dialog_corrections.resize(287, 340)
+        Dialog_corrections.resize(362, 419)
         self.verticalLayout_6 = QtWidgets.QVBoxLayout(Dialog_corrections)
         self.verticalLayout_6.setObjectName("verticalLayout_6")
         self.verticalLayout_5 = QtWidgets.QVBoxLayout()
@@ -40,7 +40,22 @@ class Ui_Dialog_corrections(object):
         self.radioButton_corr_tides_longman1959.setObjectName("radioButton_corr_tides_longman1959")
         self.buttonGroup_corrections_tides.addButton(self.radioButton_corr_tides_longman1959)
         self.verticalLayout.addWidget(self.radioButton_corr_tides_longman1959)
+        self.radioButton_corr_tides_time_series = QtWidgets.QRadioButton(self.groupBox_corrections_tides)
+        self.radioButton_corr_tides_time_series.setObjectName("radioButton_corr_tides_time_series")
+        self.buttonGroup_corrections_tides.addButton(self.radioButton_corr_tides_time_series)
+        self.verticalLayout.addWidget(self.radioButton_corr_tides_time_series)
         self.verticalLayout_3.addLayout(self.verticalLayout)
+        self.formLayout = QtWidgets.QFormLayout()
+        self.formLayout.setObjectName("formLayout")
+        self.label_tides_interpolation_method = QtWidgets.QLabel(self.groupBox_corrections_tides)
+        self.label_tides_interpolation_method.setEnabled(False)
+        self.label_tides_interpolation_method.setObjectName("label_tides_interpolation_method")
+        self.formLayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.label_tides_interpolation_method)
+        self.comboBox_tides_interpolation_method = QtWidgets.QComboBox(self.groupBox_corrections_tides)
+        self.comboBox_tides_interpolation_method.setEnabled(False)
+        self.comboBox_tides_interpolation_method.setObjectName("comboBox_tides_interpolation_method")
+        self.formLayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.comboBox_tides_interpolation_method)
+        self.verticalLayout_3.addLayout(self.formLayout)
         self.verticalLayout_5.addWidget(self.groupBox_corrections_tides)
         self.groupBox_corrections_ref_heights = QtWidgets.QGroupBox(Dialog_corrections)
         self.groupBox_corrections_ref_heights.setObjectName("groupBox_corrections_ref_heights")
@@ -69,6 +84,8 @@ class Ui_Dialog_corrections(object):
         self.verticalLayout_2.addWidget(self.radioButton_corr_ref_heights_control_point)
         self.verticalLayout_4.addLayout(self.verticalLayout_2)
         self.verticalLayout_5.addWidget(self.groupBox_corrections_ref_heights)
+        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
+        self.verticalLayout_5.addItem(spacerItem)
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog_corrections)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
@@ -79,12 +96,14 @@ class Ui_Dialog_corrections(object):
         self.retranslateUi(Dialog_corrections)
         self.buttonBox.accepted.connect(Dialog_corrections.accept) # type: ignore
         self.buttonBox.rejected.connect(Dialog_corrections.reject) # type: ignore
+        self.radioButton_corr_tides_time_series.toggled['bool'].connect(self.comboBox_tides_interpolation_method.setEnabled) # type: ignore
+        self.radioButton_corr_tides_time_series.toggled['bool'].connect(self.label_tides_interpolation_method.setEnabled) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(Dialog_corrections)
 
     def retranslateUi(self, Dialog_corrections):
         _translate = QtCore.QCoreApplication.translate
         Dialog_corrections.setWindowTitle(_translate("Dialog_corrections", "Corrections"))
-        self.groupBox_corrections_tides.setToolTip(_translate("Dialog_corrections", "Different options are available to apply corrections for the tidal effects of sun and moon on the observed gravity."))
+        self.groupBox_corrections_tides.setToolTip(_translate("Dialog_corrections", "<html><head/><body><p>Options for tidal corretio of observation data.</p></body></html>"))
         self.groupBox_corrections_tides.setTitle(_translate("Dialog_corrections", "Tidal correction"))
         self.radioButton_corr_tides_no_correction.setToolTip(_translate("Dialog_corrections", "No tidal corrections applied."))
         self.radioButton_corr_tides_no_correction.setText(_translate("Dialog_corrections", "No correction"))
@@ -92,6 +111,11 @@ class Ui_Dialog_corrections(object):
         self.radioButton_corr_tides_cg5_model.setText(_translate("Dialog_corrections", "CG-5 model (Longman, 1959)"))
         self.radioButton_corr_tides_longman1959.setToolTip(_translate("Dialog_corrections", "Tidal corrections are calculated ans applied in GravTools by evaluationg the model by Longman (1959). "))
         self.radioButton_corr_tides_longman1959.setText(_translate("Dialog_corrections", "Longman (1959)"))
+        self.radioButton_corr_tides_time_series.setToolTip(_translate("Dialog_corrections", "<html><head/><body><p>Interpolate corrections from time series data. The python module <span style=\" font-style:italic;\">scipy.interpolation.interp1</span> is used.</p></body></html>"))
+        self.radioButton_corr_tides_time_series.setText(_translate("Dialog_corrections", "Interpolate from time series"))
+        self.label_tides_interpolation_method.setToolTip(_translate("Dialog_corrections", "Method for the interpolation of correction time series."))
+        self.label_tides_interpolation_method.setText(_translate("Dialog_corrections", "Interpolation method"))
+        self.comboBox_tides_interpolation_method.setToolTip(_translate("Dialog_corrections", "Method for the interpolation of correction time series."))
         self.groupBox_corrections_ref_heights.setToolTip(_translate("Dialog_corrections", "The original gravity reading refer to the location (height) of the sensor within the instrument. By using the vertical differences \"dhb\" and \"dhf\" provided in the CG-5observation files along with the observation data and the vertical gravity gradients (standard value or provided in the station data), the observations can be reduced to different refernce heights."))
         self.groupBox_corrections_ref_heights.setTitle(_translate("Dialog_corrections", "Reference height"))
         self.radioButton_corr_ref_heights_sensor.setToolTip(_translate("Dialog_corrections", "Sensor heigt (measurement heugt => no correction applied)"))

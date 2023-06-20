@@ -245,6 +245,7 @@ class LSM:
                                            'setup_df': survey.setup_df,
                                            'tide_correction_type': survey.setup_tide_correction_type,
                                            'reference_height_type': survey.setup_reference_height_type,
+                                           'setup_calc_method': survey.setup_calc_method,
                                            'setup_obs_list_df': survey.setup_obs_list_df}
                         setups[survey_name] = setup_data_dict
 
@@ -577,6 +578,22 @@ class LSM:
         except AttributeError:  # If "self" has no attribute "vg_pol_df" (not initialized)
             return None
 
+    @property
+    def check_for_unique_setup_id(self):
+        """Indicates whether setup IDs should be unique based on the setup data calculation method.
+
+        Returns
+        -------
+        bool : `True`, if the setup IDs should be unique, otherwise `False`.
+
+        Notes
+        -----
+        If observations were not aggregated within at least one setup, checking for unique setup IDs makes no sense.
+        """
+        for survey_name, setup_data in self.setups.items():
+            if setup_data['setup_calc_method'] == 'individual_obs':
+                return False
+        return True
 
 def bin_redundacy_components(mat_r):
     """Bin redundancy components for easier interpretatzion.
