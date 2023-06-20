@@ -1463,6 +1463,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 y, x = np.histogram(data, bins=bins)
                 self.plot_obs_results.plot(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
                 self.plot_obs_results.showGrid(x=True, y=True)
+
+                # Add legend with statistics:
+                mean = np.mean(data)
+                median = np.median(data)
+                std = np.std(data)
+                q25 = np.quantile(data, 0.25)
+                q75 = np.quantile(data, 0.75)
+                iqr = q75 - q25
+                legend = self.plot_obs_results.addLegend()
+                legend.setLabelTextColor('k')
+                style1 = pg.PlotDataItem(pen='w')
+                style2 = pg.PlotDataItem(pen='w')
+                style3 = pg.PlotDataItem(pen='w')
+                style4 = pg.PlotDataItem(pen='w')
+                legend.addItem(style1, f'Mean = {mean:0.3f}')
+                legend.addItem(style2, f'Std. = {std:0.3f}')
+                legend.addItem(style3, f'Median = {median:0.3f}')
+                legend.addItem(style4, f'IQR = {iqr:0.3f}')
+
                 self.plot_obs_results.autoRange()
         else:
             pass
@@ -2369,7 +2388,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                     except Exception as e:
                                         QMessageBox.critical(self, 'Error!', str(e))
                                         flag_export_successful = False
-
 
             if flag_export_successful:
                 self.statusBar().showMessage(f"Export to {output_path} successful!")
