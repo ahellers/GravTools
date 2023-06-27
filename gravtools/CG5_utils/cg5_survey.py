@@ -23,8 +23,6 @@ import pandas as pd
 import numpy as np
 import re
 import datetime as dt
-import matplotlib.pyplot as plt
-# from io import StringIO  # Python 3.x required
 
 from gravtools.models.exceptions import InvaliFileContentError
 from gravtools import settings
@@ -679,6 +677,10 @@ class CG5Survey:
     def plot_g_values(self, station_names=None):
         """Plot g-values of selected or all stations in the df.
 
+        Notes
+        -----
+        This method requires matplotlib as optional dependency!
+
         Parameters
         ----------
         station_names : list of str, optional
@@ -711,6 +713,7 @@ class CG5Survey:
 
 # Run as standalone program:
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     path = settings.PATH_OBS_FILE_CG5 + settings.NAME_OBS_FILE_CG5
     s1 = CG5Survey()
     s1.read_obs_file(path)

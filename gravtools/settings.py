@@ -180,6 +180,10 @@ NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS = {
     'Num. of bins': 'User defined number of bins (min. = 2, max. = 1000).'
 }
 
+# Time label format for y-ticks in time-series plots:
+# - Format string for datetime.strftime()
+Y_TICK_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+
 # --- Gerneral color settings ---
 DATUM_STATION_COLOR = (255, 204, 204)
 
