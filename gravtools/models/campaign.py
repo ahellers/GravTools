@@ -825,8 +825,7 @@ class Campaign:
         -------
         `Campaign` object
         """
-        with open(filename, 'rb') as handle:
-            campaign = pickle.load(handle)
+        campaign = pd.read_pickle(filename)
         if verbose:
             print(
                 f'Loaded campaign "{campaign.campaign_name}" with {campaign.number_of_stations} station(s) and {campaign.number_of_surveys} survey(s).')

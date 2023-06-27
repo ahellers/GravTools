@@ -92,7 +92,7 @@ class TimeAxisItem(pg.AxisItem):
 
     def tickStrings(self, values, scale, spacing) -> str:
         """Handles the x-axes tags representing date and time."""
-        return [dt.datetime.fromtimestamp(value, tz=pytz.utc) for value in values]
+        return [dt.datetime.fromtimestamp(value, tz=pytz.utc).strftime(settings.Y_TICK_DATETIME_FORMAT) for value in values]
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -1438,7 +1438,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if results_obs_df is not None:  # Data available for plotting
                 # Get data:
                 data = results_obs_df[column_name].values
-                if isinstance(data, np.object):
+                if isinstance(data, object):
                     data = data.astype(float)
                 obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
                     '1970-01-01T00:00:00')) / np.timedelta64(1, 's')
@@ -1458,7 +1458,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 bins = self.get_hist_bin_method()
                 # Get data:
                 data = results_obs_df[column_name].values
-                if isinstance(data, np.object):
+                if isinstance(data, object):
                     data = data.astype(float)
                 y, x = np.histogram(data, bins=bins)
                 self.plot_obs_results.plot(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
