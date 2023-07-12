@@ -166,8 +166,9 @@ class ResultsStationModel(QAbstractTableModel):
                     return Qt.AlignVCenter + Qt.AlignRight
 
             if role == Qt.BackgroundRole:
-                if self._data.iloc[index.row(), self._data_column_names.index('is_datum')]:
-                    return QtGui.QColor(settings.DATUM_STATION_COLOR[0], settings.DATUM_STATION_COLOR[1], settings.DATUM_STATION_COLOR[2])
+                if 'is_datum' in self._data_column_names:
+                    if self._data.iloc[index.row(), self._data_column_names.index('is_datum')]:
+                        return QtGui.QColor(settings.DATUM_STATION_COLOR[0], settings.DATUM_STATION_COLOR[1], settings.DATUM_STATION_COLOR[2])
 
         return None
 

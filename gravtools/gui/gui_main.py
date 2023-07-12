@@ -92,7 +92,7 @@ class TimeAxisItem(pg.AxisItem):
 
     def tickStrings(self, values, scale, spacing) -> str:
         """Handles the x-axes tags representing date and time."""
-        return [dt.datetime.fromtimestamp(value, tz=pytz.utc) for value in values]
+        return [dt.datetime.fromtimestamp(value, tz=pytz.utc).strftime(settings.Y_TICK_DATETIME_FORMAT) for value in values]
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -333,7 +333,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Change the output directory of the current campaign."""
         initial_folder_path = self.campaign.output_directory
         output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path,
-                                                           QtGui.QFileDialog.ShowDirsOnly)
+                                                           QFileDialog.ShowDirsOnly)
         if output_dir_name:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
             # operating system.
@@ -1074,7 +1074,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # setup_df['g_plot_mugal'] = setup_df['g_mugal'] - setup_df['g_est_mugal']
             setup_df.sort_values(by='delta_t_campaign_h', inplace=True)
             # Merge df => Colum with post-fit residuals ("v_obs_est_mugal") added to "setup_df":
-            if setup_data['setup_calc_method'] != 'individual_obs':
+            if not hasattr(setup_data, 'setup_calc_method'):  # to grand downward compatibility < v0.2.0
+                setup_calc_method = 'variance_weighted_mean'
+            else:
+                setup_calc_method = setup_data['setup_calc_method']
+            if setup_calc_method != 'individual_obs':
                 setup_obs_df_short = lsm_run.setup_obs_df.loc[
                     lsm_run.setup_obs_df['survey_name'] == survey_name, ['setup_id', 'v_obs_est_mugal']].copy(deep=True)
                 setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', on='setup_id')  # WEG!
@@ -1438,7 +1442,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if results_obs_df is not None:  # Data available for plotting
                 # Get data:
                 data = results_obs_df[column_name].values
-                if isinstance(data, np.object):
+                if isinstance(data, object):
                     data = data.astype(float)
                 obs_epoch_timestamps = (results_obs_df['ref_epoch_dt'].values - np.datetime64(
                     '1970-01-01T00:00:00')) / np.timedelta64(1, 's')
@@ -1458,7 +1462,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 bins = self.get_hist_bin_method()
                 # Get data:
                 data = results_obs_df[column_name].values
-                if isinstance(data, np.object):
+                if isinstance(data, object):
                     data = data.astype(float)
                 y, x = np.histogram(data, bins=bins)
                 self.plot_obs_results.plot(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
@@ -3083,11 +3087,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Enable or disable the station view options based on the number of stations in the model."""
         if len(self.station_model._data) > 0:
             self.groupBox_filter_options.setEnabled(True)
-            self.groupBox_edit_options.setEnabled(True)
             self.groupBox_stations_map_view_options.setEnabled(True)
         else:
             self.groupBox_filter_options.setEnabled(False)
-            self.groupBox_edit_options.setEnabled(False)
             self.groupBox_stations_map_view_options.setEnabled(False)
 
     def refresh_stations_table_model_and_view(self):
@@ -3323,7 +3325,7 @@ class DialogNewCampaign(QDialog, Ui_Dialog_new_Campaign):
 
         initial_folder_path = self.lineEdit_output_directory.text()
         output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path,
-                                                           QtGui.QFileDialog.ShowDirsOnly)
+                                                           QFileDialog.ShowDirsOnly)
 
         if output_dir_name:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
@@ -3430,7 +3432,7 @@ class DialogGisExportSettings(QDialog, Ui_Dialog_gis_settings):
             except:
                 initial_folder_path = os.getcwd()
         output_dir_name = QFileDialog.getExistingDirectory(self, 'Select a directory', initial_folder_path,
-                                                           QtGui.QFileDialog.ShowDirsOnly)
+                                                           QFileDialog.ShowDirsOnly)
 
         if output_dir_name:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying

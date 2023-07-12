@@ -109,16 +109,6 @@
              </widget>
             </item>
             <item>
-             <widget class="QGroupBox" name="groupBox_edit_options">
-              <property name="enabled">
-               <bool>false</bool>
-              </property>
-              <property name="title">
-               <string>Edit Options</string>
-              </property>
-             </widget>
-            </item>
-            <item>
              <spacer name="verticalSpacer">
               <property name="orientation">
                <enum>Qt::Vertical</enum>
@@ -1100,7 +1090,6 @@
     <addaction name="separator"/>
     <addaction name="menuAdd_Survey"/>
     <addaction name="menu_Add_Stations"/>
-    <addaction name="action_Add_Stations"/>
     <addaction name="separator"/>
     <addaction name="action_Export_Results"/>
     <addaction name="separator"/>
@@ -1120,7 +1109,6 @@
     </property>
     <addaction name="separator"/>
     <addaction name="action_Autoselection_settings"/>
-    <addaction name="actionEstimate_long_term_drift"/>
     <addaction name="action_Setup_data_options"/>
     <addaction name="action_Flag_observations"/>
    </widget>
