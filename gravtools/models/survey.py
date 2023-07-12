@@ -633,7 +633,7 @@ class Survey:
             if obs_df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
                 obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_localize('UTC')
             else:
-                if obs_df['obs_epoch'].dt.tz.zone != 'UTC':  # Change TZ to <UTC>
+                if obs_df['obs_epoch'].dt.tz != dt.timezone.utc:  # Change TZ to <UTC>
                     obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_convert('UTC')
 
             # Rename columns:
@@ -778,7 +778,7 @@ class Survey:
         if df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
             df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_localize('UTC')
         else:
-            if df['obs_epoch'].dt.tz.zone != 'UTC':  # Change TZ to <UTC>
+            if df['obs_epoch'].dt.tz != dt.timezone.utc:  # Change TZ to <UTC>
                 df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_convert('UTC')
 
         # Timestamp: https://stackoverflow.com/questions/40881876/python-pandas-convert-datetime-to-timestamp-effectively-through-dt-accessor
