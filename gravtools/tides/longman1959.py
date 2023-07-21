@@ -89,20 +89,22 @@ def calculate_julian_century(dates: Union[np.ndarray, pd.DatetimeIndex]):
     This function accepts either a numpy ndarray or pandas DatetimeIndex as input,
     and returns a 2-tuple of the corresponding Julian century decimals and floating
     point hours.
+
     Parameters
     ----------
     dates : Union[np.ndarray, pd.DatetimeIndex]
         1-dimensional array of DateTime objects to convert into
         century/hours arrays
+
     Notes
     -----
-    All DateTimes should be supplied as UTC values, using a timezone-naive DateTime object
+    All DateTimes should be supplied as UTC values, using a timezone-naive DateTime object.
     This can be accomplished either by using datetime.utcnow(), or by constructing datetime
     objects where the times are specified as UTC values
     Reference Date: 1899 December 31 12:00:00
-    Reference ordinal: 693961.5 (MATLAB Serial date from January 0, 0000)
-        Delta 366 days
+    Reference ordinal: 693961.5 (MATLAB Serial date from January 0, 0000) Delta 366 days
     Reference ordinal: 694327.5 (Python ordinal from January 1, 0001)
+
     Returns
     -------
     2-tuple of:
@@ -132,6 +134,7 @@ def solve_longman_tide(lat: np.ndarray, lon: np.ndarray, alt: np.ndarray, time: 
     supplied arrays, all arrays must be of the same shape (length and dimension)
     This function returns the Lunar, Solar, and Total gravity corrections as
     a 3-tuple of numpy 1-d arrays.
+
     Parameters
     ----------
     lat : np.ndarray
@@ -142,6 +145,7 @@ def solve_longman_tide(lat: np.ndarray, lon: np.ndarray, alt: np.ndarray, time: 
         1-dimensional array of float values denoting altitude in meters
     time : np.ndarray
         1-dimensional array of DateTime objects denoting the time series
+
     Returns
     -------
     3-Tuple
@@ -292,6 +296,7 @@ def solve_point_corr(lat: float, lon: float, alt: float, t0=datetime.utcnow(), n
     an increment, and count (n) of datapoints to generate.
     Default parameters are supplied that will generate a correction series with one second increment over a one hour
     period, with start time being the time of execution.
+
     Parameters
     ----------
     lat : float
@@ -307,13 +312,15 @@ def solve_point_corr(lat: float, lon: float, alt: float, t0=datetime.utcnow(), n
     increment : String
         Increment between data points, uses Pandas offset aliases:
         https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Timedelta.html#pandas.Timedelta
+
         Common options:
-            H : Hourly Frequency
-            T, min : Minutely frequency
-            S : Secondly frequency
-            L, ms : millisecond frequency
-            U, us : microsecond frequency
-            N : nanosecond frequency
+            * H : Hourly Frequency
+            * T, min : Minutely frequency
+            * S : Secondly frequency
+            * L, ms : millisecond frequency
+            * U, us : microsecond frequency
+            * N : nanosecond frequency
+
     Returns
     -------
     df : pd.DataFrame
