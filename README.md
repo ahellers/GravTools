@@ -2,16 +2,13 @@
 GravTools is an open source software toolbox for processing relative gravity surveys developed at the Austrian
 Federal Office of Metrology and Surveying (BEV).  
 
-The source code is hosted on github.com: https://github.com/ahellers/GravTools
+ - The source code is hosted on github.com: https://github.com/ahellers/GravTools
+ - The python package is hosted at: https://pypi.org/project/grav-toolbox/
 
 # Installation
 
-## Install python package from pypi.org (Linux shell)
-For installation in a virtual python environment follow these steps: 
-
-1. Create a new virtual environment in the directory "venv": `python3 -n venv env`
-2. Activate the virtual env.: `source env/bin/activate`
-3. Install the GravTools package: `pip install grav-toolbox`
+## Install python package with pip:
+`pip install grav-toolbox`
 
 ### Optional dependency for GIS data export
 GravTools allows to export station- und observation-results to shapefiles for import and analysis in GIS programs.
@@ -23,12 +20,12 @@ To enable these features the optional package "geopandas" needs to be installed 
 * **2. Install QT5, if required**
   * `sudo yum install qt5-qtbase-devel.x86_64`
   
-## Installation issues on Ubuntu (20.04):
+## Installation issues on Ubuntu 20.04:
 After just installing PyQt5 with pip3 the following error occurred when trying to actually run a PyQt GUI: qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
 This issue was resolved by installing the QT dev tools (Designer, etc.): 
-sudo apt-get install qttools5-dev-tools
+`sudo apt-get install qttools5-dev-tools`
 
-## Test installation with setuptools 
+## Test installation
 In a virtual environment.
 
 * Editable installation with pip: `pip install -e .`
@@ -46,36 +43,34 @@ With setuptools and the build package.
 
 The created package (wheel and source distribution) is located in the "dist" directory.
 
-## Upload to pypi.org
-
+## Push package to pypi.org
 Define user credentials in /home/.pypirc
 
-* `twine upload --verbose dist/*`
+* `twine upload --verbose dist/*` or
+* `make pypi_push`
 
 
 # Create a stand-alone Windows executable
 For creating a Windows executable (stand-alone application, without python installation) the 
-package "auto-py-to-exe" is used (see: https://pypi.org/project/auto-py-to-exe/). This is a 
+package "auto-py-to-exe" can be used (see: https://pypi.org/project/auto-py-to-exe/). This is a 
 simple graphical user interface (based on the chrome browser) that allows to define all settings 
-for the package "PyInstaller" (see: https://www.pyinstaller.org/). auto-py-to-exe and all 
-required dependencies are listet in this project's requirements.txt file. 
-Creating a Windows executable with the mentioned packages was tested on a Windows 10 computer. 
-On Linux (Ubuntu 16.x) it failed to create an executable file, although no obvious errors occured.
+for the package "PyInstaller" (see: https://www.pyinstaller.org/). 
+
+Creating a Windows executable with auto-py-to-exe was tested on Windows 10. 
 Follow these steps to create an executable on a Windows machine:
 * **1. Install Python3**
   * With installer from https://www.python.org/downloads/windows/
   * Add python3.x to the Windows search path and install pip!
-* **2. Pull the project files from git as described above.**
-* **3. Install virtualenv and create a virtual environment** in CMD
+* **2. Install virtualenv and create a virtual environment** in CMD
   * a. `pip install virtualenv`
   * b. Change to project directory (`cd ..`)
   * c. Create virtual environment: `virtualenv env`
   * d. Activate it: `env\Scripts\activate.bat`
     * Deactivate with `deactivate`
-* **4. Install gravtools: `pip install gravtools-x.x.x.tar.gz`
-    * If a windiws executable should be created install auto-py-to-exe (`pip install auto-py-to-exe`)
-* **5. Try and run the application**
-  * Type `gt` in the command line interface (virtual environmernt must be active)
+* **3. Install gravtools**: `pip install gravtools[gis]`
+* **4. Install auto-py-to-exe**: `pip install auto-py-to-exe`
+* **5. Try to run the GravTools**
+  * Type `gt` in the command line interface (virtual environment must be active)
 * **6. Create exe with auto-py-to-exe**
   * Run the CMD Window as administrator!
   * a. Start auto-py-to-exe in CMD: `auto-py-to-exe`
@@ -83,17 +78,10 @@ Follow these steps to create an executable on a Windows machine:
   * c. Select "One File" and "Console based" (in addition to teh GUI a console will appear)
   * d. Start conversion py pressing the big blue button on the GUI bottom
   * e. The exe file will be save at a new "output" directory. Move the file to: "Windows_executables"
- 
-# Comments on requirements.txt file:
-* Two entries can be deleted:
-  * -e git+git@gitlab.com:Heller182/grav.git@fe528c0769502e84a06be67a742032cacfd386df#egg=gravtools
-  * pkg-resources==0.0.0 (created due a bug when using Linux, see: https://stackoverflow.com/questions/39577984/what-is-pkg-resources-0-0-0-in-output-of-pip-freeze-command)
-
 
 # Create HTML documentation with sphinx:
 Sphinx is used to create an API documentation based on docstrings. Run make in the gravtools/doc directory: 
 * `>>>make html_doc`
-
 
 # Guidelines and conventions
 

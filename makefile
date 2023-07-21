@@ -1,15 +1,6 @@
-# Makefile for project gravtools
+# Makefile for project GravTools
 
-# Test run
-test:
-	$(info Test-run for this makefile!)
-	$(info Yeah!!)
-
-# Project initialization
-init:
-	pip install -r requirements.txt
-
-# Package test (install in current virtual environment, editable install with pip)
+# Package test (editable install in current virtual environment)
 test_pack:
 	pip install -e .
 
