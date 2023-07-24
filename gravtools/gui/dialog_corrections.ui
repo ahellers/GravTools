@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>362</width>
-    <height>419</height>
+    <height>437</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -182,6 +182,19 @@
           </item>
          </layout>
         </item>
+        <item>
+         <widget class="QCheckBox" name="checkBox_corrections_atm_pressure">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use measured pressure values provided in the input observation files to correct atmosperhic pressure variations. Be aware that this correction is only applied, if pressure measurements are provided along with the observaiton data.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>Atmospheric pressure variations</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
        </layout>
       </widget>
      </item>
@@ -283,7 +296,7 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_corrections_tides"/>
   <buttongroup name="buttonGroup_corrections_ref_heights"/>
+  <buttongroup name="buttonGroup_corrections_tides"/>
  </buttongroups>
 </ui>
