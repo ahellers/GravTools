@@ -32,3 +32,4 @@
 ##### Pandas: Show all columns #####
 pd.options.display.width = 0  # Pandas auto. detects the width of the terminal window
 pd.set_option('display.max_columns', None)  # Show all columns
+pd.set_option('display.max_rows', None)
