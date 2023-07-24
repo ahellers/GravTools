@@ -26,6 +26,7 @@ import pyqtgraph as pg
 from gravtools.gui.dialog_correction_time_series import Ui_DialogCorrectionTimeSeries
 from gravtools.gui.dlg_load_tsf_file import DialogLoadTsfFile
 from gravtools import __version__
+from gravtools import settings
 
 # Set splitter stretch:
 _SPLITTER_STRETCH_LEFT = 1
@@ -41,7 +42,7 @@ class TimeAxisItem(pg.AxisItem):
     """
     def tickStrings(self, values, scale, spacing) -> str:
         """Handles the x-axes tags representing date and time."""
-        return [dt.datetime.fromtimestamp(value, tz=pytz.utc) for value in values]
+        return [dt.datetime.fromtimestamp(value, tz=pytz.utc).strftime(settings.Y_TICK_DATETIME_FORMAT) for value in values]
 
 class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
     """Dialog for managing time series data for observation corrections."""
