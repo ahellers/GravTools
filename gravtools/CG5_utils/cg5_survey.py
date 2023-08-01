@@ -426,7 +426,7 @@ class CG5Survey:
                             'station_name',  # Station name : str
                             'dhf_m',  # Distance between instrument top and physical reference point [m]
                             'dhb_m',  # Distance between instrument top and ground [m]
-                            'p_hpa',  # Atmospheric pressure [hPa]
+                            'atm_pres_hpa',  # Measured atmospheric pressure [hPa]
                             'setup_id',  # Unique ID of this observation (=setup)
                             )
                             # obs_epoch : datetime object (added to df later)
@@ -593,7 +593,7 @@ class CG5Survey:
             station_name = self.resolve_station_name(obs_dict['station_name'])
             dhf_m = float(obs_dict['dh_cm']) * 1e-2
             dhb_m = float(obs_dict['dh_cm']) * 1e-2
-            p_hpa = np.nan
+            atm_pres_hpa = None
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
@@ -605,7 +605,7 @@ class CG5Survey:
                 line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
-                line_items.append(p_hpa)
+                line_items.append(atm_pres_hpa)
                 line_items.append(setup_id)
                 obs_list.append(line_items)
 
@@ -616,7 +616,7 @@ class CG5Survey:
             station_name = self.resolve_station_name(obs_dict['station_name'])
             dhf_m = float(obs_dict['dh_cm']) * 1e-2
             dhb_m = float(obs_dict['dh_cm']) * 1e-2
-            p_hpa = float(obs_dict['pres'])
+            atm_pres_hpa = float(obs_dict['pres'])
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
@@ -628,7 +628,7 @@ class CG5Survey:
                 line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
-                line_items.append(p_hpa)
+                line_items.append(atm_pres_hpa)
                 line_items.append(setup_id)
                 obs_list.append(line_items)
 
@@ -640,7 +640,7 @@ class CG5Survey:
             station_name = self.resolve_station_name(obs_dict['station_name'])
             dhf_m = float(obs_dict['dhf_cm']) * 1e-2
             dhb_m = float(obs_dict['dhb_cm']) * 1e-2
-            p_hpa = np.nan
+            atm_pres_hpa = None
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
@@ -652,7 +652,7 @@ class CG5Survey:
                 line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
-                line_items.append(p_hpa)
+                line_items.append(atm_pres_hpa)
                 line_items.append(setup_id)
                 obs_list.append(line_items)
 
@@ -665,7 +665,7 @@ class CG5Survey:
             station_name = self.resolve_station_name(obs_dict['station_name'])
             dhf_m = float(obs_dict['dhf_cm']) * 1e-2
             dhb_m = float(obs_dict['dhb_cm']) * 1e-2
-            p_hpa = float(obs_dict['pres'])
+            atm_pres_hpa = float(obs_dict['pres'])
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
@@ -677,7 +677,7 @@ class CG5Survey:
                 line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
-                line_items.append(p_hpa)
+                line_items.append(atm_pres_hpa)
                 line_items.append(setup_id)
                 obs_list.append(line_items)
 
@@ -689,11 +689,11 @@ class CG5Survey:
         setup_ids_diplicates = []
         for setup_id in setup_ids:
             tmp_filter = self.obs_df['setup_id'] == setup_id
-            if (~self.obs_df.loc[tmp_filter, 'p_hpa'].isna()).any():  # Entries with pressure found
+            if (~self.obs_df.loc[tmp_filter, 'atm_pres_hpa'].isna()).any():  # Entries with pressure found
                 setup_ids_diplicates.append(setup_id)
 
         if setup_ids_diplicates:
-            tmp_filter = ~(self.obs_df['p_hpa'].isna() & self.obs_df['setup_id'].isin(setup_ids_diplicates))
+            tmp_filter = ~(self.obs_df['atm_pres_hpa'].isna() & self.obs_df['setup_id'].isin(setup_ids_diplicates))
             self.obs_df = self.obs_df.loc[tmp_filter].copy(deep=True)
 
         # Convert numeric columns to numeric dtypes:

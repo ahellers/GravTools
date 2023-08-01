@@ -2919,11 +2919,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # QMessageBox.critical('Error!', error_msg)
 
         if flag_selection_ok:
-            self.campaign.reduce_observations_in_all_surveys(
-                target_ref_height=target_ref_height,
-                target_tide_corr=target_tide_corr,
-                tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
-                verbose=IS_VERBOSE)
+            try:
+                self.campaign.reduce_observations_in_all_surveys(
+                    target_ref_height=target_ref_height,
+                    target_tide_corr=target_tide_corr,
+                    tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
+                    verbose=IS_VERBOSE)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+
 
     @pyqtSlot()
     def on_menu_file_new_campaign(self):

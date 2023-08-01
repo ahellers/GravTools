@@ -216,6 +216,8 @@ class Survey:
             Tidal correction [µGal] that is applied to `g_red_mugal`.
         - duration_sec : int
             Duration of each observation from the CG-5 observation files. Given in seconds.
+        - atm_pres_hpa : float, optional (default=None)
+            Measured atmospheric pressure in hPa. Used for correcting atmospheric pressure variations.
 
     ref_delta_t_dt : datetime, optional (default=None)
         Reference time for relative times (), e.g. reference time t0 the for drift polynomial adjustment.
@@ -279,7 +281,12 @@ class Survey:
         'vg_mugalm',  # vertical gradient [µGal/m]
         'corr_tide_red_mugal',  # Alternative tidal correction [µGal], optional
         'duration_sec',  # Duration [sec]
+        'atm_pres_hpa',  # Atmospheric pressure [hPa]
     )
+
+    _OBS_DF_INIT_COL_IF_MISSING = {
+        'atm_pres_hpa': None,
+    }
 
     _SETUP_DF_COLUMNS = (
         'station_name',  # Name of station (str)
@@ -904,8 +911,8 @@ class Survey:
         """
         self.obs_df.at[obs_idx, 'keep_obs'] = flag_activate
 
-    def is_valid_obs_df(self, verbose=False) -> bool:
-        """Check, whether the observations DataFrame (`obs_df`) is valid.
+    def check_obs_df(self, verbose=True) -> bool:
+        """Check, whether the observations DataFrame (`obs_df`) is valid and try to add missing columns.
 
         This method carried out the following checks:
 
@@ -913,31 +920,50 @@ class Survey:
 
           - Does `obs_df` have all required columns?
 
+          - If columns defined in :py:obj:`.Survey._OBS_DF_INIT_COL_IF_MISSING` are missing, they are added with the
+            defined initial value.
+
         Parameters
         ----------
         verbose : bool, optional (default=False)
-            If True, messages are printed that indicate why `obs_df` is not valid in case.
+            If True, messages are printed in the command line interface.
 
         Returns
         -------
-        bool
+        is_valid : bool
             True, if `obs_df` is valid.
+        error_msg : str
+            Error Message. Empty if no errors occured.
         """
         is_valid = True
+        error_msg = ''
 
+        # Invalid columns?
         invalid_cols = list(set(self.obs_df.columns) - set(self._OBS_DF_COLUMNS))
         if len(invalid_cols) > 0:
             is_valid = False
+            error_msg = f'The following columns in the observation dataframe of survey "{self.name}" are not valid: {", ".join(invalid_cols)}. '
             if verbose:
-                print(f'The following columns are not valid: {", ".join(invalid_cols)}')
+                print(error_msg)
 
+        # Missing columns?
         invalid_cols = list(set(self._OBS_DF_COLUMNS) - set(self.obs_df.columns))
         if len(invalid_cols) > 0:
-            is_valid = False
-            if verbose:
-                print(f'The following columns are missing: {", ".join(invalid_cols)}')
+            # Add columns with the default values, if defined in _OBS_DF_INIT_COL_IF_MISSING:
+            for invalid_col in invalid_cols:
+                if invalid_col in self._OBS_DF_INIT_COL_IF_MISSING:
+                    self.obs_df[invalid_col] = self._OBS_DF_INIT_COL_IF_MISSING[invalid_col]
+            # Check again:
+            self.obs_df = self._obs_df_reorder_columns(self.obs_df)
+            invalid_cols = list(set(self._OBS_DF_COLUMNS) - set(self.obs_df.columns))
+            if len(invalid_cols) > 0:
+                is_valid = False
+                error_msg_tmp = f'The following columns in the observation dataframe of survey "{self.name}" are missing: {", ".join(invalid_cols)}. '
+                error_msg = error_msg + error_msg_tmp
+                if verbose:
+                    print(error_msg_tmp)
 
-        return is_valid
+        return is_valid, error_msg
 
     def obs_df_drop_redundant_columns(self):
         """Drop all columns of obs_df that are not listed in self._OBS_DF_COLUMNS"""
@@ -1030,8 +1056,11 @@ class Survey:
 
         # Drop columns that are not required and check for validity:
         self.obs_df_drop_redundant_columns()
-        if not self.is_valid_obs_df():
-            raise AssertionError('The DataFrame "obs_df" is not valid.')
+        # The check below is commented out
+        # TODO
+        valid_flag, error_msg = self.check_obs_df(verbose=True)
+        if not valid_flag:
+            raise RuntimeError(error_msg)
 
     def reduce_observations(self,
                             target_ref_height: str = None,
@@ -1878,3 +1907,6 @@ class Survey:
             return None
 
 
+# TODO:
+# Use "check_ob_df" to check obs data, when loading campaign data from pickle files!
+# - Add a method in the Campaign object that is invoked when loading from pickle files!
