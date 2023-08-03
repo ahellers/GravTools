@@ -332,8 +332,10 @@ class Campaign:
         """int : Returns the number of stations in this campaign."""
         return self.stations.get_number_of_stations
 
-    def reduce_observations_in_all_surveys(self, target_ref_height=None,
+    def reduce_observations_in_all_surveys(self,
+                                           target_ref_height=None,
                                            target_tide_corr=None,
+                                           target_atm_pres_corr=None,
                                            tide_corr_timeseries_interpol_method='',
                                            verbose=False):
         """Reduce the observed gravity by applying the specified corrections.
@@ -354,6 +356,10 @@ class Campaign:
             The target tidal correction type specifies what kind of tidal correction will be applied. Valid types have
             to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
             tidal corrections are not considered here (tidal corrections are inherited from input data).
+        target_atm_pres_corr : str (default = `None`)
+            Specifying the atmospheric press ure correction type to be applied to all surveys. Valid types to be listed
+            in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. Default is `None` indicating that the respective
+            corrections of the input data are not changed.
         tide_corr_timeseries_interpol_method : str, optional (default='')
             Interpolation method used to calculate tidal corrections from time series data. If tidal corrections are
             obtained from other sources or models, this attribute is irrelevant and has to be empty!
@@ -372,6 +378,7 @@ class Campaign:
             survey.reduce_observations(
                 target_ref_height=target_ref_height,
                 target_tide_corr=target_tide_corr,
+                target_atm_pres_corr=target_atm_pres_corr,
                 tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                 correction_time_series=self.correction_time_series,
                 verbose=verbose)
@@ -829,7 +836,30 @@ class Campaign:
         if verbose:
             print(
                 f'Loaded campaign "{campaign.campaign_name}" with {campaign.number_of_stations} station(s) and {campaign.number_of_surveys} survey(s).')
+        campaign.check_survey_data(verbose=verbose)
         return campaign
+
+    def check_survey_data(self, verbose: bool = True):
+        """Check survey data in campaign, correct missing elements or raise an error.
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        Returns
+        -------
+        `Campaign` object
+        """
+        for survey_name, survey in self.surveys.items():
+            # Check observation dataframe:
+            is_valid, error_msg = survey.check_obs_df(verbose=verbose)
+            if not is_valid:
+                if verbose:
+                    print('Error: ' + error_msg)
+                raise RuntimeError(error_msg)
+            # Check survey object attributes:
+            survey.init_missing_attributes(verbose=verbose)
 
     def set_output_directory(self, output_directory):
         """Change the campaign's output directory.

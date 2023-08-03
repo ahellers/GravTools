@@ -245,6 +245,7 @@ class LSM:
                                            'setup_df': survey.setup_df,
                                            'tide_correction_type': survey.setup_tide_correction_type,
                                            'reference_height_type': survey.setup_reference_height_type,
+                                           'atm_pres_correction_type': survey.setup_atm_pres_correction_type,
                                            'setup_calc_method': survey.setup_calc_method,
                                            'setup_obs_list_df': survey.setup_obs_list_df}
                         setups[survey_name] = setup_data_dict

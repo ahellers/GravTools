@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>362</width>
-    <height>437</height>
+    <width>380</width>
+    <height>451</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -186,6 +186,19 @@
       </widget>
      </item>
      <item>
+      <widget class="QCheckBox" name="checkBox_corrections_atm_pressure">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use measured pressure values provided in the input observation files to correct atmosperhic pressure variations. Be aware that this correction is only applied, if pressure measurements are provided along with the observaiton data. &lt;/p&gt;&lt;p&gt;The normal air pressure according to ISO 2533:1975 is used to calculate the corrections.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Atmospheric pressure variations (ISO 2533:1975)</string>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
       <spacer name="verticalSpacer">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
@@ -197,19 +210,6 @@
         </size>
        </property>
       </spacer>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="checkBox_corrections_atm_pressure">
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use measured pressure values provided in the input observation files to correct atmosperhic pressure variations. Be aware that this correction is only applied, if pressure measurements are provided along with the observaiton data.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Atmospheric pressure variations</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
-       </property>
-      </widget>
      </item>
      <item>
       <widget class="QDialogButtonBox" name="buttonBox">
