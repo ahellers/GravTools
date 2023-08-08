@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>362</width>
-    <height>419</height>
+    <width>398</width>
+    <height>537</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,203 +15,277 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_6">
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout_5">
-     <item>
-      <widget class="QGroupBox" name="groupBox_corrections_tides">
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Options for tidal corretio of observation data.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="title">
-        <string>Tidal correction</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_3">
+    <widget class="QGroupBox" name="groupBox_corrections_tides">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Options for tidal corretio of observation data.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="title">
+      <string>Tidal correction</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <item>
-           <widget class="QRadioButton" name="radioButton_corr_tides_no_correction">
-            <property name="toolTip">
-             <string>No tidal corrections applied.</string>
-            </property>
-            <property name="text">
-             <string>No correction</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup_corrections_tides</string>
-            </attribute>
-           </widget>
-          </item>
-          <item>
-           <widget class="QRadioButton" name="radioButton_corr_tides_cg5_model">
-            <property name="toolTip">
-             <string>The tidal correction calculated by the CG-5 instrument (Longman, 1959) is applied.</string>
-            </property>
-            <property name="text">
-             <string>CG-5 model (Longman, 1959)</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup_corrections_tides</string>
-            </attribute>
-           </widget>
-          </item>
-          <item>
-           <widget class="QRadioButton" name="radioButton_corr_tides_longman1959">
-            <property name="toolTip">
-             <string>Tidal corrections are calculated ans applied in GravTools by evaluationg the model by Longman (1959). </string>
-            </property>
-            <property name="text">
-             <string>Longman (1959)</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup_corrections_tides</string>
-            </attribute>
-           </widget>
-          </item>
-          <item>
-           <widget class="QRadioButton" name="radioButton_corr_tides_time_series">
-            <property name="toolTip">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Interpolate corrections from time series data. The python module &lt;span style=&quot; font-style:italic;&quot;&gt;scipy.interpolation.interp1&lt;/span&gt; is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-            <property name="text">
-             <string>Interpolate from time series</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup_corrections_tides</string>
-            </attribute>
-           </widget>
-          </item>
-         </layout>
+         <widget class="QRadioButton" name="radioButton_corr_tides_no_correction">
+          <property name="toolTip">
+           <string>No tidal corrections applied.</string>
+          </property>
+          <property name="text">
+           <string>No correction</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_corrections_tides</string>
+          </attribute>
+         </widget>
         </item>
         <item>
-         <layout class="QFormLayout" name="formLayout">
+         <widget class="QRadioButton" name="radioButton_corr_tides_cg5_model">
+          <property name="toolTip">
+           <string>The tidal correction calculated by the CG-5 instrument (Longman, 1959) is applied.</string>
+          </property>
+          <property name="text">
+           <string>CG-5 model (Longman, 1959)</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_corrections_tides</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_corr_tides_longman1959">
+          <property name="toolTip">
+           <string>Tidal corrections are calculated ans applied in GravTools by evaluationg the model by Longman (1959). </string>
+          </property>
+          <property name="text">
+           <string>Longman (1959)</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_corrections_tides</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_corr_tides_time_series">
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Interpolate corrections from time series data. The python module &lt;span style=&quot; font-style:italic;&quot;&gt;scipy.interpolation.interp1&lt;/span&gt; is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>Interpolate from time series</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_corrections_tides</string>
+          </attribute>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QFormLayout" name="formLayout">
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_tides_interpolation_method">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>Method for the interpolation of correction time series.</string>
+          </property>
+          <property name="text">
+           <string>Interpolation method</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QComboBox" name="comboBox_tides_interpolation_method">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="toolTip">
+           <string>Method for the interpolation of correction time series.</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_corrections_ref_heights">
+     <property name="toolTip">
+      <string>The original gravity reading refer to the location (height) of the sensor within the instrument. By using the vertical differences &quot;dhb&quot; and &quot;dhf&quot; provided in the CG-5observation files along with the observation data and the vertical gravity gradients (standard value or provided in the station data), the observations can be reduced to different refernce heights.</string>
+     </property>
+     <property name="title">
+      <string>Reference height</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_4">
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QRadioButton" name="radioButton_corr_ref_heights_sensor">
+          <property name="toolTip">
+           <string>Sensor heigt (measurement heugt =&gt; no correction applied)</string>
+          </property>
+          <property name="text">
+           <string>Sensor</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_corrections_ref_heights</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_corr_ref_heights_instrument_top">
+          <property name="toolTip">
+           <string>Top of the gravimeter.</string>
+          </property>
+          <property name="text">
+           <string>Instrument top</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_corrections_ref_heights</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_corr_ref_heights_ground">
+          <property name="toolTip">
+           <string>Ground level at the station.</string>
+          </property>
+          <property name="text">
+           <string>Ground</string>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_corrections_ref_heights</string>
+          </attribute>
+         </widget>
+        </item>
+        <item>
+         <widget class="QRadioButton" name="radioButton_corr_ref_heights_control_point">
+          <property name="toolTip">
+           <string>Height of the control point.</string>
+          </property>
+          <property name="text">
+           <string>Control point</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+          <attribute name="buttonGroup">
+           <string notr="true">buttonGroup_corrections_ref_heights</string>
+          </attribute>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_atm_pres_correction">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Corrections of atmospheric pressure variations.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="title">
+      <string>Atmospheric pressure variations</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_5">
+      <item>
+       <widget class="QCheckBox" name="checkBox_corrections_atm_pressure">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use measured pressure values (p&lt;span style=&quot; vertical-align:sub;&quot;&gt;obs, &lt;/span&gt;in hPa) provided in the input observation files to correct atmosperhic pressure variations. Be aware that this correction is only applied, if pressure measurements are provided along with the observaiton data. &lt;/p&gt;&lt;p&gt;The correction p&lt;span style=&quot; vertical-align:sub;&quot;&gt;corr&lt;/span&gt; in µGal is calculated by multiplying the difference between normal air pressure according to ISO 2533:1975 (p&lt;span style=&quot; vertical-align:sub;&quot;&gt;n&lt;/span&gt;) and p&lt;span style=&quot; vertical-align:sub;&quot;&gt;obs&lt;/span&gt; with the admittance factor k defined below: p&lt;span style=&quot; vertical-align:sub;&quot;&gt;corr&lt;/span&gt; = (p&lt;span style=&quot; vertical-align:sub;&quot;&gt;obs&lt;/span&gt; - p&lt;span style=&quot; vertical-align:sub;&quot;&gt;n&lt;/span&gt;) * k&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Atmospheric pressure variations (ISO 2533:1975)</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <layout class="QFormLayout" name="formLayout_2">
           <item row="0" column="0">
-           <widget class="QLabel" name="label_tides_interpolation_method">
+           <widget class="QLabel" name="label_atm_pres_admittance">
             <property name="enabled">
              <bool>false</bool>
             </property>
             <property name="toolTip">
-             <string>Method for the interpolation of correction time series.</string>
+             <string>Admittance factor for the correction of atmospheric pressure variations based on measured and normal pressure.</string>
             </property>
             <property name="text">
-             <string>Interpolation method</string>
+             <string>Admittance factor</string>
             </property>
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QComboBox" name="comboBox_tides_interpolation_method">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_atm_pres_admittance">
             <property name="enabled">
              <bool>false</bool>
             </property>
             <property name="toolTip">
-             <string>Method for the interpolation of correction time series.</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Admittance factor for the correction of atmospheric pressure variations based on measured and normal pressure.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="minimum">
+             <double>-99.989999999999995</double>
+            </property>
+            <property name="singleStep">
+             <double>0.100000000000000</double>
+            </property>
+            <property name="value">
+             <double>0.300000000000000</double>
             </property>
            </widget>
           </item>
          </layout>
         </item>
        </layout>
-      </widget>
-     </item>
-     <item>
-      <widget class="QGroupBox" name="groupBox_corrections_ref_heights">
-       <property name="toolTip">
-        <string>The original gravity reading refer to the location (height) of the sensor within the instrument. By using the vertical differences &quot;dhb&quot; and &quot;dhf&quot; provided in the CG-5observation files along with the observation data and the vertical gravity gradients (standard value or provided in the station data), the observations can be reduced to different refernce heights.</string>
-       </property>
-       <property name="title">
-        <string>Reference height</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_4">
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_2">
-          <item>
-           <widget class="QRadioButton" name="radioButton_corr_ref_heights_sensor">
-            <property name="toolTip">
-             <string>Sensor heigt (measurement heugt =&gt; no correction applied)</string>
-            </property>
-            <property name="text">
-             <string>Sensor</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup_corrections_ref_heights</string>
-            </attribute>
-           </widget>
-          </item>
-          <item>
-           <widget class="QRadioButton" name="radioButton_corr_ref_heights_instrument_top">
-            <property name="toolTip">
-             <string>Top of the gravimeter.</string>
-            </property>
-            <property name="text">
-             <string>Instrument top</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup_corrections_ref_heights</string>
-            </attribute>
-           </widget>
-          </item>
-          <item>
-           <widget class="QRadioButton" name="radioButton_corr_ref_heights_ground">
-            <property name="toolTip">
-             <string>Ground level at the station.</string>
-            </property>
-            <property name="text">
-             <string>Ground</string>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup_corrections_ref_heights</string>
-            </attribute>
-           </widget>
-          </item>
-          <item>
-           <widget class="QRadioButton" name="radioButton_corr_ref_heights_control_point">
-            <property name="toolTip">
-             <string>Height of the control point.</string>
-            </property>
-            <property name="text">
-             <string>Control point</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-            <attribute name="buttonGroup">
-             <string notr="true">buttonGroup_corrections_ref_heights</string>
-            </attribute>
-           </widget>
-          </item>
-         </layout>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item>
-      <spacer name="verticalSpacer">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QDialogButtonBox" name="buttonBox">
-       <property name="toolTip">
-        <string>When clicking OK the corrections are applied on all observations in the current campaign.</string>
-       </property>
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="standardButtons">
-        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-       </property>
-      </widget>
-     </item>
-    </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>19</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="toolTip">
+      <string>When clicking OK the corrections are applied on all observations in the current campaign.</string>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
@@ -281,9 +355,41 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>checkBox_corrections_atm_pressure</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>label_atm_pres_admittance</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>198</x>
+     <y>409</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>237</x>
+     <y>441</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_corrections_atm_pressure</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>doubleSpinBox_atm_pres_admittance</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>198</x>
+     <y>409</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>340</x>
+     <y>441</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_corrections_tides"/>
   <buttongroup name="buttonGroup_corrections_ref_heights"/>
+  <buttongroup name="buttonGroup_corrections_tides"/>
  </buttongroups>
 </ui>

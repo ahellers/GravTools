@@ -40,3 +40,5 @@ class DialogCorrections(QDialog, Ui_Dialog_corrections):
             self.comboBox_tides_interpolation_method.setItemData(idx, tooltip, QtCore.Qt.ToolTipRole)
             if method_name == settings.SCIPY_INTERP1_INTERPOLATION_DEFAULT_METHOD:
                 self.comboBox_tides_interpolation_method.setCurrentIndex(idx)
+
+        self.doubleSpinBox_atm_pres_admittance.setValue(settings.ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT)

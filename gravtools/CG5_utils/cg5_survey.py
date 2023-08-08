@@ -77,7 +77,7 @@ class CG5SurveyParameters:
     client : str
         Client of survey.
     operator : str
-        Name of the survey'S operator.
+        Name of the survey's operator.
     long_deg : float
         Geographical longitude at begin of survey [°].
     lat_deg : float
@@ -404,7 +404,7 @@ class CG5Survey:
     options : :py:class:`.CG5OptionsParameters`
         Instrumental options from the Options block in the observation file.
     obs_df : pandas data frame
-       Contains the actual observation data records.
+       Contains the actual observation data records with the colums defined in `self._OBS_DF_COLUMN_NAMES`.
     """
 
     # Column names of the dataframe containing tha actual observation data:
@@ -426,6 +426,7 @@ class CG5Survey:
                             'station_name',  # Station name : str
                             'dhf_m',  # Distance between instrument top and physical reference point [m]
                             'dhb_m',  # Distance between instrument top and ground [m]
+                            'atm_pres_hpa',  # Measured atmospheric pressure [hPa]
                             'setup_id',  # Unique ID of this observation (=setup)
                             )
                             # obs_epoch : datetime object (added to df later)
@@ -469,11 +470,6 @@ class CG5Survey:
             self.read_obs_file(obs_filename)
         else:
             self.obs_df = None  # Initialize as None
-
-    # def set_params(self, param_dict):
-    #     for param in param_dict:
-    #         if param in self.PARAM_ATTRIBUTES:
-    #             self.__setattr__("param_" + param, param_dict[param])
 
     def __str__(self):
         if self.obs_df is None:
@@ -590,34 +586,14 @@ class CG5Survey:
 
         obs_list = []  # Collect all obs data in this list and then convert to pd dataframe.
 
-        # 1.) Only Station name
-        expr = "\/\s+Note:\s+(?P<station_name>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
-        dhf_m = 0.0
-        dhb_m = 0.0
-        for obs_block in re.finditer(expr, str_obs_file):
-            obs_dict = obs_block.groupdict()
-            station_name = self.resolve_station_name(obs_dict['station_name'])
-            lines = obs_dict['obs_data'].splitlines()
-            # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
-            #  - To distinguish multiple setups (with multiple observations each) on multiple stations
-            time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
-            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
-
-            for line in lines:
-                line_items = line.split()
-                line_items.append(station_name)
-                line_items.append(dhf_m)
-                line_items.append(dhb_m)
-                line_items.append(setup_id)
-                obs_list.append(line_items)
-
-        # 2.) Station name & dbh=dhf
-        expr = "\/\s+Note:\s+(?P<station_name>\S+)\s+(?P<dh_cm>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
+        # 1.) Station name & dbh=dhf
+        expr = '\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dh_cm>-?[.0-9]+)\s*[\r?\n](?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r?\n])+)'
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
             station_name = self.resolve_station_name(obs_dict['station_name'])
             dhf_m = float(obs_dict['dh_cm']) * 1e-2
             dhb_m = float(obs_dict['dh_cm']) * 1e-2
+            atm_pres_hpa = None
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
@@ -629,17 +605,42 @@ class CG5Survey:
                 line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
+                line_items.append(atm_pres_hpa)
+                line_items.append(setup_id)
+                obs_list.append(line_items)
+
+        # 2.) Station name & dbh=dhf & pressure
+        expr = '\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dh_cm>-?[.0-9]+)\s*[\r?\n](?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r?\n])+)\/\tNote:   \t(?P<pres>[0-9]{3,4}[.]{0,1}[0-9]*)'
+        for obs_block in re.finditer(expr, str_obs_file):
+            obs_dict = obs_block.groupdict()
+            station_name = self.resolve_station_name(obs_dict['station_name'])
+            dhf_m = float(obs_dict['dh_cm']) * 1e-2
+            dhb_m = float(obs_dict['dh_cm']) * 1e-2
+            atm_pres_hpa = float(obs_dict['pres'])
+            lines = obs_dict['obs_data'].splitlines()
+            # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
+            #  - To distinguish multiple setups (with multiple observations each) on multiple stations
+            time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
+            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
+
+            for line in lines:
+                line_items = line.split()
+                line_items.append(station_name)
+                line_items.append(dhf_m)
+                line_items.append(dhb_m)
+                line_items.append(atm_pres_hpa)
                 line_items.append(setup_id)
                 obs_list.append(line_items)
 
         # 3.) Station name & dhb & dhf
-        expr = "\/\s+Note:\s+(?P<station_name>\S+)\s+(?P<dhb_cm>\S+)\s+(?P<dhf_cm>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
+        expr = '\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dhb_cm>-?[.0-9]+)\s+(?P<dhf_cm>-?[.0-9]+)\s*[\r?\n](?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r?\n])+)'
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
 
             station_name = self.resolve_station_name(obs_dict['station_name'])
             dhf_m = float(obs_dict['dhf_cm']) * 1e-2
             dhb_m = float(obs_dict['dhb_cm']) * 1e-2
+            atm_pres_hpa = None
             lines = obs_dict['obs_data'].splitlines()
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
@@ -651,11 +652,49 @@ class CG5Survey:
                 line_items.append(station_name)
                 line_items.append(dhf_m)
                 line_items.append(dhb_m)
+                line_items.append(atm_pres_hpa)
+                line_items.append(setup_id)
+                obs_list.append(line_items)
+
+        # 4.) Station name & dhb & dhf & pressure
+        # expr = "\/\s+Note:\s+(?P<station_name>\S+)\s+(?P<dhb_cm>\S+)\s+(?P<dhf_cm>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
+        expr = '\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dhb_cm>-?[.0-9]+)\s+(?P<dhf_cm>-?[.0-9]+)\s*[\r?\n](?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r?\n])+)\/\tNote:   \t(?P<pres>[0-9]{3,4}[.]{0,1}[0-9]*)'
+        for obs_block in re.finditer(expr, str_obs_file):
+            obs_dict = obs_block.groupdict()
+
+            station_name = self.resolve_station_name(obs_dict['station_name'])
+            dhf_m = float(obs_dict['dhf_cm']) * 1e-2
+            dhb_m = float(obs_dict['dhb_cm']) * 1e-2
+            atm_pres_hpa = float(obs_dict['pres'])
+            lines = obs_dict['obs_data'].splitlines()
+            # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
+            #  - To distinguish multiple setups (with multiple observations each) on multiple stations
+            time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
+            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
+
+            for line in lines:
+                line_items = line.split()
+                line_items.append(station_name)
+                line_items.append(dhf_m)
+                line_items.append(dhb_m)
+                line_items.append(atm_pres_hpa)
                 line_items.append(setup_id)
                 obs_list.append(line_items)
 
         # Create pandas dataframe of prepared list:
         self.obs_df = pd.DataFrame(obs_list, columns=self._OBS_DF_COLUMN_NAMES)
+
+        # Remove duplicates entries that were matched with and without pressure:
+        setup_ids = self.obs_df['setup_id'].unique().tolist()
+        setup_ids_diplicates = []
+        for setup_id in setup_ids:
+            tmp_filter = self.obs_df['setup_id'] == setup_id
+            if (~self.obs_df.loc[tmp_filter, 'atm_pres_hpa'].isna()).any():  # Entries with pressure found
+                setup_ids_diplicates.append(setup_id)
+
+        if setup_ids_diplicates:
+            tmp_filter = ~(self.obs_df['atm_pres_hpa'].isna() & self.obs_df['setup_id'].isin(setup_ids_diplicates))
+            self.obs_df = self.obs_df.loc[tmp_filter].copy(deep=True)
 
         # Convert numeric columns to numeric dtypes:
         cols = self.obs_df.columns.drop(self._OBS_DF_NON_NUMERIC_COLUMNS)

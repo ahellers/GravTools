@@ -38,6 +38,14 @@ TIDE_CORRECTION_TYPES = {
     'unknown': 'Unknown whether a tide correction was applied',
 }
 
+ATM_PRES_CORRECTION_TYPES = {
+    'no_atm_pres_corr': 'No atmospheric pressure correction applied',
+    'iso_2533_1975': 'Atmopheric pressure correction using ISO 2533:1975 normal air pressure',
+}
+
+# Default admittance factor for the calculation of atmospheric pressure correction using the ISO 2533:1975 normal air pressure
+ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT = 0.3
+
 # Conversion factors of different units of gravity to µGal:
 # - Keys: Units as used e.g. in TSF files by Tsoft
 # - Values: Multiplicative conversion factors to µGal

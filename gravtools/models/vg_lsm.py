@@ -292,13 +292,22 @@ class VGLSM(LSM):
             tmp_str += f'Confidence level Chi-test: {confidence_level_chi_test:4.2f}\n'
             tmp_str += f'Confidence level Tau-test: {confidence_level_tau_test:4.2f}\n'
             tmp_str += f'\n'
-            tmp_str += f'---- Set up and populate matrices ----\n'
+            tmp_str += f'---- Survey infos ----\n'
+            tmp_str += self.survey_info_string
+            tmp_str += f'\n'
+            tmp_str += f'\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:
                 self.log_str += tmp_str
 
         # Initialize matrices:
+        if verbose or self.write_log:
+            tmp_str = f'---- Set up and populate matrices ----\n'
+            if verbose:
+                print(tmp_str)
+            if self.write_log:
+                self.log_str += tmp_str
         # => Initialize complete matrices first and then populate them. This is most efficient!
         # - Observation model:
         mat_A = np.zeros([number_of_observations, number_of_parameters])  # Design matrix
@@ -383,7 +392,7 @@ class VGLSM(LSM):
 
         if verbose or self.write_log:
             tmp_str = f'\n'
-            tmp_str += f'---- Solve equation system: Results and statistics ----\n'
+            tmp_str += f'---- Results and statistics ----\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:

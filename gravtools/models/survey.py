@@ -25,11 +25,12 @@ import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
     REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
     GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS, \
-    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS
+    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.models.misc import format_seconds_to_hhmmss
 from gravtools.tides.correction_time_series import convert_to_mugal
+from gravtools.models import atmosphere_correction
 
 
 class Survey:
@@ -92,6 +93,10 @@ class Survey:
         Reference level type of the observations (gravimeter readings as obtained from the data
         source; column `g_obs_mugal` in `obs_df`). Valid entries have to be listed in
         :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`.
+    obs_atm_pres_correction_type : str, (default='')
+        Type of atmospheric pressure correction applied on the observations (gravimeter readings as obtained from the
+        data source; column `g_obs_mugal` in `obs_df`). Valid entries have to be listed in
+        :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`.
     red_tide_correction_type : str, optional (default='')
         Type of the tidal corrections applied on the reduced observations (column `g_red_mugal` in `obs_df`). Valid
         entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. `Empty string`, if corrected
@@ -100,6 +105,10 @@ class Survey:
         Reference level type of the reduced observations (column `g_red_mugal` in `obs_df`). Valid entries have to be
         listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`. `Empty string`, if corrected observations are not
         available.
+    red_atm_pres_correction_type : str, (default='')
+        Type of atmospheric pressure correction applied on the reduced (column `g_red_mugal` in `obs_df`). Valid entries
+         have to be listed in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. `Empty string`, if corrected
+        observations are not available.
     red_tide_correction_description : str, optional (default='')
         Optional description of the tide correction e.g. obtained from time series data. The reduced observations are
         stored in the column `g_red_mugal` and the corrections in column `corr_tide_red_mugal` in `obs_df`. Only
@@ -118,7 +127,11 @@ class Survey:
         Reference height reduction type applied on the observations that are used to calculate the setup data in the
         `setup_df` dataframe. Valid entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`.
         `Empty string`, if corrected setup data has not been calculated so far (`setup_df` = None).
-    setup_calc_method : str, optional (default='')
+    setup_atm_pres_correction_type : str, (default='')
+        Type of atmospheric pressure correction applied on the observations that are used to calculate the setup data in
+        the`setup_df` dataframe. Valid entries have to be listed in
+        :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`.`Empty string`, if corrected setup data has not been
+        calculated so far (`setup_df` = None).
         Method for the calculation of setup data. `variance_weighted_mean` implies that setup observations
         (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
         individual observations. `individual_obs` implies that the original observations are used as setup data
@@ -170,12 +183,13 @@ class Survey:
             Standard deviation of `g_obs_mugal`. If `None`, the standard deviation is not available.
         - g_red_mugal : float, optional (default=None)
             Reduced gravity observation. This value is derived from the observed gravimeter reading (`g_obs_mugal`) by
-            applying reductions and corrections, e.g. from analytical models for tidal effects, or by a reduction to a
-            different height level (using the vertical gravity gradient). Take care, that the same  reductions and
-            corrections are not applied more than once! The reference height type and the applied tidal correction
-            have to be concise with the statements in :py:obj:`.Survey.red_reference_height_type` and
-            :py:obj:`.Survey.red_tide_correction_type`, respectively. If `None`, no reductions and/or corrections have
-            been applied so far.
+            applying reductions and corrections, e.g. from analytical models for tidal effects, by a reduction to a
+            different height level (using the vertical gravity gradient), or reduction due to atmospheric pressure
+            variations. Take care, that the same  reductions and corrections are not applied more than once! The
+            reference height type, the applied tidal correction and the applied atmospheric pressure corrections
+            have to be concise with the statements in :py:obj:`.Survey.red_reference_height_type`,
+            :py:obj:`.Survey.red_tide_correction_type` and :py:obj:`.Survey.red_atm_pres_correction_type`, respectively.
+            If `None`, no reductions and/or corrections have been applied so far.
         - sd_g_red_mugal : float, optional (default=None)
             Standard deviation of the reduced gravity reading (`g_red_mugal`). This value is derived from the standard
             deviation of the gravity reading (`sd_g_obs_mugal`) by applying proper error propagation. If `None`, the SD
@@ -216,6 +230,12 @@ class Survey:
             Tidal correction [µGal] that is applied to `g_red_mugal`.
         - duration_sec : int
             Duration of each observation from the CG-5 observation files. Given in seconds.
+        - atm_pres_hpa : float, optional (default=None)
+            Measured atmospheric pressure in hPa. Used for correcting atmospheric pressure variations.
+        - norm_atm_pres_hpa : float, optional (default=None)
+            Normal atmospheric pressure in hPa. Used for correcting atmospheric pressure variations.
+        - corr_atm_pres_red_mugal : float, optional (default=None)
+            Atmospheric pressurecorrection [µGal] that is applied to `g_red_mugal`.
 
     ref_delta_t_dt : datetime, optional (default=None)
         Reference time for relative times (), e.g. reference time t0 the for drift polynomial adjustment.
@@ -279,7 +299,23 @@ class Survey:
         'vg_mugalm',  # vertical gradient [µGal/m]
         'corr_tide_red_mugal',  # Alternative tidal correction [µGal], optional
         'duration_sec',  # Duration [sec]
+        'atm_pres_hpa',  # Measured atmospheric pressure [hPa]
+        'norm_atm_pres_hpa',  # Normal atmospheric pressure [hPa]
+        'corr_atm_pres_red_mugal',  # Normal atmospheric pressure correction [µGal]
     )
+
+    _OBS_DF_INIT_COL_IF_MISSING = {
+        'atm_pres_hpa': np.nan,
+        'norm_atm_pres_hpa': np.nan,
+        'corr_atm_pres_red_mugal': np.nan,
+    }
+
+    _SURVEY_ATTRIBUTES_INIT = {
+        'setup_atm_pres_correction_type': '',
+        'obs_atm_pres_correction_type': 'no_atm_pres_corr',
+        'red_atm_pres_correction_type': '',
+        'red_tide_correction_description': '',
+    }
 
     _SETUP_DF_COLUMNS = (
         'station_name',  # Name of station (str)
@@ -313,13 +349,16 @@ class Survey:
                  obs_df=None,
                  obs_tide_correction_type='',  # of "g_obs_mugal"
                  obs_reference_height_type='',  # of "g_obs_mugal"
+                 obs_atm_pres_correction_type='',  # of "g_obs_mugal"
                  red_tide_correction_type='',  # of "g_red_mugal"
                  red_reference_height_type='',  # of "g_red_mugal"
+                 red_atm_pres_correction_type = '',  # of "g_red_mugal"
                  red_tide_correction_description='',  # of "g_red_mugal"
                  red_tide_corr_timeseries_interpol_method='',  # of "g_red_mugal"
                  red_tide_corr_timeseries_creation_dt=None,  # of "g_red_mugal"
                  setup_tide_correction_type='',
                  setup_reference_height_type='',
+                 setup_atm_pres_correction_type='',
                  setup_calc_method='',
                  setup_sd_method='',
                  keep_survey=True,  # Flag
@@ -460,7 +499,7 @@ class Survey:
             raise TypeError('"obs_reference_height_type" needs to be a string')
 
         # red_reference_height_type:
-        if isinstance(red_tide_correction_type, str):
+        if isinstance(red_reference_height_type, str):
             if red_reference_height_type:
                 if red_reference_height_type in REFERENCE_HEIGHT_TYPE.keys():
                     self.red_reference_height_type = red_reference_height_type
@@ -470,7 +509,7 @@ class Survey:
             else:
                 self.red_reference_height_type = red_reference_height_type  # None
         else:
-            raise TypeError('"red_tide_correction_type" needs to be a string')
+            raise TypeError('"red_reference_height_type" needs to be a string')
 
         # red_tide_correction_description
         if isinstance(red_tide_correction_description, str):
@@ -489,6 +528,32 @@ class Survey:
             if not isinstance(red_tide_corr_timeseries_creation_dt, dt.datetime):
                 raise TypeError('`red_tide_corr_timeseries_creation_dt` needs to be a datetime object.')
         self.red_tide_corr_timeseries_creation_dt = red_tide_corr_timeseries_creation_dt
+
+        # obs_atm_pres_correction_type
+        if isinstance(obs_atm_pres_correction_type, str):
+            if obs_atm_pres_correction_type:
+                if obs_atm_pres_correction_type in ATM_PRES_CORRECTION_TYPES.keys():
+                    self.obs_atm_pres_correction_type = obs_atm_pres_correction_type
+                else:
+                    raise ValueError('"obs_atm_pres_correction_type" needs to be a key in ATM_PRES_CORRECTION_TYPES '
+                                     '({})'.format(', '.join(ATM_PRES_CORRECTION_TYPES.keys())))
+            else:
+                self.obs_atm_pres_correction_type = obs_atm_pres_correction_type  # None
+        else:
+            raise TypeError('"obs_atm_pres_correction_type" needs to be a string')
+
+        # red_atm_pres_correction_type
+        if isinstance(red_atm_pres_correction_type, str):
+            if red_atm_pres_correction_type:
+                if red_atm_pres_correction_type in ATM_PRES_CORRECTION_TYPES.keys():
+                    self.red_atm_pres_correction_type = red_atm_pres_correction_type
+                else:
+                    raise ValueError('"red_atm_pres_correction_type" needs to be a key in ATM_PRES_CORRECTION_TYPES '
+                                     '({})'.format(', '.join(ATM_PRES_CORRECTION_TYPES.keys())))
+            else:
+                self.red_atm_pres_correction_type = red_atm_pres_correction_type  # None
+        else:
+            raise TypeError('"red_atm_pres_correction_type" needs to be a string')
 
         # setup_tide_correction_type:
         if isinstance(setup_tide_correction_type, str):
@@ -515,6 +580,19 @@ class Survey:
                 self.setup_reference_height_type = setup_reference_height_type  # ''
         else:
             raise TypeError('"setup_reference_height_type" needs to be a string')
+
+        # setup_atm_pres_correction_type:
+        if isinstance(setup_atm_pres_correction_type, str):
+            if setup_atm_pres_correction_type:
+                if setup_atm_pres_correction_type in ATM_PRES_CORRECTION_TYPES.keys():
+                    self.setup_atm_pres_correction_type = setup_atm_pres_correction_type
+                else:
+                    raise ValueError('"setup_atm_pres_correction_type" needs to be a key in ATM_PRES_CORRECTION_TYPES '
+                                     '({})'.format(', '.join(ATM_PRES_CORRECTION_TYPES.keys())))
+            else:
+                self.setup_atm_pres_correction_type = setup_atm_pres_correction_type  # ''
+        else:
+            raise TypeError('"setup_atm_pres_correction_type" needs to be a string')
 
         # setup_calc_method:
         if isinstance(setup_calc_method, str):
@@ -677,8 +755,10 @@ class Survey:
                    obs_df=obs_df,
                    obs_tide_correction_type=obs_tide_correction_type,
                    obs_reference_height_type='sensor_height',
+                   obs_atm_pres_correction_type='no_atm_pres_corr',
                    red_tide_correction_type='',  # Not specified
                    red_reference_height_type='',  # Not specified
+                   red_atm_pres_correction_type='',  # Not specified
                    keep_survey=keep_survey,
                    )
 
@@ -835,8 +915,10 @@ class Survey:
                    obs_df=obs_df,
                    obs_tide_correction_type=obs_tide_correction_type,
                    obs_reference_height_type='sensor_height',
+                   obs_atm_pres_correction_type='no_atm_pres_corr',
                    red_tide_correction_type='',  # Not specified
                    red_reference_height_type='',  # Not specified
+                   red_atm_pres_correction_type='',  # Not specified
                    keep_survey=keep_survey,
                    )
 
@@ -849,10 +931,20 @@ class Survey:
 
     @classmethod
     def _obs_df_add_columns(cls, obs_df):
-        """Add and initialize (as None) all columns that are listed in cls._OBS_DF_COLUMNS and not present in input
-        obs_df."""
+        """Add and initialize all columns that are listed in cls._OBS_DF_COLUMNS and not present in input obs_df.
+
+        Notes
+        -----
+        Columns are initialized with the value `None`, if they are not a key in `cls._OBS_DF_INIT_COL_IF_MISSING`.
+        Otherwise, they are initialized with the according value in `cls._OBS_DF_INIT_COL_IF_MISSING`. This provides
+        the option to initialize columns with specific values, other than `None`, if required.
+        """
         columns_to_be_initialized_as_none = list(set(cls._OBS_DF_COLUMNS) - set(obs_df.columns))
         obs_df[columns_to_be_initialized_as_none] = None
+        cols_with_init_value = list(
+            set(cls._OBS_DF_INIT_COL_IF_MISSING.keys()).intersection(set(columns_to_be_initialized_as_none)))
+        for cols_name in cols_with_init_value:
+            obs_df[cols_name] = cls._OBS_DF_INIT_COL_IF_MISSING[cols_name]
         return obs_df
 
     @classmethod
@@ -904,8 +996,8 @@ class Survey:
         """
         self.obs_df.at[obs_idx, 'keep_obs'] = flag_activate
 
-    def is_valid_obs_df(self, verbose=False) -> bool:
-        """Check, whether the observations DataFrame (`obs_df`) is valid.
+    def check_obs_df(self, verbose=True) -> bool:
+        """Check, whether the observations DataFrame (`obs_df`) is valid and try to add missing columns.
 
         This method carried out the following checks:
 
@@ -913,31 +1005,75 @@ class Survey:
 
           - Does `obs_df` have all required columns?
 
+          - If columns defined in :py:obj:`.Survey._OBS_DF_INIT_COL_IF_MISSING` are missing, they are added with the
+            defined initial value.
+
         Parameters
         ----------
         verbose : bool, optional (default=False)
-            If True, messages are printed that indicate why `obs_df` is not valid in case.
+            If True, messages are printed in the command line interface.
 
         Returns
         -------
-        bool
+        is_valid : bool
             True, if `obs_df` is valid.
+        error_msg : str
+            Error Message. Empty if no errors occured.
         """
         is_valid = True
+        error_msg = ''
 
+        # Invalid columns?
         invalid_cols = list(set(self.obs_df.columns) - set(self._OBS_DF_COLUMNS))
         if len(invalid_cols) > 0:
             is_valid = False
+            error_msg = f'The following columns in the observation dataframe of survey "{self.name}" are not valid: {", ".join(invalid_cols)}. '
             if verbose:
-                print(f'The following columns are not valid: {", ".join(invalid_cols)}')
+                print(error_msg)
 
+        # Missing columns?
         invalid_cols = list(set(self._OBS_DF_COLUMNS) - set(self.obs_df.columns))
         if len(invalid_cols) > 0:
-            is_valid = False
-            if verbose:
-                print(f'The following columns are missing: {", ".join(invalid_cols)}')
+            # Add columns with the default values, if defined in _OBS_DF_INIT_COL_IF_MISSING:
+            for invalid_col in invalid_cols:
+                if invalid_col in self._OBS_DF_INIT_COL_IF_MISSING:
+                    self.obs_df[invalid_col] = self._OBS_DF_INIT_COL_IF_MISSING[invalid_col]
+                    if verbose:
+                        print(f'Added column "{invalid_col}" with default value "'
+                              f'{self._OBS_DF_INIT_COL_IF_MISSING[invalid_col]}" in observation dataframe of survey "'
+                              f'{self.name}".')
+            # Check again:
+            self.obs_df = self._obs_df_reorder_columns(self.obs_df)
+            invalid_cols = list(set(self._OBS_DF_COLUMNS) - set(self.obs_df.columns))
+            if len(invalid_cols) > 0:
+                is_valid = False
+                error_msg_tmp = (f'The following columns in the observation dataframe of survey "'
+                                 f'{self.name}" are missing: {", ".join(invalid_cols)}. ')
+                error_msg = error_msg + error_msg_tmp
+                if verbose:
+                    print(error_msg_tmp)
 
-        return is_valid
+        return is_valid, error_msg
+
+    def init_missing_attributes(self, verbose=True) -> bool:
+        """Initialize attributes defined in `_SURVEY_ATTRIBUTES_INIT`, if they are missing the current Survey instance.
+
+        Notes
+        -----
+        This method is useful to establish downward compatibility between the current GravTools version and campaign
+        data (pkl files) created/saved with previous version.
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+            If True, messages are printed in the command line interface.
+        """
+        attributes = dir(self)
+        for attribute, init_value in self._SURVEY_ATTRIBUTES_INIT.items():
+            if attribute not in attributes:
+                setattr(self, attribute, init_value)
+                if verbose:
+                    print(f'Added attribute "{attribute}" (init. value: "{init_value}") to Survey object of survey "{self.name}".')
 
     def obs_df_drop_redundant_columns(self):
         """Drop all columns of obs_df that are not listed in self._OBS_DF_COLUMNS"""
@@ -1030,12 +1166,16 @@ class Survey:
 
         # Drop columns that are not required and check for validity:
         self.obs_df_drop_redundant_columns()
-        if not self.is_valid_obs_df():
-            raise AssertionError('The DataFrame "obs_df" is not valid.')
+        self.obs_df = self._obs_df_reorder_columns(self.obs_df)
+        valid_flag, error_msg = self.check_obs_df(verbose=True)
+        if not valid_flag:
+            raise RuntimeError(error_msg)
 
     def reduce_observations(self,
                             target_ref_height: str = None,
                             target_tide_corr: str = None,
+                            target_atm_pres_corr: str = None,
+                            atm_pres_admittance: float = ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT,
                             tide_corr_timeseries_interpol_method = '',
                             correction_time_series=None,
                             verbose: bool = False,
@@ -1066,6 +1206,13 @@ class Survey:
             The target tidal correction type specifies what kind of tidal correction will be applied. Valid types have
             to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
             tidal corrections are not considered here (tidal corrections are inherited from input data).
+        target_atm_pres_corr : str, optional (default = `None`)
+            Specifying the atmospheric press ure correction type to be applied to all surveys. Valid types to be listed
+            in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. Default is `None` indicating that the respective
+            corrections of the input data are not changed.
+        atm_pres_admittance : float, optional (default = `settings.ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT`)
+            Admittance factor for the determination of pressure corrections based on the difference between measured and
+            normal air pressure. The default value is taken from `settings.ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT`.
         tide_corr_timeseries_interpol_method : str, optional (default='')
             Interpolation method used to calculate tidal corrections from time series data. If tidal corrections are
             obtained from other sources or models, this attribute is irrelevant and has to be empty!
@@ -1083,7 +1230,7 @@ class Survey:
         obs_df = self.obs_df.copy(deep=True)
 
         # Initialize pandas series for reduced data by copying the observation data as loaded from the input file:
-        g_red_mugal = obs_df['g_obs_mugal']
+        g_red_mugal = obs_df['g_obs_mugal'].copy(deep=True)
         sd_g_red_mugal = obs_df['sd_g_obs_mugal']
 
         # Check whether field for reduced data are initialized correctly:
@@ -1199,17 +1346,17 @@ class Survey:
                     print('...done!')
 
         # 2.) Check tidal corrections:
-        # Check if the target tidal correction type is valid:
-        if target_tide_corr not in TIDE_CORRECTION_TYPES:
-            error_msg = f'"{target_tide_corr}" is unknown ab invalid!'
-            raise RuntimeError(f'Survey "{self.name}":' + error_msg)
-        tide_correction_description = TIDE_CORRECTION_TYPES[target_tide_corr]
-        if verbose:
-            print(f'Tidal corrections "{target_tide_corr}" ({tide_correction_description}):')
         if target_tide_corr is None:  # Do nothing
             if verbose:
-                print(f' - Tidal corrections are not changed!')
+                print(f'Tidal corrections are not changed!')
         else:
+            # Check if the target tidal correction type is valid:
+            if target_tide_corr not in TIDE_CORRECTION_TYPES:
+                error_msg = f'"{target_tide_corr}" is invalid!'
+                raise RuntimeError(f'Survey "{self.name}":' + error_msg)
+            tide_correction_description = TIDE_CORRECTION_TYPES[target_tide_corr]
+            if verbose:
+                print(f'Tidal corrections "{target_tide_corr}" ({tide_correction_description}):')
             # Check if reduction is necessary and/or possible:
             # - If time series data is used, corrections have to be calculated anyway, because the time series
             #   may have changed since their last determination!
@@ -1273,14 +1420,70 @@ class Survey:
                 if verbose:
                     print('...done!')
 
-            # Apply changes, if no exceptions were raised:
-            self.red_tide_correction_type = target_tide_corr
-            self.red_reference_height_type = target_ref_height
-            self.red_tide_correction_description = tide_correction_description
-            self.red_tide_corr_timeseries_interpol_method = tide_corr_timeseries_interpol_method_out
-            self.obs_df['g_red_mugal'] = g_red_mugal
-            self.obs_df['sd_g_red_mugal'] = sd_g_red_mugal
+        # 3.) Check atmospheric pressure corrections:
+        if target_atm_pres_corr is None:  # Do nothing
+            if verbose:
+                print(f'Atmospheric pressure corrections are not changed!')
+        else:
+            # Check if the target correction type is valid:
+            if target_atm_pres_corr not in ATM_PRES_CORRECTION_TYPES:
+                error_msg = f'"{target_atm_pres_corr}" is invalid!'
+                raise RuntimeError(f'Survey "{self.name}":' + error_msg)
+            if verbose:
+                print(f'Atmospheric pressure corrections "{target_atm_pres_corr}" ({ATM_PRES_CORRECTION_TYPES[target_atm_pres_corr]}):')
+
+            # Check, if an admittance factor is available:
+            if atm_pres_admittance is None:
+                error_msg = (f'The admittance factor for the determination of atmospheric pressure corrections is not'
+                             f'available (is None).')
+                raise RuntimeError(f'Survey "{self.name}":' + error_msg)
+
+            if self.obs_atm_pres_correction_type == 'no_atm_pres_corr':
+                if target_atm_pres_corr == 'no_atm_pres_corr':
+                    corr_atm_pres_red_mugal = None
+                    norm_atm_pres_hpa = None
+                if target_atm_pres_corr == 'iso_2533_1975':
+                    height_m = obs_df['alt_m']
+                    atm_pres_hpa = obs_df['atm_pres_hpa']
+                    corr_atm_pres_red_mugal, norm_atm_pres_hpa = atmosphere_correction.pressure_correction_iso_pandas_series(height_m,
+                                                                                                                             atm_pres_hpa,
+                                                                                                                             admittance=atm_pres_admittance)
+                    # Apply non-NaN values only:
+                    tmp_filter = ~corr_atm_pres_red_mugal.isna()
+                    g_red_mugal.loc[tmp_filter] = g_red_mugal.loc[tmp_filter] - corr_atm_pres_red_mugal.loc[tmp_filter]  # TODO: sign correct?
+                    if verbose:
+                        num_with_p_corr = len(tmp_filter.loc[tmp_filter])
+                        number_of_obs = len(tmp_filter)
+                        if num_with_p_corr != number_of_obs:
+                            print(f'WARNING: Pressure corrections are available for {num_with_p_corr} of {number_of_obs} observations in survey {self.name} only, probably due to missing pressure observations.')
+
+            # This case should not be possible wit the current instruments since they are not capable to calculate
+            # atmospheric corrections and provide them along with the observation data in the input files!
+            # elif self.obs_atm_pres_correction_type == 'iso_2533_1975':
+            #     # Undo the corrections...
+            #     if target_atm_pres_corr == 'no_atm_pres_corr':
+            #         corr_atm_pres_red_mugal = 0
+
+            else:
+                raise RuntimeError(f'Atmosphere pressure corrections of observation data '
+                                   f'("{self.obs_atm_pres_correction_type}") not supported!')
+
+            if verbose:
+                print('...done!')
+
+        # 4.) Apply changes, if no exceptions were raised:
+        self.red_tide_correction_type = target_tide_corr
+        self.red_reference_height_type = target_ref_height
+        self.red_atm_pres_correction_type = target_atm_pres_corr
+        self.red_tide_correction_description = tide_correction_description
+        self.red_tide_corr_timeseries_interpol_method = tide_corr_timeseries_interpol_method_out
+        self.obs_df['g_red_mugal'] = g_red_mugal
+        self.obs_df['sd_g_red_mugal'] = sd_g_red_mugal
+        if target_tide_corr is not None:
             self.obs_df['corr_tide_red_mugal'] = corr_tide_red_mugal
+        if target_atm_pres_corr is not None:
+            self.obs_df['corr_atm_pres_red_mugal'] = corr_atm_pres_red_mugal
+            self.obs_df['norm_atm_pres_hpa'] = norm_atm_pres_hpa
 
     def get_tidal_corrections_from_timeseries(self, correction_time_series, interpolation_method : str) -> np.ndarray  :
         """Derives tidal corrections for observations from time series data.
@@ -1554,6 +1757,7 @@ class Survey:
             self.setup_df = None
             self.setup_reference_height_type = ''
             self.setup_tide_correction_type = ''
+            self.setup_atm_pres_correction_type = '',
             self.setup_calc_method = ''
             self.setup_obs_list_df = None
 
@@ -1750,9 +1954,11 @@ class Survey:
             if obs_type == 'observed':
                 self.setup_tide_correction_type = self.obs_tide_correction_type
                 self.setup_reference_height_type = self.obs_reference_height_type
+                self.setup_atm_pres_correction_type = self.obs_atm_pres_correction_type
             elif obs_type == 'reduced':
                 self.setup_tide_correction_type = self.red_tide_correction_type
                 self.setup_reference_height_type = self.red_reference_height_type
+                self.setup_atm_pres_correction_type = self.red_atm_pres_correction_type
             self.setup_calc_method = method
             self.setup_sd_method = method_sd
             self.create_setup_obs_list()
@@ -1843,7 +2049,7 @@ class Survey:
 
     @property
     def duration_hhmmss_str(self):
-        """Returns the timespan (Timedalta) between first and last observation in the survey in hh:mm:ss format."""
+        """Returns the timespan (Timedelta) between first and last observation in the survey in hh:mm:ss format."""
         if self.obs_df is not None:
             duration = self.obs_df['obs_epoch'].max() - self.obs_df['obs_epoch'].min()
             if duration.days == 0:
@@ -1876,5 +2082,3 @@ class Survey:
             return f', '.join(self.observed_stations)
         else:
             return None
-
-

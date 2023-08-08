@@ -60,12 +60,16 @@ class ObservationTableModel(QAbstractTableModel):
         'dhf_m': 3,
         'dhb_m': 3,
         'vg_mugalm': 1,
+        'atm_pres_hpa': 1,
+        'corr_atm_pres_red_mugal': 1,
+        'norm_atm_pres_hpa': 1,
     }
 
     # Columns that will be shown in the table view, if available in the data (Also defines the order of columns):
     # - keys: Actual names of the dataframe columns
     # - items: Header names for the Table View Widget
     _SHOW_COLUMNS_IN_TABLE_DICT = {
+        'keep_obs': 'Ḱeep obs.',
         'station_name': 'Station',
         'setup_id': 'Setup ID',
         'loop_id': 'Loop ID',
@@ -87,7 +91,9 @@ class ObservationTableModel(QAbstractTableModel):
         'dhf_m': 'dhf [m]',
         'vg_mugal': 'VG [µGal]',
         'duration_sec': 'Duration [sec]',
-        'keep_obs': 'Ḱeep obs.',
+        'atm_pres_hpa': 'p [hPa]',
+        'norm_atm_pres_hpa': 'pn [hPa]',
+        'corr_atm_pres_red_mugal': 'p corr [µGal]',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -109,6 +115,8 @@ class ObservationTableModel(QAbstractTableModel):
         'vg_mugal',
         'duration_sec',
         'keep_obs',
+        'atm_pres_hpa',
+        'corr_atm_pres_red_mugal',
     ]
 
     def __init__(self, surveys):

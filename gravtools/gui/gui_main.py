@@ -499,8 +499,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.dlg_correction_time_series.check_correction_time_series_object(parent=self)
                 self.dlg_correction_time_series.reset_update_gui()
 
-
-
                 self.statusBar().showMessage(
                     f"Previously saved campaign loaded rom pickle file (name: {self.campaign.campaign_name}, "
                     f"output directory: {self.campaign.output_directory})")
@@ -1889,9 +1887,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.label_obs_setups_tidal_corr.setText(f'{self.setup_model.get_tidal_corr_type} ({settings.TIDE_CORRECTION_TYPES[self.setup_model.get_tidal_corr_type]})')
             else:
                 self.label_obs_setups_tidal_corr.setText(f'{self.setup_model.get_tidal_corr_type}')
+            if self.setup_model.get_atm_pres_corr_type in settings.ATM_PRES_CORRECTION_TYPES.keys():
+                self.label_obs_setups_atm_pres_corr.setText(f'{self.setup_model.get_atm_pres_corr_type} ({settings.ATM_PRES_CORRECTION_TYPES[self.setup_model.get_atm_pres_corr_type]})')
+            else:
+                self.label_obs_setups_atm_pres_corr.setText(f'{self.setup_model.get_atm_pres_corr_type}')
+
         except KeyError:
             self.label_obs_setups_ref_height.setText('')
             self.label_obs_setups_tidal_corr.setText('')
+            self.label_obs_setups_atm_pres_corr.setText('')
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
@@ -2473,6 +2477,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 sd_g_mugal = obs_df['sd_g_red_mugal'].values
                 corr_tide = obs_df['corr_tide_red_mugal'].values
                 corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
+
+                # try-except scheme to provide downward compatibility for versions < 0.2.3
+                try:
+                    corr_atm_pres_name = self.campaign.surveys[survey_name].red_atm_pres_correction_type
+                except AttributeError:
+                    corr_atm_pres_name = '' # ... won't be plotted in GUI.
+                corr_atm_pres = obs_df['corr_atm_pres_red_mugal'].values
+                if (corr_atm_pres == None).all():
+                    corr_atm_pres_name = ''  # ... won't be plotted in GUI.
+                elif np.isnan(corr_atm_pres).all():
+                    corr_atm_pres_name = ''  # ... won't be plotted in GUI.
                 try:
                     corr_description_str = self.campaign.surveys[survey_name].red_tide_correction_description
                 except AttributeError:
@@ -2487,6 +2502,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 corr_tide = obs_df['corr_tide_mugal'].values
                 corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
                 ref_height_name = self.campaign.surveys[survey_name].obs_reference_height_type
+                corr_atm_pres_name = ''  # ... won't be plotted in GUI.
 
             # Gravity g [µGal]
             # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
@@ -2547,8 +2563,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Observation corrections [µGal]
             self.plot_obs_corrections.clear()
+            # - Tidal corrections:
             self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_tide,
                               plot_name=f'tides ({corr_tide_name})', color='b', symbol='o', symbol_size=10)
+            # - Atm. pressure corrections (if available):
+            if corr_atm_pres_name != '' and corr_atm_pres_name != 'no_atm_pres_corr':
+                self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_atm_pres,
+                                  plot_name=f'atm. pres ({corr_atm_pres_name})', color='r', symbol='o', symbol_size=10)
+
             self.plot_obs_corrections.showGrid(x=True, y=True)
             self.plot_obs_corrections.autoRange()
 
@@ -2872,7 +2894,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_menu_observations_corrections(self):
         """Launch diaglog to select and apply observation corrections."""
         return_value = self.dlg_corrections.exec()
-        if return_value == QDialog.Accepted:
+        if return_value == QDialog.Accepted and self.campaign:
             try:
                 self.apply_observation_corrections()
             except Exception as e:
@@ -2902,7 +2924,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             flag_selection_ok = False
             error_msg = f'Invalid selection of reference height in GUI (observation corrections dialog).'
-            # QMessageBox.critical('Error!', error_msg)
+            QMessageBox.critical('Error!', error_msg)
 
         if self.dlg_corrections.radioButton_corr_tides_no_correction.isChecked():
             target_tide_corr = 'no_tide_corr'
@@ -2916,14 +2938,27 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             flag_selection_ok = False
             error_msg = f'Invalid selection of tidal correction in GUI (observation corrections dialog).'
-            # QMessageBox.critical('Error!', error_msg)
+            QMessageBox.critical('Error!', error_msg)
+
+        if self.dlg_corrections.checkBox_corrections_atm_pressure.isChecked():
+            target_atm_pres_corr = 'iso_2533_1975'
+        else:
+            target_atm_pres_corr = 'no_atm_pres_corr'
+
+        atm_pres_admittance = self.dlg_corrections.doubleSpinBox_atm_pres_admittance.value()
 
         if flag_selection_ok:
-            self.campaign.reduce_observations_in_all_surveys(
-                target_ref_height=target_ref_height,
-                target_tide_corr=target_tide_corr,
-                tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
-                verbose=IS_VERBOSE)
+            try:
+                self.campaign.reduce_observations_in_all_surveys(
+                    target_ref_height=target_ref_height,
+                    target_tide_corr=target_tide_corr,
+                    target_atm_pres_corr=target_atm_pres_corr,
+                    atm_pres_admittance=atm_pres_admittance,
+                    tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
+                    verbose=IS_VERBOSE)
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+
 
     @pyqtSlot()
     def on_menu_file_new_campaign(self):

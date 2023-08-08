@@ -133,6 +133,10 @@ class BEVLegacyProcessing(LSM):
         """
 
         # ##### 1.) Initial preparations #####
+        if len(self.setups) > 1:
+            raise RuntimeError(f'The current campaign contains {len(self.setups)} active surveys. The "MLR" method'
+                               f'only supports the adjustment of single surveys. Use a different adjustment method or '
+                               f'adjust all surveys individually.')
 
         # - Observations and parameters:
         all_setups_df = None
@@ -186,6 +190,10 @@ class BEVLegacyProcessing(LSM):
             # tmp_str += f'Number of estimated parameters: {number_of_parameters}\n'  # obsolet
             # tmp_str += f'Number of datum stations: {number_of_datum_stations}\n'  # ????????????????????ß
             # tmp_str += f'Degree of freedom: {number_of_diff_obs - number_of_parameters}\n'  # obsolet
+            tmp_str += f'\n'
+            tmp_str += f'---- Survey infos ----\n'
+            tmp_str += self.survey_info_string
+            tmp_str += f'\n'
             tmp_str += f'\n'
             if verbose:
                 print(tmp_str)
