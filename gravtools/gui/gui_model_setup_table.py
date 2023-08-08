@@ -91,6 +91,7 @@ class SetupTableModel(QAbstractTableModel):
         self.flag_gui_simple_mode = False
         self._reference_height_type = ''
         self._tide_correction_type = ''
+        self._atm_pres_correction_type = ''
 
     def load_surveys(self, surveys):
         """Load observation data (dict of survey objects in the campaign object) to the observation model.
@@ -116,6 +117,10 @@ class SetupTableModel(QAbstractTableModel):
                 except AttributeError:
                     self._reference_height_type = ''
                     self._tide_correction_type = ''
+                try:
+                    self._atm_pres_correction_type = self._surveys[survey_name].setup_atm_pres_correction_type
+                except AttributeError:
+                    self._atm_pres_correction_type = ''
                 self.flag_gui_simple_mode = gui_simple_mode
 
                 # Get list of columns to be depicted via the table model:
@@ -208,3 +213,8 @@ class SetupTableModel(QAbstractTableModel):
     def get_tidal_corr_type(self):
         """Returns the tidal corrections applied on the setup observations."""
         return self._tide_correction_type
+
+    @property
+    def get_atm_pres_corr_type(self):
+        """Returns the atmospheric pressure corrections applied on the setup observations."""
+        return self._atm_pres_correction_type

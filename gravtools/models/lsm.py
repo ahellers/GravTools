@@ -21,6 +21,7 @@ from scipy import stats
 import datetime as dt
 import pytz
 import copy
+import pandas as pd
 
 # optional imports:
 try:
@@ -245,6 +246,7 @@ class LSM:
                                            'setup_df': survey.setup_df,
                                            'tide_correction_type': survey.setup_tide_correction_type,
                                            'reference_height_type': survey.setup_reference_height_type,
+                                           'atm_pres_correction_type': survey.setup_atm_pres_correction_type,
                                            'setup_calc_method': survey.setup_calc_method,
                                            'setup_obs_list_df': survey.setup_obs_list_df}
                         setups[survey_name] = setup_data_dict
@@ -595,6 +597,46 @@ class LSM:
                 return False
         return True
 
+    @property
+    def survey_info_string(self) -> str:
+        """Returns information on all surveys."""
+        survey_names_list = []
+        num_setups_list = []
+        num_obs_total_list = []
+        num_obs_active_list = []
+        tide_correction_type_list = []
+        reference_height_type_list = []
+        atm_pres_correction_type_list = []
+        setup_calc_method_list = []
+        for survey_name, survey in self.setups.items():
+            survey_names_list.append(survey_name)
+            setup_df = survey['setup_df']
+            num_setups_list.append(len(setup_df))
+            setup_obs_list_df = survey['setup_obs_list_df']
+            num_obs_total_list.append(len(setup_obs_list_df))
+            num_obs_active_list.append(len(setup_obs_list_df.loc[setup_obs_list_df['keep_obs']]))
+            tide_correction_type_list.append(survey['tide_correction_type'])
+            reference_height_type_list.append(survey['reference_height_type'])
+            atm_pres_correction_type_list.append(survey['atm_pres_correction_type'])
+            setup_calc_method_list.append(survey['setup_calc_method'])
+        tmp_df = pd.DataFrame(list(zip(survey_names_list,
+                                       num_setups_list,
+                                       num_obs_total_list,
+                                       num_obs_active_list,
+                                       tide_correction_type_list,
+                                       reference_height_type_list,
+                                       atm_pres_correction_type_list,
+                                       setup_calc_method_list,
+                                       )),
+                          columns=['Survey', '#Setups', '#Obs', '#Active obs', 'Tide correction', 'Ref. height', 'Atm. correction', 'Setup calc. method'])
+        return tmp_df.to_string(index=False)
+
+    # @property
+    # def obs_level_corrections_info_string(self) -> str:
+    #     """Returns information on the applied observation-level corrections."""
+    #     info_str = ''
+    #     return info_str
+
 def bin_redundacy_components(mat_r):
     """Bin redundancy components for easier interpretatzion.
 
@@ -705,3 +747,8 @@ def global_model_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_va
         chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
     return chi_crit, test_value, chi_test_status
+
+
+
+
+
