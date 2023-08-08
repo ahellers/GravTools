@@ -43,8 +43,8 @@ ATM_PRES_CORRECTION_TYPES = {
     'iso_2533_1975': 'Atmopheric pressure correction using ISO 2533:1975 normal air pressure',
 }
 
-# Admittance factor for the calculation of atmospheric pressure correction using the ISO 2533:1975 normal air pressure
-ATM_PRES_CORRECTION_ADMITTANCE = 0.3
+# Default admittance factor for the calculation of atmospheric pressure correction using the ISO 2533:1975 normal air pressure
+ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT = 0.3
 
 # Conversion factors of different units of gravity to µGal:
 # - Keys: Units as used e.g. in TSF files by Tsoft

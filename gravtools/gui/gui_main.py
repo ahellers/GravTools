@@ -2945,12 +2945,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             target_atm_pres_corr = 'no_atm_pres_corr'
 
+        atm_pres_admittance = self.dlg_corrections.doubleSpinBox_atm_pres_admittance.value()
+
         if flag_selection_ok:
             try:
                 self.campaign.reduce_observations_in_all_surveys(
                     target_ref_height=target_ref_height,
                     target_tide_corr=target_tide_corr,
                     target_atm_pres_corr=target_atm_pres_corr,
+                    atm_pres_admittance=atm_pres_admittance,
                     tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                     verbose=IS_VERBOSE)
             except Exception as e:

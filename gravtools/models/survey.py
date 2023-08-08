@@ -25,7 +25,7 @@ import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
     REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
     GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS, \
-    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES
+    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.models.misc import format_seconds_to_hhmmss
@@ -1175,6 +1175,7 @@ class Survey:
                             target_ref_height: str = None,
                             target_tide_corr: str = None,
                             target_atm_pres_corr: str = None,
+                            atm_pres_admittance: float = ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT,
                             tide_corr_timeseries_interpol_method = '',
                             correction_time_series=None,
                             verbose: bool = False,
@@ -1205,10 +1206,13 @@ class Survey:
             The target tidal correction type specifies what kind of tidal correction will be applied. Valid types have
             to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
             tidal corrections are not considered here (tidal corrections are inherited from input data).
-        target_atm_pres_corr : str (default = `None`)
+        target_atm_pres_corr : str, optional (default = `None`)
             Specifying the atmospheric press ure correction type to be applied to all surveys. Valid types to be listed
             in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. Default is `None` indicating that the respective
             corrections of the input data are not changed.
+        atm_pres_admittance : float, optional (default = `settings.ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT`)
+            Admittance factor for the determination of pressure corrections based on the difference between measured and
+            normal air pressure. The default value is taken from `settings.ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT`.
         tide_corr_timeseries_interpol_method : str, optional (default='')
             Interpolation method used to calculate tidal corrections from time series data. If tidal corrections are
             obtained from other sources or models, this attribute is irrelevant and has to be empty!
@@ -1428,6 +1432,12 @@ class Survey:
             if verbose:
                 print(f'Atmospheric pressure corrections "{target_atm_pres_corr}" ({ATM_PRES_CORRECTION_TYPES[target_atm_pres_corr]}):')
 
+            # Check, if an admittance factor is available:
+            if atm_pres_admittance is None:
+                error_msg = (f'The admittance factor for the determination of atmospheric pressure corrections is not'
+                             f'available (is None).')
+                raise RuntimeError(f'Survey "{self.name}":' + error_msg)
+
             if self.obs_atm_pres_correction_type == 'no_atm_pres_corr':
                 if target_atm_pres_corr == 'no_atm_pres_corr':
                     corr_atm_pres_red_mugal = None
@@ -1435,7 +1445,9 @@ class Survey:
                 if target_atm_pres_corr == 'iso_2533_1975':
                     height_m = obs_df['alt_m']
                     atm_pres_hpa = obs_df['atm_pres_hpa']
-                    corr_atm_pres_red_mugal, norm_atm_pres_hpa = atmosphere_correction.pressure_correction_iso_pandas_series(height_m, atm_pres_hpa)
+                    corr_atm_pres_red_mugal, norm_atm_pres_hpa = atmosphere_correction.pressure_correction_iso_pandas_series(height_m,
+                                                                                                                             atm_pres_hpa,
+                                                                                                                             admittance=atm_pres_admittance)
                     # Apply non-NaN values only:
                     tmp_filter = ~corr_atm_pres_red_mugal.isna()
                     g_red_mugal.loc[tmp_filter] = g_red_mugal.loc[tmp_filter] - corr_atm_pres_red_mugal.loc[tmp_filter]  # TODO: sign correct?

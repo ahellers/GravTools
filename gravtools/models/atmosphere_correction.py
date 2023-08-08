@@ -17,10 +17,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from typing import Tuple, Any
 
-import pandas
-
-from  gravtools import settings
-
 def normal_air_pressure_iso(height_m: float) -> float:
     """Returns the normal air pressure according to ISO 2533:1975.
 
@@ -45,7 +41,7 @@ def normal_air_pressure_iso(height_m: float) -> float:
     return 1013.25 * (1 - 0.0065 * height_m / 288.15) ** 5.2559
 
 
-def pressure_correction_iso(height_m: float, p_obs_hpa: float) -> tuple[float | Any, float]:
+def pressure_correction_iso(height_m: float, p_obs_hpa: float, admittance: float = 0.3) -> tuple[float | Any, float]:
     """Returns the atmospheric pressure correction determined by the station height and ISO normal air pressure.
 
     Parameters
@@ -54,6 +50,9 @@ def pressure_correction_iso(height_m: float, p_obs_hpa: float) -> tuple[float | 
         Physical height [m].
     p_obs_hpa : float
         Observed air pressure [hPa]
+    admittance : float, optional (default = 0.3)
+        Admittance factor for the determination of pressure corrections based on the difference between measured and
+        normal air pressure.
 
     Notes
     -----
@@ -71,11 +70,11 @@ def pressure_correction_iso(height_m: float, p_obs_hpa: float) -> tuple[float | 
     """
     pn_hpa = normal_air_pressure_iso(height_m)
     dp_hpa = p_obs_hpa - pn_hpa
-    dg_mugal = settings.ATM_PRES_CORRECTION_ADMITTANCE * dp_hpa
+    dg_mugal = admittance * dp_hpa
     return dg_mugal, pn_hpa
 
 
-def pressure_correction_iso_pandas_series(height_m, p_obs_hpa):
+def pressure_correction_iso_pandas_series(height_m, p_obs_hpa, admittance: float = 0.3):
     """Returns the atmospheric pressure correction determined by the station height and ISO normal air pressure.
 
         Parameters
@@ -84,6 +83,9 @@ def pressure_correction_iso_pandas_series(height_m, p_obs_hpa):
             Physical height [m].
         p_obs_hpa : pandas Series of float values
             Observed air pressure [hPa]
+        admittance : float, optional (default = 0.3)
+            Admittance factor for the determination of pressure corrections based on the difference between measured and
+            normal air pressure.
 
         Notes
         -----
@@ -95,7 +97,7 @@ def pressure_correction_iso_pandas_series(height_m, p_obs_hpa):
         Returns
         -------
         dg_mugal : float
-            Atmopheric pressure correction [µGal].
+            Atmospheric pressure correction [µGal].
         pn_hpa : float
             Normal air pressure according to ISO 2533:1975 [hPa]. `NaN` is returned for each item with missing observed
             pressure value in `p_obs_hpa`.
@@ -103,6 +105,6 @@ def pressure_correction_iso_pandas_series(height_m, p_obs_hpa):
 
     pn_hpa = height_m.apply(normal_air_pressure_iso)
     dp_hpa = p_obs_hpa - pn_hpa
-    dg_mugal = settings.ATM_PRES_CORRECTION_ADMITTANCE * dp_hpa
+    dg_mugal = admittance * dp_hpa
     return dg_mugal, pn_hpa
 
