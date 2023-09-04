@@ -67,6 +67,7 @@ from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
 from gravtools.gui.dlg_corrections import DialogCorrections
+from gravtools.gui.cumstom_widgets import ScrollMessageBox
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
 from gravtools.models.survey import Survey
@@ -1583,7 +1584,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.results_station_model.load_lsm_runs(self.campaign.lsm_runs)
         self.results_station_model.update_view_model(lsm_run_index,
                                                      station_name=station_name,
-                                                     survey_name=survey_name)
+                                                     survey_name=survey_name,
+                                                     surveys=self.campaign.surveys)
         self.results_station_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_results_stations.resizeColumnsToContents()
 
@@ -3307,7 +3309,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.update_obs_table_view(survey_name, setup_id)
                 self.plot_observations(survey_name)
                 # print flag log sting to Message Box:
-                QMessageBox.information(self, 'Update Information!', flag_log_str)
+
+                # QMessageBox.information(self, 'Update Information!', flag_log_str)
+                res = ScrollMessageBox(QMessageBox.Information, 'Update Information!', flag_log_str)
 
     def on_results_vg_plot_type_radiobuttons_changed(self, checked):
         """Invoked whenever a radiobutton for selecting the VG plot type in the results tab is changed."""
