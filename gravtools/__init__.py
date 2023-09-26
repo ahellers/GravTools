@@ -7,7 +7,7 @@ License, contact and authorship
 
 Copyright (C) 2021  Andreas Hellerschmied
 
-GravTools was developed at Austria's the *Federal Office of Metrology and Surveying (BEV)*.
+GravTools was developed at Austria's *Federal Office of Metrology and Surveying (BEV)*.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     Andreas Hellerschmied (andreas.hellerschmied@bev.gv.at)
 """
 
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 __author__ = 'Andreas Hellerschmied'
 __git_repo__ = 'https://github.com/ahellers/GravTools'
 __pypi_repo__ = 'https://pypi.org/project/grav-toolbox/'

@@ -64,7 +64,7 @@ from gravtools.gui.gui_model_results_drift_table import ResultsDriftModel
 from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorrelationMatrixModel
 from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
 from gravtools.gui.gui_model_survey_table import SurveyTableModel
-from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
+from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool, resize_table_view_columns
 from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
 from gravtools.gui.dlg_corrections import DialogCorrections
 from gravtools.gui.cumstom_widgets import ScrollMessageBox
@@ -72,6 +72,7 @@ from gravtools import __version__, __author__, __git_repo__, __email__, __copyri
 
 from gravtools.models.survey import Survey
 from gravtools.models.campaign import Campaign
+from gravtools.models.misc import time_it, conditional_decorator, unique_ordered_list
 from gravtools import settings
 
 DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
@@ -140,6 +141,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.treeWidget_observations.itemSelectionChanged.connect(self.on_obs_tree_widget_item_selected)
         self.treeWidget_observations.itemChanged.connect(self.on_tree_widget_item_changed)
         self.checkBox_obs_plot_reduced_observations.clicked.connect(self.on_obs_tree_widget_item_selected)
+        self.pushButton_obs_collaps_all.pressed.connect(self.survey_tree_widget_collapse_all)
+        self.pushButton_obs_expand_all.pressed.connect(self.survey_tree_widget_expand_all)
         self.comboBox_results_lsm_run_selection.currentIndexChanged.connect(
             self.on_comboBox_results_lsm_run_selection_current_index_changed)
         self.comboBox_results_selection_station.currentIndexChanged.connect(
@@ -678,6 +681,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.vg_plot.showGrid(x=True, y=True)
         self.vg_plot.setTitle('')
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_vg_plot(self):
         """Update the vg plot in the results tab."""
         # Clear plot:
@@ -977,6 +981,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.drift_plot.setLabel(axis='left', text='')
         self.drift_plot.addLegend()
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_drift_plot(self):
         """Update the drift plot in the results tab.
 
@@ -1033,6 +1038,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 self.drift_plot.clear()  # Clear drift plot
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def plot_drift_lsm_nondiff(self, lsm_run, surveys=None, stations=None):
         """Create a drift plot for LSM estimation based on non-differential observations.
 
@@ -1056,6 +1062,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.drift_plot.legend.clear()
 
         drift_pol_df = lsm_run.drift_pol_df
+
+        plotted_stations = []
 
         # Loop over surveys (setup data) in the selected lsm run object and plot data:
         for survey_name, setup_data in lsm_run.setups.items():
@@ -1143,13 +1151,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                     'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                             'brush': brush_color}
                 spots.append(spot_dic)
+                plotted_stations.append(row['station_name'])
 
             scatter.addPoints(spots)
             self.drift_plot.addItem(scatter)
 
         # Add station items to legend:
-        # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
-        for station, color in self.station_colors_dict_results.items():
+        plotted_stations = unique_ordered_list(plotted_stations)
+        for station in plotted_stations:
+            color = self.station_colors_dict_results[station]
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
             s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
@@ -1163,6 +1173,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
         self.drift_plot.autoRange()
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def plot_drift_lsm_diff(self, lsm_run, surveys=None, stations=None, offset_user_defined_mugal=0):
         """Create a drift plot for LSM runs based on differential observations (method: LSM_diff)
 
@@ -1179,6 +1190,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         self.drift_plot.clear()
         self.drift_plot.legend.clear()
+
+        plotted_stations = []
 
         stat_obs_df = lsm_run.stat_obs_df
         drift_pol_df = lsm_run.drift_pol_df
@@ -1253,13 +1266,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                         'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                                 'brush': brush_color}
                     spots.append(spot_dic)
+                    plotted_stations.append(row['station_name'])
 
                 scatter.addPoints(spots)
                 self.drift_plot.addItem(scatter)
 
             # Add station items to legend:
             # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
-            for station, color in self.station_colors_dict_results.items():
+            plotted_stations = unique_ordered_list(plotted_stations)
+            for station in plotted_stations:
+                color = self.station_colors_dict_results[station]
                 s_item_tmp = pg.ScatterPlotItem()
                 s_item_tmp.setBrush(color)
                 s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
@@ -1287,6 +1303,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         self.drift_plot.clear()
         self.drift_plot.legend.clear()
+
+        plotted_stations = []
 
         stat_obs_df = lsm_run.stat_obs_df
         drift_pol_df = lsm_run.drift_pol_df
@@ -1352,13 +1370,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
                         'brush': brush_color}
             spots.append(spot_dic)
+            plotted_stations.append(row['station_name'])
 
         scatter.addPoints(spots)
         self.drift_plot.addItem(scatter)
 
         # Add station items to legend:
         # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
-        for station, color in self.station_colors_dict_results.items():
+        plotted_stations = unique_ordered_list(plotted_stations)
+        for station in plotted_stations:
+            color = self.station_colors_dict_results[station]
             s_item_tmp = pg.ScatterPlotItem()
             s_item_tmp.setBrush(color)
             s_item_tmp.setPen({'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
@@ -1489,8 +1510,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             pass
 
-    def update_results_obs_plots(self):
-        """Update the observation results plots in the results tab."""
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
+    def update_results_obs_plots(self, idx=0):
+        """Update the observation results plots in the results tab.
+
+        Notes
+        -----
+        The input argument `idx` was added in order to enable logging execution times with the `@conditional_decorator(time_it, settings.DEBUG_TIME_IT)` decorator. As
+        this method is also used as pyqt slot, it would otherwise raise an error.
+        """
         # Get data from selected column
         col_idx, column_name = self.get_selected_obs_data_column()
         if col_idx != -1:
@@ -1515,6 +1543,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tableView_results_vg_table.setModel(self.results_vg_model)
             self.tableView_results_vg_table.resizeColumnsToContents()
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_vg_table_view(self, lsm_run_index: int):
         """Update the VG results table view after changing the table model."""
         self.results_vg_model.load_lsm_runs(self.campaign.lsm_runs)
@@ -1535,12 +1564,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tableView_results_drift.setModel(self.results_drift_model)
             self.tableView_results_drift.resizeColumnsToContents()
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_drift_table_view(self, lsm_run_index: int, survey_name=None):
         """Update the drift results table view after changing the table model."""
         self.results_drift_model.load_lsm_runs(self.campaign.lsm_runs)
         self.results_drift_model.update_view_model(lsm_run_index, survey_name=survey_name)
         self.results_drift_model.layoutChanged.emit()  # Show changes in table view
-        self.tableView_results_drift.resizeColumnsToContents()
+        # self.tableView_results_drift.resizeColumnsToContents()
+        resize_table_view_columns(table_view=self.tableView_results_drift,
+                                  n=1000,
+                                  add_pixel=10)
 
     def set_up_results_observations_view_model(self):
         """Set up the view model for the observation results table view."""
@@ -1555,6 +1588,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tableView_results_observations.setModel(self.results_observation_model)
             self.tableView_results_observations.resizeColumnsToContents()
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_observation_table_view(self, lsm_run_index: int, station_name=None, survey_name=None):
         """Update the observation results table view after changing the table model."""
         self.results_observation_model.load_lsm_runs(self.campaign.lsm_runs)
@@ -1563,7 +1597,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                          survey_name=survey_name,
                                                          gui_simple_mode=self.dlg_options.gui_simple_mode)
         self.results_observation_model.layoutChanged.emit()  # Show changes in table view
-        self.tableView_results_observations.resizeColumnsToContents()
+        # self.tableView_results_observations.resizeColumnsToContents()
+        resize_table_view_columns(table_view=self.tableView_results_observations,
+                                  n=100,
+                                  add_pixel=10)
         self.update_comboBox_results_obs_plot_select_data_column_based_on_table_view()
 
     def set_up_results_stations_view_model(self):
@@ -1579,6 +1616,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tableView_results_stations.setModel(self.results_station_model)
             self.tableView_results_stations.resizeColumnsToContents()
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_station_table_view(self, lsm_run_index: int, station_name=None, survey_name=None):
         """Update the station results table view after changing the table model."""
         self.results_station_model.load_lsm_runs(self.campaign.lsm_runs)
@@ -1587,7 +1625,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                      survey_name=survey_name,
                                                      surveys=self.campaign.surveys)
         self.results_station_model.layoutChanged.emit()  # Show changes in table view
-        self.tableView_results_stations.resizeColumnsToContents()
+        # self.tableView_results_stations.resizeColumnsToContents()
+        resize_table_view_columns(table_view=self.tableView_results_stations,
+                                  n=10,
+                                  add_pixel=10)
 
     def set_up_results_correlation_matrix_view_model(self):
         """Set up the view model for the correlation matrix table view."""
@@ -1602,6 +1643,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tableView_results_correlation_matrix.setModel(self.results_correlation_matrix_model)
             self.tableView_results_correlation_matrix.resizeColumnsToContents()
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_correlation_matrix_table_view(self, lsm_run_index: int, station_name=None, survey_name=None):
         """Update the correlation matrix table view after changing the table model.
 
@@ -1614,7 +1656,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                                 station_name=station_name,
                                                                 survey_name=survey_name)
         self.results_correlation_matrix_model.layoutChanged.emit()  # Show changes in table view
-        self.tableView_results_correlation_matrix.resizeColumnsToContents()
+        # self.tableView_results_correlation_matrix.resizeColumnsToContents()  # Extremely slow!
+        resize_table_view_columns(table_view=self.tableView_results_correlation_matrix,
+                                  n=1,
+                                  add_pixel=4)
 
     @pyqtSlot(int)
     def on_comboBox_results_lsm_run_selection_current_index_changed(self, index: int):
@@ -1636,6 +1681,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Invoked whenever the index of the selected item in the combobox changed."""
         self.update_results_obs_plots()
 
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_tab(self, select_latest_item=False):
         """Update the results tab of the main tab widget with the content of the selected lsm run."""
         # Update combo box content for lsm run selection:
@@ -1699,7 +1745,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 survey_name = current_survey_name
 
             # Get unique station colors for plotting data:
-            self.station_colors_dict_results = get_station_color_dict(lsm_run.stat_obs_df['station_name'].to_list())
+            self.station_colors_dict_results = get_station_color_dict(lsm_run.stat_obs_df['station_name'].to_list(),
+                                                                      randomize=True)
 
             # Update widgets:
             self.update_results_station_table_view(idx, station_name=station_name, survey_name=survey_name)
@@ -2741,6 +2788,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # The following line raises the following error:
         # "Process finished with exit code 139 (interrupted by signal 11: SIGSEGV)"
         # header.setSectionResizeMode(5, QHeaderView.Stretch)
+
+    def survey_tree_widget_collapse_all(self):
+        """Collapse all items in the survey tree widget"""
+        self.treeWidget_observations.collapseAll()
+
+    def survey_tree_widget_expand_all(self):
+        """Expand all items in the survey tree widget"""
+        self.treeWidget_observations.expandAll()
 
     def set_up_setup_view_model(self):
         """Set up the view model for the setup data table view."""

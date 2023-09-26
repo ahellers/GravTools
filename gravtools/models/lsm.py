@@ -23,6 +23,8 @@ import pytz
 import copy
 import pandas as pd
 
+from gravtools.models.misc import time_it
+
 # optional imports:
 try:
     import geopandas
@@ -535,6 +537,7 @@ class LSM:
         return self.log_str
 
     @property
+    @time_it
     def get_correlation_matrix(self):
         """Calculates und returns the correlation matrix based on the Co-Variance matrix of the LSM run.
 
@@ -549,12 +552,13 @@ class LSM:
         if self.Cxx is None:
             # raise AssertionError('Correlation matrix cannot be calculated due to missing co-variance matrix.')
             return None
-
-        mat_Rxx = np.zeros([self.Cxx.shape[0], self.Cxx.shape[1]])
-        for i_row in range(mat_Rxx.shape[0]):
-            for i_col in range(mat_Rxx.shape[1]):
+        mat_Rxx = np.full((self.Cxx.shape[0], self.Cxx.shape[1]), np.nan)
+        for i_row in range(0, mat_Rxx.shape[0]):
+            cxx_row_sqrt = np.sqrt(self.Cxx[i_row, i_row])
+            for i_col in range(0, i_row+1):
                 mat_Rxx[i_row, i_col] = self.Cxx[i_row, i_col] / (
-                            np.sqrt(self.Cxx[i_row, i_row]) * np.sqrt(self.Cxx[i_col, i_col]))
+                            cxx_row_sqrt * np.sqrt(self.Cxx[i_col, i_col]))
+                mat_Rxx[i_col, i_row] = mat_Rxx[i_row, i_col]
         return mat_Rxx
 
     @property

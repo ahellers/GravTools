@@ -301,3 +301,6 @@ NAME_OBS_FILE_BEV = 'f200701_1'
 # CG-5 observation files (text)
 PATH_OBS_FILE_CG5 = '/home/heller/pyProjects/GravTools/data/CG5/'
 NAME_OBS_FILE_CG5 = '20200907_test.TXT'
+
+# ##### Debug options #####
+DEBUG_TIME_IT = False

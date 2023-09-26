@@ -18,14 +18,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pyqtgraph as pg
 from PyQt5.QtCore import Qt
+import random
 
 
-def get_station_color_dict(stations: list) -> dict:
+def get_station_color_dict(stations: list, randomize=False) -> dict:
     """Returns a dict with unique pyqtgraph QColor items for each station in the input list."""
     station_color_dict = {}
     number_of_stations = len(stations)
+
+    stat_id_list = [i for i in range(0, number_of_stations)]
+    if randomize:
+        random.seed(1)  # Use always the same seed to get reproducibility
+        random.shuffle(stat_id_list)
+
     for stat_id, station in enumerate(stations, start=0):
-        station_color_dict[station] = pg.intColor(stat_id, hues=number_of_stations)
+        stat_id_altered = stat_id_list[stat_id]
+        station_color_dict[station] = pg.intColor(stat_id_altered, hues=number_of_stations)
     return station_color_dict
 
 
@@ -37,6 +45,34 @@ def checked_state_to_bool(checked_state) -> bool:
         return False
     else:
         raise AttributeError('Invalid input argument!')
+
+
+def resize_table_view_columns(table_view, n, add_pixel=0):
+    """Resize the width of columns of a QTableView based on the header and the content of the first n rows.
+
+    Parameters
+    ----------
+    table_view: QTableView object
+        The QTableView object that should be concerned.
+    n : int
+        The column width is adjusted to the width of the column headers and the content of the first n rows. Is the
+        model contains less than n items, all available items are considered.
+    add_pixel : int >= 0
+        Number of pixels to be added to the minimum width to improve readability.
+    """
+    fm = table_view.fontMetrics()
+    for col_num in range(0, table_view.model().columnCount()):
+        name= table_view.model().headerData(section=col_num, orientation=Qt.Horizontal, role=Qt.DisplayRole)
+        max_width = fm.width(name)
+        for row_idx in range(0, n):
+            data_index = table_view.model().index(row_idx, col_num)
+            if not data_index.isValid():
+                break
+            data = table_view.model().data(data_index)
+            width_data = fm.width(data)
+            if width_data > max_width:
+                max_width = width_data
+        table_view.setColumnWidth(col_num, max_width + add_pixel)
 
 
 if __name__ == "__main__":
