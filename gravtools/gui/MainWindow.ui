@@ -226,6 +226,24 @@
              </widget>
             </item>
             <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <item>
+               <widget class="QPushButton" name="pushButton_obs_collaps_all">
+                <property name="text">
+                 <string>Collape all</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="pushButton_obs_expand_all">
+                <property name="text">
+                 <string>Expand all</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item>
              <widget class="QGroupBox" name="groupBox_obs_data_manipulation">
               <property name="enabled">
                <bool>false</bool>

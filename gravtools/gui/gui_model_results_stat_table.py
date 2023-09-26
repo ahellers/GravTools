@@ -94,7 +94,7 @@ class ResultsStationModel(QAbstractTableModel):
         """
         self._lsm_runs = lsm_runs
 
-    def update_view_model(self, lsm_run_index: int, station_name=None, survey_name=None):
+    def update_view_model(self, lsm_run_index: int, station_name=None, survey_name=None, surveys=None):
         """Update the `_data` DataFrame that hold the actual data that is displayed.
 
         Notes
@@ -115,15 +115,29 @@ class ResultsStationModel(QAbstractTableModel):
                 self._lsm_run_index = lsm_run_index
 
                 # Get list of columns to be depicted via the table model:
-                # - Keep order of itemms in `self._SHOW_COLUMNS_IN_TABLE`
+                # - Keep order of items in `self._SHOW_COLUMNS_IN_TABLE`
                 results_stat_df_columns_set = frozenset(results_stat_df.columns)
                 table_model_columns = [x for x in self._SHOW_COLUMNS_IN_TABLE if x in results_stat_df_columns_set]
 
-                if (station_name is not None) and (results_stat_df is not None):
-                    tmp_filter = results_stat_df['station_name'] == station_name
-                    self._data = results_stat_df.loc[tmp_filter, table_model_columns].copy(deep=True)
-                else:  # No filter
-                    self._data = results_stat_df.loc[:, table_model_columns].copy(deep=True)
+                if results_stat_df is None:
+                    self._data = None
+                    self._data_column_names = None
+                    return
+
+                tmp_filter = results_stat_df['station_name'] != True  # All items are True
+
+                if station_name is not None:
+                    tmp_filter = tmp_filter & results_stat_df['station_name'] == station_name
+
+                if (survey_name is not None) and (surveys is not None):
+                    try:
+                        observed_stations_list = surveys[survey_name].observed_stations
+                    except KeyError:  # Survey name not available
+                        QMessageBox.critical(self.parent(), 'Error!', f'Survey "{survey_name}" not found in campaign!')
+                    else:
+                        tmp_filter = tmp_filter & results_stat_df['station_name'].isin(observed_stations_list)
+
+                self._data = results_stat_df.loc[tmp_filter, table_model_columns].copy(deep=True)  # Apply filter
                 self._data_column_names = self._data.columns.to_list()
 
     def rowCount(self, parent=None):

@@ -19,6 +19,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from typing import Tuple
 import numpy as np
 import sys
+from functools import wraps
+from time import time
 
 
 def unique_ordered_list(seq: list) -> list:
@@ -88,3 +90,34 @@ def format_seconds_to_hhmmss(seconds):
     minutes = seconds // 60
     seconds %= 60
     return f'{hours:02d}:{minutes:02d}:{seconds:02d}'
+
+
+def time_it(func):
+    """Decorator to print the execution time of a function."""
+    @wraps(func)
+    def _time_it(*args, **kwargs):
+        start = int(round(time() * 1000))
+        try:
+            return func(*args, **kwargs)
+        finally:
+            end_ = int(round(time() * 1000)) - start
+            print(f'time_it==> {func.__name__}: execution time: {end_ if end_ > 0 else 0} ms')
+    return _time_it
+
+def conditional_decorator(dec, condition):
+    """Generic conditional decorator.
+
+    Parameters
+    ----------
+    dec : decorator
+        Decorator that is executed if `condition` is `True`
+    condition: bool
+        If `True`, `dec`is used as decorator.
+    """
+    def decorator(func):
+        if not condition:
+            # Return the function unchanged, not decorated.
+            return func
+        return dec(func)
+    return decorator
+
