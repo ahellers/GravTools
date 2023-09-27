@@ -227,11 +227,7 @@ class LSMDiff(LSM):
         number_of_diff_obs = number_of_observations - number_of_surveys
 
         # Check, if setup IDs are unique:
-        if self.check_for_unique_setup_id:
-            if len(set(setup_ids)) != len(setup_ids):
-                raise RuntimeError(
-                    'Setup IDs are not unique within the campaign! Probably one or more instrument setups'
-                    ' (same observation epoch and station) have been added multiple times through different surveys.')
+        self.check_unique_setups(setup_ids)
 
         # - Datum points for weighted constraints:
         # Get dataframe with subset of observed stations only:

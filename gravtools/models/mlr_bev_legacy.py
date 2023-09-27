@@ -172,11 +172,7 @@ class BEVLegacyProcessing(LSM):
         ref_epoch_t0_dt = ref_epoch_t0_dt_list[0]
 
         # Check, if setup IDs are unique:
-        if self.check_for_unique_setup_id:
-            if len(set(setup_ids)) != len(setup_ids):
-                raise RuntimeError(
-                    'Setup IDs are not unique within the campaign! Probably one or more instrument setups'
-                    ' (same observation epoch and station) have been added multiple times through different surveys.')
+        self.check_unique_setups(setup_ids)
 
         # Write log:
         if verbose or self.write_log:

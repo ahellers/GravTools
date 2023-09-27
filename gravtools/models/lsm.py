@@ -23,7 +23,7 @@ import pytz
 import copy
 import pandas as pd
 
-from gravtools.models.misc import time_it
+from gravtools.models.misc import time_it, get_nonunique_items
 
 # optional imports:
 try:
@@ -600,6 +600,21 @@ class LSM:
             if setup_data['setup_calc_method'] == 'individual_obs':
                 return False
         return True
+
+    def check_unique_setups(self, setup_ids: list):
+        """Raise an error, is the setup IDs in the input list are not unique.
+
+        Notes
+        -----
+        Omit the check, if `check_for_unique_setup_id` returns `False`.
+        """
+        if self.check_for_unique_setup_id:
+            if len(set(setup_ids)) != len(setup_ids):
+                non_unique_items = get_nonunique_items(setup_ids)
+                non_unique_items_str = [str(item) for item in non_unique_items]
+                non_unique_items_str = ", ".join(non_unique_items_str)
+                raise RuntimeError(
+                    f'Setup IDs are not unique within the campaign! Setups with the following IDs are not unique: {non_unique_items_str}')
 
     @property
     def survey_info_string(self) -> str:
