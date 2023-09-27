@@ -483,6 +483,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_proxy_station_model()  # Time consuming!!!!!
                 self.on_checkBox_filter_observed_stat_only_toggled(
                     state=self.checkBox_filter_observed_stat_only.checkState())
+                self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
                 self.update_stations_map(auto_range=True)
                 # - Observations tab
                 self.set_up_observation_view_model()
@@ -1003,7 +1004,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 selected_station_names = [selected_station_name]
             # - Selected Survey:
-            idx_selected_survey, selected_survey_name = self.get_selected_survey()
+            idx_selected_survey, selected_survey_name = self.get_selected_survey_results()
             if selected_survey_name == 'All surveys':
                 selected_survey_names = None
             else:
@@ -1751,7 +1752,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 station_name = None
             else:
                 station_name = current_station_name
-            survey_idx, current_survey_name = self.get_selected_survey()
+            survey_idx, current_survey_name = self.get_selected_survey_results()
             if current_survey_name == 'All surveys':
                 survey_name = None
             else:
@@ -1830,16 +1831,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.comboBox_results_selection_station.blockSignals(False)
 
     def update_comboBox_results_selection_surrvey(self, survey_names: list):
-        """Update the surve seletion combobox in the results tab, based on the current lsm run."""
+        """Update the survey selection combobox in the results tab, based on the current lsm run."""
         self.comboBox_results_selection_survey.blockSignals(True)
         # Get current item:
-        survey_idx, current_survey_name = self.get_selected_survey()
+        survey_idx, current_survey_name = self.get_selected_survey_results()
         self.comboBox_results_selection_survey.clear()
         self.comboBox_results_selection_survey.addItems(['All surveys'] + survey_names)
         # Try to select the previous item again:
         if survey_idx != -1:  # Previous selection available
             self.comboBox_results_selection_survey.setCurrentText(current_survey_name)
         self.comboBox_results_selection_survey.blockSignals(False)
+
+    def update_comboBox_stations_selection_surrvey(self, survey_names: list):
+        """Update the survey selection combobox in the stations tab, based on the current surveys in the campaign."""
+        self.comboBox_stations_plot_obs_map_surveys.blockSignals(True)
+        # Get current item:
+        survey_idx, current_survey_name = self.get_selected_survey_stations()
+        self.comboBox_stations_plot_obs_map_surveys.clear()
+        self.comboBox_stations_plot_obs_map_surveys.addItems(['All surveys'] + survey_names)
+        # Try to select the previous item again:
+        if survey_idx != -1:  # Previous selection available
+            self.comboBox_stations_plot_obs_map_surveys.setCurrentText(current_survey_name)
+        self.comboBox_stations_plot_obs_map_surveys.blockSignals(False)
 
     def update_comboBox_lsm_run_selection(self, select_latest_item=False):
         """Update the LSM run selection combo box in the results tab, based on the available runs in the campaign."""
@@ -1898,10 +1911,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         idx = self.comboBox_results_selection_station.currentIndex()
         return idx, station_name
 
-    def get_selected_survey(self):
+    def get_selected_survey_results(self):
         """Get the selected survey in the results tab."""
         survey_name = self.comboBox_results_selection_survey.currentText()
         idx = self.comboBox_results_selection_survey.currentIndex()
+        return idx, survey_name
+
+    def get_selected_survey_stations(self):
+        """Get the selected survey in the stations tab for displaying observations on the map."""
+        survey_name = self.comboBox_stations_plot_obs_map_surveys.currentText()
+        idx = self.comboBox_stations_plot_obs_map_surveys.currentIndex()
         return idx, survey_name
 
     def get_selected_obs_data_column(self):
@@ -3056,13 +3075,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_up_station_view_model()
             self.enable_station_view_options_based_on_model()
             self.set_up_proxy_station_model()
+            self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
             self.update_stations_map(auto_range=True)
             # - Observations Tab:
             self.set_up_observation_view_model()
             self.enable_menu_observations_based_on_campaign_data()
             self.populate_survey_tree_widget()
             self.set_up_setup_view_model()
-            self.plot_observations(survey_name=None)  # wipe observbations plot
+            self.plot_observations(survey_name=None)  # wipe observations plot
             self.set_up_survey_view_model()
             # - Results tab:
             self.set_up_results_stations_view_model()
@@ -3273,7 +3293,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         added_surveys_list = []
-        # Add surveys to the campaing:
+        # Add surveys to the campaign:
         for cg5_obs_file_filename in cg5_obs_file_filenames:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the
             # underlying operating system.
@@ -3295,6 +3315,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if  not added_surveys_list:
             self.statusBar().showMessage(f"No survey data added.")
             return
+
+        self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
 
         # Calculate reduced observation data:
         if settings.CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA:

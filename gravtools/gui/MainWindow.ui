@@ -105,6 +105,26 @@
                  </property>
                 </widget>
                </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_stations_plot_obs_map">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Plot observations in terms of lines in the station plot according to the selection below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="text">
+                  <string>Plot observations</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="comboBox_stations_plot_obs_map_surveys">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select whether observations of all surveys, or of a selected survey should be plotted in the station map.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
               </layout>
              </widget>
             </item>
@@ -1390,6 +1410,22 @@
     <hint type="destinationlabel">
      <x>1017</x>
      <y>625</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_stations_plot_obs_map</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboBox_stations_plot_obs_map_surveys</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>146</x>
+     <y>243</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>146</x>
+     <y>273</y>
     </hint>
    </hints>
   </connection>

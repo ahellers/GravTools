@@ -60,6 +60,13 @@ class Ui_MainWindow(object):
         self.checkBox_stations_map_show_stat_name_labels.setChecked(True)
         self.checkBox_stations_map_show_stat_name_labels.setObjectName("checkBox_stations_map_show_stat_name_labels")
         self.verticalLayout_31.addWidget(self.checkBox_stations_map_show_stat_name_labels)
+        self.checkBox_stations_plot_obs_map = QtWidgets.QCheckBox(self.groupBox_stations_map_view_options)
+        self.checkBox_stations_plot_obs_map.setObjectName("checkBox_stations_plot_obs_map")
+        self.verticalLayout_31.addWidget(self.checkBox_stations_plot_obs_map)
+        self.comboBox_stations_plot_obs_map_surveys = QtWidgets.QComboBox(self.groupBox_stations_map_view_options)
+        self.comboBox_stations_plot_obs_map_surveys.setEnabled(False)
+        self.comboBox_stations_plot_obs_map_surveys.setObjectName("comboBox_stations_plot_obs_map_surveys")
+        self.verticalLayout_31.addWidget(self.comboBox_stations_plot_obs_map_surveys)
         self.verticalLayout_3.addWidget(self.groupBox_stations_map_view_options)
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout_3.addItem(spacerItem)
@@ -675,6 +682,7 @@ class Ui_MainWindow(object):
         self.tabWidget_observations.setCurrentIndex(0)
         self.tabWidget_results.setCurrentIndex(0)
         self.radioButton_results_obs_plot_histogram.toggled['bool'].connect(self.groupBox_histogram_settings.setEnabled) # type: ignore
+        self.checkBox_stations_plot_obs_map.toggled['bool'].connect(self.comboBox_stations_plot_obs_map_surveys.setEnabled) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
     def retranslateUi(self, MainWindow):
@@ -687,6 +695,9 @@ class Ui_MainWindow(object):
         self.label.setText(_translate("MainWindow", "Station name filter (regex)"))
         self.groupBox_stations_map_view_options.setTitle(_translate("MainWindow", "Map view options"))
         self.checkBox_stations_map_show_stat_name_labels.setText(_translate("MainWindow", "Show station name labels"))
+        self.checkBox_stations_plot_obs_map.setToolTip(_translate("MainWindow", "<html><head/><body><p>Plot observations in terms of lines in the station plot according to the selection below.</p></body></html>"))
+        self.checkBox_stations_plot_obs_map.setText(_translate("MainWindow", "Plot observations"))
+        self.comboBox_stations_plot_obs_map_surveys.setToolTip(_translate("MainWindow", "<html><head/><body><p>Select whether observations of all surveys, or of a selected survey should be plotted in the station map.</p></body></html>"))
         self.tab_Widget_Stations.setTabText(self.tab_Widget_Stations.indexOf(self.tab_Stations_Table), _translate("MainWindow", "Table"))
         self.tab_Widget_Stations.setTabText(self.tab_Widget_Stations.indexOf(self.tab_stations_map), _translate("MainWindow", "Map"))
         self.tabWidget_Main.setTabText(self.tabWidget_Main.indexOf(self.tab_main_stations), _translate("MainWindow", "Stations"))
