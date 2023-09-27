@@ -1616,6 +1616,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tableView_results_stations.setModel(self.results_station_model)
             self.tableView_results_stations.resizeColumnsToContents()
 
+            #TODO:
+            self.results_station_model.dataChanged.connect(self.results_station_model_dataChanged)
+            self.results_station_model.layoutChanged.connect(self.results_station_model_layoutChanged)
+
+    def results_station_model_dataChanged(self):
+        """Test"""
+        print('Data changed')
+
+    def results_station_model_layoutChanged(self):
+        """Test"""
+        print('Layout changed')
+        self.results_station_model._data
+
     @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_station_table_view(self, lsm_run_index: int, station_name=None, survey_name=None):
         """Update the station results table view after changing the table model."""
