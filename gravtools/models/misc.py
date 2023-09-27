@@ -21,7 +21,22 @@ import numpy as np
 import sys
 from functools import wraps
 from time import time
+from collections import Counter
 
+
+def get_nonunique_items(lst: list) -> list:
+    """Returns all non-unique items in the input list.
+
+    Parameters
+    ----------
+    lst: list
+        List to be checked for non-unique items
+
+    Returns
+    -------
+    list : Non-unique items.
+    """
+    return [item for item, count in Counter(lst).items() if count > 1]
 
 def unique_ordered_list(seq: list) -> list:
     """Returns a unique list whilst keeping the order.

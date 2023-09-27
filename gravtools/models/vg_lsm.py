@@ -268,11 +268,7 @@ class VGLSM(LSM):
         number_of_parameters = drift_pol_degree + vg_polynomial_degree + 1
 
         # Check, if setup IDs are unique:
-        if self.check_for_unique_setup_id:
-            if len(set(setup_ids)) != len(setup_ids):
-                raise RuntimeError(
-                    'Setup IDs are not unique within the campaign! Probably one or more instrument setups'
-                    ' (same observation epoch and station) have been added multiple times through different surveys.')
+        self.check_unique_setups(setup_ids)
 
         if verbose or self.write_log:
             time_now_str = dt.datetime.now(tz=pytz.UTC).strftime('%Y-%m-%d, %H:%M:%S %Z')
