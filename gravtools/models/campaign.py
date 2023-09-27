@@ -323,6 +323,11 @@ class Campaign:
         return info_dict
 
     @property
+    def survey_names(self):
+        """Returns a list with the names of all surveys in the campaign."""
+        return list(self.surveys.keys())
+
+    @property
     def number_of_surveys(self) -> int:
         """int : Returns the number of surveys in this campaign."""
         return len(self.surveys)
