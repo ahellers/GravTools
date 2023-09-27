@@ -167,6 +167,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.comboBox_results_obs_plot_hist_method.currentIndexChanged.connect(
             self.on_histogram_bin_method_currentIndexChanged)
         self.spinBox_results_obs_plot_number_bins.valueChanged.connect(self.update_results_obs_plots)
+        self.comboBox_results_stations_statistics_select_col.currentIndexChanged.connect(
+            self.display_station_results_statistics)
         # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
         # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
 
@@ -1616,19 +1618,60 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.tableView_results_stations.setModel(self.results_station_model)
             self.tableView_results_stations.resizeColumnsToContents()
-
-            #TODO:
-            self.results_station_model.dataChanged.connect(self.results_station_model_dataChanged)
             self.results_station_model.layoutChanged.connect(self.results_station_model_layoutChanged)
 
-    def results_station_model_dataChanged(self):
-        """Test"""
-        print('Data changed')
-
     def results_station_model_layoutChanged(self):
-        """Test"""
-        print('Layout changed')
-        self.results_station_model._data
+        """Execute whenever the layout of the station results model changes."""
+        self.update_comboBox_results_stations_statistics_select_col_based_on_table_view()
+        self.display_station_results_statistics()
+
+    def update_comboBox_results_stations_statistics_select_col_based_on_table_view(self):
+        """Update items in the combobox for selecting the stations results table column for presenting statistics."""
+        self.comboBox_results_stations_statistics_select_col.blockSignals(True)
+        data_columns_dict = self.results_station_model.get_columns_for_descriptive_statistics()
+        # Get current item:
+        idx, current_column_name = self.get_selected_station_results_stats_column()
+        self.comboBox_results_stations_statistics_select_col.clear()
+        # Add items (text and data items):
+        for col_name, short_description in data_columns_dict.items():
+            self.comboBox_results_stations_statistics_select_col.addItem(short_description, userData=col_name)
+        # Try to select the previous item again:
+        if idx != -1:  # Previous selection available
+            try:
+                current_short_description = self.results_station_model.get_short_column_description(
+                    current_column_name)
+                self.comboBox_results_stations_statistics_select_col.setCurrentText(current_short_description)
+            except:
+                pass
+        self.comboBox_results_stations_statistics_select_col.blockSignals(False)
+
+    def get_selected_station_results_stats_column(self):
+        """Get the selected column for displaying station results statistics in the GUI."""
+        idx = self.comboBox_results_stations_statistics_select_col.currentIndex()
+        column_name = self.comboBox_results_stations_statistics_select_col.currentData()
+        return idx, column_name
+
+    def display_station_results_statistics(self):
+        """Display station results statistics in the GUI."""
+        # Get current selection:
+        idx, col_name = self.get_selected_station_results_stats_column()
+        model_data_df = self.results_station_model.get_model_data_df()
+        if (idx == -1) or (model_data_df is None):
+            self.label_results_stations_statistics_mean.clear()
+            self.label_results_stations_statistics_std.clear()
+            self.label_results_stations_statistics_min.clear()
+            self.label_results_stations_statistics_max.clear()
+            self.label__results_stations_statistics_median.clear()
+            self.label__results_stations_statistics_iqr.clear()
+            return
+        data_col =  model_data_df[col_name]
+        iqr = data_col.quantile(0.75) - data_col.quantile(0.25)
+        self.label_results_stations_statistics_mean.setText(f'{data_col.mean():.3f}')
+        self.label_results_stations_statistics_std.setText(f'{data_col.std():.3f}')
+        self.label_results_stations_statistics_min.setText(f'{data_col.min():.3f}')
+        self.label_results_stations_statistics_max.setText(f'{data_col.max():.3f}')
+        self.label__results_stations_statistics_median.setText(f'{data_col.median():.3f}')
+        self.label__results_stations_statistics_iqr.setText(f'{iqr:.3f}')
 
     @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_station_table_view(self, lsm_run_index: int, station_name=None, survey_name=None):

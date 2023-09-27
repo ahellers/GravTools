@@ -71,6 +71,13 @@ class ResultsStationModel(QAbstractTableModel):
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
+    # For the following columns descriptive statistics, such as SD and mean, will be provided in the GUI:
+    _COLUMNS_STATISTICS = (
+        'sd_g_est_mugal',
+        'se_g_est_mugal',
+        'g_est_mugal',
+    )
+
     def __init__(self, lsm_runs):
         """Initialize the station-results table view model.
 
@@ -243,7 +250,7 @@ class ResultsStationModel(QAbstractTableModel):
         """Return the standard deviation of the SD's of all estimated gravity values in the current model in µGal."""
         if self._data is None:
             return None
-        return self._data['sd_est_mugal'].median()
+        return self._data['sd_est_mugal'].std()
 
     @property
     def iqr_sd_est(self) -> (float, float):
@@ -253,3 +260,29 @@ class ResultsStationModel(QAbstractTableModel):
         q25 = self._data['sd_est_mugal'].quantile(0.25)
         q75 = self._data['sd_est_mugal'].quantile(0.75)
         return q75 - q25
+
+    def get_columns_for_descriptive_statistics(self) -> dict:
+        """Returns a dict with names and description of the numerical columns suitable for descriptive statistics.
+
+        Notes
+        -----
+        If the model data is empty return an empty dict.
+        """
+        columns_dict = {}
+        if self._data_column_names is not None:  # Data model is not empty
+            for col_name in self._COLUMNS_STATISTICS:
+                # Check if key is a column-name in the current data
+                if col_name in self._data_column_names:
+                    columns_dict[col_name] = self._SHOW_COLUMNS_IN_TABLE_DICT[col_name]
+        return columns_dict
+
+    def get_short_column_description(self, column_name: str) -> str:
+        """Returns the short description of the model column."""
+        try:
+            return self._SHOW_COLUMNS_IN_TABLE_DICT[column_name]
+        except AttributeError:
+            return ''
+
+    def get_model_data_df(self):
+        """Returns the model data dataframe."""
+        return self._data
