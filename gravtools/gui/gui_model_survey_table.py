@@ -249,3 +249,8 @@ class SurveyTableModel(QAbstractTableModel):
     @property
     def no_data(self):
         return not self._data
+
+    def get_survey_name_by_row_index(self, row_idx: int) -> str:
+        """Returns the name of the survey displayed in row with the index `idx`."""
+        return self._survey_name_list[row_idx]
+

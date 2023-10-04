@@ -353,7 +353,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>2</number>
            </property>
            <widget class="QWidget" name="tab_observations_plots">
             <attribute name="title">
@@ -381,7 +381,11 @@
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_37">
              <item>
-              <widget class="QTableView" name="tableView_surveys"/>
+              <widget class="QTableView" name="tableView_surveys">
+               <property name="contextMenuPolicy">
+                <enum>Qt::CustomContextMenu</enum>
+               </property>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -603,7 +607,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>5</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -1016,7 +1020,7 @@
                   <item>
                    <widget class="QLabel" name="label_12">
                     <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;´&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select data column for displaying statistics.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="text">
                      <string>Select column</string>
