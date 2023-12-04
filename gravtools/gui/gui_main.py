@@ -1157,9 +1157,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 setup_calc_method = setup_data['setup_calc_method']
             if setup_calc_method != 'individual_obs':
+                # Merge on the reference epochs, because the setup-IDs are not unique!
                 setup_obs_df_short = lsm_run.setup_obs_df.loc[
-                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['setup_id', 'v_obs_est_mugal']].copy(deep=True)
-                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', on='setup_id')  # WEG!
+                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(deep=True)
+                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', left_on='epoch_dt', right_on='ref_epoch_dt')  # WEG!
             else:
                 setup_obs_df_short = lsm_run.setup_obs_df.loc[
                     lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(

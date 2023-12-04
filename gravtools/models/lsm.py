@@ -537,7 +537,7 @@ class LSM:
         return self.log_str
 
     @property
-    @time_it
+    # @time_it
     def get_correlation_matrix(self):
         """Calculates und returns the correlation matrix based on the Co-Variance matrix of the LSM run.
 

@@ -2,6 +2,6 @@
 !.gitignore
 
 # Test data:
-!2020-06-18_DACH.TXT
-!20200907_test.TXT
 !l230406.TXT
+!n221005b.TXT
+!e220706b.TXT
