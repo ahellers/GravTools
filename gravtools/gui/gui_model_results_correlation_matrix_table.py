@@ -46,7 +46,7 @@ class ResultsCorrelationMatrixModel(QAbstractTableModel):
         self._lsm_run_index = None  # Name of the Survey that is currently represented by `self._data`
         self._data_column_names = None
 
-    @time_it
+    # @time_it
     def load_lsm_runs(self, lsm_runs: list):
         """Load adjustment results.
 
@@ -56,7 +56,7 @@ class ResultsCorrelationMatrixModel(QAbstractTableModel):
         """
         self._lsm_runs = lsm_runs
 
-    @time_it
+    # @time_it
     def update_view_model(self, lsm_run_index: int, station_name=None, survey_name=None):
         """Update the `_data` DataFrame that hold the actual data that is displayed.
 

@@ -105,6 +105,26 @@
                  </property>
                 </widget>
                </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_stations_plot_obs_map">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Plot observations in terms of lines in the station plot according to the selection below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="text">
+                  <string>Plot observations</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QComboBox" name="comboBox_stations_plot_obs_map_surveys">
+                 <property name="enabled">
+                  <bool>false</bool>
+                 </property>
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select whether observations of all surveys, or of a selected survey should be plotted in the station map.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                </widget>
+               </item>
               </layout>
              </widget>
             </item>
@@ -333,7 +353,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>2</number>
            </property>
            <widget class="QWidget" name="tab_observations_plots">
             <attribute name="title">
@@ -361,7 +381,11 @@
             </attribute>
             <layout class="QVBoxLayout" name="verticalLayout_37">
              <item>
-              <widget class="QTableView" name="tableView_surveys"/>
+              <widget class="QTableView" name="tableView_surveys">
+               <property name="contextMenuPolicy">
+                <enum>Qt::CustomContextMenu</enum>
+               </property>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -583,7 +607,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>0</number>
+            <number>5</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -978,9 +1002,174 @@
             <attribute name="title">
              <string> Stations Table</string>
             </attribute>
-            <layout class="QVBoxLayout" name="verticalLayout_19">
+            <layout class="QVBoxLayout" name="verticalLayout_39">
              <item>
               <widget class="QTableView" name="tableView_results_stations"/>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox_results_stations_statistics">
+               <property name="toolTip">
+                <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Calculate and display descriptive statistics for the selected data column.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+               </property>
+               <property name="title">
+                <string>Statistics</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayout_4">
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_19">
+                  <item>
+                   <widget class="QLabel" name="label_12">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select data column for displaying statistics.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                    <property name="text">
+                     <string>Select column</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="comboBox_results_stations_statistics_select_col">
+                    <property name="toolTip">
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select data column for displaying statistics.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QFormLayout" name="formLayout_9">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_13">
+                    <property name="toolTip">
+                     <string>Mean</string>
+                    </property>
+                    <property name="text">
+                     <string>Mean:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QLabel" name="label_results_stations_statistics_mean">
+                    <property name="toolTip">
+                     <string>Mean</string>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="label_14">
+                    <property name="toolTip">
+                     <string>Standard deviation</string>
+                    </property>
+                    <property name="text">
+                     <string>Std.:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QLabel" name="label_results_stations_statistics_std">
+                    <property name="toolTip">
+                     <string>Standard deviation</string>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QFormLayout" name="formLayout_10">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_15">
+                    <property name="toolTip">
+                     <string>Minimum</string>
+                    </property>
+                    <property name="text">
+                     <string>Min.:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QLabel" name="label_results_stations_statistics_min">
+                    <property name="toolTip">
+                     <string>Minimum</string>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="label_16">
+                    <property name="toolTip">
+                     <string>Maximum</string>
+                    </property>
+                    <property name="text">
+                     <string>Max.:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QLabel" name="label_results_stations_statistics_max">
+                    <property name="toolTip">
+                     <string>Maximum</string>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QFormLayout" name="formLayout_11">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_17">
+                    <property name="toolTip">
+                     <string>Median</string>
+                    </property>
+                    <property name="text">
+                     <string>Median:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QLabel" name="label__results_stations_statistics_median">
+                    <property name="toolTip">
+                     <string>Median</string>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="label_18">
+                    <property name="toolTip">
+                     <string>Interquartile range</string>
+                    </property>
+                    <property name="text">
+                     <string>IQR:</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QLabel" name="label__results_stations_statistics_iqr">
+                    <property name="toolTip">
+                     <string>Interquartile range</string>
+                    </property>
+                    <property name="text">
+                     <string/>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
              </item>
             </layout>
            </widget>
@@ -1390,6 +1579,22 @@
     <hint type="destinationlabel">
      <x>1017</x>
      <y>625</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkBox_stations_plot_obs_map</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>comboBox_stations_plot_obs_map_surveys</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>146</x>
+     <y>243</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>146</x>
+     <y>273</y>
     </hint>
    </hints>
   </connection>

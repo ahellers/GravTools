@@ -25,8 +25,8 @@ import sys
 import os
 import warnings
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
-    QHeaderView, QInputDialog
-from PyQt5.QtCore import QDir, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp
+    QHeaderView, QInputDialog, QMenu
+from PyQt5.QtCore import QDir, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QPoint
 from PyQt5 import QtGui
 import datetime as dt
 import pyqtgraph as pg
@@ -67,6 +67,7 @@ from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool, resize_table_view_columns
 from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
 from gravtools.gui.dlg_corrections import DialogCorrections
+from gravtools.gui.survey_table_handler import SurveyTableHandler
 from gravtools.gui.cumstom_widgets import ScrollMessageBox
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
@@ -167,6 +168,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.comboBox_results_obs_plot_hist_method.currentIndexChanged.connect(
             self.on_histogram_bin_method_currentIndexChanged)
         self.spinBox_results_obs_plot_number_bins.valueChanged.connect(self.update_results_obs_plots)
+        self.comboBox_results_stations_statistics_select_col.currentIndexChanged.connect(
+            self.display_station_results_statistics)
+        self.tableView_surveys.customContextMenuRequested.connect(self.tableView_surveys_right_click)
         # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
         # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
 
@@ -234,6 +238,72 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    @pyqtSlot(QPoint)
+    def tableView_surveys_right_click(self, position):
+        """Invoked on right mouse click on a field in the stations results table view."""
+        idx = self.tableView_surveys.indexAt(position)  # Returns QModelIndex
+        if not idx.isValid():
+            return
+        survey_name = self.survey_model.get_survey_name_by_row_index(idx.row())
+        ctx_menu = QMenu()
+        ctx_menu.setToolTip('Remove the selected survey from the campaign. Existing adjustment results containing '
+                            'observations of this survey will remain present.')
+        delete_survey = ctx_menu.addAction(f'Delete Survey {survey_name}')
+        action = ctx_menu.exec_(QtGui.QCursor.pos())
+        if action == delete_survey:
+            reply = QMessageBox.question(self, 'Message', f'Remove survey "{survey_name}" from the campaign?',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.No:
+                return
+            self.campaign.remove_survey(survey_name=survey_name, verbose=IS_VERBOSE)
+
+            # Stations tab:
+            self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
+            self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
+            self.refresh_stations_table_model_and_view()
+            # self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.  # Required?
+            self.on_checkBox_filter_observed_stat_only_toggled(
+                state=self.checkBox_filter_observed_stat_only.checkState())
+            self.enable_station_view_options_based_on_model()
+            # Show observed stations only based on Checkbox state:
+            self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
+                                                               auto_range_stations_plot=True)
+
+            # Observations tab:
+            selected_survey_name, selected_setup_id = self.get_obs_tree_widget_selected_item()
+
+            self.populate_survey_tree_widget()
+            # Select the previously selected survey again, if still available.
+            # - Select nothing, if no survey left => Clear Plots and tables in observations tab
+            # - Select the first survey if the previously selected one was deleted
+            if self.campaign.number_of_surveys == 0:
+                self.update_obs_table_view(survey_name=None, setup_id=None)
+                self.update_setup_table_view(survey_name=None, setup_id=None)
+                self.plot_observations(survey_name=None)
+                # self.on_obs_tree_widget_item_selected()
+            elif selected_survey_name == survey_name:  # Select first survey in the tree widget
+                self.treeWidget_observations.topLevelItem(0).setSelected(True)
+            else:  # Restore the previous selection
+                for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
+                    if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == selected_survey_name:
+                        if selected_setup_id is None:
+                            self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
+                        else:
+                            for child_item_idx in range(self.treeWidget_observations.topLevelItem(tree_item_idx).childCount()):
+                                if self.treeWidget_observations.topLevelItem(tree_item_idx).child(child_item_idx).text(0) == selected_setup_id:
+                                    self.treeWidget_observations.topLevelItem(tree_item_idx).child(child_item_idx).setSelected()
+            self.enable_menu_observations_based_on_campaign_data()
+            self.set_up_survey_view_model()
+
+            # TODO: Handle results!
+            # Problem: Wenn man einen Survey entfernt, so kommt es zu Fehlermeldungen, wenn man bestehende Ergebnisse
+            # dieses Surveys im Results tab anzeigen möchte! Offenbar wird hierbei auf campaing.surveys zugegriffen.
+            # Das muss geändert werden, so dass sämtliche Daten, die zur Visualisierung der Ergebnisse nötig sind,
+            # im LSM object gespeichert werden und dort zur Verfügung stehen.
+
+            self.statusBar().showMessage(
+                f'Survey "{survey_name}" removed from campaign.')
 
     def action_correction_time_series_triggered(self):
         """Launch dialog for managing correction time series data."""
@@ -483,6 +553,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_proxy_station_model()  # Time consuming!!!!!
                 self.on_checkBox_filter_observed_stat_only_toggled(
                     state=self.checkBox_filter_observed_stat_only.checkState())
+                self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
                 self.update_stations_map(auto_range=True)
                 # - Observations tab
                 self.set_up_observation_view_model()
@@ -1003,7 +1074,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 selected_station_names = [selected_station_name]
             # - Selected Survey:
-            idx_selected_survey, selected_survey_name = self.get_selected_survey()
+            idx_selected_survey, selected_survey_name = self.get_selected_survey_results()
             if selected_survey_name == 'All surveys':
                 selected_survey_names = None
             else:
@@ -1086,9 +1157,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 setup_calc_method = setup_data['setup_calc_method']
             if setup_calc_method != 'individual_obs':
+                # Merge on the reference epochs, because the setup-IDs are not unique!
                 setup_obs_df_short = lsm_run.setup_obs_df.loc[
-                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['setup_id', 'v_obs_est_mugal']].copy(deep=True)
-                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', on='setup_id')  # WEG!
+                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(deep=True)
+                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', left_on='epoch_dt', right_on='ref_epoch_dt')  # WEG!
             else:
                 setup_obs_df_short = lsm_run.setup_obs_df.loc[
                     lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(
@@ -1615,6 +1687,60 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.tableView_results_stations.setModel(self.results_station_model)
             self.tableView_results_stations.resizeColumnsToContents()
+            self.results_station_model.layoutChanged.connect(self.results_station_model_layoutChanged)
+
+    def results_station_model_layoutChanged(self):
+        """Execute whenever the layout of the station results model changes."""
+        self.update_comboBox_results_stations_statistics_select_col_based_on_table_view()
+        self.display_station_results_statistics()
+
+    def update_comboBox_results_stations_statistics_select_col_based_on_table_view(self):
+        """Update items in the combobox for selecting the stations results table column for presenting statistics."""
+        self.comboBox_results_stations_statistics_select_col.blockSignals(True)
+        data_columns_dict = self.results_station_model.get_columns_for_descriptive_statistics()
+        # Get current item:
+        idx, current_column_name = self.get_selected_station_results_stats_column()
+        self.comboBox_results_stations_statistics_select_col.clear()
+        # Add items (text and data items):
+        for col_name, short_description in data_columns_dict.items():
+            self.comboBox_results_stations_statistics_select_col.addItem(short_description, userData=col_name)
+        # Try to select the previous item again:
+        if idx != -1:  # Previous selection available
+            try:
+                current_short_description = self.results_station_model.get_short_column_description(
+                    current_column_name)
+                self.comboBox_results_stations_statistics_select_col.setCurrentText(current_short_description)
+            except:
+                pass
+        self.comboBox_results_stations_statistics_select_col.blockSignals(False)
+
+    def get_selected_station_results_stats_column(self):
+        """Get the selected column for displaying station results statistics in the GUI."""
+        idx = self.comboBox_results_stations_statistics_select_col.currentIndex()
+        column_name = self.comboBox_results_stations_statistics_select_col.currentData()
+        return idx, column_name
+
+    def display_station_results_statistics(self):
+        """Display station results statistics in the GUI."""
+        # Get current selection:
+        idx, col_name = self.get_selected_station_results_stats_column()
+        model_data_df = self.results_station_model.get_model_data_df()
+        if (idx == -1) or (model_data_df is None):
+            self.label_results_stations_statistics_mean.clear()
+            self.label_results_stations_statistics_std.clear()
+            self.label_results_stations_statistics_min.clear()
+            self.label_results_stations_statistics_max.clear()
+            self.label__results_stations_statistics_median.clear()
+            self.label__results_stations_statistics_iqr.clear()
+            return
+        data_col =  model_data_df[col_name]
+        iqr = data_col.quantile(0.75) - data_col.quantile(0.25)
+        self.label_results_stations_statistics_mean.setText(f'{data_col.mean():.3f}')
+        self.label_results_stations_statistics_std.setText(f'{data_col.std():.3f}')
+        self.label_results_stations_statistics_min.setText(f'{data_col.min():.3f}')
+        self.label_results_stations_statistics_max.setText(f'{data_col.max():.3f}')
+        self.label__results_stations_statistics_median.setText(f'{data_col.median():.3f}')
+        self.label__results_stations_statistics_iqr.setText(f'{iqr:.3f}')
 
     @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
     def update_results_station_table_view(self, lsm_run_index: int, station_name=None, survey_name=None):
@@ -1738,7 +1864,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 station_name = None
             else:
                 station_name = current_station_name
-            survey_idx, current_survey_name = self.get_selected_survey()
+            survey_idx, current_survey_name = self.get_selected_survey_results()
             if current_survey_name == 'All surveys':
                 survey_name = None
             else:
@@ -1817,16 +1943,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.comboBox_results_selection_station.blockSignals(False)
 
     def update_comboBox_results_selection_surrvey(self, survey_names: list):
-        """Update the surve seletion combobox in the results tab, based on the current lsm run."""
+        """Update the survey selection combobox in the results tab, based on the current lsm run."""
         self.comboBox_results_selection_survey.blockSignals(True)
         # Get current item:
-        survey_idx, current_survey_name = self.get_selected_survey()
+        survey_idx, current_survey_name = self.get_selected_survey_results()
         self.comboBox_results_selection_survey.clear()
         self.comboBox_results_selection_survey.addItems(['All surveys'] + survey_names)
         # Try to select the previous item again:
         if survey_idx != -1:  # Previous selection available
             self.comboBox_results_selection_survey.setCurrentText(current_survey_name)
         self.comboBox_results_selection_survey.blockSignals(False)
+
+    def update_comboBox_stations_selection_surrvey(self, survey_names: list):
+        """Update the survey selection combobox in the stations tab, based on the current surveys in the campaign."""
+        self.comboBox_stations_plot_obs_map_surveys.blockSignals(True)
+        # Get current item:
+        survey_idx, current_survey_name = self.get_selected_survey_stations()
+        self.comboBox_stations_plot_obs_map_surveys.clear()
+        self.comboBox_stations_plot_obs_map_surveys.addItems(['All surveys'] + survey_names)
+        # Try to select the previous item again:
+        if survey_idx != -1:  # Previous selection available
+            self.comboBox_stations_plot_obs_map_surveys.setCurrentText(current_survey_name)
+        self.comboBox_stations_plot_obs_map_surveys.blockSignals(False)
 
     def update_comboBox_lsm_run_selection(self, select_latest_item=False):
         """Update the LSM run selection combo box in the results tab, based on the available runs in the campaign."""
@@ -1885,10 +2023,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         idx = self.comboBox_results_selection_station.currentIndex()
         return idx, station_name
 
-    def get_selected_survey(self):
+    def get_selected_survey_results(self):
         """Get the selected survey in the results tab."""
         survey_name = self.comboBox_results_selection_survey.currentText()
         idx = self.comboBox_results_selection_survey.currentIndex()
+        return idx, survey_name
+
+    def get_selected_survey_stations(self):
+        """Get the selected survey in the stations tab for displaying observations on the map."""
+        survey_name = self.comboBox_stations_plot_obs_map_surveys.currentText()
+        idx = self.comboBox_stations_plot_obs_map_surveys.currentIndex()
         return idx, survey_name
 
     def get_selected_obs_data_column(self):
@@ -2231,8 +2375,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 parent = item.parent()
                 survey_name = parent.text(0)  # Column 0 = Survey name
                 setup_id = int(item.text(0))
-            self.update_obs_table_view(survey_name, setup_id)
-            self.plot_observations(survey_name)
+            # self.update_obs_table_view(survey_name, setup_id)  # TODO: Why here? Needed?
+            # self.plot_observations(survey_name)  # TODO: Why here? Needed?
         else:
             if IS_VERBOSE:
                 print('No item or multiple items selected!')
@@ -3043,13 +3187,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_up_station_view_model()
             self.enable_station_view_options_based_on_model()
             self.set_up_proxy_station_model()
+            self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
             self.update_stations_map(auto_range=True)
             # - Observations Tab:
             self.set_up_observation_view_model()
             self.enable_menu_observations_based_on_campaign_data()
             self.populate_survey_tree_widget()
             self.set_up_setup_view_model()
-            self.plot_observations(survey_name=None)  # wipe observbations plot
+            self.plot_observations(survey_name=None)  # wipe observations plot
             self.set_up_survey_view_model()
             # - Results tab:
             self.set_up_results_stations_view_model()
@@ -3260,7 +3405,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         added_surveys_list = []
-        # Add surveys to the campaing:
+        # Add surveys to the campaign:
         for cg5_obs_file_filename in cg5_obs_file_filenames:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the
             # underlying operating system.
@@ -3282,6 +3427,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if  not added_surveys_list:
             self.statusBar().showMessage(f"No survey data added.")
             return
+
+        self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
 
         # Calculate reduced observation data:
         if settings.CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA:
