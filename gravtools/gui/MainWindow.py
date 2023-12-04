@@ -192,6 +192,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_37 = QtWidgets.QVBoxLayout(self.tab_surveys)
         self.verticalLayout_37.setObjectName("verticalLayout_37")
         self.tableView_surveys = QtWidgets.QTableView(self.tab_surveys)
+        self.tableView_surveys.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         self.tableView_surveys.setObjectName("tableView_surveys")
         self.verticalLayout_37.addWidget(self.tableView_surveys)
         self.tabWidget_observations.addTab(self.tab_surveys, "")
@@ -744,8 +745,8 @@ class Ui_MainWindow(object):
         self.retranslateUi(MainWindow)
         self.tabWidget_Main.setCurrentIndex(1)
         self.tab_Widget_Stations.setCurrentIndex(0)
-        self.tabWidget_observations.setCurrentIndex(0)
-        self.tabWidget_results.setCurrentIndex(0)
+        self.tabWidget_observations.setCurrentIndex(2)
+        self.tabWidget_results.setCurrentIndex(5)
         self.radioButton_results_obs_plot_histogram.toggled['bool'].connect(self.groupBox_histogram_settings.setEnabled) # type: ignore
         self.checkBox_stations_plot_obs_map.toggled['bool'].connect(self.comboBox_stations_plot_obs_map_surveys.setEnabled) # type: ignore
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
@@ -846,7 +847,7 @@ class Ui_MainWindow(object):
         self.tabWidget_results.setTabText(self.tabWidget_results.indexOf(self.tab_results_driftplot), _translate("MainWindow", "Drift Plot"))
         self.groupBox_results_stations_statistics.setToolTip(_translate("MainWindow", "<html><head/><body><p>Calculate and display descriptive statistics for the selected data column.</p></body></html>"))
         self.groupBox_results_stations_statistics.setTitle(_translate("MainWindow", "Statistics"))
-        self.label_12.setToolTip(_translate("MainWindow", "<html><head/><body><p>´</p></body></html>"))
+        self.label_12.setToolTip(_translate("MainWindow", "<html><head/><body><p>Select data column for displaying statistics.</p></body></html>"))
         self.label_12.setText(_translate("MainWindow", "Select column"))
         self.comboBox_results_stations_statistics_select_col.setToolTip(_translate("MainWindow", "<html><head/><body><p>Select data column for displaying statistics.</p></body></html>"))
         self.label_13.setToolTip(_translate("MainWindow", "Mean"))

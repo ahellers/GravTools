@@ -93,6 +93,15 @@ class SetupTableModel(QAbstractTableModel):
         self._tide_correction_type = ''
         self._atm_pres_correction_type = ''
 
+    def reset_model(self):
+        """Reset the model to a state without selected data to display."""
+        self._data = None  # Observations (or at subset of them) of the survey with the name `self._data_survey_name`
+        self._data_survey_name = ''  # Name of the Survey that is currently represented by `self._data`
+        self._data_column_names = None
+        self._reference_height_type = ''
+        self._tide_correction_type = ''
+        self._atm_pres_correction_type = ''
+
     def load_surveys(self, surveys):
         """Load observation data (dict of survey objects in the campaign object) to the observation model.
 
@@ -100,6 +109,9 @@ class SetupTableModel(QAbstractTableModel):
         -----
         The data is assigned by reference, i.e. all changes in `_surveys` will propagate to the data origin.
         """
+        if surveys is None:
+            self._surveys = {}
+            return
         self._surveys = surveys
 
     def update_view_model(self, survey_name, setup_id, gui_simple_mode=False):
@@ -145,6 +157,8 @@ class SetupTableModel(QAbstractTableModel):
                         # self._data = setup_df[setup_df['setup_id'] == setup_id].copy(deep=True)
                         self._data = setup_df.loc[setup_df['setup_id'] == setup_id, table_model_columns].copy(deep=True)
                         self._data_column_names = self._data.columns.to_list()
+        else:
+            self.reset_model()
 
     def headerData(self, section, orientation, role):
         # section is the index of the column/row.

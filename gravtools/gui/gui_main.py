@@ -25,8 +25,8 @@ import sys
 import os
 import warnings
 from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
-    QHeaderView, QInputDialog
-from PyQt5.QtCore import QDir, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp
+    QHeaderView, QInputDialog, QMenu
+from PyQt5.QtCore import QDir, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QPoint
 from PyQt5 import QtGui
 import datetime as dt
 import pyqtgraph as pg
@@ -67,6 +67,7 @@ from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool, resize_table_view_columns
 from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
 from gravtools.gui.dlg_corrections import DialogCorrections
+from gravtools.gui.survey_table_handler import SurveyTableHandler
 from gravtools.gui.cumstom_widgets import ScrollMessageBox
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
@@ -169,6 +170,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.spinBox_results_obs_plot_number_bins.valueChanged.connect(self.update_results_obs_plots)
         self.comboBox_results_stations_statistics_select_col.currentIndexChanged.connect(
             self.display_station_results_statistics)
+        self.tableView_surveys.customContextMenuRequested.connect(self.tableView_surveys_right_click)
         # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
         # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
 
@@ -236,6 +238,72 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    @pyqtSlot(QPoint)
+    def tableView_surveys_right_click(self, position):
+        """Invoked on right mouse click on a field in the stations results table view."""
+        idx = self.tableView_surveys.indexAt(position)  # Returns QModelIndex
+        if not idx.isValid():
+            return
+        survey_name = self.survey_model.get_survey_name_by_row_index(idx.row())
+        ctx_menu = QMenu()
+        ctx_menu.setToolTip('Remove the selected survey from the campaign. Existing adjustment results containing '
+                            'observations of this survey will remain present.')
+        delete_survey = ctx_menu.addAction(f'Delete Survey {survey_name}')
+        action = ctx_menu.exec_(QtGui.QCursor.pos())
+        if action == delete_survey:
+            reply = QMessageBox.question(self, 'Message', f'Remove survey "{survey_name}" from the campaign?',
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.No:
+                return
+            self.campaign.remove_survey(survey_name=survey_name, verbose=IS_VERBOSE)
+
+            # Stations tab:
+            self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
+            self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
+            self.refresh_stations_table_model_and_view()
+            # self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.  # Required?
+            self.on_checkBox_filter_observed_stat_only_toggled(
+                state=self.checkBox_filter_observed_stat_only.checkState())
+            self.enable_station_view_options_based_on_model()
+            # Show observed stations only based on Checkbox state:
+            self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
+                                                               auto_range_stations_plot=True)
+
+            # Observations tab:
+            selected_survey_name, selected_setup_id = self.get_obs_tree_widget_selected_item()
+
+            self.populate_survey_tree_widget()
+            # Select the previously selected survey again, if still available.
+            # - Select nothing, if no survey left => Clear Plots and tables in observations tab
+            # - Select the first survey if the previously selected one was deleted
+            if self.campaign.number_of_surveys == 0:
+                self.update_obs_table_view(survey_name=None, setup_id=None)
+                self.update_setup_table_view(survey_name=None, setup_id=None)
+                self.plot_observations(survey_name=None)
+                # self.on_obs_tree_widget_item_selected()
+            elif selected_survey_name == survey_name:  # Select first survey in the tree widget
+                self.treeWidget_observations.topLevelItem(0).setSelected(True)
+            else:  # Restore the previous selection
+                for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
+                    if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == selected_survey_name:
+                        if selected_setup_id is None:
+                            self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
+                        else:
+                            for child_item_idx in range(self.treeWidget_observations.topLevelItem(tree_item_idx).childCount()):
+                                if self.treeWidget_observations.topLevelItem(tree_item_idx).child(child_item_idx).text(0) == selected_setup_id:
+                                    self.treeWidget_observations.topLevelItem(tree_item_idx).child(child_item_idx).setSelected()
+            self.enable_menu_observations_based_on_campaign_data()
+            self.set_up_survey_view_model()
+
+            # TODO: Handle results!
+            # Problem: Wenn man einen Survey entfernt, so kommt es zu Fehlermeldungen, wenn man bestehende Ergebnisse
+            # dieses Surveys im Results tab anzeigen möchte! Offenbar wird hierbei auf campaing.surveys zugegriffen.
+            # Das muss geändert werden, so dass sämtliche Daten, die zur Visualisierung der Ergebnisse nötig sind,
+            # im LSM object gespeichert werden und dort zur Verfügung stehen.
+
+            self.statusBar().showMessage(
+                f'Survey "{survey_name}" removed from campaign.')
 
     def action_correction_time_series_triggered(self):
         """Launch dialog for managing correction time series data."""
@@ -2306,8 +2374,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 parent = item.parent()
                 survey_name = parent.text(0)  # Column 0 = Survey name
                 setup_id = int(item.text(0))
-            self.update_obs_table_view(survey_name, setup_id)
-            self.plot_observations(survey_name)
+            # self.update_obs_table_view(survey_name, setup_id)  # TODO: Why here? Needed?
+            # self.plot_observations(survey_name)  # TODO: Why here? Needed?
         else:
             if IS_VERBOSE:
                 print('No item or multiple items selected!')
