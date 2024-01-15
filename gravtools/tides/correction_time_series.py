@@ -323,7 +323,7 @@ class SurveyCorrections:
 
         Returns
         -------
-        bool: `True`, if the the station correction data was added. Otherwise, `False`.
+        bool: `True`, if the station correction data was added. Otherwise, `False`.
         """
         # Check, if data for this station already exists:
         if station_name in self.stations.keys():
@@ -362,7 +362,7 @@ class SurveyCorrections:
         """Returns the names of all stations."""
         return list(self.stations.keys())
 
-staticmethod
+@staticmethod
 def convert_to_mugal(data, data_unit: str):
     """Converts data to from a given unit to µGal."""
     if data_unit not in settings.UNIT_CONVERSION_TO_MUGAL:

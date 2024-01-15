@@ -72,10 +72,10 @@ class ResultsObservationModel(QAbstractTableModel):
         'sd_g_obs_est_mugal': 'SD_est [µGal]',  # LSM_non_diff
         'v_diff_mugal': 'v [µGal]',  # LSM_diff
         'v_obs_est_mugal': 'v [µGal]',  # LSM_non_diff
-        'w_diff_mugal': 'w [µGal]',  # LSM_diff
-        'w_obs_est_mugal': 'w [µGal]',  # LSM_non_diff
-        'r_diff_obs': 'r [µGal]',  # LSM_diff
-        'r_obs_est': 'r [µGal]',  # LSM_non_diff
+        'w_diff_mugal': 'w',  # LSM_diff
+        'w_obs_est_mugal': 'w',  # LSM_non_diff
+        'r_diff_obs': 'r',  # LSM_diff
+        'r_obs_est': 'r',  # LSM_non_diff
         'tau_test_result': 'Outlier test',  # LSM_non_diff, LSM_diff
         'corr_drift_mugal': 'Drift corr. [µGal]',  # MLR: Estimated drift correction
         'abw_mugal': 'abw [µGal]',  # MLR: Difference between drift-corrected instrument reading and the estimated station gravity
