@@ -84,9 +84,7 @@ class TSF(AbstractTideData):
     """
     def __init__(self, filename: str, tfs_format: str, timeformat: str, undetval: float, increment: float,
                  channel_metadata: list, data_df: pd.DataFrame, countinfo: int = -1, comment: str = ''):
-        """Default constructor.
-
-        """
+        """Default constructor."""
         self._filename = filename
         self.tfs_format = tfs_format
         self.timeformat = timeformat
