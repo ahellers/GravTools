@@ -16,6 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+# Valid gravimeter data source types:
+GRAVIMETER_DATA_SOURCE_TYPES = {
+    'file': 'Gravimeter data loaded from file.',
+    'survey': 'Default initialization because gravimeter was used in a survey without providing additional information',
+}
+
+# Default linear gravimeter scale factor. This value is used if no other information is provided.
+DEFAULT_GRAVIMETER_LINEAR_SCALE_FACTOR = 1.0
+
 # Additive constant for the determination of the full absolute gravity [µGal] from observed values:
 ADDITIVE_CONST_ABS_GRTAVITY = 9.8e8
 
