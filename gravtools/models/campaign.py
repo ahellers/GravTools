@@ -385,6 +385,7 @@ class Campaign:
                 if verbose:
                     print(f' - Get vertical gradients')
                 survey.obs_df_populate_vg_from_stations(self.stations, verbose=verbose)
+            survey.obs_df_populate_locations_from_stations(self.stations, verbose=verbose)
             survey.reduce_observations(
                 target_ref_height=target_ref_height,
                 target_tide_corr=target_tide_corr,
@@ -429,6 +430,8 @@ class Campaign:
           :py:obj:`.Campaign.surveys`. `True` indicated that the station as observed at least once.
         - Populates the vertical gradient columns (``) of the observation DataFrames (:py:obj:`.Campaign.surveys`) with
           values from a Station object (:py:obj:`.Campaign.stations`).
+        - Populate longitudes, latitudes and heights in the observation DataFrames (:py:obj:`.Campaign.surveys`) with
+          values from a Station object (:py:obj:`.Campaign.stations`).
         - Add observed stations
 
         Notes
@@ -450,6 +453,7 @@ class Campaign:
             if verbose:
                 print(f' - Survey: {survey_name}')
             survey.obs_df_populate_vg_from_stations(self.stations, verbose=verbose)
+            survey.obs_df_populate_locations_from_stations(self.stations, verbose=verbose)
             self.stations.set_observed_info_from_survey(survey, verbose=verbose)
 
     def sync_observed_stations(self, verbose=False):
