@@ -25,7 +25,8 @@ import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
     REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
     GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS, \
-    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT
+    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT, \
+    VERBOSE
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.models.misc import format_seconds_to_hhmmss
@@ -162,7 +163,7 @@ class Survey:
             for individual loops (shorter time period) rather than fo the complete survey.
         -  lon_deg : float, optional (default=None)
             Geographical longitude of the station [°]. When loading observation data from the CG-5 observation files,
-            geographical coordinates are obtained from measurements of the built-in GPS device of teh instrument.
+            geographical coordinates are obtained from measurements of the built-in GPS device of the instrument.
         -  lat_deg : float, optional (default=None)
             Geographical latitude of the station [°]. When loading observation data from the CG-5 observation files,
             geographical coordinates are obtained from measurements of the built-in GPS device of teh instrument.
@@ -1167,7 +1168,47 @@ class Survey:
         # Drop columns that are not required and check for validity:
         self.obs_df_drop_redundant_columns()
         self.obs_df = self._obs_df_reorder_columns(self.obs_df)
-        valid_flag, error_msg = self.check_obs_df(verbose=True)
+        valid_flag, error_msg = self.check_obs_df(verbose=verbose)
+        if not valid_flag:
+            raise RuntimeError(error_msg)
+
+    def obs_df_populate_locations_from_stations(self, stations, verbose=False):
+        """Populates the longitude, latitude and height columns with values from a Station object.
+
+        Parameters
+        ----------
+        stations : :py:obj:`.Station` object
+            Station data (datum- and non-datum-stations).
+
+        verbose : bool, optional (default=False)
+            If True, status messages are printed to the command line.
+
+        Notes
+        -----
+        - Only update data for stations with data available from sources other than the gravimeter observation file!
+        The data from the observation file has been added anyway.
+        """
+        if verbose:
+            print(f'Survey "{self.name}": Get locations for observation and heights from station data')
+        tmp_filter = stations.stat_df['source_type'] != 'obs_file'
+        if not tmp_filter.any():
+            if verbose:
+                print(f' - No station data available.')
+            return
+
+        # Merge stations Dataframe and observations DataFrame  by the station names:
+        tmp_stat_df = stations.stat_df.loc[tmp_filter, ['station_name', 'long_deg', 'lat_deg', 'height_m']].copy(deep=True)
+        tmp_stat_df = tmp_stat_df.rename(columns={'long_deg': 'tmp_lon_deg', 'lat_deg': 'tmp_lat_deg', 'height_m': 'tmp_alt_m'})
+        self.obs_df = self.obs_df.merge(tmp_stat_df, on='station_name', how='left')
+        tmp_filter = ~self.obs_df['tmp_lat_deg'].isna() & ~self.obs_df['tmp_lat_deg'].isna() & ~self.obs_df['tmp_alt_m'].isna()
+        self.obs_df.loc[tmp_filter, 'lon_deg'] = self.obs_df.loc[tmp_filter, 'tmp_lon_deg']
+        self.obs_df.loc[tmp_filter, 'lat_deg'] = self.obs_df.loc[tmp_filter, 'tmp_lat_deg']
+        self.obs_df.loc[tmp_filter, 'alt_m'] = self.obs_df.loc[tmp_filter, 'tmp_alt_m']
+
+        # Drop columns that are not required and check for validity:
+        self.obs_df_drop_redundant_columns()
+        self.obs_df = self._obs_df_reorder_columns(self.obs_df)
+        valid_flag, error_msg = self.check_obs_df(verbose=verbose)
         if not valid_flag:
             raise RuntimeError(error_msg)
 
@@ -1246,7 +1287,6 @@ class Survey:
             error_msg = 'In "obs_df" the columns "g_red_mugal", "sd_g_red_mugal" and "corr_tide_red_mugal" are not ' \
                         'initialized consistently! '
             raise RuntimeError(f'Survey "{self.name}":' + error_msg)
-
 
         if verbose:
             print(f'## Calculate reduced observations by applying the specified corrections:')
@@ -1363,7 +1403,12 @@ class Survey:
             if (self.obs_tide_correction_type == target_tide_corr) & (target_tide_corr != 'from_time_series'):
                 if verbose:
                     print(f' - Observations are already reduced by: {target_tide_corr}')
-                corr_tide_red_mugal = obs_df['corr_tide_mugal']
+                if target_tide_corr == 'no_tide_corr':
+                    corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
+                    corr_tide_red_mugal.values[:] = 0
+                else:
+                    corr_tide_red_mugal = obs_df['corr_tide_mugal']
+
             elif self.obs_tide_correction_type == 'unknown':
                 error_msg = 'Unknown tidal corrections at input data!'
                 raise RuntimeError(f'Survey "{self.name}":' + error_msg)
@@ -1540,7 +1585,7 @@ class Survey:
         tide_corr_timeseries_mugal = tmp_df['ts_tide_corr_mugal'].to_numpy()
         return tide_corr_timeseries_mugal
 
-    def get_tidal_corrections_from_longman1959(self) -> np.ndarray  :
+    def get_tidal_corrections_from_longman1959(self) -> np.ndarray:
         """Derives tidal corrections for observations from the Longman (1959) model.
 
         Notes

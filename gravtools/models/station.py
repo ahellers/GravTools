@@ -23,8 +23,7 @@ from gravtools.settings import STATION_DATA_SOURCE_TYPES
 
 
 class Station:
-    """
-    Holds information on stations with known attributes.
+    """Holds information on stations with known attributes.
 
     Attributes
     ----------

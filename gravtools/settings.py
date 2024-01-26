@@ -16,6 +16,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+# Valid gravimeter data source types:
+GRAVIMETER_DATA_SOURCE_TYPES = {
+    'file': 'Gravimeter data loaded from file.',
+    'survey': 'Default initialization because gravimeter was used in a survey without providing additional information',
+}
+
+# Default linear gravimeter scale factor. This value is used if no other information is provided.
+DEFAULT_GRAVIMETER_LINEAR_SCALE_FACTOR = 1.0
+
 # Additive constant for the determination of the full absolute gravity [µGal] from observed values:
 ADDITIVE_CONST_ABS_GRTAVITY = 9.8e8
 
@@ -254,7 +263,8 @@ PICKLE_PROTOCOL_VERSION = 4
 
 
 # ----- GIS data export settings: -----
-DEFAULT_EPSG_CODE = 4312  # 4312: MGI, lat/lon, Greenwich
+# DEFAULT_EPSG_CODE = 4312  # 4312: MGI, lat/lon, Greenwich
+DEFAULT_EPSG_CODE = 4326  # 4326: WGS84h
 # Default filenames for shapefile export from the results tab:
 DEFUALT_FILENAME_OBERVATION_RESULTS_SHP = 'obs_results_'  # + <LSM run method>.shp
 DEFUALT_FILENAME_STATION_RESULTS_SHP = 'stat_results_'  # + <LSM run method>.shp

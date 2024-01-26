@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 Notes
 -----
 The graphical layout of the GUI was created by using the Qt Designer (<https://www.qt.io/>).
-
 """
 
 import sys
@@ -78,11 +77,10 @@ from gravtools import settings
 
 DEFAULT_OUTPUT_DIR = os.path.abspath(os.getcwd())  # Current working directory
 DEFAULT_WORK_DIR_PATH = os.path.abspath(os.getcwd())  # Current working directory
-IS_VERBOSE = True  # Define, whether screen output is enabled.
+IS_VERBOSE = settings.VERBOSE  # Define, whether screen output is enabled.
 
 MARKER_SYMBOL_ORDER = ('o', 't', 'x', 's', 'star', '+', 'd', 't1', 'p', 't2', 'h', 't3')
 MARKER_COLOR_ODER = ('b', 'r', 'g', 'c', 'm', 'y')
-
 
 class TimeAxisItem(pg.AxisItem):
     """"Needed to handle the x-axes tags representing date and time.
@@ -3430,6 +3428,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
 
+        self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
+
         # Calculate reduced observation data:
         if settings.CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA:
             try:
@@ -3441,7 +3441,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.statusBar().showMessage(f"Observation corrections applied.")
 
         self.connect_station_model_to_table_view()
-        self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
+        # self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
         self.refresh_stations_table_model_and_view()
         self.populate_survey_tree_widget()
         # Select the added survey in the tree view:
@@ -3828,8 +3828,21 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
             else:
                 raise AssertionError(f'Invalid LSM method: {lsm_method}!')
 
+
+def debugger_is_active() -> bool:
+    """Return if the debugger is currently active"""
+    return hasattr(sys, 'gettrace') and sys.gettrace() is not None
+
+
 def main():
     """Main program to start the GUI."""
+    # Check out debug mode:
+    if debugger_is_active():
+        print('==> Degugger is active! <==')
+        pd.set_option('display.max_columns', 150)
+        pd.set_option('display.width', 1000)
+        # pd.set_option('display.max_rows', 20)
+
     # Create the application
     app = QApplication(sys.argv)
 
