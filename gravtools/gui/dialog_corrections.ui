@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>398</width>
-    <height>537</height>
+    <height>591</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Corrections</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_6">
+  <layout class="QVBoxLayout" name="verticalLayout_7">
    <item>
     <widget class="QGroupBox" name="groupBox_corrections_tides">
      <property name="toolTip">
@@ -257,6 +257,28 @@
          </layout>
         </item>
        </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox_scale_correction">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;A priori scale factor correction. Scale factors are applied on the uncorrected gravity observations. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="title">
+      <string>Scale corrections</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_6">
+      <item>
+       <widget class="QCheckBox" name="checkBox">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Applie linear scale factor, as listed in the gravimeter tab, on the uncorrected gravity observations. Scale factors can be loaded from json-formatted gravimeter files. Scale factors have to be available for all observation epochs, if this correction is applied.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Apply linear scale factors</string>
+        </property>
+       </widget>
       </item>
      </layout>
     </widget>

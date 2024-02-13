@@ -52,7 +52,8 @@ ATM_PRES_CORRECTION_TYPES = {
     'iso_2533_1975': 'Atmopheric pressure correction using ISO 2533:1975 normal air pressure',
 }
 
-# Default admittance factor for the calculation of atmospheric pressure correction using the ISO 2533:1975 normal air pressure
+# Default admittance factor for the calculation of atmospheric pressure correction using the ISO 2533:1975 normal air
+# pressure
 ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT = 0.3
 
 # Conversion factors of different units of gravity to µGal:
@@ -85,41 +86,64 @@ REFERENCE_HEIGHT_TYPE = {
     'control_point': 'The gravity values refers to the control point of the station',
 }
 
-# Reference heights (sensor heights) of different gravimeter types:
-GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m = {
+# ##### Gavimeter default data #####
+# - This information is used if no data is loaded from gravimeter files (json)
+
+
+
+# Default height offset between instrument reference surface (top) and the sensor level for different gravimeter types:
+# - These default values are only used if no values are loaded from a gravimeter file
+DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M = {
     'CG3': -0.211,
     'CG5': -0.211,
+    'CG6': -0.15,  # TODO: Get actual value!
 }
 
-# Valid gravimeter types and description.
+# Gravimeter default type
+DEFAULT_GRAVIMETER_TYPE = 'n/a'
+
+# Gravimeter default type
+DEFAULT_GRAVIMETER_SERIAL_NUMBER = 'n/a'
+
+# Default Gravimeter Type when loading data from an CG5 observation file
+DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY = 'CG5'
+
+# Default gravimeter calibration data:
+# - Used if no data is provided through gravimeter files (json)
+DEFAULT_CALIBRATION_START_DATE = '1900-01-01'
+DEFAULT_CALIBRATION_END_DATE = '2100-01-01'
+DEFAULT_CALIBRATION_LINEAR_FACTOR = 1.0
+
+# Lookup table to convert gravimeter type to one-letter codes:
+# - The one-letter codes are used in the nsb files (results). Nowhere else.
+DEFAULT_GRAVIMETER_ONE_LETTER_CODES = {
+    'CG5': 'C',
+    'CG3': 'C',
+    'CG6': 'C',
+    DEFAULT_GRAVIMETER_TYPE: '?',
+}
+
+# Default manufacturers of gravimeter types
+DEFAULT_GRAVIMETER_MANUFACTURERS = {
+    'CG5': 'Scintrex',
+    'CG3': 'Scintrex',
+    'CG6': 'Scintrex',
+    DEFAULT_GRAVIMETER_TYPE: 'unknown',
+}
+
+# Supported gravimeter types and description.
+# - All supported gravimeters have to be listed here!
+# - Gravimeter types stored in survey objects have to be listed here.
 GRAVIMETER_TYPES = {
     'CG5': 'Sctintrex CG5',
     'CG3': 'Sctintrex CG3',
-}
-
-# Default Gavimeter Type when loading data from an CG5 observation file
-DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY = 'CG5'
-
-# Lookuptable to convert gravimeter type to Kennzeichen used at BEV (in the database NSDB):
-GRAVIMETER_TYPES_KZG_LOOKUPTABLE = {
-    'CG5': 'C',
-    'CG3': 'C',
-}
-
-# Valid Gravimeter serial numbers (S/N and type)
-GRAVIMETER_SERIAL_NUMBERS = {
-    '40601': 'CG5',
-    '40236': 'CG5',
-}
-
-# Lookuptable to convert the gravimeter S/N to the IDs written to the database NSDB:
-GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE = {
-    '40601': '5',
-    '40236': '5',
+    'CG6': 'Sctintrex CG6',
+    DEFAULT_GRAVIMETER_TYPE: 'Unknown gravimeter type',
 }
 
 #  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
 #  observation files:
+# - Only required when loading "BEV legacy observation files", because there is no info on the applied tidal correction
 BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
     '5': 'cg5_longman1959'
 }
@@ -244,12 +268,12 @@ EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'station_name', 'obs_epoch', 'keep_obs
 # Maximum allowed SD of the estimated gravity at stations when exporting data to a nsb file!
 #  => This is important as only 3 characters are reserved in the nsb file for the SD!
 MAX_SD_FOR_EXPORT_TO_NSB_FILE = 999.0
+
 # Choices for 5-character comment written to the nsb file (appears as Operat-G in the NSDB):
-# - One letter instrument-ID: 'inst_id'
 # - Official 5-character serial number of the Scintrex CG-5 Gravitimeters: 'cg5_serial_number'
 # - Version of Gravtools: 'gravtools_version'
 # !! Warning: Actually only the gravtools version makes sense, because multiple surveys observed with different
-# instruments can be combindes
+# instruments can be combinded
 WRITE_COMMENT_TO_NSB = 'gravtools_version'
 
 # ----- Program and Software settings -----

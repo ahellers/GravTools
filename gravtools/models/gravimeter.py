@@ -17,11 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
-from typing import List
 
 import pandas
 import pandas as pd
-import datetime as dt
 import json
 import numpy as np
 
@@ -41,6 +39,31 @@ class Gravimeters:
     def __init__(self):
         """Default constructor."""
         self.gravimeters = {}
+
+    def add_gravimeter(self, gravi, verbose=True):
+        """Add a gravimeter object and carry out checks.
+
+        Parameters
+        ----------
+        gravi: `Gravimeter` object
+            Gravimeter object that contains all relevant data.
+        verbose: bool, optional (default = `True`)
+            Print terminal output if `True`.
+
+        Notes
+        -----
+        Do not overwrite existing data loaded from a gravimeter file by default values and/or values from an observation
+        file.
+        """
+        # Overwrite existing entry only, if the new data was loaded from a gravimeter file:
+        if (gravi.gravimeter_type, gravi.serial_number) in self.gravimeters.keys():
+            if gravi.data_source_type == 'survey' and self.gravimeters[(gravi.gravimeter_type, gravi.serial_number)].data_source_type == 'file':
+                if verbose:
+                    print(f'{gravi.name} was already loaded from a gravimeter file => Not added')
+                return
+        self.gravimeters[(gravi.gravimeter_type, gravi.serial_number)] = gravi
+        if verbose:
+            print(f'{gravi.name} added.')
 
     def add_from_json(self, filename_json: str, verbose=True):
         """Load data of one or multiple gravimeters a json file.
@@ -64,14 +87,7 @@ class Gravimeters:
 
         for gm in gravinmeters:
             if verbose:
-                print(f" - Add gravimeter {gm['type'],} with S/N {gm['serial_number']}")
-            # Check if the Gravimeter already exists:
-            if (gm['type'], gm['serial_number']) in self.gravimeters:
-                # => Overwrite anyway. Just print a notification!
-                gravi = self.gravimeters[(gm['type'], gm['serial_number'])]
-                if verbose:
-                    print(f'   - Already existing data for the gravimeter {gravi.name} (data source: '
-                          f'{gravi.data_source_type} - {gravi.data_source}) is overwritten.')
+                print(f"Load gravimeter {gm['type'],} with S/N {gm['serial_number']}")
             gravi = Gravimeter(gravimeter_type=gm['type'],
                                manufacturer=gm['manufacturer'],
                                serial_number=gm['serial_number'],
@@ -80,13 +96,11 @@ class Gravimeters:
                                data_source_type='file',
                                scale_parameters=gm['calibration'],
                                code=gm['code'],
-                               verbose=settings.VERBOSE)
-            self.gravimeters[(gm['type'], gm['serial_number'])] = gravi
-        if verbose:
-            print(f'{len(gravinmeters)} gravimeters added.')
+                               verbose=verbose)
+            self.add_gravimeter(gravi)
 
     def add_from_survey(self, survey, verbose=True):
-        """Get the gravimeter data from a single survey object and set the scale factor to default values.
+        """Get the gravimeter data from a single survey object and set unknown attributes to default values.
 
         Parameters
         ----------
@@ -103,8 +117,16 @@ class Gravimeters:
 
         The default linear scale factor is defined in `settings.DEFAULT_GRAVIMETER_LINEAR_SCALE_FACTOR`
         """
-        pass
-        # TODO
+        gravi = Gravimeter(gravimeter_type=survey.gravimeter_type,
+                           manufacturer=settings.DEFAULT_GRAVIMETER_MANUFACTURERS[survey.gravimeter_type],
+                           serial_number=survey.gravimeter_serial_number,
+                           height_offset_m=settings.DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[survey.gravimeter_type],
+                           data_source=survey.name,
+                           data_source_type='survey',
+                           scale_parameters=None,  # Use default values!
+                           code=settings.DEFAULT_GRAVIMETER_ONE_LETTER_CODES[survey.gravimeter_type],
+                           verbose=verbose)
+        self.add_gravimeter(gravi)
 
     def delete_gravimeter(self, gravimeter_type: str, serial_number: str, verbose=True):
         """Delete the gravimeter with the given type and S/N.
@@ -123,7 +145,7 @@ class Gravimeters:
             print(f'Deleted Gravimeter {gravimeter_type} with S/N {serial_number}.')
 
     def apply_linear_scale(self, gravimeter_type: str, serial_number: str, gravity_df: pd.DataFrame, verbose=True) -> pd.DataFrame:
-        """Delete the gravimeter with the given type and S/N.
+        """Apply linear scale factor on observations of the gravimeter with the given type and S/N.
 
         Parameters
         ----------
@@ -179,9 +201,9 @@ class Gravimeter:
 
         - start_date : :py:obj:`datetime.date`
             Start of the time span at which the scale is valid.
-        - start_date : :py:obj:`datetime.date`
-            Start of the time span at which the scale is valid.
-        - linear_scale_factor : float,
+        - end_date : :py:obj:`datetime.date`
+            End of the time span at which the scale is valid.
+        - linear_factor : float,
             Linear scaling factor valid for the given time span.
 
     code : str, optional (default = '')
@@ -211,18 +233,15 @@ class Gravimeter:
             Source from which the gravimeter data was loaded. This is either the name of a file, or the name of a
             survey.
         data_source_type : str
-            Type of the gravimeter data source. HAs to be listed as key in `settings.GRAVIMETER_DATA_SOURCE_TYPES`.
-        scale_parameters : dict, optional (default = `None`)
-            Pandas Dataframe containing the instrument's scale parameters valid for time specific time intervals.
+            Type of the gravimeter data source. Has to be listed as key in `settings.GRAVIMETER_DATA_SOURCE_TYPES`.
+        scale_parameters : list of dicts, optional (default = `None`)
+            Each dict contains the start date, the end date and the linear calibration factor. If no data is provided,
+            default values are used.
         code: str, optional (default = '')
             Short instrument code.
         verbose: bool, optional (default = `True`)
             Print terminal output if `True`.
         """
-        _DEFAULT_START_DATE = '1900-01-01'
-        _DEFAULT_END_DATE = '2100-01-01'
-        _DEFAULT_LINEAR_SCALE_FACTOR = 1.0
-        # calibrations_df = pd.DataFrame({c: pd.Series(dtype=t) for c, t in _CALIBRATIONS_DF_COLUMNS.items()})
         flag_init_scale_factor_zero = False
 
         # gravimeter_type
@@ -272,8 +291,8 @@ class Gravimeter:
             if verbose:
                 print(f'Initialize a linear scale factor of 1.0 for gravimeter {manufacturer} '
                       f'{gravimeter_type}')
-            scale_dict = {'start_date': [_DEFAULT_START_DATE], 'end_date': [_DEFAULT_END_DATE], 'linear_factor':
-                [_DEFAULT_LINEAR_SCALE_FACTOR]}
+            scale_dict = {'start_date': [settings.DEFAULT_CALIBRATION_START_DATE], 'end_date':
+                [settings.DEFAULT_CALIBRATION_END_DATE], 'linear_factor': [settings.DEFAULT_CALIBRATION_LINEAR_FACTOR]}
             scale_df = pd.DataFrame(scale_dict)
         scale_df['start_date'] = pd.to_datetime(scale_df['start_date'], utc=True).dt.date
         scale_df['end_date'] = pd.to_datetime(scale_df['end_date'], utc=True).dt.date
@@ -299,7 +318,7 @@ class Gravimeter:
         self.serial_number = serial_number
         self.height_offset_m = height_offset_m
         self.data_source = data_source
-        self.data_source = data_source_type
+        self.data_source_type = data_source_type
         self.scale_df = scale_df
         self.code = code
 
@@ -391,7 +410,7 @@ class Gravimeter:
 
 if __name__ == '__main__':
     """Main function for testing"""
-    filename = '../../data/gravimeter/gravimeters.json'
+    filename = '../../data/gravimeters/gravimeters.json'
     meters = Gravimeters()
     meters.add_from_json(filename)
     print(meters)
@@ -408,7 +427,7 @@ if __name__ == '__main__':
 
 
 
-# TODO: Check if a gravimeter (type, sn) already exists, when loading new data! => New method "add_gravimeter" with checks!
+# TODO: Check if a gravimeters (type, sn) already exists, when loading new data! => New method "add_gravimeter" with checks!
 
 # Möglichkeit nur das Datum zu vergleichen:
 # - self.scale_df['start_date'].dt.date

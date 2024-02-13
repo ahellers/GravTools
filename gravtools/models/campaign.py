@@ -31,9 +31,10 @@ from gravtools.models.lsm_nondiff import LSMNonDiff
 from gravtools.models.mlr_bev_legacy import BEVLegacyProcessing
 from gravtools.models.survey import Survey
 from gravtools.models.station import Station
+from gravtools.models.gravimeter import Gravimeters
 from gravtools.tides.correction_time_series import CorrectionTimeSeries
-from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, GRAVIMETER_TYPES_KZG_LOOKUPTABLE, \
-    GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, EXPORT_OBS_LIST_COLUMNS, \
+from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, DEFAULT_GRAVIMETER_ONE_LETTER_CODES, \
+    DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M, EXPORT_OBS_LIST_COLUMNS, \
     MAX_SD_FOR_EXPORT_TO_NSB_FILE, WRITE_COMMENT_TO_NSB, PICKLE_PROTOCOL_VERSION
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
@@ -50,6 +51,7 @@ class Campaign:
     - Reductions and corrections
       - All observations (from surveys) are corrected and reduced in the same way
     - Time series data for the correction of gravity observations (optional)
+    - Gravimeter data
 
     Attributes
     ----------
@@ -69,6 +71,7 @@ class Campaign:
         This reference time is equalt to the first (active) observation in the campaign considering all surveys.
     correction_time_series : :py:obj:`CorrectionTimeSeries`
         Contains time series data for correcting gravity observations.
+    gravimeters : :py:obj:`Gravimeters`
 
     gravtools_version : str
         Version of the gravtools software that was used to create the dataset.
@@ -79,6 +82,7 @@ class Campaign:
                  output_directory,
                  surveys=None,  # Always use non-mutable default arguments!
                  stations=None,  # Always use non-mutable default arguments!
+                 gravimeters=None,  # Always use non-mutable default arguments!
                  lsm_runs=None,  # Always use non-mutable default arguments!
                  ref_delta_t_dt=None  # Reference time for drift determination
                  ):
@@ -93,6 +97,9 @@ class Campaign:
         stations: :py:obj:`.Station` object, optional
             Station data (datum- and non-datum-stations). Default=None implies that the campaign will be
             initialized without station data.
+        gravimeters: :py:obj:`.Gravimeters` object, optional
+            Gravimeter data. Default=None implies that the campaign will be
+            initialized without gravimeter data.
         lsm_runs : list of objects inherited from :py:obj:`gravtools.models.lsm.LSM`
             Each item in the list contains one enclosed LSM object. Each LSM object reflects one dedicated run of an
             least-squares adjustment in order to estimate target parameters.
@@ -139,6 +146,14 @@ class Campaign:
                 raise TypeError('The argument "stations" needs to be a Station object.')
         self.stations = stations
 
+        # Check gravimeters:
+        if gravimeters is None:
+            gravimeters = Gravimeters()
+        else:
+            if not isinstance(gravimeters, Gravimeters):
+                raise TypeError('The argument "gravimeters" needs to be a Gravimeters object.')
+        self.gravimeters = gravimeters
+
         # Check lsm_runs:
         if lsm_runs is None:
             lsm_runs = []  # Empty list
@@ -172,6 +187,16 @@ class Campaign:
         support of time series corrections.
         """
         self.correction_time_series = CorrectionTimeSeries()
+
+    def init_gravimeters(self):
+        """Adds an empty `Gravimeters` object to the campaign.
+
+        Notes
+        -----
+        This is required, e.g. if a campaign object os loaded into GravTools from a previous GravTools version without
+        support of gravimeter data.
+        """
+        self.gravimeters = Gravimeters()
 
     def add_survey(self, survey_add: Survey, verbose=False) -> bool:
         """Add a survey to campaign and specify whether to use it for ths analysis.
@@ -735,8 +760,6 @@ class Campaign:
                     # - Max. 5 characters!
                     if WRITE_COMMENT_TO_NSB == 'cg5_serial_number':
                         comment_str = str(gravimeter_serial_number)
-                    elif WRITE_COMMENT_TO_NSB == 'inst_id':
-                        comment_str = GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE[gravimeter_serial_number]
                     elif WRITE_COMMENT_TO_NSB == 'gravtools_version':
                         comment_str = 'GT'+''.join(GRAVTOOLS_VERSION.split('.'))
                     else:
@@ -752,10 +775,10 @@ class Campaign:
                         date_str,
                         row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
                         formal_error,
-                        GRAVIMETER_TYPES_KZG_LOOKUPTABLE[gravimeter_type],
+                        DEFAULT_GRAVIMETER_ONE_LETTER_CODES[gravimeter_type],  # TODO: Use code from gravimeter model!
                         comment_str,
-                        (dhb_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
-                        (dhf_m + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[gravimeter_type]) * 100,
+                        (dhb_m + DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[gravimeter_type]) * 100,  # TODO: Use value from gravimeter model!
+                        (dhf_m + DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[gravimeter_type]) * 100,  # TODO: Use value from gravimeter model!
                     )
 
                 # Write file:
@@ -852,7 +875,28 @@ class Campaign:
             print(
                 f'Loaded campaign "{campaign.campaign_name}" with {campaign.number_of_stations} station(s) and {campaign.number_of_surveys} survey(s).')
         campaign.check_survey_data(verbose=verbose)
+        campaign.check_gravimeter_data(verbose=verbose)
         return campaign
+
+    def check_gravimeter_data(self, verbose: bool = True):
+        """Check gravimeter data in campaign and add missing information.
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+            If `True`, status messages are printed to the command line.
+
+        Notes
+        -----
+        In case the gravimeters object is mission, it as added and initialized with data from the surveys.
+        """
+        if not hasattr(self, 'gravimeters'):
+            self.init_gravimeters()
+            if verbose:
+                print('Missing gravimeter object added.')
+            # Get gravimeter data from surveys:
+            for survey_name, survey in self.surveys.items():
+                self.gravimeters.add_from_survey(survey=survey, verbose=verbose)
 
     def check_survey_data(self, verbose: bool = True):
         """Check survey data in campaign, correct missing elements or raise an error.
@@ -861,10 +905,6 @@ class Campaign:
         ----------
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
-
-        Returns
-        -------
-        `Campaign` object
         """
         for survey_name, survey in self.surveys.items():
             # Check observation dataframe:

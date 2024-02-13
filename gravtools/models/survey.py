@@ -23,9 +23,9 @@ import os
 import gravtools.models.lsm_diff
 import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
-    REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
-    GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS, \
-    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT, \
+    REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M, \
+    GRAVIMETER_TYPES, SETUP_CALC_METHODS, DEFAULT_GRAVIMETER_SERIAL_NUMBER, DEFAULT_GRAVIMETER_TYPE, \
+    SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT, \
     VERBOSE
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
@@ -78,7 +78,7 @@ class Survey:
     operator : str, optional (default='')
         Name of the responsible operator that carried out the observations of this survey.
     gravimeter_serial_number : str, optional (default='')
-        Valid gravimeter types have to be listed in :py:obj:`gravtools.settings.GRAVIMETER_SERIAL_NUMBERS`.
+        Gravimeter serial number as stated in the observation file.
     gravimeter_type: str, optional (default='')
         Valid gravimeter types have to be listed in :py:obj:`gravtools.settings.GRAVIMETER_TYPES`.
     data_file_name : str, optional (default='')
@@ -403,13 +403,7 @@ class Survey:
 
         # gravimeter_serial_number:
         if isinstance(gravimeter_serial_number, str):
-            if gravimeter_serial_number:
-                if gravimeter_serial_number in GRAVIMETER_SERIAL_NUMBERS.keys():
-                    self.gravimeter_serial_number = gravimeter_serial_number
-                else:
-                    raise ValueError('"gravimeter_serial_number" needs to be a key in GRAVIMETER_SERIAL_NUMBERS')
-            else:
-                self.gravimeter_serial_number = gravimeter_serial_number  # ''
+            self.gravimeter_serial_number = gravimeter_serial_number
         else:
             raise TypeError('"gravimeter_serial_number" needs to be a string')
 
@@ -890,20 +884,9 @@ class Survey:
                       f'(not specified in settings.BEV_GRAVIMETER_TIDE_CORR_LOOKUP). '
                       f'It is set to "{obs_tide_correction_type}".')
 
-        gravimeter_serial_number = ''
-        # Get gravimeter type and serial number from ID in obs file:
-        for serial_number, id_tmp in GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE.items():  # for name, age in dictionary.iteritems():  (for Python 2.x)
-            if id_tmp == gravimeter_id:
-                gravimeter_serial_number = serial_number
-                break
-        if not gravimeter_serial_number:
-            raise AssertionError(
-                f'No serial number found that matches the gravimeter id "{gravimeter_id}"in GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE.')
-        try:
-            gravimeter_type = GRAVIMETER_SERIAL_NUMBERS[gravimeter_serial_number]
-        except KeyError:
-            raise AssertionError(
-                f'serial number "{gravimeter_serial_number}" not found in the lookuptable "GRAVIMETER_SERIAL_NUMBERS".')
+        # Use default values:
+        gravimeter_serial_number = DEFAULT_GRAVIMETER_SERIAL_NUMBER
+        gravimeter_type = DEFAULT_GRAVIMETER_TYPE
 
         return cls(name=os.path.split(filename)[1],
                    date=survey_date,
@@ -1056,7 +1039,7 @@ class Survey:
 
         return is_valid, error_msg
 
-    def init_missing_attributes(self, verbose=True) -> bool:
+    def init_missing_attributes(self, verbose=True):
         """Initialize attributes defined in `_SURVEY_ATTRIBUTES_INIT`, if they are missing the current Survey instance.
 
         Notes
@@ -1264,6 +1247,12 @@ class Survey:
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
+        # ToDo:
+        # - lange Methode besser strukturieren: In mehrere Reduktionsmethoden aufteilen.
+        # - Prüfen: Macht es Sinn, im ersten Schritt IMMER die Gezeitenkorrektur vom Instrument zu entfernen?
+        #    - Dann kann man sauber den Maßstab auf die unkorrigieren Messungen anbringen (immer gleich).
+        # - Maßstabskorrektur im "obs_df" als Spalte führen (wie beim Luftdruck)
+
         # Init.:
         tide_corr_timeseries_interpol_method_out = ''
 
@@ -1319,7 +1308,7 @@ class Survey:
 
                 # Reduction:
                 # Distance between instrument top and sensor level:
-                dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type]
+                dst_m = DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[self.gravimeter_type]  # TODO: Use value from gravimeter model!
                 if self.obs_reference_height_type == 'sensor_height':
                     if target_ref_height == 'control_point':
                         # + dst_m + dhf_m
@@ -1417,6 +1406,8 @@ class Survey:
                     if target_tide_corr == 'cg5_longman1959':
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
                         # TODO: Was steht in der Spalte "TIDE", wenn im CG5 KEINE Korrektur angebracht wurde?
+                        # => Antwort: Die Korrektur wird im CG5 IMMER berechnet und ausgegeben. Sie wird nur nicht an
+                        # den MEsswerr angebracht.
                         # - Wenn die richtige Korretkur NICHT vorliegt => raise Error!
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
                     elif target_tide_corr == 'longman1959':
@@ -1495,7 +1486,7 @@ class Survey:
                                                                                                                              admittance=atm_pres_admittance)
                     # Apply non-NaN values only:
                     tmp_filter = ~corr_atm_pres_red_mugal.isna()
-                    g_red_mugal.loc[tmp_filter] = g_red_mugal.loc[tmp_filter] - corr_atm_pres_red_mugal.loc[tmp_filter]  # TODO: sign correct?
+                    g_red_mugal.loc[tmp_filter] = g_red_mugal.loc[tmp_filter] - corr_atm_pres_red_mugal.loc[tmp_filter]
                     if verbose:
                         num_with_p_corr = len(tmp_filter.loc[tmp_filter])
                         number_of_obs = len(tmp_filter)
@@ -1728,7 +1719,7 @@ class Survey:
             `False`, if at least one standard deviation value is `None` is case, reduced observations are usd as
             reference.
         """
-        # TODO: Check, if it makes sense to keept the last n_obs observations anyway (even if they do not meet the
+        # TODO: Check, if it makes sense to keep the last n_obs observations anyway (even if they do not meet the
         #  conditions here)! Check if reduced observations are available, if required:
         if obs_type == 'reduced':
             if self.obs_df['g_red_mugal'].isna().any():
@@ -1951,7 +1942,7 @@ class Survey:
                     number_obs_list.append(len(g_mugal))  # Number of observations
 
                     # Get vertical distance between sensor height and control point:
-                    dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type])
+                    dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[self.gravimeter_type])  # TODO: Use value from gravimeter model!
 
                     # observation epoch (UNIX timestamps in full seconds):
                     obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
@@ -1994,7 +1985,7 @@ class Survey:
                     delta_t_campaign_h_list = [None] * len(g_mugal_list)
                 sd_setup_mugal_list = [np.nan] * len(g_mugal_list)
                 number_obs_list = [1] * len(g_mugal_list)
-                dhf_sensor_m_list = active_obs_df['dhf_m'] + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type]
+                dhf_sensor_m_list = active_obs_df['dhf_m'] + DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[self.gravimeter_type]  # TODO: Use value from gravimeter model!
 
             if obs_type == 'observed':
                 self.setup_tide_correction_type = self.obs_tide_correction_type

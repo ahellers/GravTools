@@ -14,7 +14,7 @@ build:
 
 # Upload package to pypi.org
 pypi_push:
-	twine upload --verbose dist/*
+	twine upload --repository grav-toolbox --verbose dist/*
 
 # Convert *.ui files from Qt Designer to Python files:
 py_gui:
