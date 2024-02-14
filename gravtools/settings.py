@@ -40,7 +40,7 @@ STATION_DATA_SOURCE_TYPES = {
 }
 
 TIDE_CORRECTION_TYPES = {
-    'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
+    'instrumental_corr': 'Instrument-implemented tidal correction',
     'longman1959': 'Tidal corrections by the model of Longman (1959)',
     'no_tide_corr': 'No tide correction applied',
     'from_time_series': 'Interpolated from correction time series',
@@ -50,6 +50,11 @@ TIDE_CORRECTION_TYPES = {
 ATM_PRES_CORRECTION_TYPES = {
     'no_atm_pres_corr': 'No atmospheric pressure correction applied',
     'iso_2533_1975': 'Atmopheric pressure correction using ISO 2533:1975 normal air pressure',
+}
+
+SCALE_CORRECTION_TYPES = {
+    'no_scale': 'No scaling applied',
+    'linear_scale': 'Linear scaling applied',
 }
 
 # Default admittance factor for the calculation of atmospheric pressure correction using the ISO 2533:1975 normal air
@@ -145,7 +150,7 @@ GRAVIMETER_TYPES = {
 #  observation files:
 # - Only required when loading "BEV legacy observation files", because there is no info on the applied tidal correction
 BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
-    '5': 'cg5_longman1959'
+    '5': 'instrumental_corr'
 }
 
 # Methods for calculation of setup observations:

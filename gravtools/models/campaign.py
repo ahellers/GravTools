@@ -366,6 +366,7 @@ class Campaign:
                                            target_ref_height=None,
                                            target_tide_corr=None,
                                            target_atm_pres_corr=None,
+                                           target_scale_corr=None,
                                            atm_pres_admittance=None,
                                            tide_corr_timeseries_interpol_method='',
                                            verbose=False):
@@ -391,6 +392,10 @@ class Campaign:
             Specifying the atmospheric press ure correction type to be applied to all surveys. Valid types to be listed
             in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. Default is `None` indicating that the respective
             corrections of the input data are not changed.
+        target_scale_corr : str, optional (default = `None`)
+            Specifies the scale correction type to be applied on all observations of this survey. Vali types are listed
+            in :py:obj:`gravtools.settings.SCALE_CORRECTION_TYPES`. The default value `None` indicates that the
+            respective corrections of the input data will not be changed.
         atm_pres_admittance : float, optional (default = `None`)
             Admittance factor for the determination of pressure corrections based on the difference between measured and
             normal air pressure. If `target_atm_pres_corr` is not None (i.e. atmospheric pressure corrections will be
@@ -415,9 +420,11 @@ class Campaign:
                 target_ref_height=target_ref_height,
                 target_tide_corr=target_tide_corr,
                 target_atm_pres_corr=target_atm_pres_corr,
+                target_scale_corr=target_scale_corr,
                 atm_pres_admittance=atm_pres_admittance,
                 tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                 correction_time_series=self.correction_time_series,
+                gravimeters=self.gravimeters,
                 verbose=verbose)
 
     def add_stations_from_oesgn_table_file(self, oesgn_filename, is_datum=False, verbose=False):

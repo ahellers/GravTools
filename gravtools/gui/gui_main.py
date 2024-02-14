@@ -3222,7 +3222,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.dlg_corrections.radioButton_corr_tides_no_correction.isChecked():
             target_tide_corr = 'no_tide_corr'
         elif self.dlg_corrections.radioButton_corr_tides_cg5_model.isChecked():
-            target_tide_corr = 'cg5_longman1959'
+            target_tide_corr = 'instrumental_corr'
         elif self.dlg_corrections.radioButton_corr_tides_longman1959.isChecked():
             target_tide_corr = 'longman1959'
         elif self.dlg_corrections.radioButton_corr_tides_time_series.isChecked():
@@ -3240,14 +3240,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         atm_pres_admittance = self.dlg_corrections.doubleSpinBox_atm_pres_admittance.value()
 
+        if self.dlg_corrections.checkBox_linear_scale_correction.isChecked():
+            target_scale_corr = 'linear_scale'
+        else:
+            target_scale_corr = 'no_scale'
+
         if flag_selection_ok:
             try:
                 self.campaign.reduce_observations_in_all_surveys(
                     target_ref_height=target_ref_height,
                     target_tide_corr=target_tide_corr,
                     target_atm_pres_corr=target_atm_pres_corr,
+                    target_scale_corr=target_scale_corr,
                     atm_pres_admittance=atm_pres_admittance,
                     tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
+
                     verbose=IS_VERBOSE)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
