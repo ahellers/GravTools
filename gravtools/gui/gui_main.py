@@ -688,7 +688,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def save_campaign_to_pickle(self):
         """Save campaign data (object) to a pickle file using the default path and filename."""
         try:
-            filename = self.campaign.save_to_pickle(filename=None, verbose=IS_VERBOSE)
+            filename = self.campaign.save_to_pickle(filename_pkl=None, verbose=IS_VERBOSE)
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -1917,7 +1917,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_comboBox_results_selection_station(observed_stations=lsm_run.observed_stations)
             self.update_comboBox_results_selection_surrvey(survey_names=list(lsm_run.setups.keys()))
 
-            # Get data from LSM object an populate GUI widgets:
+            # Get data from LSM object and populate GUI widgets:
             # - Info tab:
             self.label_results_comment.setText(lsm_run.comment)
             self.label_results_adjustment_method.setText(settings.ADJUSTMENT_METHODS[lsm_run.lsm_method])
@@ -2415,7 +2415,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if IS_VERBOSE:
                     print('Reduced observations not available!')
                 QMessageBox.critical(self, 'Error!',
-                                     'Reduced observations (reference for autoselection) are not avialable yet!')
+                                     'Reduced observations (reference for autoselection) are not available yet!')
                 return
 
         if flag_apply_duration:
@@ -2591,7 +2591,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                     exclude_datum_stations = True
                                 else:
                                     exclude_datum_stations = False
-                                self.campaign.write_nsb_file(filename=os.path.join(output_path, filename_nsb),
+                                self.campaign.write_nsb_file(filename_nsb=os.path.join(output_path, filename_nsb),
                                                              lsm_run_index=lsm_run_idx,
                                                              vertical_offset_mode=vertical_offset_mode,
                                                              exclude_datum_stations=exclude_datum_stations,
@@ -3262,7 +3262,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     verbose=IS_VERBOSE)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-
 
     @pyqtSlot()
     def on_menu_file_new_campaign(self):

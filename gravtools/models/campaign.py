@@ -659,7 +659,7 @@ class Campaign:
 
     def write_nsb_file(self, filename_nsb: str, lsm_run_index, vertical_offset_mode: str = 'first',
                        exclude_datum_stations=False, formal_error_type='se', verbose=False):
-        """Write the results of an LSM run to an nsb file (input for NSDB database).
+        """Write the results of an LSM run to a nsb file (input for NSDB database).
 
         Notes
         -----

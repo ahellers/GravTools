@@ -180,7 +180,7 @@ class VGLSM(LSM):
                                          f'sensor height! Change the reference height to "Sensor" and recalculate the '
                                          f'setup observation data.')
 
-        return super().from_campaign(campaign, comment='', write_log=True)
+        return super().from_campaign(campaign, comment=comment, write_log=True)
 
     def adjust(self, drift_pol_degree=1,
                vg_polynomial_degree=1,

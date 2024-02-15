@@ -251,8 +251,8 @@ class Survey:
             Normal atmospheric pressure in hPa. Used for correcting atmospheric pressure variations.
         - corr_atm_pres_red_mugal : float, optional (default=None)
             Atmospheric pressure correction [µGal] that is applied to `g_red_mugal`.
-        # - linear_scale : float, optional (default=None)
-        #     Linear scale factor applied on the gravity readings in GravTools.
+        - linear_scale : float, optional (default=None)
+            Linear scale factor applied on the gravity readings in GravTools.
 
     ref_delta_t_dt : datetime, optional (default=None)
         Reference time for relative times (), e.g. reference time t0 the for drift polynomial adjustment.
@@ -319,14 +319,14 @@ class Survey:
         'atm_pres_hpa',  # Measured atmospheric pressure [hPa]
         'norm_atm_pres_hpa',  # Normal atmospheric pressure [hPa]
         'corr_atm_pres_red_mugal',  # Normal atmospheric pressure correction [µGal]
-        # 'linear_scale',  # Linear scale factor
+        'linear_scale',  # Linear scale factor
     )
 
     _OBS_DF_INIT_COL_IF_MISSING = {
         'atm_pres_hpa': np.nan,
         'norm_atm_pres_hpa': np.nan,
         'corr_atm_pres_red_mugal': np.nan,
-        # 'linear_scale': np.nan,
+        'linear_scale': np.nan,
     }
 
     _SURVEY_ATTRIBUTES_INIT = {
@@ -1332,12 +1332,6 @@ class Survey:
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
-        # ToDo:
-        # - lange Methode besser strukturieren: In mehrere Reduktionsmethoden aufteilen.
-        # - Prüfen: Macht es Sinn, im ersten Schritt IMMER die Gezeitenkorrektur vom Instrument zu entfernen?
-        #    - Dann kann man sauber den Maßstab auf die unkorrigieren Messungen anbringen (immer gleich).
-        # - Maßstabskorrektur im "obs_df" als Spalte führen (wie beim Luftdruck)
-
         # Init.:
         tide_corr_timeseries_interpol_method_out = ''
 
@@ -1390,10 +1384,11 @@ class Survey:
             # Apply scaling:
             tmp_g_df = pd.DataFrame({'epoch_dt': obs_df['obs_epoch'], 'g': g_red_mugal})
             tmp_g_df = gravimeters.apply_linear_scale(gravimeter_type=self.gravimeter_type,
-                                           serial_number=self.gravimeter_serial_number,
-                                           gravity_df=tmp_g_df,
-                                           verbose=True)
+                                                      serial_number=self.gravimeter_serial_number,
+                                                      gravity_df=tmp_g_df,
+                                                      verbose=True)
             g_red_mugal = tmp_g_df['g_scaled']
+            linear_scale = tmp_g_df['linear_scale']
 
             # Add instrumental tidal corrections again:
             if self.obs_tide_correction_type == 'instrumental_corr':
@@ -1637,8 +1632,12 @@ class Survey:
             self.obs_df['corr_atm_pres_red_mugal'] = corr_atm_pres_red_mugal
             self.obs_df['norm_atm_pres_hpa'] = norm_atm_pres_hpa
         self.red_scale_correction_type = target_scale_corr
+        if target_scale_corr == 'linear_scale':
+            self.obs_df['linear_scale'] = linear_scale
+        else:
+            self.obs_df['linear_scale'] = np.nan
 
-    def get_tidal_corrections_from_timeseries(self, correction_time_series, interpolation_method : str) -> np.ndarray  :
+    def get_tidal_corrections_from_timeseries(self, correction_time_series, interpolation_method: str) -> np.ndarray:
         """Derives tidal corrections for observations from time series data.
 
         Notes
@@ -1668,7 +1667,7 @@ class Survey:
         if len(missing_stations) > 0:
             raise RuntimeError(f'No correction time series data available for the stations: ' + ', '.join(missing_stations))
 
-        # Prep input obervation dataframe: Keep required columns only:
+        # Prep. input observation dataframe: Keep required columns only:
         tmp_df = self.obs_df[['station_name', 'obs_epoch', 'duration_sec']].copy(deep=True)
         # Shift obs reference epoch from start to the middle of the gravity reading
         # (= evaluation time for the tide model):

@@ -367,6 +367,8 @@ class Gravimeter:
         tmp_filter = (self.scale_df['start_date'] <= epoch.date()) & (self.scale_df['end_date'] >= epoch.date())
         num_matches = len(tmp_filter[tmp_filter])
         if num_matches == 0:
+            if raise_error_availability:
+                raise RuntimeError(f'No linear scale factor available for epoch {epoch.isoformat()} and gravimeter {self.name}.')
             return np.nan
         elif num_matches == 1:
             return self.scale_df.loc[tmp_filter, 'linear_factor'].item()
@@ -375,8 +377,8 @@ class Gravimeter:
                 print(f'Warning: {num_matches} matches for epoch {epoch.isoformat()} in the list of scale factors for '
                       f'the gravimeter {self.name}')
             if raise_error_availability:
-                raise RuntimeError(f'{num_matches} scaling factors found for epoch {epoch.isoformat()} and gravimeter'
-                                   f'{self.name}')
+                raise RuntimeError(f'Warning: {num_matches} matches for epoch {epoch.isoformat()} in the list of scale '
+                                   f'factors for the gravimeter {self.name}')
             return np.nan
 
     def get_linear_scale_factors(self, ref_epochs: list, raise_error_availability: bool = False) -> list[float]:
