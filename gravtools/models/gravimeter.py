@@ -169,6 +169,18 @@ class Gravimeters:
             print(f'Linear scaling correction for gravimeter {gravimeter_type} ({serial_number})')
         return self.gravimeters[(gravimeter_type, serial_number)].apply_linear_scaling(gravity_df)
 
+    def get_height_offset(self, gravimeter_type: str, serial_number: str):
+        """Returns the height offset between the sensor and the top.
+
+        Parameters
+        ----------
+        gravimeter_type : str
+            Gravimeter type.
+        serial_number : str
+            Instrument serial number
+        """
+        return self.gravimeters[(gravimeter_type, serial_number)].height_offset_m
+
     @property
     def number_of_gravimeters(self):
         """Return the number of gravimeters."""

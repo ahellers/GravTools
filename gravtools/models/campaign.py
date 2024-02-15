@@ -33,8 +33,7 @@ from gravtools.models.survey import Survey
 from gravtools.models.station import Station
 from gravtools.models.gravimeter import Gravimeters
 from gravtools.tides.correction_time_series import CorrectionTimeSeries
-from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, DEFAULT_GRAVIMETER_ONE_LETTER_CODES, \
-    DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M, EXPORT_OBS_LIST_COLUMNS, \
+from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, EXPORT_OBS_LIST_COLUMNS, \
     MAX_SD_FOR_EXPORT_TO_NSB_FILE, WRITE_COMMENT_TO_NSB, PICKLE_PROTOCOL_VERSION
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
@@ -64,7 +63,7 @@ class Campaign:
     stations : :py:obj:`.Station` object
         Data of known stations (datum- and non-datum-stations).
     lsm_runs : list of objects inherited from :py:obj:`gravtools.models.lsm.LSM`
-        Each item in the list contains one enclosed LSM object. Each LSM object reflects one dedicated run of an
+        Each item in the list contains one enclosed LSM object. Each LSM object reflects one dedicated run of a
         least-squares adjustment in order to estimate target parameters.
     ref_delta_t_dt : datetime object
         Reference epoch for relative times within the campaign, e.g. for the determination of the drift polynomials.
@@ -161,8 +160,8 @@ class Campaign:
             if not isinstance(lsm_runs, list):
                 raise TypeError('The argument "lsm_runs" needs to be a list of LSM-objects.')
             else:
-                for items in lsm_runs:
-                    if not isinstance(lsm_runs, LSM):
+                for lsm_run in lsm_runs:
+                    if not isinstance(lsm_run, LSM):
                         raise TypeError('The argument "lsm_runs" needs to be a list of LSM-objects.')
         self.lsm_runs = lsm_runs
 
@@ -198,7 +197,7 @@ class Campaign:
         """
         self.gravimeters = Gravimeters()
 
-    def add_survey(self, survey_add: Survey, verbose=False) -> bool:
+    def add_survey(self, survey_add: Survey, verbose=False):
         """Add a survey to campaign and specify whether to use it for ths analysis.
 
         Notes
@@ -486,7 +485,7 @@ class Campaign:
                 print(f' - Survey: {survey_name}')
             survey.obs_df_populate_vg_from_stations(self.stations, verbose=verbose)
             survey.obs_df_populate_locations_from_stations(self.stations, verbose=verbose)
-            self.stations.set_observed_info_from_survey(survey, verbose=verbose)
+            self.stations.set_observed_info_from_survey(survey)
 
     def sync_observed_stations(self, verbose=False):
         """Adds all stations that were observed in at least one survey to this campaign's station dataframe.
@@ -531,8 +530,8 @@ class Campaign:
             individual observations. `individual_obs` implies that the original observations are used as setup data
             without any aggregation.
         method_sd : str, optional (default='sd_from_obs_file')
-            Method for the determination of standard deviations (SD) of setup observations. `sd_from_obs_file` implies that
-            SD are taken from the observation file. `sd_default_per_obs` and `sd_default_per_setup` imply that the
+            Method for the determination of standard deviations (SD) of setup observations. `sd_from_obs_file` implies
+            that SD are taken from the observation file. `sd_default_per_obs` and `sd_default_per_setup` imply that the
             given default SD is used, where the default SD is applied the individual observations in the first case and
             to setups in the second case. If applied to observations, the number of observations per setup still plays a
             role for weighting the setup observations in the adjustment.
@@ -552,7 +551,8 @@ class Campaign:
             if verbose:
                 print(f' - Survey: {survey_name}')
             if survey.is_active and survey.keep_survey:
-                survey.calculate_setup_data(obs_type=obs_type,
+                survey.calculate_setup_data(gravimeters=self.gravimeters,
+                                            obs_type=obs_type,
                                             ref_delta_t_campaign_dt=self.ref_delta_t_dt,
                                             active_obs_only_for_ref_epoch=active_obs_only_for_ref_epoch,
                                             method=method,
@@ -657,7 +657,7 @@ class Campaign:
         else:
             raise ValueError('`ref_delta_t_dt` needs to be a datetime object.')
 
-    def write_nsb_file(self, filename: str, lsm_run_index, vertical_offset_mode: str = 'first',
+    def write_nsb_file(self, filename_nsb: str, lsm_run_index, vertical_offset_mode: str = 'first',
                        exclude_datum_stations=False, formal_error_type='se', verbose=False):
         """Write the results of an LSM run to an nsb file (input for NSDB database).
 
@@ -668,7 +668,7 @@ class Campaign:
 
         Parameters
         ----------
-        filename : str
+        filename_nsb : str
             Name and path of the output nsb file (e.g. /home/johnny/example.nsb)
         lsm_run_index : int
             Index of the lsm run in `campaign.lsm_runs` of which the results are exported to the nsb file.
@@ -707,7 +707,8 @@ class Campaign:
                 # Check if the data is suitable for export to the nsb file:
                 if results_stat_df.loc[results_stat_df['sd_g_est_mugal'] > MAX_SD_FOR_EXPORT_TO_NSB_FILE,
                                        'sd_g_est_mugal'].any():
-                    raise AssertionError(f"The SD of at least one station's estimated gravity is larger than {MAX_SD_FOR_EXPORT_TO_NSB_FILE} µGal! ")
+                    raise AssertionError(
+                        f"The SD of at least one station's estimated gravity is larger than {MAX_SD_FOR_EXPORT_TO_NSB_FILE} µGal! ")
 
                 # Loop over stations in results dataframe:
                 for index, row in results_stat_df.iterrows():
@@ -725,10 +726,10 @@ class Campaign:
                     # Get surveys at which the station was observed:
                     for survey_name, setup_data in lsm_run.setups.items():
                         setup_df = setup_data['setup_df']
-                        if len(setup_df.loc[setup_df['station_name'] == station_name]) > 0:  # was observed in this setup!
+                        if len(setup_df.loc[setup_df['station_name'] == station_name]) > 0:  # observed in this setup!
                             observed_in_surveys.append(survey_name)
                             obs_df = self.surveys[survey_name].obs_df
-                            setup_ids = obs_df.loc[obs_df['station_name'] == station_name, 'setup_id'].unique()
+                            # setup_ids = obs_df.loc[obs_df['station_name'] == station_name, 'setup_id'].unique()
                             setup_ids = setup_df.loc[setup_df['station_name'] == station_name, 'setup_id'].to_list()
                             # Get list of dhb and dhf:
                             for setup_id in setup_ids:
@@ -752,7 +753,7 @@ class Campaign:
                                 f' - {station_name} was observed the following surveys: {", ".join(observed_in_surveys)}')
                         # Get the latest survey in which the station was observed:
                         latest_survey_name = ''
-                        latest_survey_date = dt.date(1900,1,1)
+                        latest_survey_date = dt.date(1900, 1, 1)
                         for survey in observed_in_surveys:
                             if self.surveys[survey].date > latest_survey_date:
                                 latest_survey_date = self.surveys[survey].date
@@ -761,6 +762,7 @@ class Campaign:
                         latest_survey_name = observed_in_surveys[0]
                     gravimeter_type = self.surveys[latest_survey_name].gravimeter_type
                     gravimeter_serial_number = self.surveys[latest_survey_name].gravimeter_serial_number
+                    gravi = self.gravimeters.gravimeters[(gravimeter_type, gravimeter_serial_number)]
                     date_str = self.surveys[latest_survey_name].date.strftime('%Y%m%d')
 
                     # Comment string:
@@ -782,14 +784,14 @@ class Campaign:
                         date_str,
                         row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
                         formal_error,
-                        DEFAULT_GRAVIMETER_ONE_LETTER_CODES[gravimeter_type],  # TODO: Use code from gravimeter model!
+                        gravi.code,
                         comment_str,
-                        (dhb_m + DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[gravimeter_type]) * 100,  # TODO: Use value from gravimeter model!
-                        (dhf_m + DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[gravimeter_type]) * 100,  # TODO: Use value from gravimeter model!
+                        (dhb_m + gravi.height_offset_m) * 100,
+                        (dhf_m + gravi.height_offset_m) * 100,
                     )
 
                 # Write file:
-                with open(filename, 'w') as out_file:
+                with open(filename_nsb, 'w') as out_file:
                     out_file.write(nsb_string)
 
             else:  # Required columns are not available
@@ -800,21 +802,18 @@ class Campaign:
             if verbose:
                 print(f'The nsb file cannot be written as the required station data is not available.')
             
-    def write_log_file(self, filename: str, lsm_run_index, verbose=False):
+    def write_log_file(self, filename_log: str, lsm_run_index, verbose=False):
         """Write log file of a selected LSM run.
         
         Parameters
         ----------
-        filename : str
+        filename_log : str
             Name and path of the output nsb file (e.g. /home/johnny/example.nsb)
         lsm_run_index : int
             Index of the lsm run in `campaign.lsm_runs` of which the results are exported to the nsb file.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
-        # Init.:
-        log_string = ''
-
         # Get and prepare data:
         lsm_run = self.lsm_runs[lsm_run_index]
         log_string = lsm_run.get_log_string
@@ -830,16 +829,16 @@ class Campaign:
         
         # Write file:
         if verbose:
-            print(f'Write log file to {filename}.')
-        with open(filename, 'w') as out_file:
+            print(f'Write log file to {filename_log}.')
+        with open(filename_log, 'w') as out_file:
             out_file.write(out_string)
 
-    def save_to_pickle(self, filename=None, verbose=True):
+    def save_to_pickle(self, filename_pkl=None, verbose=True):
         """Save the campaign object to a pickle file at the given path.
 
         Parameters
         ----------
-        filename : str, optional (default=`None`)
+        filename_pkl : str, optional (default=`None`)
             Path and name of the pickle file, e.g. /home/user1/data/camp1.pkl. `None` indicates that the campaign object
             is saved to the default output directory past (`campaign.output_directory`). In this case the file is named
             `<campaign_name>.pkl`.
@@ -850,25 +849,25 @@ class Campaign:
         -------
         str : Name and path of the saved file.
         """
-        if filename is None:
-            filename = os.path.join(self.output_directory, f'{self.campaign_name}.pkl')
+        if filename_pkl is None:
+            filename_pkl = os.path.join(self.output_directory, f'{self.campaign_name}.pkl')
         # Open file:
         if verbose:
-            print(f'Export campaign data to {filename}.')
-        with open(filename, 'wb') as outfile:
+            print(f'Export campaign data to {filename_pkl}.')
+        with open(filename_pkl, 'wb') as outfile:
             if PICKLE_PROTOCOL_VERSION == '999':
                 pickle.dump(self, outfile, protocol=pickle.HIGHEST_PROTOCOL)
             else:
                 pickle.dump(self, outfile, protocol=PICKLE_PROTOCOL_VERSION)
-        return filename
+        return filename_pkl
 
     @classmethod
-    def from_pkl(cls, filename: str, verbose: bool = True):
+    def from_pkl(cls, filename_pkl: str, verbose: bool = True):
         """Loads a campaign object from a pickle file.
 
         Parameters
         ----------
-        filename : str
+        filename_pkl : str
             Name and path of the pickle file containing the campaign data.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
@@ -877,7 +876,7 @@ class Campaign:
         -------
         `Campaign` object
         """
-        campaign = pd.read_pickle(filename)
+        campaign = pd.read_pickle(filename_pkl)
         if verbose:
             print(
                 f'Loaded campaign "{campaign.campaign_name}" with {campaign.number_of_stations} station(s) and {campaign.number_of_surveys} survey(s).')
@@ -976,7 +975,7 @@ class Campaign:
 
     def write_obs_list_of_lsm_run_csv(self, filename_csv: str, lsm_run_index: int,
                                       export_type: str = 'all_obs', verbose: bool = False):
-        """Export a list of all observations that were used for calcualting the setup data of a lsm_run.
+        """Export a list of all observations that were used for calculating the setup data of a lsm_run.
 
         Parameters
         ----------
@@ -994,8 +993,8 @@ class Campaign:
         # Get LSM run
         try:
             lsm_run = self.lsm_runs[lsm_run_index]
-        except:
-            raise AssertionError(f'Invalid LSM run index: {lsm_run_index}')
+        except KeyError:
+            raise RuntimeError(f'Invalid LSM run index: {lsm_run_index}')
 
         # Prepare dataframe with all observations of all surveys
         export_survey_df_list = []
@@ -1015,7 +1014,7 @@ class Campaign:
         obs_df_all.sort_values('obs_epoch', inplace=True)
 
         export_df = pd.merge(export_df, obs_df_all, how='left', left_on=['station_name', 'obs_epoch'],
-                                     right_on=['station_name', 'obs_epoch']).rename(
+                             right_on=['station_name', 'obs_epoch']).rename(
             columns={'keep_obs_x': 'keep_obs', 'station_name_x': 'station_name', 'obs_epoch_x': 'obs_epoch'})
 
         drop_col_list = list(set(export_df.columns) - set(EXPORT_OBS_LIST_COLUMNS))

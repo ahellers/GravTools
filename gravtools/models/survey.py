@@ -23,10 +23,10 @@ import os
 import gravtools.models.lsm_diff
 import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
-    REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M, \
+    REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, \
     GRAVIMETER_TYPES, SETUP_CALC_METHODS, DEFAULT_GRAVIMETER_SERIAL_NUMBER, DEFAULT_GRAVIMETER_TYPE, \
     SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT, \
-    SCALE_CORRECTION_TYPES, VERBOSE
+    SCALE_CORRECTION_TYPES
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.models.misc import format_seconds_to_hhmmss
@@ -251,6 +251,8 @@ class Survey:
             Normal atmospheric pressure in hPa. Used for correcting atmospheric pressure variations.
         - corr_atm_pres_red_mugal : float, optional (default=None)
             Atmospheric pressure correction [µGal] that is applied to `g_red_mugal`.
+        # - linear_scale : float, optional (default=None)
+        #     Linear scale factor applied on the gravity readings in GravTools.
 
     ref_delta_t_dt : datetime, optional (default=None)
         Reference time for relative times (), e.g. reference time t0 the for drift polynomial adjustment.
@@ -317,12 +319,14 @@ class Survey:
         'atm_pres_hpa',  # Measured atmospheric pressure [hPa]
         'norm_atm_pres_hpa',  # Normal atmospheric pressure [hPa]
         'corr_atm_pres_red_mugal',  # Normal atmospheric pressure correction [µGal]
+        # 'linear_scale',  # Linear scale factor
     )
 
     _OBS_DF_INIT_COL_IF_MISSING = {
         'atm_pres_hpa': np.nan,
         'norm_atm_pres_hpa': np.nan,
         'corr_atm_pres_red_mugal': np.nan,
+        # 'linear_scale': np.nan,
     }
 
     _SURVEY_ATTRIBUTES_INIT = {
@@ -1046,7 +1050,7 @@ class Survey:
         """
         self.obs_df.at[obs_idx, 'keep_obs'] = flag_activate
 
-    def check_obs_df(self, verbose=True) -> bool:
+    def check_obs_df(self, verbose=True) -> tuple[bool, str]:
         """Check, whether the observations DataFrame (`obs_df`) is valid and try to add missing columns.
 
         This method carried out the following checks:
@@ -1267,7 +1271,7 @@ class Survey:
                             target_atm_pres_corr: str = None,
                             target_scale_corr: str = None,
                             atm_pres_admittance: float = ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT,
-                            tide_corr_timeseries_interpol_method = '',
+                            tide_corr_timeseries_interpol_method='',
                             correction_time_series=None,
                             gravimeters=None,
                             verbose: bool = False,
@@ -1425,7 +1429,7 @@ class Survey:
 
                 # Reduction:
                 # Distance between instrument top and sensor level:
-                dst_m = DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[self.gravimeter_type]  # TODO: Use value from gravimeter model!
+                dst_m = gravimeters.get_height_offset(self.gravimeter_type, self.gravimeter_serial_number)
                 if self.obs_reference_height_type == 'sensor_height':
                     if target_ref_height == 'control_point':
                         # + dst_m + dhf_m
@@ -1522,10 +1526,6 @@ class Survey:
                 if self.obs_tide_correction_type == 'no_tide_corr':
                     if target_tide_corr == 'instrumental_corr':
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
-                        # TODO: Was steht in der Spalte "TIDE", wenn im CG5 KEINE Korrektur angebracht wurde?
-                        # => Antwort: Die Korrektur wird im CG5 IMMER berechnet und ausgegeben. Sie wird nur nicht an
-                        # den MEsswerr angebracht.
-                        # - Wenn die richtige Korretkur NICHT vorliegt => raise Error!
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
                     elif target_tide_corr == 'longman1959':
                         corr_tide_red_mugal = self.get_tidal_corrections_from_longman1959()
@@ -1915,7 +1915,9 @@ class Survey:
             self.setup_calc_method = ''
             self.setup_obs_list_df = None
 
-    def calculate_setup_data(self, obs_type='reduced',
+    def calculate_setup_data(self,
+                             gravimeters,
+                             obs_type='reduced',
                              ref_delta_t_campaign_dt=None,
                              active_obs_only_for_ref_epoch=True,
                              method='variance_weighted_mean',
@@ -1926,6 +1928,9 @@ class Survey:
 
         Parameters
         ----------
+        gravimeters : Gravimeter object
+            Gravimeter object containing relevant information such as height differences for height corrections and
+            scaling information.
         obs_type : str, 'observed' or 'reduced' (default)
             Defines whether the observed (as loaded from an observation file) or the reduced observations from
             `self.obs_df` are used to determine the weighted mean values per setup.
@@ -2017,6 +2022,8 @@ class Survey:
             else:
                 ref_delta_t_dt = self.obs_df['obs_epoch'].min()  # First observation epoch (also inactive obs)
 
+            dist_m = gravimeters.get_height_offset(self.gravimeter_type, self.gravimeter_serial_number)
+
             # Loop over setups:
             if method == 'variance_weighted_mean':
                 # Initialize columns lists for creating dataframe:
@@ -2060,7 +2067,7 @@ class Survey:
                     number_obs_list.append(len(g_mugal))  # Number of observations
 
                     # Get vertical distance between sensor height and control point:
-                    dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[self.gravimeter_type])  # TODO: Use value from gravimeter model!
+                    dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + dist_m)
 
                     # observation epoch (UNIX timestamps in full seconds):
                     obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
@@ -2103,7 +2110,7 @@ class Survey:
                     delta_t_campaign_h_list = [None] * len(g_mugal_list)
                 sd_setup_mugal_list = [np.nan] * len(g_mugal_list)
                 number_obs_list = [1] * len(g_mugal_list)
-                dhf_sensor_m_list = active_obs_df['dhf_m'] + DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[self.gravimeter_type]  # TODO: Use value from gravimeter model!
+                dhf_sensor_m_list = active_obs_df['dhf_m'] + dist_m
 
             if obs_type == 'observed':
                 self.setup_tide_correction_type = self.obs_tide_correction_type

@@ -81,21 +81,20 @@ class Station:
     }
     _STAT_DF_COLUMNS = list(_STAT_DF_COLUMNS_DTYPES.keys())
 
-
-    _STAT_DF_COLUMNS = (
-        'station_name',  # Station name, str
-        'long_deg',  # longitude [deg], float
-        'lat_deg',  # latitude [deg], float
-        'height_m',  # Height [m]
-        'g_mugal',  # gravity [µGal]
-        'sd_g_mugal',  # standard deviation of the gravity [µGal]
-        'vg_mugalm',  # vertical gradient [µGal/m]
-        'is_observed',  # flag: True, if station was observed in at least one survey in the current campaign.
-        'source_type',  # Source of the station data, str
-        'source_name',  # Name of the data source
-        'is_datum',  # flag, that indicates whether this is a datum station, bool
-        'in_survey',  # Names of surveys in which ths station was observed (separator = ;), str
-    )
+    # _STAT_DF_COLUMNS = (
+    #     'station_name',  # Station name, str
+    #     'long_deg',  # longitude [deg], float
+    #     'lat_deg',  # latitude [deg], float
+    #     'height_m',  # Height [m]
+    #     'g_mugal',  # gravity [µGal]
+    #     'sd_g_mugal',  # standard deviation of the gravity [µGal]
+    #     'vg_mugalm',  # vertical gradient [µGal/m]
+    #     'is_observed',  # flag: True, if station was observed in at least one survey in the current campaign.
+    #     'source_type',  # Source of the station data, str
+    #     'source_name',  # Name of the data source
+    #     'is_datum',  # flag, that indicates whether this is a datum station, bool
+    #     'in_survey',  # Names of surveys in which ths station was observed (separator = ;), str
+    # )
 
     def __init__(self, station_files=None):
         """
@@ -165,7 +164,7 @@ class Station:
             3,  # mittlerer Fehler von g [µGal] 65
             4,  # Vertikalgradient der Schwere [µGal/m] 68
             6,  # Datum 73
-            12, # Punktidentität 79
+            12,  # Punktidentität 79
         )
         column_names = (
             'station_name',
@@ -225,7 +224,6 @@ class Station:
         stat_df_new = self._stat_df_reorder_columns(stat_df_new)
         self.add_stations(stat_df_new, data_source_type='oesgn_table', verbose=verbose)
 
-
     def delete_station(self, station_names: list, verbose=False):
         """
         Deletes all rows where the station name occurs in the `station_names` list.
@@ -258,15 +256,13 @@ class Station:
         """:py:obj:`pandas.core.frame.DataFrame` : Returns all available stations."""
         return self.stat_df
 
-    def set_observed_info_from_survey(self, survey, verbose=False):
+    def set_observed_info_from_survey(self, survey):
         """Set the `is_observed` flags and the `in_survey` strings in the py:obj:`Station.stat_df` DataFrame.
 
         Parameters
         ----------
         survey : py:obj:`Survey`
             Survey object which is used as reference to set the `is_observed` flags in the stations Dataframe.
-        verbose : bool, optional
-            Print notifications, if `True` (default=`False`)
         """
         self.stat_df.loc[self.stat_df['station_name'].isin(survey.obs_df['station_name']), 'is_observed'] = True
 
@@ -437,7 +433,6 @@ class Station:
             stations_added = number_of_stations - number_of_existing_stations
             print(f"{number_of_new_stations} stations loaded. "
                   f"{stations_added} stations added ({number_of_new_stations - stations_added} already listed).")
-
 
     def add_stations_from_csv_file(self, filename, verbose=False):
         """Adds (appends) all stations of the input OESGN table to the station dataframe.

@@ -689,7 +689,7 @@
                 <item row="2" column="0">
                  <widget class="QLabel" name="label_27">
                   <property name="text">
-                   <string>Scale Correction</string>
+                   <string>Scale Correction:</string>
                   </property>
                  </widget>
                 </item>
@@ -708,7 +708,7 @@
                  </widget>
                 </item>
                 <item row="2" column="1">
-                 <widget class="QLabel" name="label_28">
+                 <widget class="QLabel" name="label_obs_setups_scale_corr">
                   <property name="text">
                    <string/>
                   </property>

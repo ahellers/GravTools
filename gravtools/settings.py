@@ -91,10 +91,8 @@ REFERENCE_HEIGHT_TYPE = {
     'control_point': 'The gravity values refers to the control point of the station',
 }
 
-# ##### Gavimeter default data #####
-# - This information is used if no data is loaded from gravimeter files (json)
-
-
+# ##### Gravimeter default data #####
+# The default information is used if no data is loaded from a gravimeter files (json)
 
 # Default height offset between instrument reference surface (top) and the sensor level for different gravimeter types:
 # - These default values are only used if no values are loaded from a gravimeter file
@@ -275,10 +273,10 @@ EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'station_name', 'obs_epoch', 'keep_obs
 MAX_SD_FOR_EXPORT_TO_NSB_FILE = 999.0
 
 # Choices for 5-character comment written to the nsb file (appears as Operat-G in the NSDB):
-# - Official 5-character serial number of the Scintrex CG-5 Gravitimeters: 'cg5_serial_number'
+# - Official 5-character serial number of the Scintrex CG-5 Gravimeters: 'cg5_serial_number'
 # - Version of Gravtools: 'gravtools_version'
 # !! Warning: Actually only the gravtools version makes sense, because multiple surveys observed with different
-# instruments can be combinded
+# instruments can be combined
 WRITE_COMMENT_TO_NSB = 'gravtools_version'
 
 # ----- Program and Software settings -----

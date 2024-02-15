@@ -63,6 +63,7 @@ class ObservationTableModel(QAbstractTableModel):
         'atm_pres_hpa': 1,
         'corr_atm_pres_red_mugal': 1,
         'norm_atm_pres_hpa': 1,
+        # 'linear_scale': 5,
     }
 
     # Columns that will be shown in the table view, if available in the data (Also defines the order of columns):
@@ -94,6 +95,7 @@ class ObservationTableModel(QAbstractTableModel):
         'atm_pres_hpa': 'p [hPa]',
         'norm_atm_pres_hpa': 'pn [hPa]',
         'corr_atm_pres_red_mugal': 'p corr [µGal]',
+        # 'linear_scale': 'lin. scale',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 

@@ -2176,11 +2176,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.label_obs_setups_atm_pres_corr.setText(f'{self.setup_model.get_atm_pres_corr_type} ({settings.ATM_PRES_CORRECTION_TYPES[self.setup_model.get_atm_pres_corr_type]})')
             else:
                 self.label_obs_setups_atm_pres_corr.setText(f'{self.setup_model.get_atm_pres_corr_type}')
-
+            if self.setup_model.get_scale_corr_type in settings.SCALE_CORRECTION_TYPES.keys():
+                self.label_obs_setups_scale_corr.setText(
+                    f'{self.setup_model.get_scale_corr_type} ({settings.SCALE_CORRECTION_TYPES[self.setup_model.get_scale_corr_type]})')
+            else:
+                self.label_obs_setups_scale_corr.setText(f'{self.setup_model.get_scale_corr_type}')
         except KeyError:
             self.label_obs_setups_ref_height.setText('')
             self.label_obs_setups_tidal_corr.setText('')
             self.label_obs_setups_atm_pres_corr.setText('')
+            self.label_obs_setups_scale_corr.setText('')
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
@@ -3254,7 +3259,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     target_scale_corr=target_scale_corr,
                     atm_pres_admittance=atm_pres_admittance,
                     tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
-
                     verbose=IS_VERBOSE)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
