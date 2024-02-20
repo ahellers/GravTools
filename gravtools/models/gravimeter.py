@@ -441,7 +441,7 @@ class Gravimeter:
 
 if __name__ == '__main__':
     """Main function for testing"""
-    filename = '../../data/gravimeters/gravimeters.json'
+    filename = '../../data/gravimeters/gravimeters_template.json'
     meters = Gravimeters()
     meters.add_from_json(filename)
     print(meters)
@@ -455,11 +455,3 @@ if __name__ == '__main__':
     scales = grav.get_linear_scale_factors(epochs)
 
     print('end')
-
-
-
-# TODO: Check if a gravimeters (type, sn) already exists, when loading new data! => New method "add_gravimeter" with checks!
-
-# Möglichkeit nur das Datum zu vergleichen:
-# - self.scale_df['start_date'].dt.date
-# - epoch.date()
