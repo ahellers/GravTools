@@ -10,21 +10,21 @@
     <x>0</x>
     <y>0</y>
     <width>1337</width>
-    <height>753</height>
+    <height>751</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>GravTools</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_28">
+   <layout class="QHBoxLayout" name="horizontalLayout_5">
     <item>
      <widget class="QTabWidget" name="tabWidget_Main">
       <property name="tabPosition">
        <enum>QTabWidget::East</enum>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <property name="movable">
        <bool>true</bool>
@@ -184,6 +184,246 @@
            </widget>
           </item>
          </layout>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_main_gravimeters">
+       <attribute name="title">
+        <string>Gravimeters</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_28">
+        <item>
+         <widget class="QSplitter" name="splitter_gravimeters">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <widget class="QWidget" name="layoutWidget">
+           <layout class="QVBoxLayout" name="verticalLayout_40">
+            <item>
+             <widget class="QTreeWidget" name="treeWidget_gravimeters">
+              <property name="headerHidden">
+               <bool>false</bool>
+              </property>
+              <property name="columnCount">
+               <number>2</number>
+              </property>
+              <column>
+               <property name="text">
+                <string>Type</string>
+               </property>
+              </column>
+              <column>
+               <property name="text">
+                <string>S/N</string>
+               </property>
+              </column>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_delete_gravimeter">
+              <property name="enabled">
+               <bool>false</bool>
+              </property>
+              <property name="text">
+               <string>Delete</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QTabWidget" name="tabWidget_gravimeters">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>1</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tab_gravimeter_info">
+            <attribute name="title">
+             <string>Info</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_42">
+             <item>
+              <layout class="QFormLayout" name="formLayout_12">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_19">
+                 <property name="toolTip">
+                  <string>Manufacturer of instrument.</string>
+                 </property>
+                 <property name="text">
+                  <string>Manufacturer:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QLabel" name="label_gravi_manufacturer">
+                 <property name="toolTip">
+                  <string>Manufacturer of instrument.</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="label_20">
+                 <property name="toolTip">
+                  <string>Gravimeter type.</string>
+                 </property>
+                 <property name="text">
+                  <string>Type:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="label_gravi_type">
+                 <property name="toolTip">
+                  <string>Gravimeter type.</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="label_21">
+                 <property name="toolTip">
+                  <string>Serial number.</string>
+                 </property>
+                 <property name="text">
+                  <string>Serial number:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLabel" name="label_gravi_serial_number">
+                 <property name="toolTip">
+                  <string>Serial number.</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QLabel" name="label_25">
+                 <property name="toolTip">
+                  <string>Short instrument code.</string>
+                 </property>
+                 <property name="text">
+                  <string>Code:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="1">
+                <widget class="QLabel" name="label_gravi_code">
+                 <property name="toolTip">
+                  <string>Short instrument code.</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QLabel" name="label_22">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Heigh offset in meters between instrument top and sensor level (negative, if the sensor is below the top).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="text">
+                  <string>Height offset [m]:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <widget class="QLabel" name="label_gravi_height_offset">
+                 <property name="toolTip">
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Heigh offset in meters between instrument top and sensor level (negative, if the sensor is below the top).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QLabel" name="label_23">
+                 <property name="toolTip">
+                  <string>Source of the gravimeter data. Either the name of the survey the data was taken from (ob. file), or the name of the gravimeter file.</string>
+                 </property>
+                 <property name="text">
+                  <string>Data source:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="1">
+                <widget class="QLabel" name="label_gravi_data_source">
+                 <property name="toolTip">
+                  <string>Source of the gravimeter data. Either the name of the survey the data was taken from (ob. file), or the name of the gravimeter file.</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0">
+                <widget class="QLabel" name="label_24">
+                 <property name="toolTip">
+                  <string>Type of the gravimeter data source. </string>
+                 </property>
+                 <property name="text">
+                  <string>Data source type:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="1">
+                <widget class="QLabel" name="label_gravi_data_source_type">
+                 <property name="toolTip">
+                  <string>Type of the gravimeter data source. </string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="0">
+                <widget class="QLabel" name="label_26">
+                 <property name="toolTip">
+                  <string>Number of scale factor items.</string>
+                 </property>
+                 <property name="text">
+                  <string>Number of scale factors:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="1">
+                <widget class="QLabel" name="label_gravi_num_scale_factors">
+                 <property name="toolTip">
+                  <string>Number of scale factor items.</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_gravimeter_scale">
+            <attribute name="title">
+             <string>Scale Table</string>
+            </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_41">
+             <item>
+              <widget class="QTableView" name="tableView_gravimeters_scale"/>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -353,7 +593,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>2</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_observations_plots">
             <attribute name="title">
@@ -447,14 +687,28 @@
                  </widget>
                 </item>
                 <item row="2" column="0">
+                 <widget class="QLabel" name="label_27">
+                  <property name="text">
+                   <string>Scale Correction:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
                  <widget class="QLabel" name="label_obs_setups_3">
                   <property name="text">
                    <string>Atm. pressure correction: </string>
                   </property>
                  </widget>
                 </item>
-                <item row="2" column="1">
+                <item row="3" column="1">
                  <widget class="QLabel" name="label_obs_setups_atm_pres_corr">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QLabel" name="label_obs_setups_scale_corr">
                   <property name="text">
                    <string/>
                   </property>
@@ -607,7 +861,7 @@
             </sizepolicy>
            </property>
            <property name="currentIndex">
-            <number>5</number>
+            <number>0</number>
            </property>
            <widget class="QWidget" name="tab_results_info">
             <attribute name="title">
@@ -1303,6 +1557,15 @@
      <addaction name="action_from_oesgn_table"/>
      <addaction name="action_from_csv_file"/>
     </widget>
+    <widget class="QMenu" name="menu_Add_Gravimeters">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="title">
+      <string>Add Gravimeters</string>
+     </property>
+     <addaction name="action_gravimeters_from_json_file"/>
+    </widget>
     <addaction name="action_New_Campaign"/>
     <addaction name="action_Change_output_directory"/>
     <addaction name="action_Change_Campaign_name"/>
@@ -1311,6 +1574,7 @@
     <addaction name="separator"/>
     <addaction name="menuAdd_Survey"/>
     <addaction name="menu_Add_Stations"/>
+    <addaction name="menu_Add_Gravimeters"/>
     <addaction name="separator"/>
     <addaction name="action_Export_Results"/>
     <addaction name="separator"/>
@@ -1554,6 +1818,11 @@
    </property>
    <property name="toolTip">
     <string>Manage correction time series data</string>
+   </property>
+  </action>
+  <action name="action_gravimeters_from_json_file">
+   <property name="text">
+    <string>From json file</string>
    </property>
   </action>
  </widget>

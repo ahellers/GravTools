@@ -1,0 +1,5 @@
+*
+!.gitignore
+
+# Template gravimeter file
+!gravimeters_template.json

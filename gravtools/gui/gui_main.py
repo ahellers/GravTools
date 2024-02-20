@@ -60,6 +60,7 @@ from gravtools.gui.gui_model_observation_table import ObservationTableModel
 from gravtools.gui.gui_model_results_stat_table import ResultsStationModel
 from gravtools.gui.gui_model_results_obs_table import ResultsObservationModel
 from gravtools.gui.gui_model_results_drift_table import ResultsDriftModel
+from gravtools.gui.gui_models_gravimeters_scale_table import GravimeterScaleFactorTableModel
 from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorrelationMatrixModel
 from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
 from gravtools.gui.gui_model_survey_table import SurveyTableModel
@@ -133,6 +134,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.action_from_oesgn_table.triggered.connect(self.on_menu_file_load_stations_from_oesgn_table)
         self.action_from_csv_file.triggered.connect(self.on_menu_file_load_stations_from_csv_file)
+        self.action_gravimeters_from_json_file.triggered.connect(self.on_menu_file_load_gravimeters_from_json_file)
         self.action_Correction_time_series.triggered.connect(self.action_correction_time_series_triggered)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
@@ -169,8 +171,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.comboBox_results_stations_statistics_select_col.currentIndexChanged.connect(
             self.display_station_results_statistics)
         self.tableView_surveys.customContextMenuRequested.connect(self.tableView_surveys_right_click)
-        # self.action_Load_Campaign.triggered.connect(self.on_action_Load_Campaign_triggered)  # Not needed!?!
-        # self.action_Change_output_directory.triggered.connect(self.on_action_Change_output_directory_triggered)  # Not needed!?!
+        self.treeWidget_gravimeters.itemSelectionChanged.connect(self.gravimeters_tree_widget_item_selection_changed)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
@@ -180,7 +181,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_drift_plot_widget()
         self.set_up_stations_map()
         self.set_up_vg_plot_widget()
-        # self.observations_splitter.setSizes([1000, 10])
 
         # Initialize dialogs if necessary at the start of the application:
         self.dlg_corrections = DialogCorrections(self)
@@ -227,6 +227,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.results_observation_model = None
         self.results_drift_model = None
         self.survey_model = None
+        self.gravimeter_scale_factor_model = None
 
         # Get system fonts:
         self.system_default_fixed_width_font = QtGui.QFontDatabase.systemFont(QtGui.QFontDatabase.FixedFont)
@@ -236,6 +237,94 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    def populate_gravimeters_tree_widget(self):
+        """Populate the gravimeters tree widget."""
+        # Delete existing items:
+        self.treeWidget_gravimeters.blockSignals(True)
+        self.delete_all_items_from_gravimeters_tree_widget()
+
+        # Add new items:
+        for key, gravimeter in self.campaign.gravimeters.gravimeters.items():
+            parent = QTreeWidgetItem(self.treeWidget_gravimeters)
+            parent.setText(0, gravimeter.gravimeter_type)
+            parent.setText(1, gravimeter.serial_number)
+
+        # Select the first item available:
+        if self.treeWidget_gravimeters.topLevelItem(0) is not None:
+            self.treeWidget_gravimeters.setCurrentItem(self.treeWidget_gravimeters.topLevelItem(0))
+        self.treeWidget_gravimeters.show()
+        self.treeWidget_gravimeters.blockSignals(False)
+        self.treeWidget_gravimeters.itemSelectionChanged.emit()
+
+    def delete_all_items_from_gravimeters_tree_widget(self):
+        """Delete all items from the gravimeters tree widget."""
+        self.treeWidget_gravimeters.clear()
+
+    def gravimeters_tree_widget_item_selection_changed(self):
+        """Invoked whenever tje item selection changes."""
+        items = self.treeWidget_gravimeters.selectedItems()
+        if len(items) == 1:  # Only one item in tree view selected
+            item = items[0]
+            self.update_gravimeters_tab(gravi_type=item.text(0), serial_number=item.text(1))
+        else:
+            if IS_VERBOSE:
+                print('No item or multiple items selected!')
+
+    def update_gravimeters_tab(self, gravi_type, serial_number):
+        """Update the gravimeters tab."""
+        gravi = self.campaign.gravimeters.gravimeters[(gravi_type, serial_number)]
+
+        # Info labels:
+        self.label_gravi_type.setText(gravi.gravimeter_type)
+        self.label_gravi_manufacturer.setText(gravi.manufacturer)
+        self.label_gravi_code.setText(gravi.code)
+        self.label_gravi_serial_number.setText(gravi.serial_number)
+        self.label_gravi_height_offset.setText(f'{gravi.height_offset_m:0.3f}')
+        self.label_gravi_data_source.setText(gravi.data_source)
+        self.label_gravi_data_source_type.setText(gravi.data_source_type)
+        self.label_gravi_num_scale_factors.setText(f'{gravi.num_scale_factors}')
+
+        # Update table view model:
+        self.update_gravimeter_scale_factor_table_view(gravimeter_type=gravi_type, serial_number=serial_number)
+
+    def clear_gravimeters_tab(self):
+        """Clear the gravimeters tab completely."""
+
+        # Info labels:
+        self.label_gravi_type.clear()
+        self.label_gravi_manufacturer.clear()
+        self.label_gravi_code.clear()
+        self.label_gravi_serial_number.clear()
+        self.label_gravi_height_offset.clear()
+        self.label_gravi_data_source.clear()
+        self.label_gravi_data_source_type.clear()
+        self.label_gravi_num_scale_factors.clear()
+
+        # Table vies with scal factors:
+        # self.tableView_gravimeters_scale.clear()
+
+    def set_up_gravimeters_scale_factor_view_model(self):
+        """Set up the view model for the gravimeter scale factors."""
+        try:
+            self.gravimeter_scale_factor_model = GravimeterScaleFactorTableModel(self.campaign.gravimeters)
+        except AttributeError:
+            QMessageBox.warning(self, 'Warning!', 'No gravimeter scale factors available!')
+            self.statusBar().showMessage(f"No gravimeter scale factors available.")
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.tableView_gravimeters_scale.setModel(self.gravimeter_scale_factor_model)
+            self.tableView_gravimeters_scale.resizeColumnsToContents()
+
+    @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
+    def update_gravimeter_scale_factor_table_view(self, gravimeter_type: str, serial_number: str):
+        """Update the gravimeter scale factor table view after changing the table model."""
+        self.gravimeter_scale_factor_model.load_gravimeters(self.campaign.gravimeters)
+        self.gravimeter_scale_factor_model.update_view_model(gravimeter_type, serial_number)
+        self.gravimeter_scale_factor_model.layoutChanged.emit()  # Show changes in table view
+        self.tableView_gravimeters_scale.resizeColumnsToContents()
+
 
     @pyqtSlot(QPoint)
     def tableView_surveys_right_click(self, position):
@@ -539,6 +628,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # Enable/disable main menu items:
                 self.menuAdd_Survey.setEnabled(True)
                 self.menu_Add_Stations.setEnabled(True)
+                self.menu_Add_Gravimeters.setEnabled(True)
                 self.action_Export_Results.setEnabled(True)
                 self.action_Save_Campaign.setEnabled(True)
                 self.action_Change_output_directory.setEnabled(True)
@@ -553,6 +643,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     state=self.checkBox_filter_observed_stat_only.checkState())
                 self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
                 self.update_stations_map(auto_range=True)
+                # - gravimeters tab
+                self.clear_gravimeters_tab()
+                self.set_up_gravimeters_scale_factor_view_model()
+                self.populate_gravimeters_tree_widget()
                 # - Observations tab
                 self.set_up_observation_view_model()
                 self.enable_menu_observations_based_on_campaign_data()
@@ -594,7 +688,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def save_campaign_to_pickle(self):
         """Save campaign data (object) to a pickle file using the default path and filename."""
         try:
-            filename = self.campaign.save_to_pickle(filename=None, verbose=IS_VERBOSE)
+            filename = self.campaign.save_to_pickle(filename_pkl=None, verbose=IS_VERBOSE)
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -1823,7 +1917,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_comboBox_results_selection_station(observed_stations=lsm_run.observed_stations)
             self.update_comboBox_results_selection_surrvey(survey_names=list(lsm_run.setups.keys()))
 
-            # Get data from LSM object an populate GUI widgets:
+            # Get data from LSM object and populate GUI widgets:
             # - Info tab:
             self.label_results_comment.setText(lsm_run.comment)
             self.label_results_adjustment_method.setText(settings.ADJUSTMENT_METHODS[lsm_run.lsm_method])
@@ -2082,11 +2176,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.label_obs_setups_atm_pres_corr.setText(f'{self.setup_model.get_atm_pres_corr_type} ({settings.ATM_PRES_CORRECTION_TYPES[self.setup_model.get_atm_pres_corr_type]})')
             else:
                 self.label_obs_setups_atm_pres_corr.setText(f'{self.setup_model.get_atm_pres_corr_type}')
-
+            if self.setup_model.get_scale_corr_type in settings.SCALE_CORRECTION_TYPES.keys():
+                self.label_obs_setups_scale_corr.setText(
+                    f'{self.setup_model.get_scale_corr_type} ({settings.SCALE_CORRECTION_TYPES[self.setup_model.get_scale_corr_type]})')
+            else:
+                self.label_obs_setups_scale_corr.setText(f'{self.setup_model.get_scale_corr_type}')
         except KeyError:
             self.label_obs_setups_ref_height.setText('')
             self.label_obs_setups_tidal_corr.setText('')
             self.label_obs_setups_atm_pres_corr.setText('')
+            self.label_obs_setups_scale_corr.setText('')
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
@@ -2316,7 +2415,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if IS_VERBOSE:
                     print('Reduced observations not available!')
                 QMessageBox.critical(self, 'Error!',
-                                     'Reduced observations (reference for autoselection) are not avialable yet!')
+                                     'Reduced observations (reference for autoselection) are not available yet!')
                 return
 
         if flag_apply_duration:
@@ -2492,7 +2591,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                     exclude_datum_stations = True
                                 else:
                                     exclude_datum_stations = False
-                                self.campaign.write_nsb_file(filename=os.path.join(output_path, filename_nsb),
+                                self.campaign.write_nsb_file(filename_nsb=os.path.join(output_path, filename_nsb),
                                                              lsm_run_index=lsm_run_idx,
                                                              vertical_offset_mode=vertical_offset_mode,
                                                              exclude_datum_stations=exclude_datum_stations,
@@ -3128,7 +3227,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.dlg_corrections.radioButton_corr_tides_no_correction.isChecked():
             target_tide_corr = 'no_tide_corr'
         elif self.dlg_corrections.radioButton_corr_tides_cg5_model.isChecked():
-            target_tide_corr = 'cg5_longman1959'
+            target_tide_corr = 'instrumental_corr'
         elif self.dlg_corrections.radioButton_corr_tides_longman1959.isChecked():
             target_tide_corr = 'longman1959'
         elif self.dlg_corrections.radioButton_corr_tides_time_series.isChecked():
@@ -3146,18 +3245,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         atm_pres_admittance = self.dlg_corrections.doubleSpinBox_atm_pres_admittance.value()
 
+        if self.dlg_corrections.checkBox_linear_scale_correction.isChecked():
+            target_scale_corr = 'linear_scale'
+        else:
+            target_scale_corr = 'no_scale'
+
         if flag_selection_ok:
             try:
                 self.campaign.reduce_observations_in_all_surveys(
                     target_ref_height=target_ref_height,
                     target_tide_corr=target_tide_corr,
                     target_atm_pres_corr=target_atm_pres_corr,
+                    target_scale_corr=target_scale_corr,
                     atm_pres_admittance=atm_pres_admittance,
                     tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                     verbose=IS_VERBOSE)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-
 
     @pyqtSlot()
     def on_menu_file_new_campaign(self):
@@ -3175,6 +3279,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Enable/disable main menu items:
             self.menuAdd_Survey.setEnabled(True)
             self.menu_Add_Stations.setEnabled(True)
+            self.menu_Add_Gravimeters.setEnabled(True)
             self.action_Export_Results.setEnabled(True)
             self.action_Save_Campaign.setEnabled(True)
             self.action_Change_output_directory.setEnabled(True)
@@ -3187,6 +3292,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_up_proxy_station_model()
             self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
             self.update_stations_map(auto_range=True)
+            # - Gravimeters tab:
+            self.clear_gravimeters_tab()
+            self.set_up_gravimeters_scale_factor_view_model()
+            self.populate_gravimeters_tree_widget()
             # - Observations Tab:
             self.set_up_observation_view_model()
             self.enable_menu_observations_based_on_campaign_data()
@@ -3221,6 +3330,25 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.menu_Observations.setEnabled(False)
             self.groupBox_obs_view_options.setEnabled(False)
             self.groupBox_obs_data_manipulation.setEnabled(False)
+
+    def on_menu_file_load_gravimeters_from_json_file(self):
+        """Load gravimeter data from json file."""
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        gravimeter_filename, _ = QFileDialog.getOpenFileName(self,
+                                                               'Select Gravimeter file',
+                                                               self.campaign.output_directory,
+                                                               "Gravimeter file (*.json)",
+                                                               options=options)
+        if gravimeter_filename:
+            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+            # operating system.
+            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+            gravimeter_filename = QDir.toNativeSeparators(gravimeter_filename)
+            self.campaign.gravimeters.add_from_json(gravimeter_filename, verbose=IS_VERBOSE)
+
+            # Update GUI:
+            self.populate_gravimeters_tree_widget()
 
     def on_menu_file_load_stations_from_oesgn_table(self):
         """Load stations from OESGN table file."""
@@ -3415,6 +3543,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if new_cg5_survey.obs_tide_correction_type == 'unknown':
                     raise RuntimeError('Type of tidal correction is unknown!')
                 self.campaign.add_survey(survey_add=new_cg5_survey, verbose=IS_VERBOSE)
+                self.campaign.gravimeters.add_from_survey(new_cg5_survey)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', f'Error while loading {cg5_obs_file_filename}: ' + str(e))
                 # self.statusBar().showMessage(f"No survey data added.")
@@ -3422,7 +3551,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 added_surveys_list.append(new_cg5_survey.name + f' ({new_cg5_survey.get_number_of_observations()} obs.)')
 
-        if  not added_surveys_list:
+        if not added_surveys_list:
             self.statusBar().showMessage(f"No survey data added.")
             return
 
@@ -3449,6 +3578,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
                 self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
         self.enable_menu_observations_based_on_campaign_data()
+
+        # Gravimeters tab:
+        self.populate_gravimeters_tree_widget()
 
         #
         self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.

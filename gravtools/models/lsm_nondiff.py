@@ -649,7 +649,7 @@ class LSMNonDiff(LSM):
         if verbose:
             print(f'Save observation results of lsm run "{self.comment}" to: {filename}')
         setup_obs_df = self.setup_obs_df.copy(deep=True)
-        # Change dtypes (just to be save!):
+        # Change dtypes (just to be saved!):
         setup_obs_df = setup_obs_df.astype(self._SETUP_OBS_COLUMNS_DTYPES)
         setup_obs_df['comment'] = self.comment
 
