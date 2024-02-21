@@ -32,6 +32,7 @@ from gravtools import settings
 _SPLITTER_STRETCH_LEFT = 1
 _SPLITTER_STRETCH_RIGHT = 10
 
+
 class TimeAxisItem(pg.AxisItem):
     """"Needed to handle the x-axes tags representing date and time.
     From: https://stackoverflow.com/questions/49046931/how-can-i-use-dateaxisitem-of-pyqtgraph
@@ -43,6 +44,7 @@ class TimeAxisItem(pg.AxisItem):
     def tickStrings(self, values, scale, spacing) -> str:
         """Handles the x-axes tags representing date and time."""
         return [dt.datetime.fromtimestamp(value, tz=pytz.utc).strftime(settings.Y_TICK_DATETIME_FORMAT) for value in values]
+
 
 class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
     """Dialog for managing time series data for observation corrections."""
@@ -68,7 +70,7 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
 
         # Other initial settings:
         self.reset_stacked_widget()
-        self.set_up_timer_series_plot_widget()
+        self.set_up_time_series_plot_widget()
 
     def launch_dlg_load_tsf_file(self):
         """Launch dialog to load TSF file."""
@@ -144,7 +146,7 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
 
         # Add new items:
         # Parent items (surveys):
-        for survey_name, survey_corrections in  correction_time_series.surveys.items():
+        for survey_name, survey_corrections in correction_time_series.surveys.items():
             parent = QTreeWidgetItem(self.treeWidget_selection)
             parent.setText(0, survey_name)
             for station_name, station_correction in survey_corrections.stations.items():
@@ -251,7 +253,7 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
         else:
             return
 
-    def set_up_timer_series_plot_widget(self):
+    def set_up_time_series_plot_widget(self):
         """Set up `self.graphicsLayoutWidget_results_vg_plot` widget."""
         self.glw_ts_plot = self.graphicsLayoutWidget_time_series
         self.glw_ts_plot.setBackground('w')  # white background color
@@ -303,12 +305,14 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
             self.ts_plot.clear()
             return
 
+
 def get_subtree_nodes(tree_widget_item) -> list:
     """Returns al QTreeWidgetItems in a subtree rooted at a given node (recursive)."""
     nodes = []
     for i in range(tree_widget_item.childCount()):
         nodes.extend(get_subtree_nodes(tree_widget_item.child(i)))
     return nodes
+
 
 def get_all_items(tree_widget) -> list:
     """Returns all QTreeWidgetItems in a given QTreeWidget."""
@@ -318,8 +322,9 @@ def get_all_items(tree_widget) -> list:
         all_items.extend(get_subtree_nodes(top_item))
     return all_items
 
+
 def get_depth(tree_widget_item) -> int:
-    """Retruns the depth of a QTreeWidgetItem within the QTreeWidget."""
+    """Returns the depth of a QTreeWidgetItem within the QTreeWidget."""
     depth = 0
     while tree_widget_item is not None:
         depth += 1

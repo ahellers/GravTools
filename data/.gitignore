@@ -4,6 +4,9 @@
 # Station data:
 !stations
 
+# Gravimeter data:
+!gravimeters
+
 # Observation data:
 !BEV
 !CG5

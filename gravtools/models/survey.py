@@ -23,10 +23,10 @@ import os
 import gravtools.models.lsm_diff
 import gravtools.tides.longman1959
 from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY, \
-    REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m, \
-    GRAVIMETER_SERIAL_NUMBERS, GRAVIMETER_TYPES, GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE, SETUP_CALC_METHODS, \
-    UNIT_CONVERSION_TO_MUGAL, SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT, \
-    VERBOSE
+    REFERENCE_HEIGHT_TYPE, BEV_GRAVIMETER_TIDE_CORR_LOOKUP, \
+    GRAVIMETER_TYPES, SETUP_CALC_METHODS, DEFAULT_GRAVIMETER_SERIAL_NUMBER, DEFAULT_GRAVIMETER_TYPE, \
+    SETUP_SD_METHODS, ATM_PRES_CORRECTION_TYPES, ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT, \
+    SCALE_CORRECTION_TYPES
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.models.misc import format_seconds_to_hhmmss
@@ -49,7 +49,7 @@ class Survey:
 
       - Corrections of the CG-5 instruments provided in the observation files (Longman, 1959)
       - No corrections
-      - Longman (1959) model, evaluated in GravTools for the longitude, latitude , altitude and UTC time stamp of each observation. The correction is calculated for the middle of the readint time (obs_epoch + duration_sec/2)
+      - Longman (1959) model, evaluated in GravTools for the longitude, latitude , altitude and UTC time stamp of each observation. The correction is calculated for the middle of the reading time (obs_epoch + duration_sec/2)
       - Interpolated from correction time series (e.g. loaded from Tsoft TSF files)
 
     - Reduction of the observed gravity to different reference height levels
@@ -78,7 +78,7 @@ class Survey:
     operator : str, optional (default='')
         Name of the responsible operator that carried out the observations of this survey.
     gravimeter_serial_number : str, optional (default='')
-        Valid gravimeter types have to be listed in :py:obj:`gravtools.settings.GRAVIMETER_SERIAL_NUMBERS`.
+        Gravimeter serial number as stated in the observation file.
     gravimeter_type: str, optional (default='')
         Valid gravimeter types have to be listed in :py:obj:`gravtools.settings.GRAVIMETER_TYPES`.
     data_file_name : str, optional (default='')
@@ -98,6 +98,10 @@ class Survey:
         Type of atmospheric pressure correction applied on the observations (gravimeter readings as obtained from the
         data source; column `g_obs_mugal` in `obs_df`). Valid entries have to be listed in
         :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`.
+    obs_scale_correction_type : str, (default='')
+        Type of scale correction applied on the observations (gravimeter readings as obtained from the
+        data source; column `g_obs_mugal` in `obs_df`). Valid entries have to be listed in
+        :py:obj:`gravtools.settings.SCALE_CORRECTION_TYPES`.
     red_tide_correction_type : str, optional (default='')
         Type of the tidal corrections applied on the reduced observations (column `g_red_mugal` in `obs_df`). Valid
         entries have to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. `Empty string`, if corrected
@@ -107,8 +111,12 @@ class Survey:
         listed in :py:obj:`gravtools.settings.REFERENCE_HEIGHT_TYPE`. `Empty string`, if corrected observations are not
         available.
     red_atm_pres_correction_type : str, (default='')
-        Type of atmospheric pressure correction applied on the reduced (column `g_red_mugal` in `obs_df`). Valid entries
-         have to be listed in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. `Empty string`, if corrected
+        Type of atmospheric pressure correction applied on the reduced observations (column `g_red_mugal` in `obs_df`).
+        Valid entries have to be listed in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. `Empty string`, if
+        corrected observations are not available.
+    red_scale_correction_type : str, (default='')
+        Type of scale correction applied on the reduced observations (column `g_red_mugal` in `obs_df`). Valid entries
+         have to be listed in :py:obj:`gravtools.settings.SCALE_CORRECTION_TYPES`. `Empty string`, if corrected
         observations are not available.
     red_tide_correction_description : str, optional (default='')
         Optional description of the tide correction e.g. obtained from time series data. The reduced observations are
@@ -133,6 +141,12 @@ class Survey:
         the`setup_df` dataframe. Valid entries have to be listed in
         :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`.`Empty string`, if corrected setup data has not been
         calculated so far (`setup_df` = None).
+    setup_scale_correction_type : str, (default='')
+        Type of scale correction applied on the observations that are used to calculate the setup data in
+        the`setup_df` dataframe. Valid entries have to be listed in
+        :py:obj:`gravtools.settings.SCALE_CORRECTION_TYPES`.`Empty string`, if corrected setup data has not been
+        calculated so far (`setup_df` = None).
+    setup_calc_method : str, optional (default='')
         Method for the calculation of setup data. `variance_weighted_mean` implies that setup observations
         (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
         individual observations. `individual_obs` implies that the original observations are used as setup data
@@ -141,7 +155,7 @@ class Survey:
         Method for the determination of standard deviations (SD) of setup observations. `sd_from_obs_file` implies that
         SD are taken from the observation file. `sd_default_per_obs` and `sd_default_per_setup` imply that the
         given default SD is used, where the default SD is applied the individual observations in the first case and
-        to setups in the second case. If applied to observations, the number of observations per setup still palys a
+        to setups in the second case. If applied to observations, the number of observations per setup still plays a
         role for weighting the setup observations in the adjustment.
     keep_survey : bool (default=True)
         Flag that indicates whether this survey will be used to derive setup observations.`True` is the
@@ -236,7 +250,9 @@ class Survey:
         - norm_atm_pres_hpa : float, optional (default=None)
             Normal atmospheric pressure in hPa. Used for correcting atmospheric pressure variations.
         - corr_atm_pres_red_mugal : float, optional (default=None)
-            Atmospheric pressurecorrection [µGal] that is applied to `g_red_mugal`.
+            Atmospheric pressure correction [µGal] that is applied to `g_red_mugal`.
+        - linear_scale : float, optional (default=None)
+            Linear scale factor applied on the gravity readings in GravTools.
 
     ref_delta_t_dt : datetime, optional (default=None)
         Reference time for relative times (), e.g. reference time t0 the for drift polynomial adjustment.
@@ -303,12 +319,14 @@ class Survey:
         'atm_pres_hpa',  # Measured atmospheric pressure [hPa]
         'norm_atm_pres_hpa',  # Normal atmospheric pressure [hPa]
         'corr_atm_pres_red_mugal',  # Normal atmospheric pressure correction [µGal]
+        'linear_scale',  # Linear scale factor
     )
 
     _OBS_DF_INIT_COL_IF_MISSING = {
         'atm_pres_hpa': np.nan,
         'norm_atm_pres_hpa': np.nan,
         'corr_atm_pres_red_mugal': np.nan,
+        'linear_scale': np.nan,
     }
 
     _SURVEY_ATTRIBUTES_INIT = {
@@ -316,6 +334,9 @@ class Survey:
         'obs_atm_pres_correction_type': 'no_atm_pres_corr',
         'red_atm_pres_correction_type': '',
         'red_tide_correction_description': '',
+        'obs_scale_correction_type': 'no_scale',
+        'red_scale_correction_type': '',
+        'setup_scale_correction_type': '',
     }
 
     _SETUP_DF_COLUMNS = (
@@ -351,15 +372,18 @@ class Survey:
                  obs_tide_correction_type='',  # of "g_obs_mugal"
                  obs_reference_height_type='',  # of "g_obs_mugal"
                  obs_atm_pres_correction_type='',  # of "g_obs_mugal"
+                 obs_scale_correction_type='',  # of "g_obs_mugal"
                  red_tide_correction_type='',  # of "g_red_mugal"
                  red_reference_height_type='',  # of "g_red_mugal"
                  red_atm_pres_correction_type = '',  # of "g_red_mugal"
+                 red_scale_correction_type = '',  # of "g_red_mugal"
                  red_tide_correction_description='',  # of "g_red_mugal"
                  red_tide_corr_timeseries_interpol_method='',  # of "g_red_mugal"
                  red_tide_corr_timeseries_creation_dt=None,  # of "g_red_mugal"
                  setup_tide_correction_type='',
                  setup_reference_height_type='',
                  setup_atm_pres_correction_type='',
+                 setup_scale_correction_type='',
                  setup_calc_method='',
                  setup_sd_method='',
                  keep_survey=True,  # Flag
@@ -403,13 +427,7 @@ class Survey:
 
         # gravimeter_serial_number:
         if isinstance(gravimeter_serial_number, str):
-            if gravimeter_serial_number:
-                if gravimeter_serial_number in GRAVIMETER_SERIAL_NUMBERS.keys():
-                    self.gravimeter_serial_number = gravimeter_serial_number
-                else:
-                    raise ValueError('"gravimeter_serial_number" needs to be a key in GRAVIMETER_SERIAL_NUMBERS')
-            else:
-                self.gravimeter_serial_number = gravimeter_serial_number  # ''
+            self.gravimeter_serial_number = gravimeter_serial_number
         else:
             raise TypeError('"gravimeter_serial_number" needs to be a string')
 
@@ -556,6 +574,34 @@ class Survey:
         else:
             raise TypeError('"red_atm_pres_correction_type" needs to be a string')
 
+        # obs_scale_correction_type
+        if isinstance(obs_scale_correction_type, str):
+            if obs_scale_correction_type:
+                if obs_scale_correction_type in SCALE_CORRECTION_TYPES.keys():
+                    self.obs_scale_correction_type = obs_scale_correction_type
+                else:
+                    raise ValueError(
+                        '"obs_scale_correction_type" needs to be a key in SCALE_CORRECTION_TYPES '
+                        '({})'.format(', '.join(SCALE_CORRECTION_TYPES.keys())))
+            else:
+                self.obs_scale_correction_type = obs_scale_correction_type  # None
+        else:
+            raise TypeError('"obs_scale_correction_type" needs to be a string')
+
+        # red_scale_correction_type
+        if isinstance(red_scale_correction_type, str):
+            if red_scale_correction_type:
+                if red_scale_correction_type in SCALE_CORRECTION_TYPES.keys():
+                    self.red_scale_correction_type = red_scale_correction_type
+                else:
+                    raise ValueError(
+                        '"red_scale_correction_type" needs to be a key in SCALE_CORRECTION_TYPES '
+                        '({})'.format(', '.join(SCALE_CORRECTION_TYPES.keys())))
+            else:
+                self.red_scale_correction_type = red_scale_correction_type  # None
+        else:
+            raise TypeError('"red_scale_correction_type" needs to be a string')
+
         # setup_tide_correction_type:
         if isinstance(setup_tide_correction_type, str):
             if setup_tide_correction_type:
@@ -594,6 +640,20 @@ class Survey:
                 self.setup_atm_pres_correction_type = setup_atm_pres_correction_type  # ''
         else:
             raise TypeError('"setup_atm_pres_correction_type" needs to be a string')
+
+        # setup_scale_correction_type:
+        if isinstance(setup_scale_correction_type, str):
+            if setup_scale_correction_type:
+                if setup_scale_correction_type in SCALE_CORRECTION_TYPES.keys():
+                    self.setup_scale_correction_type = setup_scale_correction_type
+                else:
+                    raise ValueError(
+                        '"setup_scale_correction_type" needs to be a key in SCALE_CORRECTION_TYPES '
+                        '({})'.format(', '.join(SCALE_CORRECTION_TYPES.keys())))
+            else:
+                self.setup_scale_correction_type = setup_scale_correction_type  # ''
+        else:
+            raise TypeError('"setup_scale_correction_type" needs to be a string')
 
         # setup_calc_method:
         if isinstance(setup_calc_method, str):
@@ -741,7 +801,7 @@ class Survey:
             obs_tide_correction_type = 'unknown'  # e.g. "CG-5 OPTIONS" block in observation file missing
         else:
             if cg5_survey.options.tide_correction:
-                obs_tide_correction_type = 'cg5_longman1959'  # built-in tide correction of the CG5
+                obs_tide_correction_type = 'instrumental_corr'  # built-in tide correction of the CG5
             else:
                 obs_tide_correction_type = 'no_tide_corr'
 
@@ -757,9 +817,11 @@ class Survey:
                    obs_tide_correction_type=obs_tide_correction_type,
                    obs_reference_height_type='sensor_height',
                    obs_atm_pres_correction_type='no_atm_pres_corr',
+                   obs_scale_correction_type='no_scale',
                    red_tide_correction_type='',  # Not specified
                    red_reference_height_type='',  # Not specified
                    red_atm_pres_correction_type='',  # Not specified
+                   red_scale_correction_type='',  # Not specified
                    keep_survey=keep_survey,
                    )
 
@@ -890,20 +952,9 @@ class Survey:
                       f'(not specified in settings.BEV_GRAVIMETER_TIDE_CORR_LOOKUP). '
                       f'It is set to "{obs_tide_correction_type}".')
 
-        gravimeter_serial_number = ''
-        # Get gravimeter type and serial number from ID in obs file:
-        for serial_number, id_tmp in GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE.items():  # for name, age in dictionary.iteritems():  (for Python 2.x)
-            if id_tmp == gravimeter_id:
-                gravimeter_serial_number = serial_number
-                break
-        if not gravimeter_serial_number:
-            raise AssertionError(
-                f'No serial number found that matches the gravimeter id "{gravimeter_id}"in GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE.')
-        try:
-            gravimeter_type = GRAVIMETER_SERIAL_NUMBERS[gravimeter_serial_number]
-        except KeyError:
-            raise AssertionError(
-                f'serial number "{gravimeter_serial_number}" not found in the lookuptable "GRAVIMETER_SERIAL_NUMBERS".')
+        # Use default values:
+        gravimeter_serial_number = DEFAULT_GRAVIMETER_SERIAL_NUMBER
+        gravimeter_type = DEFAULT_GRAVIMETER_TYPE
 
         return cls(name=os.path.split(filename)[1],
                    date=survey_date,
@@ -917,9 +968,11 @@ class Survey:
                    obs_tide_correction_type=obs_tide_correction_type,
                    obs_reference_height_type='sensor_height',
                    obs_atm_pres_correction_type='no_atm_pres_corr',
+                   obs_scale_correction_type='no_scale',
                    red_tide_correction_type='',  # Not specified
                    red_reference_height_type='',  # Not specified
                    red_atm_pres_correction_type='',  # Not specified
+                   red_scale_correction_type='',  # Not specified
                    keep_survey=keep_survey,
                    )
 
@@ -958,7 +1011,7 @@ class Survey:
         return obs_df
 
     def set_reference_time(self, ref_delta_t_dt):
-        """Set refernce time for the determination of relative time spans, e.g. for the drift polynomial.
+        """Set reference time for the determination of relative time spans, e.g. for the drift polynomial.
 
         Parameters
         ----------
@@ -997,7 +1050,7 @@ class Survey:
         """
         self.obs_df.at[obs_idx, 'keep_obs'] = flag_activate
 
-    def check_obs_df(self, verbose=True) -> bool:
+    def check_obs_df(self, verbose=True) -> tuple[bool, str]:
         """Check, whether the observations DataFrame (`obs_df`) is valid and try to add missing columns.
 
         This method carried out the following checks:
@@ -1019,7 +1072,7 @@ class Survey:
         is_valid : bool
             True, if `obs_df` is valid.
         error_msg : str
-            Error Message. Empty if no errors occured.
+            Error Message. Empty if no errors occurred.
         """
         is_valid = True
         error_msg = ''
@@ -1056,7 +1109,7 @@ class Survey:
 
         return is_valid, error_msg
 
-    def init_missing_attributes(self, verbose=True) -> bool:
+    def init_missing_attributes(self, verbose=True):
         """Initialize attributes defined in `_SURVEY_ATTRIBUTES_INIT`, if they are missing the current Survey instance.
 
         Notes
@@ -1216,9 +1269,11 @@ class Survey:
                             target_ref_height: str = None,
                             target_tide_corr: str = None,
                             target_atm_pres_corr: str = None,
+                            target_scale_corr: str = None,
                             atm_pres_admittance: float = ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT,
-                            tide_corr_timeseries_interpol_method = '',
+                            tide_corr_timeseries_interpol_method='',
                             correction_time_series=None,
+                            gravimeters=None,
                             verbose: bool = False,
                             ) -> [bool, str]:
         """Reduce the observed gravity values by applying the selected corrections.
@@ -1234,6 +1289,12 @@ class Survey:
           The applied model to determine the corrections for each observation, dependent on the location and time, can
           be selected. Information on the tidal corrections that were already applied on the input data is required
 
+        - Atmospheric pressure variations: This correction is based on normal air pressure (ISO model), measured
+          pressure at site and an admittance factor (default: 0.3).
+
+        - Linear gravimeter scale factor: A priori linear scale factor are applied on the uncorrected gravity readings.
+          The scale factors are instrument and time dependent and can be loaded from dedicated gravimeter files.
+
         Notes
         -----
         - For the reduction of the reference height vertical gravity gradients are required!
@@ -1248,9 +1309,13 @@ class Survey:
             to be listed in :py:obj:`gravtools.settings.TIDE_CORRECTION_TYPES`. Default is `None` indicating that the
             tidal corrections are not considered here (tidal corrections are inherited from input data).
         target_atm_pres_corr : str, optional (default = `None`)
-            Specifying the atmospheric press ure correction type to be applied to all surveys. Valid types to be listed
+            Specifying the atmospheric pressure correction type to be applied to all surveys. Valid types to be listed
             in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. Default is `None` indicating that the respective
             corrections of the input data are not changed.
+        target_scale_corr : str, optional (default = `None`)
+            Specifies the scale correction type to be applied on all observations of this survey. Vali types are listed
+            in :py:obj:`gravtools.settings.SCALE_CORRECTION_TYPES`. The default value `None` indicates that the
+            respective corrections of the input data will not be changed.
         atm_pres_admittance : float, optional (default = `settings.ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT`)
             Admittance factor for the determination of pressure corrections based on the difference between measured and
             normal air pressure. The default value is taken from `settings.ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT`.
@@ -1261,11 +1326,18 @@ class Survey:
             Correction time series object that contains time series of tidal corrections for stations in surveys. This
             argument is required, if tidal corrections should be derived from time series data, i.e. if
             `self.target_tide_corr = from_time_series`.
+        gravimeters : Gravimeter object, optional (default=`None`)
+            Gravimeter object containing relevant information such as height differences for height corrections and
+            scaling information.
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """
         # Init.:
         tide_corr_timeseries_interpol_method_out = ''
+
+        # Changes for compatibility to GravTools versions before 0.2.7:
+        if self.obs_tide_correction_type == 'cg5_longman1959':
+            self.obs_tide_correction_type = 'instrumental_corr'
 
         # Create a copy auf obs_df in order prevent problems with manipulation assigned py reference variables:
         obs_df = self.obs_df.copy(deep=True)
@@ -1290,6 +1362,39 @@ class Survey:
 
         if verbose:
             print(f'## Calculate reduced observations by applying the specified corrections:')
+
+        # 0.) Scale correction:
+        if (target_scale_corr is None) or (target_scale_corr == 'no_scale'):
+            if verbose:
+                print(f'No scaling correction applied.')
+        elif target_scale_corr == 'linear_scale':
+            if verbose:
+                print(f'Apply linear scaling correction')
+
+            # Remove instrumental tidal corrections first:
+            if self.obs_tide_correction_type == 'instrumental_corr':
+                g_red_mugal = g_red_mugal - obs_df['corr_tide_mugal']  # Undo instrumental corrections => No tide corr!
+            elif self.obs_tide_correction_type == 'no_tide_corr':
+                pass  # Already OK!
+            else:
+                raise RuntimeError(f'Not able to remove tidal corrections for the calculation of uncorrected '
+                                   f'observations in survey {self.name}. Tidal corrections '
+                                   f'{self.obs_tide_correction_type } cannot be removed properly.')
+
+            # Apply scaling:
+            tmp_g_df = pd.DataFrame({'epoch_dt': obs_df['obs_epoch'], 'g': g_red_mugal})
+            tmp_g_df = gravimeters.apply_linear_scale(gravimeter_type=self.gravimeter_type,
+                                                      serial_number=self.gravimeter_serial_number,
+                                                      gravity_df=tmp_g_df,
+                                                      verbose=True)
+            g_red_mugal = tmp_g_df['g_scaled']
+            linear_scale = tmp_g_df['linear_scale']
+
+            # Add instrumental tidal corrections again:
+            if self.obs_tide_correction_type == 'instrumental_corr':
+                g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
+        else:
+            raise RuntimeError(f'Unknown scaling correction type: {target_scale_corr}')
 
         # 1.) Check reference heights:
         if verbose:
@@ -1319,7 +1424,7 @@ class Survey:
 
                 # Reduction:
                 # Distance between instrument top and sensor level:
-                dst_m = GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type]
+                dst_m = gravimeters.get_height_offset(self.gravimeter_type, self.gravimeter_serial_number)
                 if self.obs_reference_height_type == 'sensor_height':
                     if target_ref_height == 'control_point':
                         # + dst_m + dhf_m
@@ -1414,10 +1519,8 @@ class Survey:
                 raise RuntimeError(f'Survey "{self.name}":' + error_msg)
             else:
                 if self.obs_tide_correction_type == 'no_tide_corr':
-                    if target_tide_corr == 'cg5_longman1959':
+                    if target_tide_corr == 'instrumental_corr':
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
-                        # TODO: Was steht in der Spalte "TIDE", wenn im CG5 KEINE Korrektur angebracht wurde?
-                        # - Wenn die richtige Korretkur NICHT vorliegt => raise Error!
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
                     elif target_tide_corr == 'longman1959':
                         corr_tide_red_mugal = self.get_tidal_corrections_from_longman1959()
@@ -1429,7 +1532,7 @@ class Survey:
                         g_red_mugal = g_red_mugal + corr_tide_red_mugal
                         tide_corr_timeseries_interpol_method_out = tide_corr_timeseries_interpol_method
 
-                elif self.obs_tide_correction_type == 'cg5_longman1959':
+                elif self.obs_tide_correction_type == 'instrumental_corr':
                     g_red_mugal = g_red_mugal - obs_df['corr_tide_mugal']  # Undo instrumental corrections => No tide corr!
                     if target_tide_corr == 'no_tide_corr':
                         corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
@@ -1451,7 +1554,7 @@ class Survey:
                     if target_tide_corr == 'no_tide_corr':
                         corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
                         corr_tide_red_mugal.values[:] = 0
-                    elif target_tide_corr == 'cg5_longman1959':
+                    elif target_tide_corr == 'instrumental_corr':
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
                     elif target_tide_corr == 'from_time_series':
@@ -1495,7 +1598,7 @@ class Survey:
                                                                                                                              admittance=atm_pres_admittance)
                     # Apply non-NaN values only:
                     tmp_filter = ~corr_atm_pres_red_mugal.isna()
-                    g_red_mugal.loc[tmp_filter] = g_red_mugal.loc[tmp_filter] - corr_atm_pres_red_mugal.loc[tmp_filter]  # TODO: sign correct?
+                    g_red_mugal.loc[tmp_filter] = g_red_mugal.loc[tmp_filter] - corr_atm_pres_red_mugal.loc[tmp_filter]
                     if verbose:
                         num_with_p_corr = len(tmp_filter.loc[tmp_filter])
                         number_of_obs = len(tmp_filter)
@@ -1512,7 +1615,6 @@ class Survey:
             else:
                 raise RuntimeError(f'Atmosphere pressure corrections of observation data '
                                    f'("{self.obs_atm_pres_correction_type}") not supported!')
-
             if verbose:
                 print('...done!')
 
@@ -1529,8 +1631,13 @@ class Survey:
         if target_atm_pres_corr is not None:
             self.obs_df['corr_atm_pres_red_mugal'] = corr_atm_pres_red_mugal
             self.obs_df['norm_atm_pres_hpa'] = norm_atm_pres_hpa
+        self.red_scale_correction_type = target_scale_corr
+        if target_scale_corr == 'linear_scale':
+            self.obs_df['linear_scale'] = linear_scale
+        else:
+            self.obs_df['linear_scale'] = np.nan
 
-    def get_tidal_corrections_from_timeseries(self, correction_time_series, interpolation_method : str) -> np.ndarray  :
+    def get_tidal_corrections_from_timeseries(self, correction_time_series, interpolation_method: str) -> np.ndarray:
         """Derives tidal corrections for observations from time series data.
 
         Notes
@@ -1560,7 +1667,7 @@ class Survey:
         if len(missing_stations) > 0:
             raise RuntimeError(f'No correction time series data available for the stations: ' + ', '.join(missing_stations))
 
-        # Prep input obervation dataframe: Keep required columns only:
+        # Prep. input observation dataframe: Keep required columns only:
         tmp_df = self.obs_df[['station_name', 'obs_epoch', 'duration_sec']].copy(deep=True)
         # Shift obs reference epoch from start to the middle of the gravity reading
         # (= evaluation time for the tide model):
@@ -1700,7 +1807,7 @@ class Survey:
 
         Notes
         -----
-        If a setup consists of less than `n_obs` observations, this autosection function is not applied.
+        If a setup consists of less than `n_obs` observations, this autoselection function is not applied.
 
 
         Parameters
@@ -1728,7 +1835,7 @@ class Survey:
             `False`, if at least one standard deviation value is `None` is case, reduced observations are usd as
             reference.
         """
-        # TODO: Check, if it makes sense to keept the last n_obs observations anyway (even if they do not meet the
+        # TODO: Check, if it makes sense to keep the last n_obs observations anyway (even if they do not meet the
         #  conditions here)! Check if reduced observations are available, if required:
         if obs_type == 'reduced':
             if self.obs_df['g_red_mugal'].isna().any():
@@ -1803,10 +1910,13 @@ class Survey:
             self.setup_reference_height_type = ''
             self.setup_tide_correction_type = ''
             self.setup_atm_pres_correction_type = '',
+            self.setup_scale_correction_type = '',
             self.setup_calc_method = ''
             self.setup_obs_list_df = None
 
-    def calculate_setup_data(self, obs_type='reduced',
+    def calculate_setup_data(self,
+                             gravimeters,
+                             obs_type='reduced',
                              ref_delta_t_campaign_dt=None,
                              active_obs_only_for_ref_epoch=True,
                              method='variance_weighted_mean',
@@ -1817,6 +1927,9 @@ class Survey:
 
         Parameters
         ----------
+        gravimeters : Gravimeter object
+            Gravimeter object containing relevant information such as height differences for height corrections and
+            scaling information.
         obs_type : str, 'observed' or 'reduced' (default)
             Defines whether the observed (as loaded from an observation file) or the reduced observations from
             `self.obs_df` are used to determine the weighted mean values per setup.
@@ -1875,7 +1988,6 @@ class Survey:
 
         # Check, if at least one observation is active:
         if len(active_obs_df) == 0:
-            # raise AssertionError(f'No active observations in survey {self.name}')
             if verbose:
                 print(f'No active observations in survey {self.name}')
         else:
@@ -1907,6 +2019,8 @@ class Survey:
                 ref_delta_t_dt = active_obs_df['obs_epoch'].min()  # First observation epoch in survey (active only)
             else:
                 ref_delta_t_dt = self.obs_df['obs_epoch'].min()  # First observation epoch (also inactive obs)
+
+            dist_m = gravimeters.get_height_offset(self.gravimeter_type, self.gravimeter_serial_number)
 
             # Loop over setups:
             if method == 'variance_weighted_mean':
@@ -1951,7 +2065,7 @@ class Survey:
                     number_obs_list.append(len(g_mugal))  # Number of observations
 
                     # Get vertical distance between sensor height and control point:
-                    dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type])
+                    dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + dist_m)
 
                     # observation epoch (UNIX timestamps in full seconds):
                     obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
@@ -1994,16 +2108,18 @@ class Survey:
                     delta_t_campaign_h_list = [None] * len(g_mugal_list)
                 sd_setup_mugal_list = [np.nan] * len(g_mugal_list)
                 number_obs_list = [1] * len(g_mugal_list)
-                dhf_sensor_m_list = active_obs_df['dhf_m'] + GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m[self.gravimeter_type]
+                dhf_sensor_m_list = active_obs_df['dhf_m'] + dist_m
 
             if obs_type == 'observed':
                 self.setup_tide_correction_type = self.obs_tide_correction_type
                 self.setup_reference_height_type = self.obs_reference_height_type
                 self.setup_atm_pres_correction_type = self.obs_atm_pres_correction_type
+                self.setup_scale_correction_type = self.obs_scale_correction_type
             elif obs_type == 'reduced':
                 self.setup_tide_correction_type = self.red_tide_correction_type
                 self.setup_reference_height_type = self.red_reference_height_type
                 self.setup_atm_pres_correction_type = self.red_atm_pres_correction_type
+                self.setup_scale_correction_type = self.red_scale_correction_type
             self.setup_calc_method = method
             self.setup_sd_method = method_sd
             self.create_setup_obs_list()

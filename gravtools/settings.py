@@ -26,7 +26,7 @@ GRAVIMETER_DATA_SOURCE_TYPES = {
 DEFAULT_GRAVIMETER_LINEAR_SCALE_FACTOR = 1.0
 
 # Additive constant for the determination of the full absolute gravity [µGal] from observed values:
-ADDITIVE_CONST_ABS_GRTAVITY = 9.8e8
+ADDITIVE_CONST_ABS_GRAVITY = 9.8e8
 
 SURVEY_DATA_SOURCE_TYPES = {
     'cg5_obs_file_txt': 'Scintrex CG5 observation file (text format)',
@@ -40,7 +40,7 @@ STATION_DATA_SOURCE_TYPES = {
 }
 
 TIDE_CORRECTION_TYPES = {
-    'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
+    'instrumental_corr': 'Instrument-implemented tidal correction',
     'longman1959': 'Tidal corrections by the model of Longman (1959)',
     'no_tide_corr': 'No tide correction applied',
     'from_time_series': 'Interpolated from correction time series',
@@ -49,10 +49,16 @@ TIDE_CORRECTION_TYPES = {
 
 ATM_PRES_CORRECTION_TYPES = {
     'no_atm_pres_corr': 'No atmospheric pressure correction applied',
-    'iso_2533_1975': 'Atmopheric pressure correction using ISO 2533:1975 normal air pressure',
+    'iso_2533_1975': 'Atmospheric pressure correction using ISO 2533:1975 normal air pressure',
 }
 
-# Default admittance factor for the calculation of atmospheric pressure correction using the ISO 2533:1975 normal air pressure
+SCALE_CORRECTION_TYPES = {
+    'no_scale': 'No scaling applied',
+    'linear_scale': 'Linear scaling applied',
+}
+
+# Default admittance factor for the calculation of atmospheric pressure correction using the ISO 2533:1975 normal air
+# pressure
 ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT = 0.3
 
 # Conversion factors of different units of gravity to µGal:
@@ -85,43 +91,68 @@ REFERENCE_HEIGHT_TYPE = {
     'control_point': 'The gravity values refers to the control point of the station',
 }
 
-# Reference heights (sensor heights) of different gravimeter types:
-GRAVIMETER_REFERENCE_HEIGHT_CORRECTIONS_m = {
+# ##### Gravimeter default data #####
+# The default information is used if no data is loaded from a gravimeter files (json)
+
+# Default height offset between instrument reference surface (top) and the sensor level for different gravimeter types:
+# - These default values are only used if no values are loaded from a gravimeter file
+DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M = {
     'CG3': -0.211,
     'CG5': -0.211,
+    'CG6': -0.099,  # W.r.t. top surface at the front
 }
 
-# Valid gravimeter types and description.
+# Gravimeter default type
+DEFAULT_GRAVIMETER_TYPE = 'n/a'
+
+# Gravimeter default type
+DEFAULT_GRAVIMETER_SERIAL_NUMBER = 'n/a'
+
+# Default Gravimeter Type when loading data from an CG5 observation file
+DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY = 'CG5'
+
+# Default gravimeter description string:
+DEFAULT_GRAVIMETER_DESCRIPTION = 'Default gravimeter settings'
+
+# Default gravimeter calibration data:
+# - Used if no data is provided through gravimeter files (json)
+DEFAULT_CALIBRATION_START_DATE = '1900-01-01'
+DEFAULT_CALIBRATION_END_DATE = '2100-01-01'
+DEFAULT_CALIBRATION_LINEAR_FACTOR = 1.0
+DEFAULT_CALIBRATION_COMMENT = 'default'
+
+# Lookup table to convert gravimeter type to one-letter codes:
+# - The one-letter codes are used in the nsb files (results). Nowhere else.
+DEFAULT_GRAVIMETER_ONE_LETTER_CODES = {
+    'CG5': 'C',
+    'CG3': 'C',
+    'CG6': 'C',
+    DEFAULT_GRAVIMETER_TYPE: '?',
+}
+
+# Default manufacturers of gravimeter types
+DEFAULT_GRAVIMETER_MANUFACTURERS = {
+    'CG5': 'Scintrex',
+    'CG3': 'Scintrex',
+    'CG6': 'Scintrex',
+    DEFAULT_GRAVIMETER_TYPE: 'unknown',
+}
+
+# Supported gravimeter types and description.
+# - All supported gravimeters have to be listed here!
+# - Gravimeter types stored in survey objects have to be listed here.
 GRAVIMETER_TYPES = {
     'CG5': 'Sctintrex CG5',
     'CG3': 'Sctintrex CG3',
-}
-
-# Default Gavimeter Type when loading data from an CG5 observation file
-DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY = 'CG5'
-
-# Lookuptable to convert gravimeter type to Kennzeichen used at BEV (in the database NSDB):
-GRAVIMETER_TYPES_KZG_LOOKUPTABLE = {
-    'CG5': 'C',
-    'CG3': 'C',
-}
-
-# Valid Gravimeter serial numbers (S/N and type)
-GRAVIMETER_SERIAL_NUMBERS = {
-    '40601': 'CG5',
-    '40236': 'CG5',
-}
-
-# Lookuptable to convert the gravimeter S/N to the IDs written to the database NSDB:
-GRAVIMETER_SERIAL_NUMBER_TO_ID_LOOKUPTABLE = {
-    '40601': '5',
-    '40236': '5',
+    'CG6': 'Sctintrex CG6',
+    DEFAULT_GRAVIMETER_TYPE: 'Unknown gravimeter type',
 }
 
 #  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
 #  observation files:
+# - Only required when loading "BEV legacy observation files", because there is no info on the applied tidal correction
 BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
-    '5': 'cg5_longman1959'
+    '5': 'instrumental_corr'
 }
 
 # Methods for calculation of setup observations:
@@ -134,7 +165,7 @@ SETUP_CALC_METHODS = {
 SETUP_SD_METHODS = {
     'sd_from_obs_file': 'Apply the standard deviations from observation files.',
     'sd_default_per_obs': 'Apply the default standard deviation to all individual observations.',
-    'sd_default_per_setup': 'Apply the default standard deviation to setup obsertvations.'
+    'sd_default_per_setup': 'Apply the default standard deviation to setup observations.'
 }
 
 # Available adjustment methods:
@@ -172,11 +203,11 @@ ITERATION_APPROACHES = {
     'Additive': 'Additive iteration approach'
 }
 
-# Treshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
-ANSERMET_DIFF_TRESHOLD = 1e-3
+# Threshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
+ANSERMET_DIFF_THRESHOLD = 1e-3
 
-# Treshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
-R_POPE_TEST_TRESHOLD = 1e-6
+# Threshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
+R_POPE_TEST_THRESHOLD = 1e-6
 
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
@@ -201,7 +232,7 @@ NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS = {
 # - Format string for datetime.strftime()
 Y_TICK_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
-# --- Gerneral color settings ---
+# --- General color settings ---
 DATUM_STATION_COLOR = (255, 204, 204)
 
 # --- Drift plots in the results tab: ---
@@ -228,7 +259,7 @@ CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
 VG_PLOT_MIN_HEIGHT_M = 0.0
 VG_PLOT_MAX_HEIGHT_M = 1.8
 VG_PLOT_HEIGHT_DELTA_M = 0.1
-# Number of datapoints plotted in the range betwen min. and max. height:
+# Number of datapoints plotted in the range between min. and max. height:
 VG_PLOT_NUM_ITEMS_VG_POLYNOMIAL = 100
 # Min. Y-range (default: [VG_PLOT_MIN_LOWER_L_RANGE, VG_PLOT_MIN_UPPER_Y_RANGE] = [-1, +1]):
 VG_PLOT_MIN_UPPER_Y_RANGE = 1.0
@@ -244,12 +275,12 @@ EXPORT_OBS_LIST_COLUMNS = ['survey_name', 'station_name', 'obs_epoch', 'keep_obs
 # Maximum allowed SD of the estimated gravity at stations when exporting data to a nsb file!
 #  => This is important as only 3 characters are reserved in the nsb file for the SD!
 MAX_SD_FOR_EXPORT_TO_NSB_FILE = 999.0
+
 # Choices for 5-character comment written to the nsb file (appears as Operat-G in the NSDB):
-# - One letter instrument-ID: 'inst_id'
-# - Official 5-character serial number of the Scintrex CG-5 Gravitimeters: 'cg5_serial_number'
+# - Official 5-character serial number of the Scintrex CG-5 Gravimeters: 'cg5_serial_number'
 # - Version of Gravtools: 'gravtools_version'
 # !! Warning: Actually only the gravtools version makes sense, because multiple surveys observed with different
-# instruments can be combindes
+# instruments can be combined
 WRITE_COMMENT_TO_NSB = 'gravtools_version'
 
 # ----- Program and Software settings -----
@@ -266,9 +297,8 @@ PICKLE_PROTOCOL_VERSION = 4
 # DEFAULT_EPSG_CODE = 4312  # 4312: MGI, lat/lon, Greenwich
 DEFAULT_EPSG_CODE = 4326  # 4326: WGS84h
 # Default filenames for shapefile export from the results tab:
-DEFUALT_FILENAME_OBERVATION_RESULTS_SHP = 'obs_results_'  # + <LSM run method>.shp
-DEFUALT_FILENAME_STATION_RESULTS_SHP = 'stat_results_'  # + <LSM run method>.shp
-
+DEFAULT_FILENAME_OBSERVATION_RESULTS_SHP = 'obs_results_'  # + <LSM run method>.shp
+DEFAULT_FILENAME_STATION_RESULTS_SHP = 'stat_results_'  # + <LSM run method>.shp
 
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----

@@ -11,7 +11,7 @@ User-defined settings for gravtools.
 """
 
 # Additive constant for the determination of the full absolute gravity [µGal] from observed values:
-ADDITIVE_CONST_ABS_GRTAVITY = 9.8e8
+ADDITIVE_CONST_ABS_GRAVITY = 9.8e8
 
 SURVEY_DATA_SOURCE_TYPES = {
     'cg5_obs_file_txt': 'Scintrex CG5 observation file (text format)',
@@ -24,7 +24,7 @@ STATION_DATA_SOURCE_TYPES = {
 }
 
 TIDE_CORRECTION_TYPES = {
-    'cg5_longman1959': 'Instrument-implemented tidal correction of the Scintrex CG-5',
+    'instrumental_corr': 'Instrument-implemented tidal correction',
     'no_tide_corr': 'No tide correction applied',
     'unknown': 'Unknown whether a tide correction was applied',
 }
@@ -93,7 +93,7 @@ GRAVIMETER_KZ_BEV = {
 #  Lookup table for matching gravimeter IDs and the tidal corrections that are applied per default in the BEV legacy
 #  observation files:
 BEV_GRAVIMETER_TIDE_CORR_LOOKUP = {
-    '5': 'cg5_longman1959'
+    '5': 'instrumental_corr'
 }
 
 # Available adjustment methods
@@ -103,10 +103,10 @@ ADJUSTMENT_METHODS = {
 }
 
 # Treshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
-ANSERMET_DIFF_TRESHOLD = 1e-3
+ANSERMET_DIFF_THRESHOLD = 1e-3
 
 # Treshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
-R_POPE_TEST_TRESHOLD = 1e-6
+R_POPE_TEST_THRESHOLD = 1e-6
 
 # Only consider active observations for the determination of the reference epochs, e.g. for the drift polynomial. The
 # Reference epochs are determined based on the first (active only or active/inactive) observations in the campaign or

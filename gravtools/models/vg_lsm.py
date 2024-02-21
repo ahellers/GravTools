@@ -180,7 +180,7 @@ class VGLSM(LSM):
                                          f'sensor height! Change the reference height to "Sensor" and recalculate the '
                                          f'setup observation data.')
 
-        return super().from_campaign(campaign, comment='', write_log=True)
+        return super().from_campaign(campaign, comment=comment, write_log=True)
 
     def adjust(self, drift_pol_degree=1,
                vg_polynomial_degree=1,
@@ -408,7 +408,7 @@ class VGLSM(LSM):
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
         u = np.sum(np.diag((mat_P @ mat_Qldld)))  # number of unknown parameters (estimates)
         tmp_diff = np.abs(number_of_parameters - u)
-        if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_TRESHOLD:
+        if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_THRESHOLD:
             raise AssertionError(f'"Gewichtsreziprokenprobe nach Ansermet" failed! Difference = {tmp_diff}')
         else:
             if verbose or self.write_log:

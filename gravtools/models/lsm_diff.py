@@ -200,7 +200,7 @@ class LSMDiff(LSM):
 
         Notes
         -----
-        The adjustemnt method (weighted constraints adjustment based on differential observations) is described in
+        The adjustment method (weighted constraints adjustment based on differential observations) is described in
         Wijaya et al. (2019) - pyGABEUR-ITB: A free Software for Adjustment of Relative Gravimeter Data
         and in
         Hwang et al. (2002) - Adjustment of relative gravity measurements using weighted and datum-free constraints,
@@ -433,7 +433,7 @@ class LSMDiff(LSM):
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
         u = np.sum(np.diag((mat_P @ mat_Qldld)))  # number of unknown parameters (estimates)
         tmp_diff = np.abs(number_of_parameters - u)
-        if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_TRESHOLD:
+        if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_THRESHOLD:
             raise AssertionError(f'"Gewichtsreziprokenprobe nach Ansermet" failed! Difference = {tmp_diff}')
         else:
             if verbose or self.write_log:
@@ -446,7 +446,7 @@ class LSMDiff(LSM):
         # Condition of normal equation matrix:
         if verbose or self.write_log:
             cond = np.linalg.cond(mat_N)
-            tmp_str = f'Condition of normal equation matix N = {cond:1.3f}\n'
+            tmp_str = f'Condition of normal equation matrix N = {cond:1.3f}\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:

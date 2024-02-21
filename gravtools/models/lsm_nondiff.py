@@ -400,7 +400,7 @@ class LSMNonDiff(LSM):
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
         u = np.sum(np.diag((mat_P @ mat_Qldld)))  # number of unknown parameters (estimates)
         tmp_diff = np.abs(number_of_parameters - u)
-        if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_TRESHOLD:
+        if np.abs(number_of_parameters - u) > settings.ANSERMET_DIFF_THRESHOLD:
             raise AssertionError(f'"Gewichtsreziprokenprobe nach Ansermet" failed! Difference = {tmp_diff}')
         else:
             if verbose or self.write_log:
@@ -649,7 +649,7 @@ class LSMNonDiff(LSM):
         if verbose:
             print(f'Save observation results of lsm run "{self.comment}" to: {filename}')
         setup_obs_df = self.setup_obs_df.copy(deep=True)
-        # Change dtypes (just to be save!):
+        # Change dtypes (just to be saved!):
         setup_obs_df = setup_obs_df.astype(self._SETUP_OBS_COLUMNS_DTYPES)
         setup_obs_df['comment'] = self.comment
 
