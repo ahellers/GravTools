@@ -35,6 +35,7 @@ else:
 
 from gravtools import settings
 
+
 class LSM:
     """Base class for LSM classes.
 
@@ -249,6 +250,7 @@ class LSM:
                                            'tide_correction_type': survey.setup_tide_correction_type,
                                            'reference_height_type': survey.setup_reference_height_type,
                                            'atm_pres_correction_type': survey.setup_atm_pres_correction_type,
+                                           'scale_correction_type': survey.setup_scale_correction_type,
                                            'setup_calc_method': survey.setup_calc_method,
                                            'setup_obs_list_df': survey.setup_obs_list_df}
                         setups[survey_name] = setup_data_dict
@@ -445,10 +447,11 @@ class LSM:
             iteration_log_str_tmp += f'\n'
 
         elif iteration_approach == 'Multiplicative':
-            if flag_s0_within_threshold and (mult_factor_total <= (max_multiplicative_factor_to_sd_percent/100)) and (mult_factor_total >= (min_multiplicative_factor_to_sd_percent/100)):
+            if flag_s0_within_threshold and (mult_factor_total <= (max_multiplicative_factor_to_sd_percent / 100)) and (
+                    mult_factor_total >= (min_multiplicative_factor_to_sd_percent / 100)):
                 iteration_log_str_tmp = f' => Iteration successful!\n'
                 iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} within [{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n '
-                iteration_log_str_tmp += f' => Total multiplicative factor for SD of observations ({mult_factor_total*100:1.3f}%) ' + \
+                iteration_log_str_tmp += f' => Total multiplicative factor for SD of observations ({mult_factor_total * 100:1.3f}%) ' + \
                                          f'is between the user defined threshold ' + \
                                          f'of {min_multiplicative_factor_to_sd_percent:1.3f}% and {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
             else:
@@ -456,12 +459,12 @@ class LSM:
                 if not flag_s0_within_threshold:
                     iteration_log_str_tmp += f' => s0² a posteriori of {self.s02_a_posteriori:1.3f} not within ' + \
                                              f'[{s02_target - s02_target_delta:1.3f}, {s02_target + s02_target_delta:1.3f}]\n'
-                if (mult_factor_total > (max_multiplicative_factor_to_sd_percent/100)):
-                    iteration_log_str_tmp += f' => Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) ' + \
+                if (mult_factor_total > (max_multiplicative_factor_to_sd_percent / 100)):
+                    iteration_log_str_tmp += f' => Total multiplicative factor for SD  ({mult_factor_total * 100:1.3f}%) ' + \
                                              f'exceeds the the user defined threshold ' + \
                                              f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n'
-                if (mult_factor_total < (min_multiplicative_factor_to_sd_percent/100)):
-                    iteration_log_str_tmp += f' => Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) ' + \
+                if (mult_factor_total < (min_multiplicative_factor_to_sd_percent / 100)):
+                    iteration_log_str_tmp += f' => Total multiplicative factor for SD  ({mult_factor_total * 100:1.3f}%) ' + \
                                              f'is smaller than the user defined threshold ' + \
                                              f'of {min_multiplicative_factor_to_sd_percent:1.3f}%.\n'
             iteration_log_str_tmp += f'\n'
@@ -489,12 +492,12 @@ class LSM:
                                      f'exceeds the the user defined threshold '
                                      f'of {max_total_additive_const_to_sd_mugal:1.3f} µGal.\n')
         elif iteration_approach == 'Multiplicative':
-            if mult_factor_total > (max_multiplicative_factor_to_sd_percent/100):
-                raise AssertionError(f'Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) '
+            if mult_factor_total > (max_multiplicative_factor_to_sd_percent / 100):
+                raise AssertionError(f'Total multiplicative factor for SD  ({mult_factor_total * 100:1.3f}%) '
                                      f'exceeds the the user defined threshold '
                                      f'of {max_multiplicative_factor_to_sd_percent:1.3f}%.\n')
-            if mult_factor_total < (min_multiplicative_factor_to_sd_percent/100):
-                raise AssertionError(f'Total multiplicative factor for SD  ({mult_factor_total*100:1.3f}%) '
+            if mult_factor_total < (min_multiplicative_factor_to_sd_percent / 100):
+                raise AssertionError(f'Total multiplicative factor for SD  ({mult_factor_total * 100:1.3f}%) '
                                      f'is smaller than the the user defined threshold '
                                      f'of {min_multiplicative_factor_to_sd_percent:1.3f}%.\n')
 
@@ -523,7 +526,9 @@ class LSM:
 
         stat_obs_df = self.stat_obs_df.copy(deep=True)
         stat_obs_df['comment'] = self.comment
-        stat_obs_gdf = geopandas.GeoDataFrame(stat_obs_df, geometry=geopandas.points_from_xy(stat_obs_df['long_deg'], stat_obs_df['lat_deg']), crs=epsg_code)
+        stat_obs_gdf = geopandas.GeoDataFrame(stat_obs_df, geometry=geopandas.points_from_xy(stat_obs_df['long_deg'],
+                                                                                             stat_obs_df['lat_deg']),
+                                              crs=epsg_code)
         stat_obs_gdf.to_file(filename)
 
     @property
@@ -555,9 +560,9 @@ class LSM:
         mat_Rxx = np.full((self.Cxx.shape[0], self.Cxx.shape[1]), np.nan)
         for i_row in range(0, mat_Rxx.shape[0]):
             cxx_row_sqrt = np.sqrt(self.Cxx[i_row, i_row])
-            for i_col in range(0, i_row+1):
+            for i_col in range(0, i_row + 1):
                 mat_Rxx[i_row, i_col] = self.Cxx[i_row, i_col] / (
-                            cxx_row_sqrt * np.sqrt(self.Cxx[i_col, i_col]))
+                        cxx_row_sqrt * np.sqrt(self.Cxx[i_col, i_col]))
                 mat_Rxx[i_col, i_row] = mat_Rxx[i_row, i_col]
         return mat_Rxx
 
@@ -626,6 +631,7 @@ class LSM:
         tide_correction_type_list = []
         reference_height_type_list = []
         atm_pres_correction_type_list = []
+        scale_correction_type_list = []
         setup_calc_method_list = []
         for survey_name, survey in self.setups.items():
             survey_names_list.append(survey_name)
@@ -637,6 +643,7 @@ class LSM:
             tide_correction_type_list.append(survey['tide_correction_type'])
             reference_height_type_list.append(survey['reference_height_type'])
             atm_pres_correction_type_list.append(survey['atm_pres_correction_type'])
+            scale_correction_type_list.append(survey['scale_correction_type'])
             setup_calc_method_list.append(survey['setup_calc_method'])
         tmp_df = pd.DataFrame(list(zip(survey_names_list,
                                        num_setups_list,
@@ -645,9 +652,11 @@ class LSM:
                                        tide_correction_type_list,
                                        reference_height_type_list,
                                        atm_pres_correction_type_list,
+                                       scale_correction_type_list,
                                        setup_calc_method_list,
                                        )),
-                          columns=['Survey', '#Setups', '#Obs', '#Active obs', 'Tide correction', 'Ref. height', 'Atm. correction', 'Setup calc. method'])
+                              columns=['Survey', '#Setups', '#Obs', '#Active obs', 'Tide correction', 'Ref. height',
+                                       'Atm. correction', 'Scale correction', 'Setup calc. method'])
         return tmp_df.to_string(index=False)
 
     # @property
@@ -655,6 +664,7 @@ class LSM:
     #     """Returns information on the applied observation-level corrections."""
     #     info_str = ''
     #     return info_str
+
 
 def bin_redundacy_components(mat_r):
     """Bin redundancy components for easier interpretatzion.
@@ -760,14 +770,9 @@ def global_model_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_va
     # chi_critical_value = stats.chi2.ppf(alpha, dof)  # critical value
     test_value = dof * a_posteriori_variance_of_unit_weight / a_priori_variance_of_unit_weight  # Equ. (2-13) in Caspary (1987)
     if chi_crit_lower < test_value < chi_crit_upper:
-    # if test_value <= test_value:  # Equ. (2-15) in Caspary (1987)
+        # if test_value <= test_value:  # Equ. (2-15) in Caspary (1987)
         chi_test_status = 'Passed'
     else:
         chi_test_status = 'Not passed'
     chi_crit = [chi_crit_lower, chi_crit_upper]
     return chi_crit, test_value, chi_test_status
-
-
-
-
-

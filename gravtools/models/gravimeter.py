@@ -94,6 +94,7 @@ class Gravimeters:
                                height_offset_m=gm['height_offset_m'],
                                data_source=os.path.basename(filename_json),
                                data_source_type='file',
+                               description=gm['description'],
                                scale_parameters=gm['calibration'],
                                code=gm['code'],
                                verbose=verbose)
@@ -123,6 +124,7 @@ class Gravimeters:
                            height_offset_m=settings.DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M[survey.gravimeter_type],
                            data_source=survey.name,
                            data_source_type='survey',
+                           description=settings.DEFAULT_GRAVIMETER_DESCRIPTION,
                            scale_parameters=None,  # Use default values!
                            code=settings.DEFAULT_GRAVIMETER_ONE_LETTER_CODES[survey.gravimeter_type],
                            verbose=verbose)
@@ -206,6 +208,8 @@ class Gravimeter:
         Instrument serial number.
     height_offset_m : float
         Height offset between the instrument's reference surface (usually instrument top surface) and the sensor level.
+    description : str
+        Arbitrary description.
     data_source : str
         Source from which the gravimeter data was loaded. This is either the name of a file, or the name of a survey.
     data_source_type : str
@@ -219,6 +223,8 @@ class Gravimeter:
             End of the time span at which the scale is valid.
         - linear_factor : float,
             Linear scaling factor valid for the given time span.
+        - comment : str
+            Arbitrary comment on the scale factor entry, e.g. to document the source or any issues.
 
     code : str, optional (default = '')
         Short instrument code.
@@ -229,7 +235,7 @@ class Gravimeter:
     """
 
     def __init__(self, gravimeter_type: str, manufacturer: str, serial_number: str, height_offset_m: float,
-                 data_source: str, data_source_type: str, scale_parameters=None, code='', verbose=True):
+                 data_source: str, data_source_type: str, description='', scale_parameters=None, code='', verbose=True):
         """Default constructor.
 
         Parameters
@@ -248,6 +254,8 @@ class Gravimeter:
             survey.
         data_source_type : str
             Type of the gravimeter data source. Has to be listed as key in `settings.GRAVIMETER_DATA_SOURCE_TYPES`.
+        description : str, optional (default = '')
+            Arbitrary description.
         scale_parameters : list of dicts, optional (default = `None`)
             Each dict contains the start date, the end date and the linear calibration factor. If no data is provided,
             default values are used.
@@ -284,6 +292,10 @@ class Gravimeter:
         if data_source_type not in settings.GRAVIMETER_DATA_SOURCE_TYPES.keys():
             raise RuntimeError(f'"{data_source_type}" not listed settings.GRAVIMETER_DATA_SOURCE_TYPES!')
 
+        # description
+        if not isinstance(description, str):
+            raise TypeError('"description" has to by a string.')
+
         # calibrations
         if scale_parameters is None:
             flag_init_scale_factor_zero = True
@@ -291,11 +303,12 @@ class Gravimeter:
             if isinstance(scale_parameters, list):
                 if len(scale_parameters) > 0:
                     # Save calibration factors to dataframe
-                    scale_dict = {'start_date': [], 'end_date': [], 'linear_factor': []}
+                    scale_dict = {'start_date': [], 'end_date': [], 'linear_factor': [], 'comment': []}
                     for scale in scale_parameters:
                         scale_dict['start_date'].append(scale['start_date'])
                         scale_dict['end_date'].append(scale['end_date'])
                         scale_dict['linear_factor'].append(scale['linear_factor'])
+                        scale_dict['comment'].append(scale['comment'])
                         scale_df = pd.DataFrame(scale_dict)
                 else:
                     flag_init_scale_factor_zero = True
@@ -305,8 +318,10 @@ class Gravimeter:
             if verbose:
                 print(f'Initialize a linear scale factor of 1.0 for gravimeter {manufacturer} '
                       f'{gravimeter_type}')
-            scale_dict = {'start_date': [settings.DEFAULT_CALIBRATION_START_DATE], 'end_date':
-                [settings.DEFAULT_CALIBRATION_END_DATE], 'linear_factor': [settings.DEFAULT_CALIBRATION_LINEAR_FACTOR]}
+            scale_dict = {'start_date': [settings.DEFAULT_CALIBRATION_START_DATE],
+                          'end_date': [settings.DEFAULT_CALIBRATION_END_DATE],
+                          'linear_factor': [settings.DEFAULT_CALIBRATION_LINEAR_FACTOR],
+                          'comment': [settings.DEFAULT_CALIBRATION_COMMENT]}
             scale_df = pd.DataFrame(scale_dict)
         scale_df['start_date'] = pd.to_datetime(scale_df['start_date'], utc=True).dt.date
         scale_df['end_date'] = pd.to_datetime(scale_df['end_date'], utc=True).dt.date
@@ -314,7 +329,7 @@ class Gravimeter:
         # Check for overlapping time intervals:
         if len(scale_df) > 1:
             for index, row in scale_df.iterrows():
-                tmp_filter = ((scale_df['end_date'] <= row['end_date']) & (scale_df['end_date'] >= row['start_date'])) | ((scale_df['start_date'] <= row['end_date']) & (scale_df['start_date'] >= row['start_date']))
+                tmp_filter = (((scale_df['end_date'] <= row['end_date']) & (scale_df['end_date'] >= row['start_date'])) | ((scale_df['start_date'] <= row['end_date']) & (scale_df['start_date'] >= row['start_date'])))
                 num_matches = len(tmp_filter[tmp_filter])
                 if num_matches > 1:
                     tmp_df = scale_df.loc[tmp_filter]
@@ -332,6 +347,7 @@ class Gravimeter:
         self.serial_number = serial_number
         self.height_offset_m = height_offset_m
         self.data_source = data_source
+        self.description = description
         self.data_source_type = data_source_type
         self.scale_df = scale_df
         self.code = code

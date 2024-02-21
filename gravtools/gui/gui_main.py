@@ -83,6 +83,7 @@ IS_VERBOSE = settings.VERBOSE  # Define, whether screen output is enabled.
 MARKER_SYMBOL_ORDER = ('o', 't', 'x', 's', 'star', '+', 'd', 't1', 'p', 't2', 'h', 't3')
 MARKER_COLOR_ODER = ('b', 'r', 'g', 'c', 'm', 'y')
 
+
 class TimeAxisItem(pg.AxisItem):
     """"Needed to handle the x-axes tags representing date and time.
     From: https://stackoverflow.com/questions/49046931/how-can-i-use-dateaxisitem-of-pyqtgraph
@@ -94,7 +95,8 @@ class TimeAxisItem(pg.AxisItem):
 
     def tickStrings(self, values, scale, spacing) -> str:
         """Handles the x-axes tags representing date and time."""
-        return [dt.datetime.fromtimestamp(value, tz=pytz.utc).strftime(settings.Y_TICK_DATETIME_FORMAT) for value in values]
+        return [dt.datetime.fromtimestamp(value, tz=pytz.utc).strftime(settings.Y_TICK_DATETIME_FORMAT) for value in
+                values]
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -157,7 +159,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.checkBox_stations_map_show_stat_name_labels.stateChanged.connect(
             self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
         self.radioButton_results_vg_plot_details.toggled.connect(self.on_results_vg_plot_type_radiobuttons_changed)
-        self.radioButton_results_vg_plot_full_polynomial.toggled.connect(self.on_results_vg_plot_type_radiobuttons_changed)
+        self.radioButton_results_vg_plot_full_polynomial.toggled.connect(
+            self.on_results_vg_plot_type_radiobuttons_changed)
         self.checkBox_stations_map_show_stat_name_labels.stateChanged.connect(
             self.on_checkBox_stations_map_show_stat_name_labels_state_changed)
         self.checkBox_results_vg_plot_show_residuals.stateChanged.connect(
@@ -213,8 +216,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.action_Gis_Export_settings.setEnabled(True)
             self.groupBox_gis_data.setEnabled(True)
             self.dlg_gis_export_settings.lineEdit_stat_coord_epsg.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
-            self.dlg_gis_export_settings.lineEdit_filename_obs_results_shp.setText(f'{settings.DEFUALT_FILENAME_OBERVATION_RESULTS_SHP}')
-            self.dlg_gis_export_settings.lineEdit_filename_stat_results_shp.setText(f'{settings.DEFUALT_FILENAME_STATION_RESULTS_SHP}')
+            self.dlg_gis_export_settings.lineEdit_filename_obs_results_shp.setText(
+                f'{settings.DEFUALT_FILENAME_OBERVATION_RESULTS_SHP}')
+            self.dlg_gis_export_settings.lineEdit_filename_stat_results_shp.setText(
+                f'{settings.DEFUALT_FILENAME_STATION_RESULTS_SHP}')
         else:
             self.groupBox_gis_data.setEnabled(False)
             self.action_Gis_Export_settings.setEnabled(False)
@@ -283,6 +288,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.label_gravi_height_offset.setText(f'{gravi.height_offset_m:0.3f}')
         self.label_gravi_data_source.setText(gravi.data_source)
         self.label_gravi_data_source_type.setText(gravi.data_source_type)
+        self.label_gravi_description.setText(gravi.description)
         self.label_gravi_num_scale_factors.setText(f'{gravi.num_scale_factors}')
 
         # Update table view model:
@@ -299,6 +305,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.label_gravi_height_offset.clear()
         self.label_gravi_data_source.clear()
         self.label_gravi_data_source_type.clear()
+        self.label_gravi_description.clear()
         self.label_gravi_num_scale_factors.clear()
 
         # Table vies with scal factors:
@@ -324,7 +331,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gravimeter_scale_factor_model.update_view_model(gravimeter_type, serial_number)
         self.gravimeter_scale_factor_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_gravimeters_scale.resizeColumnsToContents()
-
 
     @pyqtSlot(QPoint)
     def tableView_surveys_right_click(self, position):
@@ -377,9 +383,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         if selected_setup_id is None:
                             self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
                         else:
-                            for child_item_idx in range(self.treeWidget_observations.topLevelItem(tree_item_idx).childCount()):
-                                if self.treeWidget_observations.topLevelItem(tree_item_idx).child(child_item_idx).text(0) == selected_setup_id:
-                                    self.treeWidget_observations.topLevelItem(tree_item_idx).child(child_item_idx).setSelected()
+                            for child_item_idx in range(
+                                    self.treeWidget_observations.topLevelItem(tree_item_idx).childCount()):
+                                if self.treeWidget_observations.topLevelItem(tree_item_idx).child(child_item_idx).text(
+                                        0) == selected_setup_id:
+                                    self.treeWidget_observations.topLevelItem(tree_item_idx).child(
+                                        child_item_idx).setSelected()
             self.enable_menu_observations_based_on_campaign_data()
             self.set_up_survey_view_model()
 
@@ -441,8 +450,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 try:
                     lsm_run.export_stat_results_shapefile(filename=filename, epsg_code=epsg_code)
                 except AttributeError:
-                    QMessageBox.warning(self, f'Export not available!', f'Export of station results to a shapefile is not '
-                                                                       f'supported by the lsm method {lsm_run.lsm_method}.')
+                    QMessageBox.warning(self, f'Export not available!',
+                                        f'Export of station results to a shapefile is not '
+                                        f'supported by the lsm method {lsm_run.lsm_method}.')
                 except Exception as e:
                     QMessageBox.critical(self, 'Error!', str(e))
                 else:
@@ -458,13 +468,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 try:
                     lsm_run.export_obs_results_shapefile(filename=filename, epsg_code=epsg_code)
                 except AttributeError:
-                    QMessageBox.warning(self, f'Export not available!', f'Export of observation results to a shapefile is not '
-                                                                        f'supported by the lsm method {lsm_run.lsm_method}.')
+                    QMessageBox.warning(self, f'Export not available!',
+                                        f'Export of observation results to a shapefile is not '
+                                        f'supported by the lsm method {lsm_run.lsm_method}.')
                 except Exception as e:
                     QMessageBox.critical(self, 'Error!', str(e))
                 else:
-                    self.statusBar().showMessage(f'Save observations results of lsm run "{lsm_run.comment}" to: {filename}')
-
+                    self.statusBar().showMessage(
+                        f'Save observations results of lsm run "{lsm_run.comment}" to: {filename}')
 
     @pyqtSlot()
     def on_action_Change_Campaign_name_triggered(self):
@@ -965,8 +976,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Plot VG polynomial
             pen = pg.mkPen(color='k', width=2)
             self.vg_plot.plot(h_m, vg_polynomial_full_mugal,
-                                 name=f'VG polynomial',
-                                 pen=pen)
+                              name=f'VG polynomial',
+                              pen=pen)
 
         elif plot_type == 'detail':
             self.vg_plot.setTitle(f'Linear and non-linear components (pol. degree = {vg_polynomial_degree})')
@@ -1012,7 +1023,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     mat_x_lin = mat_x[:-(vg_polynomial_degree - 1)]
                     mat_A_lin = mat_A[:, :-(vg_polynomial_degree - 1)]
                     setup_obs_df['g_obs_est_lin_vg_mugal'] = mat_A_lin @ mat_x_lin
-                    setup_obs_df['res_lin_vg_mugal'] = setup_obs_df['g_obs_mugal'] - setup_obs_df['g_obs_est_lin_vg_mugal']
+                    setup_obs_df['res_lin_vg_mugal'] = setup_obs_df['g_obs_mugal'] - setup_obs_df[
+                        'g_obs_est_lin_vg_mugal']
                     setup_obs_df['res_plot_mugal'] = setup_obs_df['res_lin_vg_mugal']
                     res_plot_legend_str = 'Residuals w.r.t. linear VG'
             else:
@@ -1251,8 +1263,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if setup_calc_method != 'individual_obs':
                 # Merge on the reference epochs, because the setup-IDs are not unique!
                 setup_obs_df_short = lsm_run.setup_obs_df.loc[
-                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(deep=True)
-                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', left_on='epoch_dt', right_on='ref_epoch_dt')  # WEG!
+                    lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(
+                    deep=True)
+                setup_df = pd.merge(setup_df, setup_obs_df_short, how='left', left_on='epoch_dt',
+                                    right_on='ref_epoch_dt')  # WEG!
             else:
                 setup_obs_df_short = lsm_run.setup_obs_df.loc[
                     lsm_run.setup_obs_df['survey_name'] == survey_name, ['ref_epoch_dt', 'v_obs_est_mugal']].copy(
@@ -1288,7 +1302,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             yy_mugal = drift_polynomial_mugal
 
             # Constant offset to be subtracted from y-axis for better readability:
-            subtr_const_mugal = round(yy_mugal.mean()/ 1000) * 1000
+            subtr_const_mugal = round(yy_mugal.mean() / 1000) * 1000
 
             # Plot drift function:
             pen = pg.mkPen(color='k', width=2)
@@ -1309,7 +1323,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         brush_color = 'w'
                     else:
                         brush_color = self.station_colors_dict_results[row['station_name']]
-                spot_dic = {'pos': (row['epoch_unix'], row['drift_at_obs_epochs_mugal'] - row['v_obs_est_mugal'] - subtr_const_mugal),
+                spot_dic = {'pos': (
+                row['epoch_unix'], row['drift_at_obs_epochs_mugal'] - row['v_obs_est_mugal'] - subtr_const_mugal),
                             'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
                             'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
                                     'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
@@ -1578,7 +1593,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def init_observation_results_plots_timerseries(self):
         """Initialize the time series plot for observation results."""
-        if self.glw_obs_results.getItem(0,0) is not None:
+        if self.glw_obs_results.getItem(0, 0) is not None:
             self.glw_obs_results.removeItem(self.glw_obs_results.getItem(0, 0))
         self.plot_obs_results = self.glw_obs_results.addPlot(0, 0, name='obs_results',
                                                              axisItems={'bottom': TimeAxisItem(orientation='bottom')})
@@ -1587,7 +1602,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def init_observation_results_plots_histogram(self):
         """Initialize the histogram plot for observation results."""
-        if self.glw_obs_results.getItem(0,0) is not None:
+        if self.glw_obs_results.getItem(0, 0) is not None:
             self.glw_obs_results.removeItem(self.glw_obs_results.getItem(0, 0))
         self.plot_obs_results = self.glw_obs_results.addPlot(0, 0, name='obs_results')
         self.plot_obs_results.setLabel(axis='left', text='')
@@ -1825,7 +1840,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.label__results_stations_statistics_median.clear()
             self.label__results_stations_statistics_iqr.clear()
             return
-        data_col =  model_data_df[col_name]
+        data_col = model_data_df[col_name]
         iqr = data_col.quantile(0.75) - data_col.quantile(0.25)
         self.label_results_stations_statistics_mean.setText(f'{data_col.mean():.3f}')
         self.label_results_stations_statistics_std.setText(f'{data_col.std():.3f}')
@@ -2165,15 +2180,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Show additional infos on the currently visualized setup data in the GUI:
         try:
             if self.setup_model.get_ref_heigth_type in settings.REFERENCE_HEIGHT_TYPE.keys():
-                self.label_obs_setups_ref_height.setText(f'{self.setup_model.get_ref_heigth_type} ({settings.REFERENCE_HEIGHT_TYPE[self.setup_model.get_ref_heigth_type]})')
+                self.label_obs_setups_ref_height.setText(
+                    f'{self.setup_model.get_ref_heigth_type} ({settings.REFERENCE_HEIGHT_TYPE[self.setup_model.get_ref_heigth_type]})')
             else:
                 self.label_obs_setups_ref_height.setText(f'{self.setup_model.get_ref_heigth_type}')
             if self.setup_model.get_tidal_corr_type in settings.TIDE_CORRECTION_TYPES.keys():
-                self.label_obs_setups_tidal_corr.setText(f'{self.setup_model.get_tidal_corr_type} ({settings.TIDE_CORRECTION_TYPES[self.setup_model.get_tidal_corr_type]})')
+                self.label_obs_setups_tidal_corr.setText(
+                    f'{self.setup_model.get_tidal_corr_type} ({settings.TIDE_CORRECTION_TYPES[self.setup_model.get_tidal_corr_type]})')
             else:
                 self.label_obs_setups_tidal_corr.setText(f'{self.setup_model.get_tidal_corr_type}')
             if self.setup_model.get_atm_pres_corr_type in settings.ATM_PRES_CORRECTION_TYPES.keys():
-                self.label_obs_setups_atm_pres_corr.setText(f'{self.setup_model.get_atm_pres_corr_type} ({settings.ATM_PRES_CORRECTION_TYPES[self.setup_model.get_atm_pres_corr_type]})')
+                self.label_obs_setups_atm_pres_corr.setText(
+                    f'{self.setup_model.get_atm_pres_corr_type} ({settings.ATM_PRES_CORRECTION_TYPES[self.setup_model.get_atm_pres_corr_type]})')
             else:
                 self.label_obs_setups_atm_pres_corr.setText(f'{self.setup_model.get_atm_pres_corr_type}')
             if self.setup_model.get_scale_corr_type in settings.SCALE_CORRECTION_TYPES.keys():
@@ -2197,7 +2215,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         elif self.dlg_setup_data.radioButton_individual_obs.isChecked():
             method = 'individual_obs'
         else:
-            method = 'variance_weighted_mean' # Use default
+            method = 'variance_weighted_mean'  # Use default
         if self.dlg_setup_data.radioButton_sd_from_obsfile.isChecked():
             method_sd = 'sd_from_obs_file'
         elif self.dlg_setup_data.radioButton_sd_default_per_obs.isChecked():
@@ -2652,7 +2670,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                         self.tabWidget_results.setCurrentIndex(idx)
                                 filename_png = filename + '_vg_plot.png'
                                 # The linAlg error is raised in the following line of code:
-                                exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_results_drift_plot.scene())
+                                exporter = pg.exporters.ImageExporter(
+                                    self.graphicsLayoutWidget_results_drift_plot.scene())
                                 flag_export_successful = exporter.export(os.path.join(output_path, filename_png))
                         except Exception as e:
                             QMessageBox.critical(self, 'Error!', str(e))
@@ -2672,7 +2691,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 try:
                                     epsg_code = int(self.dlg_gis_export_settings.lineEdit_stat_coord_epsg.text())
                                 except ValueError:
-                                    QMessageBox.critical(self, 'Error!', 'Invalid EPSG code. Need to be an integer value.')
+                                    QMessageBox.critical(self, 'Error!',
+                                                         'Invalid EPSG code. Need to be an integer value.')
                                 else:
                                     try:
                                         filename_shp = os.path.join(gis_output_dir, filename + '_obs.shp')
@@ -2748,7 +2768,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             setup_df = self.observation_model.get_setup_data
             obs_epoch_timestamps = (obs_df['obs_epoch'].values - np.datetime64(
                 '1970-01-01T00:00:00')) / np.timedelta64(1,
-                                                          's')
+                                                         's')
             # Plot reduced or unreduced observations:
             flag_show_reduced_observations = False
             if self.checkBox_obs_plot_reduced_observations.checkState() == Qt.Checked and not any(
@@ -2772,7 +2792,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 try:
                     corr_atm_pres_name = self.campaign.surveys[survey_name].red_atm_pres_correction_type
                 except AttributeError:
-                    corr_atm_pres_name = '' # ... won't be plotted in GUI.
+                    corr_atm_pres_name = ''  # ... won't be plotted in GUI.
                 corr_atm_pres = obs_df['corr_atm_pres_red_mugal'].values
                 if (corr_atm_pres == None).all():
                     corr_atm_pres_name = ''  # ... won't be plotted in GUI.
@@ -3336,29 +3356,37 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         gravimeter_filename, _ = QFileDialog.getOpenFileName(self,
-                                                               'Select Gravimeter file',
-                                                               self.campaign.output_directory,
-                                                               "Gravimeter file (*.json)",
-                                                               options=options)
+                                                             'Select Gravimeter file',
+                                                             self.campaign.output_directory,
+                                                             "Gravimeter file (*.json)",
+                                                             options=options)
         if gravimeter_filename:
-            # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
-            # operating system.
-            # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
-            gravimeter_filename = QDir.toNativeSeparators(gravimeter_filename)
-            self.campaign.gravimeters.add_from_json(gravimeter_filename, verbose=IS_VERBOSE)
-
-            # Update GUI:
-            self.populate_gravimeters_tree_widget()
+            try:
+                # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+                # operating system.
+                # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+                gravimeter_filename = QDir.toNativeSeparators(gravimeter_filename)
+                self.campaign.gravimeters.add_from_json(gravimeter_filename, verbose=IS_VERBOSE)
+            except FileNotFoundError:
+                QMessageBox.critical(self, 'File not found error', f'"{gravimeter_filename}" not found.')
+                self.statusBar().showMessage(f"No gravimeters added.")
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f"No gravimeters added.")
+            else:
+                # Update GUI:
+                self.populate_gravimeters_tree_widget()
+                self.statusBar().showMessage(f"Gravimeter data added from file: {gravimeter_filename}")
 
     def on_menu_file_load_stations_from_oesgn_table(self):
         """Load stations from OESGN table file."""
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         oesgn_filename, _ = QFileDialog.getOpenFileName(self,
-                                                               'Select OESGN table file',
-                                                               self.campaign.output_directory,
-                                                               "OESGN table file (*.tab)",
-                                                               options=options)
+                                                        'Select OESGN table file',
+                                                        self.campaign.output_directory,
+                                                        "OESGN table file (*.tab)",
+                                                        options=options)
         if oesgn_filename:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
             # operating system.
@@ -3371,10 +3399,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         csv_filename, _ = QFileDialog.getOpenFileName(self,
-                                                        'Select station CSV file',
-                                                        self.campaign.output_directory,
-                                                        "Station CSV file (*.csv)",
-                                                        options=options)
+                                                      'Select station CSV file',
+                                                      self.campaign.output_directory,
+                                                      "Station CSV file (*.csv)",
+                                                      options=options)
         if csv_filename:
             # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
             # operating system.
@@ -3414,7 +3442,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_up_proxy_station_model()
             self.on_checkBox_filter_observed_stat_only_toggled(
                 state=self.checkBox_filter_observed_stat_only.checkState())
-
         except FileNotFoundError:
             QMessageBox.critical(self, 'File not found error', f'"{filename}" not found.')
             self.statusBar().showMessage(f"No stations added.")
@@ -3506,7 +3533,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Set model:
         try:
             self.survey_model = SurveyTableModel(self.campaign.surveys,
-                                                   gui_simple_mode=self.dlg_options.gui_simple_mode)
+                                                 gui_simple_mode=self.dlg_options.gui_simple_mode)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No surveys available!')
             self.statusBar().showMessage(f"No surveys available.")
@@ -3522,10 +3549,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         cg5_obs_file_filenames, _ = QFileDialog.getOpenFileNames(self,
-                                                               'Select CG5 observation file',
-                                                               self.campaign.output_directory,
-                                                               "CG5 observation file (*.TXT)",
-                                                               options=options)
+                                                                 'Select CG5 observation file',
+                                                                 self.campaign.output_directory,
+                                                                 "CG5 observation file (*.TXT)",
+                                                                 options=options)
         if not cg5_obs_file_filenames:
             self.statusBar().showMessage(f"No survey data added.")
             return
@@ -3549,7 +3576,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # self.statusBar().showMessage(f"No survey data added.")
                 continue
             else:
-                added_surveys_list.append(new_cg5_survey.name + f' ({new_cg5_survey.get_number_of_observations()} obs.)')
+                added_surveys_list.append(
+                    new_cg5_survey.name + f' ({new_cg5_survey.get_number_of_observations()} obs.)')
 
         if not added_surveys_list:
             self.statusBar().showMessage(f"No survey data added.")
@@ -3593,7 +3621,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                            auto_range_stations_plot=True)
         self.statusBar().showMessage(
             f'{len(added_surveys_list)} survey added to campaign: ' + ','.join(added_surveys_list))
-
 
     @pyqtSlot()
     def on_manu_observations_flag_observations(self):

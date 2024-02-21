@@ -5,16 +5,19 @@
     "serial_number": "40601",
     "code": "C",
     "height_offset_m": -0.211,
-    "calibration": [
+    "description": "gravi test 1 gravi test 1 gravi test 1 gravi test 1 gravi test 1 gravi test 1 gravi test 1 ",
+      "calibration": [
       {
         "start_date": "2000-01-01",
         "end_date": "2023-12-31",
-        "linear_factor": 1.0001
+        "linear_factor": 1.0001,
+        "comment": "test1"
       },
       {
         "start_date": "2024-01-01",
         "end_date": "2100-01-01",
-        "linear_factor": 1.0040
+        "linear_factor": 1.0040,
+        "comment": "test2"
       }
     ]
   },
@@ -24,16 +27,19 @@
     "serial_number": "40602",
     "code": "C",
     "height_offset_m": -0.211,
+    "description": "gravi test 1",
     "calibration": [
       {
         "start_date": "2000-01-01",
         "end_date": "2023-12-31",
-        "linear_factor": 1.0001
+        "linear_factor": 1.0001,
+        "comment": "test3"
       },
       {
         "start_date": "2024-05-30",
         "end_date": "2100-01-01",
-        "linear_factor": 1.006
+        "linear_factor": 1.006,
+        "comment": ""
       }
     ]
   }

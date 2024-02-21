@@ -99,7 +99,7 @@ REFERENCE_HEIGHT_TYPE = {
 DEFAULT_GRAVIMETER_REFERENCE_HEIGHT_OFFSET_M = {
     'CG3': -0.211,
     'CG5': -0.211,
-    'CG6': -0.15,  # TODO: Get actual value!
+    'CG6': -0.099,  # W.r.t. top surface at the front
 }
 
 # Gravimeter default type
@@ -111,11 +111,15 @@ DEFAULT_GRAVIMETER_SERIAL_NUMBER = 'n/a'
 # Default Gravimeter Type when loading data from an CG5 observation file
 DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY = 'CG5'
 
+# Default gravimeter description string:
+DEFAULT_GRAVIMETER_DESCRIPTION = 'Default gravimeter settings'
+
 # Default gravimeter calibration data:
 # - Used if no data is provided through gravimeter files (json)
 DEFAULT_CALIBRATION_START_DATE = '1900-01-01'
 DEFAULT_CALIBRATION_END_DATE = '2100-01-01'
 DEFAULT_CALIBRATION_LINEAR_FACTOR = 1.0
+DEFAULT_CALIBRATION_COMMENT = 'default'
 
 # Lookup table to convert gravimeter type to one-letter codes:
 # - The one-letter codes are used in the nsb files (results). Nowhere else.

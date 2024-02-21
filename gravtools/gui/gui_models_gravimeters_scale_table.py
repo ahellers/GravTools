@@ -36,6 +36,7 @@ class GravimeterScaleFactorTableModel(QAbstractTableModel):
         'start_date': 'Start date',
         'end_date': 'End date',
         'linear_factor': 'Linear scale factor',
+        'comment': 'Comment',
     }
     _PLOT_COLUMNS = list(_PLOT_COLUMNS_DICT.keys())  # Actual list of columns to be shown
 
