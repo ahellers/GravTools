@@ -49,7 +49,7 @@ class Survey:
 
       - Corrections of the CG-5 instruments provided in the observation files (Longman, 1959)
       - No corrections
-      - Longman (1959) model, evaluated in GravTools for the longitude, latitude , altitude and UTC time stamp of each observation. The correction is calculated for the middle of the readint time (obs_epoch + duration_sec/2)
+      - Longman (1959) model, evaluated in GravTools for the longitude, latitude , altitude and UTC time stamp of each observation. The correction is calculated for the middle of the reading time (obs_epoch + duration_sec/2)
       - Interpolated from correction time series (e.g. loaded from Tsoft TSF files)
 
     - Reduction of the observed gravity to different reference height levels
@@ -155,7 +155,7 @@ class Survey:
         Method for the determination of standard deviations (SD) of setup observations. `sd_from_obs_file` implies that
         SD are taken from the observation file. `sd_default_per_obs` and `sd_default_per_setup` imply that the
         given default SD is used, where the default SD is applied the individual observations in the first case and
-        to setups in the second case. If applied to observations, the number of observations per setup still palys a
+        to setups in the second case. If applied to observations, the number of observations per setup still plays a
         role for weighting the setup observations in the adjustment.
     keep_survey : bool (default=True)
         Flag that indicates whether this survey will be used to derive setup observations.`True` is the
@@ -1011,7 +1011,7 @@ class Survey:
         return obs_df
 
     def set_reference_time(self, ref_delta_t_dt):
-        """Set refernce time for the determination of relative time spans, e.g. for the drift polynomial.
+        """Set reference time for the determination of relative time spans, e.g. for the drift polynomial.
 
         Parameters
         ----------
@@ -1072,7 +1072,7 @@ class Survey:
         is_valid : bool
             True, if `obs_df` is valid.
         error_msg : str
-            Error Message. Empty if no errors occured.
+            Error Message. Empty if no errors occurred.
         """
         is_valid = True
         error_msg = ''
@@ -1807,7 +1807,7 @@ class Survey:
 
         Notes
         -----
-        If a setup consists of less than `n_obs` observations, this autosection function is not applied.
+        If a setup consists of less than `n_obs` observations, this autoselection function is not applied.
 
 
         Parameters
@@ -1988,7 +1988,6 @@ class Survey:
 
         # Check, if at least one observation is active:
         if len(active_obs_df) == 0:
-            # raise AssertionError(f'No active observations in survey {self.name}')
             if verbose:
                 print(f'No active observations in survey {self.name}')
         else:

@@ -83,9 +83,9 @@ class Gravimeters:
         if verbose:
             print(f'Load gravimeter data from json file: {filename_json}')
         with open(filename_json, mode='r') as file:
-            gravinmeters = json.load(file)
+            gravimeters = json.load(file)
 
-        for gm in gravinmeters:
+        for gm in gravimeters:
             if verbose:
                 print(f"Load gravimeter {gm['type'],} with S/N {gm['serial_number']}")
             gravi = Gravimeter(gravimeter_type=gm['type'],

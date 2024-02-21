@@ -2,44 +2,44 @@
   {
     "type": "CG5",
     "manufacturer": "Scintrex",
-    "serial_number": "40601",
+    "serial_number": "12456",
     "code": "C",
     "height_offset_m": -0.211,
-    "description": "gravi test 1 gravi test 1 gravi test 1 gravi test 1 gravi test 1 gravi test 1 gravi test 1 ",
+    "description": "Enter gravimeter description here (optional)",
       "calibration": [
       {
         "start_date": "2000-01-01",
         "end_date": "2023-12-31",
         "linear_factor": 1.0001,
-        "comment": "test1"
+        "comment": "First scale factor period."
       },
       {
         "start_date": "2024-01-01",
         "end_date": "2100-01-01",
         "linear_factor": 1.0040,
-        "comment": "test2"
+        "comment": "Scale factor determined in survey on 2023-12-06."
       }
     ]
   },
   {
     "type": "CG5",
     "manufacturer": "Scintrex",
-    "serial_number": "40602",
+    "serial_number": "12346",
     "code": "C",
     "height_offset_m": -0.211,
-    "description": "gravi test 1",
+    "description": "Enter description of the second gravimeter here",
     "calibration": [
       {
         "start_date": "2000-01-01",
-        "end_date": "2023-12-31",
+        "end_date": "2024-05-29",
         "linear_factor": 1.0001,
-        "comment": "test3"
+        "comment": "Scale factor 1"
       },
       {
         "start_date": "2024-05-30",
         "end_date": "2100-01-01",
         "linear_factor": 1.006,
-        "comment": ""
+        "comment": "Scale factor 2"
       }
     ]
   }

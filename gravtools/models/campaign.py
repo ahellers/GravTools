@@ -33,7 +33,7 @@ from gravtools.models.survey import Survey
 from gravtools.models.station import Station
 from gravtools.models.gravimeter import Gravimeters
 from gravtools.tides.correction_time_series import CorrectionTimeSeries
-from gravtools.settings import ADDITIVE_CONST_ABS_GRTAVITY, EXPORT_OBS_LIST_COLUMNS, \
+from gravtools.settings import ADDITIVE_CONST_ABS_GRAVITY, EXPORT_OBS_LIST_COLUMNS, \
     MAX_SD_FOR_EXPORT_TO_NSB_FILE, WRITE_COMMENT_TO_NSB, PICKLE_PROTOCOL_VERSION
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
@@ -782,7 +782,7 @@ class Campaign:
                     nsb_string += '{:10s} {:8s}  {:9.0f} {:3.0f} {:1s}{:>5s} {:4.0f} {:4.0f}\n'.format(
                         station_name,
                         date_str,
-                        row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRTAVITY,
+                        row['g_est_mugal'] + ADDITIVE_CONST_ABS_GRAVITY,
                         formal_error,
                         gravi.code,
                         comment_str,

@@ -26,7 +26,7 @@ GRAVIMETER_DATA_SOURCE_TYPES = {
 DEFAULT_GRAVIMETER_LINEAR_SCALE_FACTOR = 1.0
 
 # Additive constant for the determination of the full absolute gravity [µGal] from observed values:
-ADDITIVE_CONST_ABS_GRTAVITY = 9.8e8
+ADDITIVE_CONST_ABS_GRAVITY = 9.8e8
 
 SURVEY_DATA_SOURCE_TYPES = {
     'cg5_obs_file_txt': 'Scintrex CG5 observation file (text format)',
@@ -49,7 +49,7 @@ TIDE_CORRECTION_TYPES = {
 
 ATM_PRES_CORRECTION_TYPES = {
     'no_atm_pres_corr': 'No atmospheric pressure correction applied',
-    'iso_2533_1975': 'Atmopheric pressure correction using ISO 2533:1975 normal air pressure',
+    'iso_2533_1975': 'Atmospheric pressure correction using ISO 2533:1975 normal air pressure',
 }
 
 SCALE_CORRECTION_TYPES = {
@@ -165,7 +165,7 @@ SETUP_CALC_METHODS = {
 SETUP_SD_METHODS = {
     'sd_from_obs_file': 'Apply the standard deviations from observation files.',
     'sd_default_per_obs': 'Apply the default standard deviation to all individual observations.',
-    'sd_default_per_setup': 'Apply the default standard deviation to setup obsertvations.'
+    'sd_default_per_setup': 'Apply the default standard deviation to setup observations.'
 }
 
 # Available adjustment methods:
@@ -203,11 +203,11 @@ ITERATION_APPROACHES = {
     'Additive': 'Additive iteration approach'
 }
 
-# Treshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
-ANSERMET_DIFF_TRESHOLD = 1e-3
+# Threshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
+ANSERMET_DIFF_THRESHOLD = 1e-3
 
-# Treshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
-R_POPE_TEST_TRESHOLD = 1e-6
+# Threshold for the redundancy component of an observation in order to apply a pope test for outlier detection:
+R_POPE_TEST_THRESHOLD = 1e-6
 
 # GUI and Program options:
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
@@ -232,7 +232,7 @@ NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS = {
 # - Format string for datetime.strftime()
 Y_TICK_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
 
-# --- Gerneral color settings ---
+# --- General color settings ---
 DATUM_STATION_COLOR = (255, 204, 204)
 
 # --- Drift plots in the results tab: ---
@@ -259,7 +259,7 @@ CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
 VG_PLOT_MIN_HEIGHT_M = 0.0
 VG_PLOT_MAX_HEIGHT_M = 1.8
 VG_PLOT_HEIGHT_DELTA_M = 0.1
-# Number of datapoints plotted in the range betwen min. and max. height:
+# Number of datapoints plotted in the range between min. and max. height:
 VG_PLOT_NUM_ITEMS_VG_POLYNOMIAL = 100
 # Min. Y-range (default: [VG_PLOT_MIN_LOWER_L_RANGE, VG_PLOT_MIN_UPPER_Y_RANGE] = [-1, +1]):
 VG_PLOT_MIN_UPPER_Y_RANGE = 1.0
@@ -297,9 +297,8 @@ PICKLE_PROTOCOL_VERSION = 4
 # DEFAULT_EPSG_CODE = 4312  # 4312: MGI, lat/lon, Greenwich
 DEFAULT_EPSG_CODE = 4326  # 4326: WGS84h
 # Default filenames for shapefile export from the results tab:
-DEFUALT_FILENAME_OBERVATION_RESULTS_SHP = 'obs_results_'  # + <LSM run method>.shp
-DEFUALT_FILENAME_STATION_RESULTS_SHP = 'stat_results_'  # + <LSM run method>.shp
-
+DEFAULT_FILENAME_OBSERVATION_RESULTS_SHP = 'obs_results_'  # + <LSM run method>.shp
+DEFAULT_FILENAME_STATION_RESULTS_SHP = 'stat_results_'  # + <LSM run method>.shp
 
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----

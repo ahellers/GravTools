@@ -666,7 +666,7 @@ class LSM:
     #     return info_str
 
 
-def bin_redundacy_components(mat_r):
+def bin_redundancy_components(mat_r):
     """Bin redundancy components for easier interpretatzion.
 
     See: Skriptum AG2 (Navratil, TU Wien), p. 70.
@@ -675,7 +675,7 @@ def bin_redundacy_components(mat_r):
     number_obs_r_0_to_03 = 0  # Bad error control
     number_obs_r_03_to_07 = 0  # Good error control
     number_obs_r_07_1 = 0  # Very good error control, but observation may be redundant
-    number_obs_r_equal_1 = 0  # Observatiuon is redundant
+    number_obs_r_equal_1 = 0  # Observation is redundant
 
     results_dict = {}  # '': ''
 
@@ -719,7 +719,7 @@ def tau_test(mat_w, dof, alpha, mat_r):
     tau_test_result = []
     for idx, w in enumerate(mat_w):
         # Check, if redancy component is larger than threshold:
-        if mat_r[idx] > settings.R_POPE_TEST_TRESHOLD:
+        if mat_r[idx] > settings.R_POPE_TEST_THRESHOLD:
             if np.abs(w) > tau_crt:  # Equ. (6-36) in Caspary (1987)
                 tau_test_result.append('failed')
             else:
@@ -735,7 +735,6 @@ def create_hist(mat_v):
     residuals = [item for sublist in residuals for item in sublist]
     hist_residuals, bin_edges = np.histogram(residuals, bins=5)
     return hist_residuals, bin_edges
-
 
 def global_model_test(cf, dof, a_posteriori_variance_of_unit_weight, a_priori_variance_of_unit_weight):
     """Global model test based on the comparison of a posteriori and a priori variance of unit weight.

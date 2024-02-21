@@ -178,9 +178,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
-        self.set_up_obseration_plots_widget()
-        self.set_up_obseration_results_plots_widget()
-        self.set_up_obseration_results_plots_hist_method_comboBox()
+        self.set_up_observation_plots_widget()
+        self.set_up_observation_results_plots_widget()
+        self.set_up_observation_results_plots_hist_method_comboBox()
         self.set_up_drift_plot_widget()
         self.set_up_stations_map()
         self.set_up_vg_plot_widget()
@@ -217,9 +217,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.groupBox_gis_data.setEnabled(True)
             self.dlg_gis_export_settings.lineEdit_stat_coord_epsg.setText(f'{settings.DEFAULT_EPSG_CODE:d}')
             self.dlg_gis_export_settings.lineEdit_filename_obs_results_shp.setText(
-                f'{settings.DEFUALT_FILENAME_OBERVATION_RESULTS_SHP}')
+                f'{settings.DEFAULT_FILENAME_OBSERVATION_RESULTS_SHP}')
             self.dlg_gis_export_settings.lineEdit_filename_stat_results_shp.setText(
-                f'{settings.DEFUALT_FILENAME_STATION_RESULTS_SHP}')
+                f'{settings.DEFAULT_FILENAME_STATION_RESULTS_SHP}')
         else:
             self.groupBox_gis_data.setEnabled(False)
             self.action_Gis_Export_settings.setEnabled(False)
@@ -352,7 +352,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.campaign.remove_survey(survey_name=survey_name, verbose=IS_VERBOSE)
 
             # Stations tab:
-            self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
+            self.update_comboBox_stations_selection_survey(survey_names=self.campaign.survey_names)
             self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
             self.refresh_stations_table_model_and_view()
             # self.set_up_proxy_station_model()  # Re-connect the sort & filter proxy model to the station view.  # Required?
@@ -652,7 +652,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.set_up_proxy_station_model()  # Time consuming!!!!!
                 self.on_checkBox_filter_observed_stat_only_toggled(
                     state=self.checkBox_filter_observed_stat_only.checkState())
-                self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
+                self.update_comboBox_stations_selection_survey(survey_names=self.campaign.survey_names)
                 self.update_stations_map(auto_range=True)
                 # - gravimeters tab
                 self.clear_gravimeters_tab()
@@ -746,7 +746,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         Parameters
         ----------
-        auto_range : bool, optional (deault = `True`)
+        auto_range : bool, optional (default = `True`)
             `True` indicates that the stations map is auto-ranged in order to view all content items.
         """
         SCATTER_PLOT_SYMBOL_SIZE = 10
@@ -797,7 +797,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         scatter.addPoints(spots)
         self.stations_map.addItem(scatter)
 
-        # Add statione name labels:
+        # Add station name labels:
         from PyQt5.QtGui import QPainterPath, QFont, QTransform
 
         # Show station name labels next to the scatter plot symbols, if enabled via the GUI:
@@ -914,7 +914,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             Plot type selection. It `full` just the full vg polynomial (all degrees) is plotted. If `detail` the linear
             and the non-linear constituents are visualized separately in addition to post-fit residuals. Additionally,
             the mean setup heights are plotted.
-        plot_residuals : booblean, optional (default=True)
+        plot_residuals : boolean, optional (default=True)
             if `True`, the post-fit residuals are grouped per setup height (station) and plotted.
         stations : `None` (default) or list of station names (str)
             To filter for stations that will be displayed.
@@ -1217,7 +1217,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def plot_drift_lsm_nondiff(self, lsm_run, surveys=None, stations=None):
         """Create a drift plot for LSM estimation based on non-differential observations.
 
-        The drift plot shows the evaluated drift polynomial (estimated). Additionally the post-fit residuals are plotted
+        The drift plot shows the evaluated drift polynomial (estimated). Additionally, the post-fit residuals are plotted
         w.r.t. the drift polynomial, i.e. estimated drift at observation epochs - residuals at corresponding epochs.
 
         Notes
@@ -1572,12 +1572,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
         self.drift_plot.autoRange()
 
-    def set_up_obseration_results_plots_hist_method_comboBox(self):
+    def set_up_observation_results_plots_hist_method_comboBox(self):
         """Set up the histogram method combo box."""
         self.comboBox_results_obs_plot_hist_method.addItems(list(settings.NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS.keys()))
         # self.histogram_bin_method_selection(0)  # default: i. item in dict
 
-    def set_up_obseration_results_plots_widget(self):
+    def set_up_observation_results_plots_widget(self):
         """Set up `self.graphicsLayoutWidget_results_observations_plots`."""
         self.glw_obs_results = self.graphicsLayoutWidget_results_observations_plots
         self.glw_obs_results.setBackground('w')  # white background color
@@ -1585,13 +1585,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Create sub-plots:
         # - Initialize time series or histogram:
         if self.radioButton_results_obs_plot_timeseries.isChecked():
-            self.init_observation_results_plots_timerseries()
+            self.init_observation_results_plots_timeseries()
         elif self.radioButton_results_obs_plot_histogram.isChecked():
             self.init_observation_results_plots_histogram()
         else:
             pass
 
-    def init_observation_results_plots_timerseries(self):
+    def init_observation_results_plots_timeseries(self):
         """Initialize the time series plot for observation results."""
         if self.glw_obs_results.getItem(0, 0) is not None:
             self.glw_obs_results.removeItem(self.glw_obs_results.getItem(0, 0))
@@ -1637,7 +1637,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.plot_obs_results.clear()
         # Plot time series:
         if self.radioButton_results_obs_plot_timeseries.isChecked():
-            self.init_observation_results_plots_timerseries()
+            self.init_observation_results_plots_timeseries()
             if results_obs_df is not None:  # Data available for plotting
                 # Get data:
                 data = results_obs_df[column_name].values
@@ -1930,7 +1930,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
             # Update the list in the combobox:
             self.update_comboBox_results_selection_station(observed_stations=lsm_run.observed_stations)
-            self.update_comboBox_results_selection_surrvey(survey_names=list(lsm_run.setups.keys()))
+            self.update_comboBox_results_selection_survey(survey_names=list(lsm_run.setups.keys()))
 
             # Get data from LSM object and populate GUI widgets:
             # - Info tab:
@@ -2007,13 +2007,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_results_drift_table_view(idx, survey_name=None)
             self.update_results_vg_table_view(idx)
             self.update_comboBox_results_selection_station(observed_stations=[])
-            self.update_comboBox_results_selection_surrvey(survey_names=[])
+            self.update_comboBox_results_selection_survey(survey_names=[])
             self.update_results_obs_plots()
             self.update_drift_plot()
             self.update_vg_plot()
 
     def update_comboBox_results_obs_plot_select_data_column_based_on_table_view(self):
-        """Update the observaterion results data column selection combo box in the results tab."""
+        """Update the observation results data column selection combo box in the results tab."""
         self.comboBox_results_obs_plot_select_data_column.blockSignals(True)
         # Get data columns with data that is plottable from the observations results table view model:
         data_columns_dict = self.results_observation_model.get_plotable_columns()
@@ -2049,7 +2049,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.comboBox_results_selection_station.setCurrentText(current_station_name)
         self.comboBox_results_selection_station.blockSignals(False)
 
-    def update_comboBox_results_selection_surrvey(self, survey_names: list):
+    def update_comboBox_results_selection_survey(self, survey_names: list):
         """Update the survey selection combobox in the results tab, based on the current lsm run."""
         self.comboBox_results_selection_survey.blockSignals(True)
         # Get current item:
@@ -2061,7 +2061,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.comboBox_results_selection_survey.setCurrentText(current_survey_name)
         self.comboBox_results_selection_survey.blockSignals(False)
 
-    def update_comboBox_stations_selection_surrvey(self, survey_names: list):
+    def update_comboBox_stations_selection_survey(self, survey_names: list):
         """Update the survey selection combobox in the stations tab, based on the current surveys in the campaign."""
         self.comboBox_stations_plot_obs_map_surveys.blockSignals(True)
         # Get current item:
@@ -2249,7 +2249,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def run_parameter_estimation(self):
         """Run the parameter estimation process according to the defined estimation settings."""
-        num_of_lsm_runs_in_camapaign_before_adjustment = len(self.campaign.lsm_runs)
+        num_of_lsm_runs_in_campaign_before_adjustment = len(self.campaign.lsm_runs)
         try:
             # Check if setup data is prepared:
             flag_setup_data_available = False
@@ -2387,12 +2387,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
             # Delete failed lsm run object
-            self.campaign.lsm_runs = self.campaign.lsm_runs[0:num_of_lsm_runs_in_camapaign_before_adjustment]
+            self.campaign.lsm_runs = self.campaign.lsm_runs[0:num_of_lsm_runs_in_campaign_before_adjustment]
             self.statusBar().showMessage(f"Error! No parameters estimated.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
             # Delete failed lsm run object
-            self.campaign.lsm_runs = self.campaign.lsm_runs[0:num_of_lsm_runs_in_camapaign_before_adjustment]
+            self.campaign.lsm_runs = self.campaign.lsm_runs[0:num_of_lsm_runs_in_campaign_before_adjustment]
             self.statusBar().showMessage(f"Error! No parameters estimated.")
         else:
             # No errors when computing the setup data:
@@ -2410,11 +2410,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         flag_apply_delta_g = self.dlg_autoselect_settings.checkBox_delta_g.isChecked()
         flag_apply_duration = self.dlg_autoselect_settings.checkBox_duration.isChecked()
 
-        treshold_g_sd_mugal = self.dlg_autoselect_settings.spinBox_sd.value()
-        treshold_tilt_arcsec = self.dlg_autoselect_settings.spinBox_tilt.value()
-        treshold_delta_sd_mugal = self.dlg_autoselect_settings.spinBox_delta_g.value()
+        threshold_g_sd_mugal = self.dlg_autoselect_settings.spinBox_sd.value()
+        threshold_tilt_arcsec = self.dlg_autoselect_settings.spinBox_tilt.value()
+        threshold_delta_sd_mugal = self.dlg_autoselect_settings.spinBox_delta_g.value()
         delta_g_number_of_points = self.dlg_autoselect_settings.spinBox_n.value()
-        treshold_duration_sec = self.dlg_autoselect_settings.spinBox_duration.value()
+        threshold_duration_sec = self.dlg_autoselect_settings.spinBox_duration.value()
 
         if self.dlg_autoselect_settings.radioButton_ref_data_reduced_observations.isChecked():
             reference_data = 'reduced'
@@ -2437,22 +2437,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 return
 
         if flag_apply_duration:
-            surv.autselect_duration(threshold_sec=treshold_duration_sec, setup_id=setup_id, verbose=IS_VERBOSE)
+            surv.autselect_duration(threshold_sec=threshold_duration_sec, setup_id=setup_id, verbose=IS_VERBOSE)
         if flag_apply_tilt:
-            surv.autselect_tilt(threshold_arcsec=treshold_tilt_arcsec, setup_id=setup_id, verbose=IS_VERBOSE)
+            surv.autselect_tilt(threshold_arcsec=threshold_tilt_arcsec, setup_id=setup_id, verbose=IS_VERBOSE)
         if flag_apply_g_sd:
-            surv.autselect_g_sd(threshold_mugal=treshold_g_sd_mugal, obs_type=reference_data, setup_id=setup_id,
+            surv.autselect_g_sd(threshold_mugal=threshold_g_sd_mugal, obs_type=reference_data, setup_id=setup_id,
                                 verbose=IS_VERBOSE)
         if flag_apply_delta_g:
-            surv.autselect_delta_g(threshold_mugal=treshold_delta_sd_mugal, n_obs=delta_g_number_of_points,
+            surv.autselect_delta_g(threshold_mugal=threshold_delta_sd_mugal, n_obs=delta_g_number_of_points,
                                    obs_type=reference_data, setup_id=setup_id, verbose=IS_VERBOSE)
 
         # Update data visualization in GUI
         self.update_obs_table_view(survey_name, setup_id)
         self.plot_observations(survey_name)
-        self.update_obs_tree_widgget_from_observation_model()
+        self.update_obs_tree_widget_from_observation_model()
 
-    def update_obs_tree_widgget_from_observation_model(self):
+    def update_obs_tree_widget_from_observation_model(self):
         """Update observation tree widget by checking data in the observation model."""
         self.treeWidget_observations.blockSignals(True)  # Block any signals when changing the checked state
         survey_name = self.observation_model.data_survey_name
@@ -2632,10 +2632,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
                     # Save drift plot to PNG file:
                     # Reference: https://pyqtgraph.readthedocs.io/en/latest/exporting.html
-                    # - WARNING: Sometimes a linAlg error occurrs ('MAtrix singular') when trying to export the
+                    # - WARNING: Sometimes a linAlg error occurs ('Matrix singular') when trying to export the
                     #            drift plot. It is not possible at this point in the code to cath this error! Therefore,
                     #            the export of the drift plot is the last step in the file export procedure! This was
-                    #            at leat all other files can be written.
+                    #            at least all other files can be written.
                     try:
                         if dlg.checkBox_save_drift_plot_png.checkState() == Qt.Checked:
                             # To prevent an error the plot has to be shown first by bringing the drift plot tab to front:
@@ -2714,7 +2714,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.statusBar().showMessage(f"No exports.")
 
-    def set_up_obseration_plots_widget(self):
+    def set_up_observation_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
         l = self.GraphicsLayoutWidget_observations
         l.setBackground('w')  # white background color
@@ -2918,16 +2918,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Notes
         -----
         Whenever an observation data point is clicked the `keep_obs` flag toggles (True/False) and the marker (brush)
-        is set accordingly to visualize the situation in the observation timeseries plot. Additionally this flag is
+        is set accordingly to visualize the situation in the observation timeseries plot. Additionally, this flag is
         changed in the observation model data (dataframe accessed via `self.observation_model.get_data`) and the
         `dataChanged` signal is emitted. The signal triggers the method `self.on_observation_model_data_changed`
         where the observation tree view is changed accordingly and the `keep_ob` fag is set in the survey in the
-        campaign data (method: `self.campaign.surveys[<survey_nanem>].activate_observation()`).
+        campaign data (method: `self.campaign.surveys[<survey_name>].activate_observation()`).
         """
         try:
             # Get first selected point (only select ONE point!):
             spot_item = ev[0]  # <class 'pyqtgraph.graphicsItems.ScatterPlotItem.SpotItem'>
-            # Select item in observation_model and toggel the "keep_obs" state:
+            # Select item in observation_model and toggle the "keep_obs" state:
             row = self.observation_model.get_data.index[spot_item._index]
             if self.observation_model.get_data.at[row, 'keep_obs']:
                 self.observation_model.get_data.at[row, 'keep_obs'] = False
@@ -2992,9 +2992,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_tree_widget_item_changed(self, item, column):
         """Invoked whenever an item in th observation tree view is changed, e.g. if the check-state changes."""
         self.treeWidget_observations.blockSignals(True)  # To avoid recursive effects
-        # if IS_VERBOSE:
-        #     print('TreeView: itemChanged: ', item, column)
-        #     print(f' - CheckState of item "{item.text(0)}": {item.checkState(0)}')
         flag_checked_state = checked_state_to_bool(item.checkState(0))
         # Is parent (survey) or child (setup):
         if item.parent() is None:  # Is survey item
@@ -3029,8 +3026,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def update_obs_table_view(self, survey_name: str, setup_id: int):
         """Update the observation table view according to the selected survey and instrument setup."""
-        # if IS_VERBOSE:
-        #    print(f'survey name: {survey_name}; setup ID: {setup_id}')
         # Update the observation table view model according to the selected
         self.observation_model.update_view_model(survey_name,
                                                  setup_id,
@@ -3189,7 +3184,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # self.statusBar().showMessage(f"Changes in options not applied.")
 
     def apply_options(self):
-        """Apply options that are set in the options dialog."""
+        """Apply options that are set in the options' dialog."""
         if self.campaign is None:
             return
         # Simple or advanced GUI appearance:
@@ -3210,7 +3205,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         _ = self.dlg_about.exec()
 
     def on_menu_observations_corrections(self):
-        """Launch diaglog to select and apply observation corrections."""
+        """Launch dialog to select and apply observation corrections."""
         return_value = self.dlg_corrections.exec()
         if return_value == QDialog.Accepted and self.campaign:
             try:
@@ -3310,7 +3305,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.set_up_station_view_model()
             self.enable_station_view_options_based_on_model()
             self.set_up_proxy_station_model()
-            self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
+            self.update_comboBox_stations_selection_survey(survey_names=self.campaign.survey_names)
             self.update_stations_map(auto_range=True)
             # - Gravimeters tab:
             self.clear_gravimeters_tab()
@@ -3418,10 +3413,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         try:
             # WARNING: The following line is required in order to prevent a memory error with
             # "QSortFilterProxyModelPrivate::proxy_to_source()"
-            # => When adding stations to the model do the follwong steps:
+            # => When adding stations to the model do the following steps:
             # 1.) connect the station model ("self.station_model")
             # 2.) Add station data
-            # 3.) Set up an connect the proxy model for sorting and filtering ("self.set_up_proxy_station_model")
+            # 3.) Set up and connect the proxy model for sorting and filtering ("self.set_up_proxy_station_model")
             self.connect_station_model_to_table_view()
 
             # WARNING: Whenever new station data is loaded with "self.campaign.add_stations_from_oesgn_table_file",
@@ -3583,7 +3578,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.statusBar().showMessage(f"No survey data added.")
             return
 
-        self.update_comboBox_stations_selection_surrvey(survey_names=self.campaign.survey_names)
+        self.update_comboBox_stations_selection_survey(survey_names=self.campaign.survey_names)
 
         self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
 
@@ -3665,7 +3660,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.observation_model.update_view_model(survey_name_tree,
                                                              setup_id=None,
                                                              gui_simple_mode=self.dlg_options.gui_simple_mode)
-                    self.update_obs_tree_widgget_from_observation_model()
+                    self.update_obs_tree_widget_from_observation_model()
                 survey_name, setup_id = self.get_obs_tree_widget_selected_item()
                 self.update_obs_table_view(survey_name, setup_id)
                 self.plot_observations(survey_name)
@@ -3840,7 +3835,7 @@ class DialogGisExportSettings(QDialog, Ui_Dialog_gis_settings):
             # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
             output_dir_name = QDir.toNativeSeparators(output_dir_name)
             if IS_VERBOSE:
-                print(f'GIS output directory selectzed: {output_dir_name}')
+                print(f'GIS output directory selected: {output_dir_name}')
 
         # Check, if path exists:
         if os.path.isdir(output_dir_name):
@@ -3997,7 +3992,7 @@ def main():
     """Main program to start the GUI."""
     # Check out debug mode:
     if debugger_is_active():
-        print('==> Degugger is active! <==')
+        print('==> Debugger is active! <==')
         pd.set_option('display.max_columns', 150)
         pd.set_option('display.width', 1000)
         # pd.set_option('display.max_rows', 20)
