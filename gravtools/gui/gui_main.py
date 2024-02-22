@@ -2623,7 +2623,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     try:
                         if dlg.checkBox_write_log_file.checkState() == Qt.Checked:
                             filename_log = filename + '.log'
-                            self.campaign.write_log_file(filename=os.path.join(output_path, filename_log),
+                            self.campaign.write_log_file(filename_log=os.path.join(output_path, filename_log),
                                                          lsm_run_index=lsm_run_idx,
                                                          verbose=IS_VERBOSE)
                     except Exception as e:
