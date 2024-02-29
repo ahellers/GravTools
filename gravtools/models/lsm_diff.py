@@ -508,7 +508,7 @@ class LSMDiff(LSM):
                 self.log_str += tmp_str
 
         # outlier detection effectiveness (redundancy components)
-        diag_Qvv = np.diag(mat_Qvv)  # TODO: Still needed?
+        # diag_Qvv = np.diag(mat_Qvv)  # TODO: Still needed?
         # mat_R = np.diag(mat_P) * diag_Qvv
         # mat_R is exactly the same as "mat_r"
 

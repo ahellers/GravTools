@@ -396,7 +396,9 @@ class LSMNonDiff(LSM):
         mat_v = (mat_A @ mat_x) - mat_L  # Post-fit residuals
         mat_Qldld = mat_A @ mat_Qxx @ mat_A.T  # A posteriori Co-factor matrix of adjusted observations
         # mat_Qll = np.linalg.inv(mat_P)
+        mat_Qldld = misc.numpy_array_set_zero(mat_Qldld)
         mat_Qvv = mat_Qll - mat_Qldld  # Co-factor matrix of post-fit residuals
+        mat_Qvv = misc.numpy_array_set_zero(mat_Qvv)
 
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
         u = np.sum(np.diag((mat_P @ mat_Qldld)))  # number of unknown parameters (estimates)
@@ -422,6 +424,7 @@ class LSMNonDiff(LSM):
 
         # A posteriori variance of unit weight s02:
         dof = mat_A.shape[0] - mat_A.shape[1]  # degree of freedom
+        mat_v = misc.numpy_array_set_zero(mat_v, atol=1e-5)
         par_r = mat_v.T @ mat_P @ mat_v  # = v^T * P * v
         if dof == 0:
             # s02_a_posteriori_mugal2 = par_r[0][0]
@@ -443,7 +446,7 @@ class LSMNonDiff(LSM):
 
         # Convert co-factor matrices to covariance matrices (variances in diagonal vector)
         mat_Cvv = s02_a_posteriori_mugal2 * mat_Qvv  # A posteriori Covariance matrix of post-fit residuals
-        mat_Cxx = s02_a_posteriori_mugal2 * mat_Qxx  # A posteriori Covariance matrix of estimated paramaters
+        mat_Cxx = s02_a_posteriori_mugal2 * mat_Qxx  # A posteriori Covariance matrix of estimated parameters
         mat_Cldld = s02_a_posteriori_mugal2 * mat_Qldld  # A posteriori Covariance matrix of adjusted observations
         # diag_Qxx = np.diag(mat_Qxx)
 
@@ -451,8 +454,7 @@ class LSMNonDiff(LSM):
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
         # mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
-        mat_sd_vv = np.sqrt(
-            np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
+        mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
@@ -487,7 +489,12 @@ class LSMNonDiff(LSM):
         # Standardisierte Versesserungen (AG II, p. 66)
         # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
         # - Standardabweichung = 1 (standardisiert)
-        mat_w = mat_v[:, 0] / mat_sd_vv
+
+        mat_w = np.zeros(len(mat_v))
+        tmp_filter = ~np.isclose(mat_v[:, 0], 0.0)
+        mat_w[tmp_filter] = mat_v[tmp_filter, 0] / mat_sd_vv[tmp_filter]  # TODO: n-2023-01: Trotz tmp_filter => mat_sd_vv beinhaltet 0 => division by zero error!
+
+        # mat_w = mat_v[:, 0] / mat_sd_vv  # ToDo
 
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
