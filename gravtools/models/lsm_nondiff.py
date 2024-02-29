@@ -108,7 +108,8 @@ class LSMNonDiff(LSM):
                 The reference epoch is determined as the epoch of the first (active) observation in this survey.
             -  ref_epoch_delta_t_campaign_h : datetime object
                 Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
-                dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
+                dataframe. The reference epoch is determined as the epoch of the first (active) observation in the
+                campaign.
             - setup_df : Pandas DataFrame
                 Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
 
@@ -333,7 +334,7 @@ class LSMNonDiff(LSM):
                 mat_A0[obs_id, self.observed_stations.index(station_name)] = 1
                 # Partial derivative for drift polynomial including constant instrumental bias (pol. degree = 0):
                 for pd_drift_id in range(drift_pol_degree + 1):
-                    mat_A0[obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count*(drift_pol_degree + 1)] = \
+                    mat_A0[obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count * (drift_pol_degree + 1)] = \
                         delta_t_h ** pd_drift_id
 
                 # Log data in DataFrame:
@@ -377,7 +378,7 @@ class LSMNonDiff(LSM):
         mat_A = np.vstack((mat_A0, mat_Ac))  # Eq. (16)
         mat_L = np.vstack((mat_L0, mat_Lc))  # Eq. (16)
         mat_sig_ll = np.diag(np.hstack((mat_sig_ll0, mat_sig_llc)))
-        mat_Qll = mat_sig_ll / (sig0_mugal**2)
+        mat_Qll = mat_sig_ll / (sig0_mugal ** 2)
         mat_P = np.linalg.inv(mat_Qll)
 
         if verbose or self.write_log:
@@ -413,7 +414,7 @@ class LSMNonDiff(LSM):
         # Condition of normal equation matrix:
         if verbose or self.write_log:
             cond = np.linalg.cond(mat_N)
-            tmp_str = f'Condition of normal equation matix N = {cond:1.3f}\n'
+            tmp_str = f'Condition of normal equation matrix N = {cond:1.3f}\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:
@@ -450,7 +451,8 @@ class LSMNonDiff(LSM):
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
         # mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
-        mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
+        mat_sd_vv = np.sqrt(
+            np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
@@ -485,7 +487,7 @@ class LSMNonDiff(LSM):
         # Standardisierte Versesserungen (AG II, p. 66)
         # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
         # - Standardabweichung = 1 (standardisiert)
-        mat_w = mat_v[:,0] / mat_sd_vv
+        mat_w = mat_v[:, 0] / mat_sd_vv
 
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
@@ -586,9 +588,10 @@ class LSMNonDiff(LSM):
             tmp_str = f'\n'
             tmp_str += f' - Station data:\n'
             tmp_str += self.stat_obs_df[['station_name', 'is_datum', 'g_mugal', 'g_est_mugal',
-                                                'diff_g_est_mugal', 'sd_g_mugal',
-                                                'sd_g_est_mugal', 'se_g_est_mugal']].to_string(index=False,
-                                                                             float_format=lambda x: '{:.1f}'.format(x))
+                                         'diff_g_est_mugal', 'sd_g_mugal',
+                                         'sd_g_est_mugal', 'se_g_est_mugal']].to_string(index=False,
+                                                                                        float_format=lambda
+                                                                                            x: '{:.1f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Drift polynomial coefficients:\n'
             tmp_str += self.drift_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
@@ -598,9 +601,10 @@ class LSMNonDiff(LSM):
                 filter_tmp = self.setup_obs_df['survey_name'] == survey_name
                 tmp_str += f'   - Survey: {survey_name}\n'
             tmp_str += self.setup_obs_df.loc[filter_tmp, ['station_name', 'g_obs_mugal',
-                                                            'sd_g_obs_mugal', 'sd_g_obs_est_mugal',
-                                                            'v_obs_est_mugal']].to_string(index=False,
-                                                                                       float_format=lambda x: '{:.1f}'.format(x))
+                                                          'sd_g_obs_mugal', 'sd_g_obs_est_mugal',
+                                                          'v_obs_est_mugal']].to_string(index=False,
+                                                                                        float_format=lambda
+                                                                                            x: '{:.1f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Pseudo observations at datum stations (constraints):\n'
             tmp_str += f'Station name  sd [µGal]   v [µGal]   w [µGal]   r [0-1]    Tau test result\n'
@@ -663,7 +667,7 @@ class LSMNonDiff(LSM):
         setup_obs_df.drop(columns=['epoch_dt'], inplace=True)  # datetime fields cannot be converted to shapefiles!
 
         setup_obs_gdf = geopandas.GeoDataFrame(setup_obs_df,
-                                              geometry=geopandas.points_from_xy(setup_obs_df['long_deg'],
-                                                                                setup_obs_df['lat_deg']),
-                                              crs=epsg_code)
+                                               geometry=geopandas.points_from_xy(setup_obs_df['long_deg'],
+                                                                                 setup_obs_df['lat_deg']),
+                                               crs=epsg_code)
         setup_obs_gdf.to_file(filename)

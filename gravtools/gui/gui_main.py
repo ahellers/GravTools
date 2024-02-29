@@ -1631,7 +1631,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         Notes
         -----
-        If input parameters `` or/and `` is/are `None` or '', the plot content is deleted and the plot is reseted.
+        If input parameters `` or/and `` is/are `None` or '', the plot content is deleted and the plot is reset.
         """
         # Clear plot in any case:
         self.plot_obs_results.clear()
@@ -1664,6 +1664,24 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if isinstance(data, object):
                     data = data.astype(float)
                 y, x = np.histogram(data, bins=bins)
+                if bins in ['fd', 'auto']:
+                    if len(x) > settings.HIST_MAX_BIN_NUM:
+                        QMessageBox.warning(self, 'Warning!', f'More the binning method ({bins}) is '
+                                                              f'creating {len(x)} bins. Whenever more than '
+                                                              f'{settings.HIST_MAX_BIN_NUM:} bins are created the '
+                                                              f'backup binning method '
+                                                              f'({settings.HIST_BACKUP_BIN_METHOD}) is used instead.')
+                        bins = settings.HIST_BACKUP_BIN_METHOD
+                        y, x = np.histogram(data, bins=bins)
+                        self.comboBox_results_obs_plot_hist_method.setCurrentText(settings.HIST_BACKUP_BIN_METHOD)
+
+                # np.lib.histograms._get_bin_edges(data, bins='fd', range=None, weights=None)[0].shape # TODO! Viel zu viele bins!
+                # np.lib.histograms._hist_bin_fd(data, range='None')  # => Gibt die bin-szie => VIEL ZU KLEIN! 3.031054002380928e-06!
+                # numpy '1.26.0'
+                # Altes Problem mit "fd" bei sehr kleinen Werten! Siehe: https://github.com/numpy/numpy/issues/11879
+                # Lösung: Check max. Anzahl an bins (in setiings.py). Dann "sturges" statt "fd"
+
+
                 self.plot_obs_results.plot(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
                 self.plot_obs_results.showGrid(x=True, y=True)
 

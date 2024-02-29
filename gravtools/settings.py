@@ -228,6 +228,13 @@ NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS = {
     'Num. of bins': 'User defined number of bins (min. = 2, max. = 1000).'
 }
 
+# Maximum number of bina allowed when using "auto" or "fd" binning method:
+HIST_MAX_BIN_NUM = 100
+
+# Backup binning method if more than HIST_MAX_BIN_NUM bins are created:
+HIST_BACKUP_BIN_METHOD = 'doane'
+
+
 # Time label format for y-ticks in time-series plots:
 # - Format string for datetime.strftime()
 Y_TICK_DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
