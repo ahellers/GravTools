@@ -20,6 +20,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import pytz
+
 # from matplotlib import pyplot as plt
 
 # optional imports:
@@ -62,6 +63,7 @@ class LSMDiff(LSM):
         'sd_g_diff_mugal': 'float',
         'sd_g_diff_est_mugal': 'float',
         'v_diff_mugal': 'float',  # Post fit residuals
+        'sd_v_diff_mugal': 'float',  # SD of post-fit residuals
         'w_diff_mugal': 'float',
         'r_diff_obs': 'float',
         'tau_test_result': 'str',
@@ -81,6 +83,7 @@ class LSMDiff(LSM):
         'sd_g_diff_mugal': 'sd_dg',
         'sd_g_diff_est_mugal': 'sd_dg_est',
         'v_diff_mugal': 'v',  # Post fit residuals
+        'sd_v_diff_mugal': 'sd_v',  # Post fit residuals
         'w_diff_mugal': 'w',
         'r_diff_obs': 'r',
         'tau_test_result': 'tau_test',
@@ -391,6 +394,7 @@ class LSMDiff(LSM):
                                                   None_list_placeholder,
                                                   None_list_placeholder,
                                                   None_list_placeholder,
+                                                  None_list_placeholder,
                                                   )),
                                          columns=self._SETUP_DIFF_COLUMNS)
         self.setup_obs_df = self.setup_obs_df.astype(self._SETUP_DIFF_COLUMNS_DTYPES)
@@ -426,9 +430,12 @@ class LSMDiff(LSM):
         mat_Qxx = np.linalg.inv(mat_N)  # Co-factor matrix of estimates
         mat_x = mat_Qxx @ (mat_A.T @ mat_P @ mat_L)  # Estimates
         mat_v = (mat_A @ mat_x) - mat_L  # Post-fit residuals
+        mat_v = misc.numpy_array_set_zero(mat_v)
         mat_Qldld = mat_A @ mat_Qxx @ mat_A.T  # A posteriori Co-factor matrix of adjusted observations
+        mat_Qldld = misc.numpy_array_set_zero(mat_Qldld)
         # mat_Qll = np.linalg.inv(mat_P)
         mat_Qvv = mat_Qll - mat_Qldld  # Co-factor matrix of post-fit residuals
+        mat_Qvv = misc.numpy_array_set_zero(mat_Qvv)
 
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
         u = np.sum(np.diag((mat_P @ mat_Qldld)))  # number of unknown parameters (estimates)
@@ -475,16 +482,26 @@ class LSMDiff(LSM):
 
         # Convert co-factor matrices to covariance matrices (variances in diagonal vector)
         mat_Cvv = s02_a_posteriori_mugal2 * mat_Qvv  # A posteriori Covariance matrix of post-fit residuals
-        mat_Cxx = s02_a_posteriori_mugal2 * mat_Qxx  # A posteriori Covariance matrix of estimated paramaters
+        mat_Cxx = s02_a_posteriori_mugal2 * mat_Qxx  # A posteriori Covariance matrix of estimated parameters
         mat_Cldld = s02_a_posteriori_mugal2 * mat_Qldld  # A posteriori Covariance matrix of adjusted observations
         # diag_Qxx = np.diag(mat_Qxx)
 
         # Calculate standard deviations:
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
-        # mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
-        mat_sd_vv = np.sqrt(
-            np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occure!
+
+        # A posteriori SD of residuals:
+        # - Check just in case, whether all diagonal elements of the Qvv matrix are positive!
+        if (np.diag(mat_Qvv) < 0).any():
+            mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))
+            if verbose or self.write_log:
+                tmp_str = f' - Warning: At least one diagonal element of the Qvv matrix is negative!\n'
+                if verbose:
+                    print(tmp_str)
+                if self.write_log:
+                    self.log_str += tmp_str
+        else:
+            mat_sd_vv = np.sqrt(np.diag(mat_Cvv))
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
@@ -508,7 +525,7 @@ class LSMDiff(LSM):
                 self.log_str += tmp_str
 
         # outlier detection effectiveness (redundancy components)
-        # diag_Qvv = np.diag(mat_Qvv)  # TODO: Still needed?
+        # diag_Qvv = np.diag(mat_Qvv)
         # mat_R = np.diag(mat_P) * diag_Qvv
         # mat_R is exactly the same as "mat_r"
 
@@ -516,10 +533,12 @@ class LSMDiff(LSM):
         # - AG II, pp. 66-71
         mat_r = np.diag(mat_Qvv @ mat_P)
 
-        # Standardisierte Versesserungen (AG II, p. 66)
-        # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
-        # - Standardabweichung = 1 (standardisiert)
-        mat_w = mat_v[:, 0] / mat_sd_vv
+        # Standardized residuals used as test statistics for outlier detection:
+        # - AG II, p. 66
+        # - Taking care of zero-elements in the mat_sd_vv vector to prevent division by zero errors!
+        mat_w = np.zeros(len(mat_v))
+        tmp_filter = ~np.isclose(mat_v[:, 0], 0.0)
+        mat_w[tmp_filter] = mat_v[tmp_filter, 0] / mat_sd_vv[tmp_filter]
 
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
@@ -556,6 +575,8 @@ class LSMDiff(LSM):
         sd_pseudo_obs_mugal = mat_sd_ldld[number_of_diff_obs:]
         v_diff_obs_mugal = mat_v[:number_of_diff_obs, 0]
         v_pseudo_obs_mugal = mat_v[number_of_diff_obs:, 0]
+        sd_v_diff_obs_mugal = mat_sd_vv[:number_of_diff_obs]
+        # sd_v_pseudo_obs_mugal = mat_sd_vv[number_of_diff_obs:]  # Not used
         w_diff_mugal = mat_w[:number_of_diff_obs]
         w_pseudo_obs_mugal = mat_w[number_of_diff_obs:]
         r_diff_obs = mat_r[:number_of_diff_obs]
@@ -566,7 +587,8 @@ class LSMDiff(LSM):
             filter_tmp = self.stat_obs_df['station_name'] == stat_name
             self.stat_obs_df.loc[filter_tmp, 'g_est_mugal'] = g_est_mugal[idx]
             self.stat_obs_df.loc[filter_tmp, 'sd_g_est_mugal'] = sd_g_est_mugal[idx]
-            self.stat_obs_df.loc[filter_tmp, 'se_g_est_mugal'] = np.sqrt(sd_g_est_mugal[idx]**2 + noise_floor_mugal**2)
+            self.stat_obs_df.loc[filter_tmp, 'se_g_est_mugal'] = np.sqrt(
+                sd_g_est_mugal[idx] ** 2 + noise_floor_mugal ** 2)
         # Calculate differences to estimates:
         self.stat_obs_df['diff_g_est_mugal'] = self.stat_obs_df['g_est_mugal'] - self.stat_obs_df['g_mugal']
         self.stat_obs_df['diff_se_g_est_mugal'] = self.stat_obs_df['se_g_est_mugal'] - self.stat_obs_df['sd_g_mugal']
@@ -606,6 +628,7 @@ class LSMDiff(LSM):
         for idx, v_diff_mugal in enumerate(v_diff_obs_mugal):
             filter_tmp = self.setup_obs_df['diff_obs_id'] == idx
             self.setup_obs_df.loc[filter_tmp, 'v_diff_mugal'] = v_diff_mugal
+            self.setup_obs_df.loc[filter_tmp, 'sd_v_diff_mugal'] = sd_v_diff_obs_mugal[idx]
             self.setup_obs_df.loc[filter_tmp, 'sd_g_diff_est_mugal'] = sd_diff_obs_mugal[idx]
             self.setup_obs_df.loc[filter_tmp, 'w_diff_mugal'] = w_diff_mugal[idx]  # standardized residuals
             self.setup_obs_df.loc[filter_tmp, 'r_diff_obs'] = r_diff_obs[
@@ -619,7 +642,8 @@ class LSMDiff(LSM):
             tmp_str += self.stat_obs_df[['station_name', 'is_datum', 'g_mugal', 'g_est_mugal',
                                          'diff_g_est_mugal', 'sd_g_mugal',
                                          'sd_g_est_mugal', 'se_g_est_mugal']].to_string(index=False,
-                                                                      float_format=lambda x: '{:.1f}'.format(x))
+                                                                                        float_format=lambda
+                                                                                            x: '{:.1f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Drift polynomial coefficients:\n'
             tmp_str += self.drift_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
