@@ -456,6 +456,7 @@ class LSMNonDiff(LSM):
         # Calculate standard deviations:
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
+
         # A posteriori SD of residuals:
         # - Check just in case, whether all diagonal elements of the Qvv matrix are positive!
         if (np.diag(mat_Qvv) < 0).any():
