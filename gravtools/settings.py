@@ -203,6 +203,9 @@ ITERATION_APPROACHES = {
     'Additive': 'Additive iteration approach'
 }
 
+# Absolute tolerance for testing whether a value is equal to zero:
+IS_ZERO_ABS_TOLERANCE = 1e-6
+
 # Threshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
 ANSERMET_DIFF_THRESHOLD = 1e-3
 

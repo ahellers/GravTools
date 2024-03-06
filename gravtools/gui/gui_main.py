@@ -1665,6 +1665,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     data = data.astype(float)
                 y, x = np.histogram(data, bins=bins)
                 if bins in ['fd', 'auto']:
+                    # This check is required, because the fd binning method creates too many bins in some cases. This
+                    # happens whenever the data contains many values that are nearly identical, e.g. when adjusting
+                    # surveys with low redundancy and many residuals that are (close to) zero. This issue is
+                    # documented here: https://github.com/numpy/numpy/issues/11879
                     if len(x) > settings.HIST_MAX_BIN_NUM:
                         QMessageBox.warning(self, 'Warning!', f'More the binning method ({bins}) is '
                                                               f'creating {len(x)} bins. Whenever more than '
@@ -1674,13 +1678,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         bins = settings.HIST_BACKUP_BIN_METHOD
                         y, x = np.histogram(data, bins=bins)
                         self.comboBox_results_obs_plot_hist_method.setCurrentText(settings.HIST_BACKUP_BIN_METHOD)
-
-                # np.lib.histograms._get_bin_edges(data, bins='fd', range=None, weights=None)[0].shape # TODO! Viel zu viele bins!
-                # np.lib.histograms._hist_bin_fd(data, range='None')  # => Gibt die bin-szie => VIEL ZU KLEIN! 3.031054002380928e-06!
-                # numpy '1.26.0'
-                # Altes Problem mit "fd" bei sehr kleinen Werten! Siehe: https://github.com/numpy/numpy/issues/11879
-                # Lösung: Check max. Anzahl an bins (in setiings.py). Dann "sturges" statt "fd"
-
 
                 self.plot_obs_results.plot(x, y, stepMode=True, fillLevel=0, brush=(0, 0, 255, 80))
                 self.plot_obs_results.showGrid(x=True, y=True)
@@ -4013,6 +4010,7 @@ def main():
         print('==> Debugger is active! <==')
         pd.set_option('display.max_columns', 150)
         pd.set_option('display.width', 1000)
+        np.set_printoptions(linewidth=300)
         # pd.set_option('display.max_rows', 20)
 
     # Create the application

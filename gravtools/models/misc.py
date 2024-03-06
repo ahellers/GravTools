@@ -38,6 +38,7 @@ def get_nonunique_items(lst: list) -> list:
     """
     return [item for item, count in Counter(lst).items() if count > 1]
 
+
 def unique_ordered_list(seq: list) -> list:
     """Returns a unique list whilst keeping the order.
 
@@ -119,6 +120,7 @@ def time_it(func):
             print(f'time_it==> {func.__name__}: execution time: {end_ if end_ > 0 else 0} ms')
     return _time_it
 
+
 def conditional_decorator(dec, condition):
     """Generic conditional decorator.
 
@@ -135,4 +137,21 @@ def conditional_decorator(dec, condition):
             return func
         return dec(func)
     return decorator
+
+
+def numpy_array_set_zero(input_array, atol=np.nan):
+    """Set all values to 0.0 which are close to zero.
+
+    Parameters
+    ----------
+    input_array : `np.array`
+        Input numpy array.
+    atol : float, optional (default=`np.nan`)
+        The absolute tolerance parameter of numpy.isclose (see numpy documentation).
+    """
+    if np.isnan(atol):
+        input_array[np.isclose(input_array, 0.0)] = 0.0
+    else:
+        input_array[np.isclose(input_array, 0.0, atol=atol)] = 0.0
+    return input_array
 
