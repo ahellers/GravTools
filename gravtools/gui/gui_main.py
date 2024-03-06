@@ -132,6 +132,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
         self.pushButton_results_delete_lsm_run.pressed.connect(self.on_pushbutton_results_delete_lsm_run)
+        self.pushButton_results_delete_all_lsm_runs.pressed.connect(self.on_pushbutton_results_delete_all_lsm_runs)
         self.pushButton_results_export_shapefile.pressed.connect(self.on_pushButton_results_export_shapefile)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
         self.action_from_oesgn_table.triggered.connect(self.on_menu_file_load_stations_from_oesgn_table)
@@ -175,6 +176,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.display_station_results_statistics)
         self.tableView_surveys.customContextMenuRequested.connect(self.tableView_surveys_right_click)
         self.treeWidget_gravimeters.itemSelectionChanged.connect(self.gravimeters_tree_widget_item_selection_changed)
+        self.pushButton_surveys_disable_all.pressed.connect(self.pushbutton_surveys_disable_all_pressed)
+        self.pushButton_surveys_enable_all.pressed.connect(self.pushbutton_surveys_enable_all_pressed)
 
         # Set up GUI items and widgets:
         self.set_up_survey_tree_widget()
@@ -242,6 +245,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Inits misc:
         self.station_colors_dict_results = {}  # set in self.update_results_tab()
+
+    def pushbutton_surveys_enable_all_pressed(self):
+        """Invoked when pressing the button"""
+        if self.campaign is not None:
+            changed_surveys = self.campaign.activate_all_surveys(verbose=IS_VERBOSE)
+            for survey_name in changed_surveys:
+                self.survey_model.emit_data_changed_survey(survey_name=survey_name)
+
+    def pushbutton_surveys_disable_all_pressed(self):
+        """Invoked when pressing the button"""
+        if self.campaign is not None:
+            changed_surveys = self.campaign.deactivate_all_surveys(verbose=IS_VERBOSE)
+            for survey_name in changed_surveys:
+                self.survey_model.emit_data_changed_survey(survey_name=survey_name)
 
     def populate_gravimeters_tree_widget(self):
         """Populate the gravimeters tree widget."""
@@ -391,13 +408,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                         child_item_idx).setSelected()
             self.enable_menu_observations_based_on_campaign_data()
             self.set_up_survey_view_model()
-
-            # TODO: Handle results!
-            # Problem: Wenn man einen Survey entfernt, so kommt es zu Fehlermeldungen, wenn man bestehende Ergebnisse
-            # dieses Surveys im Results tab anzeigen möchte! Offenbar wird hierbei auf campaing.surveys zugegriffen.
-            # Das muss geändert werden, so dass sämtliche Daten, die zur Visualisierung der Ergebnisse nötig sind,
-            # im LSM object gespeichert werden und dort zur Verfügung stehen.
-
             self.statusBar().showMessage(
                 f'Survey "{survey_name}" removed from campaign.')
 
@@ -2110,6 +2120,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def on_pushbutton_results_delete_lsm_run(self):
         """Delete the lsm object with index `idx` in the campaign."""
+        if self.campaign is None:
+            return
         idx, time_str = self.get_selected_lsm_run()
         if idx == -1:  # combo box is empty => No lsm run available!
             QMessageBox.warning(self, 'Warning!', 'No LSM adjustment run to be deleted!')
@@ -2132,6 +2144,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.update_results_tab()
             else:
                 pass
+
+    def on_pushbutton_results_delete_all_lsm_runs(self):
+        """Delete all LSM runs in the campaign."""
+        if self.campaign is None:
+            return
+        number_of_lsm_runs = self.campaign.number_of_lsm_runs
+        if number_of_lsm_runs == 0:
+            self.statusBar().showMessage(f'No LSM runs available to delete.')
+            return
+        msg_text = f'Do you really want to delete all {number_of_lsm_runs} LSM runs?'
+        reply = QMessageBox.question(self,
+                                     'Delete all LSM runs?',
+                                     msg_text,
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            try:
+                self.campaign.delete_all_lsm_runs()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+                self.statusBar().showMessage(f'No LSM runs deleted.')
+            else:
+                self.statusBar().showMessage(f'{number_of_lsm_runs} LSM runs deleted.')
+                self.update_results_tab()
+        else:
+            self.statusBar().showMessage(f'No LSM runs deleted.')
 
     def get_selected_lsm_run(self):
         """Get the selected lsm run in the results tab."""
