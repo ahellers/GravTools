@@ -203,6 +203,9 @@ ITERATION_APPROACHES = {
     'Additive': 'Additive iteration approach'
 }
 
+# Absolute tolerance for testing whether a value is equal to zero:
+IS_ZERO_ABS_TOLERANCE = 1e-6
+
 # Threshold for the "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
 ANSERMET_DIFF_THRESHOLD = 1e-3
 
@@ -227,6 +230,13 @@ NUMPY_HISTOGRAM_BIN_EDGES_OPTIONS = {
     'sqrt': 'Square root (of data size) estimator, used by Excel and other programs for its speed and simplicity.',
     'Num. of bins': 'User defined number of bins (min. = 2, max. = 1000).'
 }
+
+# Maximum number of bina allowed when using "auto" or "fd" binning method:
+HIST_MAX_BIN_NUM = 100
+
+# Backup binning method if more than HIST_MAX_BIN_NUM bins are created:
+HIST_BACKUP_BIN_METHOD = 'doane'
+
 
 # Time label format for y-ticks in time-series plots:
 # - Format string for datetime.strftime()

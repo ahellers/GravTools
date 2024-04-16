@@ -57,7 +57,8 @@ class LSMNonDiff(LSM):
         'g_obs_mugal': 'float',
         'sd_g_obs_mugal': 'float',
         'sd_g_obs_est_mugal': 'float',
-        'v_obs_est_mugal': 'float',  # Post fit residuals
+        'v_obs_est_mugal': 'float',  # Post-fit residuals
+        'sd_v_obs_est_mugal': 'float',  # SD of post-fit residuals
         'w_obs_est_mugal': 'float',
         'r_obs_est': 'float',
         'tau_test_result': 'str',
@@ -74,7 +75,8 @@ class LSMNonDiff(LSM):
         'g_obs_mugal': 'g',
         'sd_g_obs_mugal': 'sd_g',
         'sd_g_obs_est_mugal': 'sd_g_est',
-        'v_obs_est_mugal': 'v',  # Post fit residuals
+        'v_obs_est_mugal': 'v',  # Post-fit residuals
+        'sd_v_obs_est_mugal': 'sd_v',  # SD of post-fit residuals
         'w_obs_est_mugal': 'w',
         'r_obs_est': 'r',
         'tau_test_result': 'tau_test',
@@ -108,7 +110,8 @@ class LSMNonDiff(LSM):
                 The reference epoch is determined as the epoch of the first (active) observation in this survey.
             -  ref_epoch_delta_t_campaign_h : datetime object
                 Reference epoch for the relative reference times in the column `delta_t_campaign_h` in the `setup_df`
-                dataframe. The reference epoch is determined as the epoch of the first (active) observation in the campaign.
+                dataframe. The reference epoch is determined as the epoch of the first (active) observation in the
+                campaign.
             - setup_df : Pandas DataFrame
                 Pandas dataframes containing the observation data (see :py:obj:`gravtools.Survey.setup_df`).
 
@@ -333,7 +336,7 @@ class LSMNonDiff(LSM):
                 mat_A0[obs_id, self.observed_stations.index(station_name)] = 1
                 # Partial derivative for drift polynomial including constant instrumental bias (pol. degree = 0):
                 for pd_drift_id in range(drift_pol_degree + 1):
-                    mat_A0[obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count*(drift_pol_degree + 1)] = \
+                    mat_A0[obs_id, pd_drift_col_offset + pd_drift_id + 1 + survey_count * (drift_pol_degree + 1)] = \
                         delta_t_h ** pd_drift_id
 
                 # Log data in DataFrame:
@@ -358,6 +361,7 @@ class LSMNonDiff(LSM):
                                                   None_list_placeholder,
                                                   None_list_placeholder,
                                                   None_list_placeholder,
+                                                  None_list_placeholder,
                                                   )),
                                          columns=self._SETUP_OBS_COLUMNS)
         self.setup_obs_df = self.setup_obs_df.astype(self._SETUP_OBS_COLUMNS_DTYPES)
@@ -377,7 +381,7 @@ class LSMNonDiff(LSM):
         mat_A = np.vstack((mat_A0, mat_Ac))  # Eq. (16)
         mat_L = np.vstack((mat_L0, mat_Lc))  # Eq. (16)
         mat_sig_ll = np.diag(np.hstack((mat_sig_ll0, mat_sig_llc)))
-        mat_Qll = mat_sig_ll / (sig0_mugal**2)
+        mat_Qll = mat_sig_ll / (sig0_mugal ** 2)
         mat_P = np.linalg.inv(mat_Qll)
 
         if verbose or self.write_log:
@@ -393,9 +397,12 @@ class LSMNonDiff(LSM):
         mat_Qxx = np.linalg.inv(mat_N)  # Co-factor matrix of estimates
         mat_x = mat_Qxx @ (mat_A.T @ mat_P @ mat_L)  # Estimates
         mat_v = (mat_A @ mat_x) - mat_L  # Post-fit residuals
+        mat_v = misc.numpy_array_set_zero(mat_v, atol=1e-4)
         mat_Qldld = mat_A @ mat_Qxx @ mat_A.T  # A posteriori Co-factor matrix of adjusted observations
         # mat_Qll = np.linalg.inv(mat_P)
+        mat_Qldld = misc.numpy_array_set_zero(mat_Qldld)
         mat_Qvv = mat_Qll - mat_Qldld  # Co-factor matrix of post-fit residuals
+        mat_Qvv = misc.numpy_array_set_zero(mat_Qvv)
 
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
         u = np.sum(np.diag((mat_P @ mat_Qldld)))  # number of unknown parameters (estimates)
@@ -413,7 +420,7 @@ class LSMNonDiff(LSM):
         # Condition of normal equation matrix:
         if verbose or self.write_log:
             cond = np.linalg.cond(mat_N)
-            tmp_str = f'Condition of normal equation matix N = {cond:1.3f}\n'
+            tmp_str = f'Condition of normal equation matrix N = {cond:1.3f}\n'
             if verbose:
                 print(tmp_str)
             if self.write_log:
@@ -442,15 +449,26 @@ class LSMNonDiff(LSM):
 
         # Convert co-factor matrices to covariance matrices (variances in diagonal vector)
         mat_Cvv = s02_a_posteriori_mugal2 * mat_Qvv  # A posteriori Covariance matrix of post-fit residuals
-        mat_Cxx = s02_a_posteriori_mugal2 * mat_Qxx  # A posteriori Covariance matrix of estimated paramaters
+        mat_Cxx = s02_a_posteriori_mugal2 * mat_Qxx  # A posteriori Covariance matrix of estimated parameters
         mat_Cldld = s02_a_posteriori_mugal2 * mat_Qldld  # A posteriori Covariance matrix of adjusted observations
         # diag_Qxx = np.diag(mat_Qxx)
 
         # Calculate standard deviations:
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
-        # mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
-        mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
+
+        # A posteriori SD of residuals:
+        # - Check just in case, whether all diagonal elements of the Qvv matrix are positive!
+        if (np.diag(mat_Qvv) < 0).any():
+            mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))
+            if verbose or self.write_log:
+                tmp_str = f' - Warning: At least one diagonal element of the Qvv matrix is negative!\n'
+                if verbose:
+                    print(tmp_str)
+                if self.write_log:
+                    self.log_str += tmp_str
+        else:
+            mat_sd_vv = np.sqrt(np.diag(mat_Cvv))
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
@@ -482,10 +500,12 @@ class LSMNonDiff(LSM):
         # - AG II, pp. 66-71
         mat_r = np.diag(mat_Qvv @ mat_P)
 
-        # Standardisierte Versesserungen (AG II, p. 66)
-        # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
-        # - Standardabweichung = 1 (standardisiert)
-        mat_w = mat_v[:,0] / mat_sd_vv
+        # Standardized residuals used as test statistics for outlier detection:
+        # - AG II, p. 66
+        # - Taking care of zero-elements in the mat_sd_vv vector to prevent division by zero errors!
+        mat_w = np.zeros(len(mat_v))
+        tmp_filter = ~np.isclose(mat_v[:, 0], 0.0)
+        mat_w[tmp_filter] = mat_v[tmp_filter, 0] / mat_sd_vv[tmp_filter]
 
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
@@ -521,7 +541,9 @@ class LSMNonDiff(LSM):
         sd_g_obs_est_mugal = mat_sd_ldld[:number_of_observations]
         sd_pseudo_obs_est_mugal = mat_sd_ldld[number_of_observations:]
         v_obs_est_mugal = mat_v[:number_of_observations, 0]
+        sd_v_obs_est_mugal = mat_sd_vv[:number_of_observations]
         v_pseudo_obs_mugal = mat_v[number_of_observations:, 0]
+        # sd_v_pseudo_obs_mugal = mat_sd_vv[number_of_observations:]  # Not used
         w_obs_est_mugal = mat_w[:number_of_observations]
         w_pseudo_obs_mugal = mat_w[number_of_observations:]
         r_obs_est = mat_r[:number_of_observations]
@@ -576,6 +598,7 @@ class LSMNonDiff(LSM):
         for idx, v_obs_mugal in enumerate(v_obs_est_mugal):
             filter_tmp = self.setup_obs_df['obs_id'] == idx
             self.setup_obs_df.loc[filter_tmp, 'v_obs_est_mugal'] = v_obs_mugal
+            self.setup_obs_df.loc[filter_tmp, 'sd_v_obs_est_mugal'] = sd_v_obs_est_mugal[idx]
             self.setup_obs_df.loc[filter_tmp, 'sd_g_obs_est_mugal'] = sd_g_obs_est_mugal[idx]
             self.setup_obs_df.loc[filter_tmp, 'w_obs_est_mugal'] = w_obs_est_mugal[idx]  # standardized residuals
             self.setup_obs_df.loc[filter_tmp, 'r_obs_est'] = r_obs_est[idx]  # redundancy components
@@ -586,9 +609,10 @@ class LSMNonDiff(LSM):
             tmp_str = f'\n'
             tmp_str += f' - Station data:\n'
             tmp_str += self.stat_obs_df[['station_name', 'is_datum', 'g_mugal', 'g_est_mugal',
-                                                'diff_g_est_mugal', 'sd_g_mugal',
-                                                'sd_g_est_mugal', 'se_g_est_mugal']].to_string(index=False,
-                                                                             float_format=lambda x: '{:.1f}'.format(x))
+                                         'diff_g_est_mugal', 'sd_g_mugal',
+                                         'sd_g_est_mugal', 'se_g_est_mugal']].to_string(index=False,
+                                                                                        float_format=lambda
+                                                                                            x: '{:.1f}'.format(x))
             tmp_str += f'\n\n'
             tmp_str += f' - Drift polynomial coefficients:\n'
             tmp_str += self.drift_pol_df.to_string(index=False, float_format=lambda x: '{:.6f}'.format(x))
@@ -597,11 +621,12 @@ class LSMNonDiff(LSM):
             for survey_name in survey_names:
                 filter_tmp = self.setup_obs_df['survey_name'] == survey_name
                 tmp_str += f'   - Survey: {survey_name}\n'
-            tmp_str += self.setup_obs_df.loc[filter_tmp, ['station_name', 'g_obs_mugal',
-                                                            'sd_g_obs_mugal', 'sd_g_obs_est_mugal',
-                                                            'v_obs_est_mugal']].to_string(index=False,
-                                                                                       float_format=lambda x: '{:.1f}'.format(x))
-            tmp_str += f'\n\n'
+                tmp_str += self.setup_obs_df.loc[filter_tmp, ['station_name', 'g_obs_mugal',
+                                                              'sd_g_obs_mugal', 'sd_g_obs_est_mugal',
+                                                              'v_obs_est_mugal']].to_string(index=False,
+                                                                                            float_format=lambda
+                                                                                                x: '{:.1f}'.format(x))
+                tmp_str += f'\n\n'
             tmp_str += f' - Pseudo observations at datum stations (constraints):\n'
             tmp_str += f'Station name  sd [µGal]   v [µGal]   w [µGal]   r [0-1]    Tau test result\n'
             for idx, station_name in enumerate(datum_stations):
@@ -663,7 +688,7 @@ class LSMNonDiff(LSM):
         setup_obs_df.drop(columns=['epoch_dt'], inplace=True)  # datetime fields cannot be converted to shapefiles!
 
         setup_obs_gdf = geopandas.GeoDataFrame(setup_obs_df,
-                                              geometry=geopandas.points_from_xy(setup_obs_df['long_deg'],
-                                                                                setup_obs_df['lat_deg']),
-                                              crs=epsg_code)
+                                               geometry=geopandas.points_from_xy(setup_obs_df['long_deg'],
+                                                                                 setup_obs_df['lat_deg']),
+                                               crs=epsg_code)
         setup_obs_gdf.to_file(filename)

@@ -322,6 +322,34 @@ class Campaign:
         else:
             return True
 
+    def deactivate_all_surveys(self, verbose=False):
+        """Deactivates all surveys in the campaign.
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+                If True, status messages are printed to the command line.
+        """
+        changed_surveys = []
+        for survey_name, survey in self.surveys.items():
+            if self.deactivate_survey(survey_name=survey_name, verbose=verbose):
+                changed_surveys.append(survey_name)
+        return changed_surveys
+
+    def activate_all_surveys(self, verbose=False):
+        """Activates all surveys in the campaign.
+
+        Parameters
+        ----------
+        verbose : bool, optional (default=False)
+                If True, status messages are printed to the command line.
+        """
+        changed_surveys = []
+        for survey_name, survey in self.surveys.items():
+            if self.activate_survey(survey_name=survey_name, verbose=verbose):
+                changed_surveys.append(survey_name)
+        return changed_surveys
+
     def get_survey_names_and_status(self, verbose: bool = False) -> dict:
         """Return list with all survey names and information whether the survey is set active.
 
@@ -633,6 +661,14 @@ class Campaign:
             lsm_run_times.append(lsm_run.time_str)
         return lsm_run_times
 
+    @property
+    def number_of_lsm_runs(self):
+        """Returns the number of LSM runs in the campaign."""
+        if self.lsm_runs is None:
+            return 0
+        else:
+            return len(self.lsm_runs)
+
     def delete_lsm_run(self, idx):
         """Delete the LSM run with the specified index in the list.
 
@@ -644,8 +680,13 @@ class Campaign:
         if idx != -1:
             del self.lsm_runs[idx]
 
+    def delete_all_lsm_runs(self):
+        """Delete all LSM runs in the campaign."""
+        if self.lsm_runs is not None:
+            self.lsm_runs.clear()
+
     def set_reference_time(self, ref_delta_t_dt):
-        """Set refernce time for the determination of relative time spans, e.g. for the drift polynomial.
+        """Set reference time for the determination of relative time spans, e.g. for the drift polynomial.
 
         Parameters
         ----------

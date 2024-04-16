@@ -61,9 +61,9 @@ class VGLSM(LSM):
         'dhf_sensor_m': 'Sensor height [m]',
         'sd_g_obs_est_mugal': 'SD_est [µGal]',
         'v_obs_est_mugal': 'Residuals [µGal]',  # Post fit residuals
+        'sd_v_obs_est_mugal': 'SD_v [µGal]',  # SD of post-fit residuals
         'w_obs_est_mugal': 'Std. Residual []',
         'r_obs_est': 'Redundancy []',
-        'tau_test_result': 'Outlier Test',
         'tau_test_result': 'Outlier Test',
     }
     _SETUP_OBS_COLUMNS = list(_SETUP_OBS_COLUMNS_DICT.keys())
@@ -380,6 +380,7 @@ class VGLSM(LSM):
                                                   None_list_placeholder,
                                                   None_list_placeholder,
                                                   None_list_placeholder,
+                                                  None_list_placeholder,
                                                   )),
                                          columns=self._SETUP_OBS_COLUMNS)
 
@@ -401,9 +402,12 @@ class VGLSM(LSM):
         mat_Qxx = np.linalg.inv(mat_N)  # Co-factor matrix of estimates
         mat_x = mat_Qxx @ (mat_A.T @ mat_P @ mat_L)  # Estimates
         mat_v = (mat_A @ mat_x) - mat_L  # Post-fit residuals
+        mat_v = misc.numpy_array_set_zero(mat_v, atol=1e-4)  # ToDo: Check atol!
         mat_Qldld = mat_A @ mat_Qxx @ mat_A.T  # A posteriori Co-factor matrix of adjusted observations
+        mat_Qldld = misc.numpy_array_set_zero(mat_Qldld)
         # mat_Qll = np.linalg.inv(mat_P)
         mat_Qvv = mat_Qll - mat_Qldld  # Co-factor matrix of post-fit residuals
+        mat_Qvv = misc.numpy_array_set_zero(mat_Qvv)
 
         # Test: "Gewichtsreziprokenprobe nach Ansermet" (see Skriptum AG1, p. 136, Eq. (6.86))
         u = np.sum(np.diag((mat_P @ mat_Qldld)))  # number of unknown parameters (estimates)
@@ -458,8 +462,20 @@ class VGLSM(LSM):
         mat_sd_xx = np.sqrt(np.diag(mat_Cxx))  # A posteriori SD of estimates
         mat_sd_ldld = np.sqrt(np.diag(mat_Cldld))  # A posteriori SD of adjusted observations
         # mat_sd_vv = np.sqrt(np.diag(mat_Cvv))  # A posteriori SD of residuals
-        mat_sd_vv = np.sqrt(
-            np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
+        # mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))  # !!!! without "abs()" the sqrt operation fails because neg. values may occur!
+
+        # A posteriori SD of residuals:
+        # - Check just in case, whether all diagonal elements of the Qvv matrix are positive!
+        if (np.diag(mat_Qvv) < 0).any():
+            mat_sd_vv = np.sqrt(np.diag(abs(mat_Cvv)))
+            if verbose or self.write_log:
+                tmp_str = f' - Warning: At least one diagonal element of the Qvv matrix is negative!\n'
+                if verbose:
+                    print(tmp_str)
+                if self.write_log:
+                    self.log_str += tmp_str
+        else:
+            mat_sd_vv = np.sqrt(np.diag(mat_Cvv))
 
         # creating histogram from residuals
         residual_hist, bin_edges = create_hist(mat_v)  # Calculate histogram
@@ -487,10 +503,12 @@ class VGLSM(LSM):
         # - AG II, pp. 66-71
         mat_r = np.diag(mat_Qvv @ mat_P)
 
-        # Standardisierte Versesserungen (AG II, p. 66)
-        # - Normalverteilt mit Erwartwarungswert = 0 (wie Verbesserungen)
-        # - Standardabweichung = 1 (standardisiert)
-        mat_w = mat_v[:, 0] / mat_sd_vv
+        # Standardized residuals used as test statistics for outlier detection:
+        # - AG II, p. 66
+        # - Taking care of zero-elements in the mat_sd_vv vector to prevent division by zero errors!
+        mat_w = np.zeros(len(mat_v))
+        tmp_filter = ~np.isclose(mat_v[:, 0], 0.0)
+        mat_w[tmp_filter] = mat_v[tmp_filter, 0] / mat_sd_vv[tmp_filter]
 
         # Tau test for outlier detection:
         alpha_tau = 1 - confidence_level_tau_test
@@ -516,6 +534,7 @@ class VGLSM(LSM):
         vg_pol_coeff_sd = mat_sd_xx[drift_pol_degree + 1:]
         sd_g_obs_est_mugal = mat_sd_ldld
         v_obs_est_mugal = mat_v
+        sd_v_obs_est_mugal = mat_sd_vv
         w_obs_est_mugal = mat_w
         r_obs_est = mat_r
         tau_test_result_obs = tau_test_result
@@ -577,6 +596,7 @@ class VGLSM(LSM):
         for idx, v_obs_mugal in enumerate(v_obs_est_mugal):
             filter_tmp = self.setup_obs_df['obs_id'] == idx
             self.setup_obs_df.loc[filter_tmp, 'v_obs_est_mugal'] = v_obs_mugal
+            self.setup_obs_df.loc[filter_tmp, 'sd_v_obs_est_mugal'] = sd_v_obs_est_mugal[idx]
             self.setup_obs_df.loc[filter_tmp, 'sd_g_obs_est_mugal'] = sd_g_obs_est_mugal[idx]
             self.setup_obs_df.loc[filter_tmp, 'w_obs_est_mugal'] = w_obs_est_mugal[idx]  # standardized residuals
             self.setup_obs_df.loc[filter_tmp, 'r_obs_est'] = r_obs_est[idx]  # redundancy components
