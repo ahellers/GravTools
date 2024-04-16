@@ -351,6 +351,7 @@ class Survey:
         'sd_setup_mugal',  # Standard deviation of active observations in this setup [µGal]
         'number_obs',  # Number of observations in a setup
         'dhf_sensor_m',  # Vertical distance between control point and sensor height
+        'linear_scale',  # Linear scale factor used for scaling the observations of the setup
     )
 
     _SETUP_OBS_LIST_DF_COLUMNS = (
@@ -2036,6 +2037,7 @@ class Survey:
                 sd_setup_mugal_list = []
                 number_obs_list = []
                 dhf_sensor_m_list = []
+                linear_scale_list = []
 
                 setup_ids = active_obs_df['setup_id'].unique()
                 for setup_id in setup_ids:
@@ -2066,6 +2068,16 @@ class Survey:
 
                     # Get vertical distance between sensor height and control point:
                     dhf_sensor_m_list.append(active_obs_df.loc[tmp_filter, 'dhf_m'].values[0] + dist_m)
+
+                    # Get linear scale factor
+                    unique_linear_scale_factor_of_setup = active_obs_df.loc[tmp_filter, 'linear_scale'].unique()
+                    # - Check whether a single scale factor was used for the setup:
+                    if unique_linear_scale_factor_of_setup.shape[0] == 1:
+                        linear_scale_list.append(unique_linear_scale_factor_of_setup[0])
+                    else:
+                        linear_scale_list.append(np.nan)
+                        if verbose:
+                            print(f'WARNING: In setup {setup_id} of survey {self.name} the linear scale factor is not unique!')
 
                     # observation epoch (UNIX timestamps in full seconds):
                     obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
@@ -2140,7 +2152,8 @@ class Survey:
                                                   delta_t_campaign_h_list,
                                                   sd_setup_mugal_list,
                                                   number_obs_list,
-                                                  dhf_sensor_m_list)),
+                                                  dhf_sensor_m_list,
+                                                  linear_scale_list)),
                                          columns=self._SETUP_DF_COLUMNS)
             self.set_reference_time(ref_delta_t_dt)  # Save reference time for `delta_t_h`, i.e. for the survey.
 

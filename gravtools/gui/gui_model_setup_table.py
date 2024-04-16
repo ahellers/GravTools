@@ -53,6 +53,7 @@ class SetupTableModel(QAbstractTableModel):
         'sd_setup_mugal': 'SD of obs [µGal]',
         'number_obs': 'Number of obs.',
         'dhf_sensor_m': 'dhf_sensor [m]',
+        'linear_scale': 'linear scale',
     }
     _SHOW_COLUMNS_IN_TABLE = list(_SHOW_COLUMNS_IN_TABLE_DICT.keys())  # Actual list of columns to be shown
 
@@ -73,6 +74,7 @@ class SetupTableModel(QAbstractTableModel):
         'delta_t_campaign_h': 3,
         'sd_setup_mugal': 1,
         'dhf_sensor_m': 3,
+        'linear_scale': 5,
     }
 
     def __init__(self, surveys):
