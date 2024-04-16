@@ -112,6 +112,8 @@ class ResultsObservationModel(QAbstractTableModel):
     _PLOTABLE_DATA_COLUMNS = {
         # LSM_diff:
         'v_diff_mugal': 'Post-fit residuals [µGal]',  # LSM_diff
+        'w_diff_mugal': 'w',  # LSM_diff
+        'r_diff_obs': 'Redundancy components []',  # LSM_diff
         'sd_v_diff_mugal': 'SD of post-fit residuals [µGal]',  # LSM_diff
         'sd_g_diff_est_mugal': 'A posteriori SD of diff. obs. [µGal]',  # LSM_diff
         'g_diff_mugal': 'Differential observation [µGal]',  # LSM_diff
@@ -121,12 +123,10 @@ class ResultsObservationModel(QAbstractTableModel):
         'sd_g_mugal': 'Standard deviation of the instrument reading [µGal]',  # MLR
         'corr_drift_mugal': 'Estimated drift correction [µGal]',  # MLR
         'abw_mugal': 'Drift-corrected reading minus estimated station gravity (not absolute) [µGal]',  # MLR
-        'r_diff_obs': 'Redundancy components []',  # LSM_diff
-        'w_diff_mugal': 'Standardized post-fit residuals []',  # LSM_diff
         # LSM_non_diff:
+        'v_obs_est_mugal': 'Post-fit residuals [µGal]',  # LSM_non_diff
         'w_obs_est_mugal': 'Standardized post-fit residuals []',  # LSM_non_diff
         'r_obs_est': 'Redundancy components []',  # LSM_non_diff
-        'v_obs_est_mugal': 'Post-fit residuals [µGal]',  # LSM_non_diff
         'sd_v_obs_est_mugal': 'SD of post-fit residuals [µGal]',  # LSM_non_diff
         'sd_g_obs_est_mugal': 'A posteriori SD of observation [µGal]',  # LSM_non_diff
         'g_obs_mugal': 'Non-differential observation [µGal]',  # LSM_non_diff
