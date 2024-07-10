@@ -471,8 +471,9 @@ class CG6Survey:
         return str_obs_file, lines
 
     @classmethod
-    def from_lynxlg_file_v2(cls, filename: str, dt_setup_sec: float = None, verbose: bool = True):
-        """Constractor for LynxLG formatted observation files (version 2).
+    def from_lynxlg_file(cls, filename: str, expect_notes: bool,
+                         dt_setup_sec: float = None, verbose: bool = True):
+        """Constractor for LynxLG formatted observation files (version 1 and version 2).
 
         Notes
         -----
@@ -488,6 +489,9 @@ class CG6Survey:
         ----------
         filename : str
             Name and path of the observation file.
+        expect_notes : bool
+            `True` implies that notes are mandatory in the observation file. Notes are only available in the LYnxLG
+            format version 2.
         dt_setup_sec : float, optional (default = None)
             Observations are split up into separate setups, if the time gap between them is larger than the provided
             value (in seconds).
@@ -630,11 +634,13 @@ class CG6Survey:
         note_list = []
         survey_name_list = []
 
-        # TODO: Add code here!
-        # - Read line by line...
-        #
-        flag_new_setup = False
-        flag_first_note = False
+        if expect_notes:
+            flag_first_note = False
+            flag_new_setup = False
+        else:
+            flag_first_note = True
+            flag_new_setup = True
+            note = ''  # Reset note
         num_setups = 0
         num_obs = 0
         for line in lines:
@@ -644,7 +650,7 @@ class CG6Survey:
                 flag_first_note = True
                 note = line.split('/ Notes:')[1].strip()
             elif not line.startswith('/') and line and flag_first_note:  # obs. line
-                expr = r'(?P<year>[0-9]{4}) (?P<month>[ 0-9][0-9]) (?P<day>[ 0-9][0-9]) (?P<hour>[ 0-9][0-9]) (?P<minute>[ 0-9][0-9]) (?P<second>[ 0-9][0-9]) (?P<millisecond>[ 0-9][ 0-9][0-9]) (?P<survey>\S+) (?P<station>\S+) (?P<occupation>\S*) (?P<line>\S*) (?P<user_lat_deg>-?[0-9.]+) (?P<user_lon_deg>-?[0-9.]+) (?P<user_height_m>-?[0-9.]+) (?P<corr_g_mgal>[0-9.]+) (?P<se_g_mgal>[0-9.]+) (?P<sd_g_mgal>[0-9.]+) (?P<tilt_x_arcsec>-?[0-9.]+) (?P<tilt_y_arcsec>-?[0-9.]+) (?P<sensor_temp_mk>[0-9.]+) (?P<corr_tilt_mgal>-?[0-9.]+) (?P<corr_tide_mgal>-?[0-9.]+) (?P<corr_oceanload_mgal>-?[0-9.]+) (?P<corr_temp_mgal>-?[0-9.]+) (?P<corr_drift_mgal>-?[0-9.]+) (?P<gps_lat_deg>-?[0-9.]+) (?P<gps_lon_deg>-?[0-9.]+) +(?P<gps_fix_quality>[0-9]+) +(?P<gps_satellites>[0-9]+) (?P<gps_hdop>[0-9.]+) (?P<gps_h_m>-?[0-9.]+) +(?P<duration>[0-9]+) +(?P<num_rejected>[0-9]+) (?P<instr_height_m>[0-9.]+) (?P<gradient_mgalcm>-?[0-9.]+)'
+                expr = r'(?P<year>[0-9]{4}) (?P<month>[ 0-9][0-9]) (?P<day>[ 0-9][0-9]) (?P<hour>[ 0-9][0-9]) (?P<minute>[ 0-9][0-9]) (?P<second>[ 0-9][0-9]) (?P<millisecond>[ 0-9][ 0-9][0-9]) (?P<survey>\S+) (?P<station>\S+) (?P<occupation>\S*) (?P<line>\S*) (?P<user_lat_deg>-?[0-9.]+) (?P<user_lon_deg>-?[0-9.]+) (?P<user_height_m>-?[0-9.]+) (?P<corr_g_mgal>[0-9.]+) (?P<se_g_mgal>[0-9.]+) (?P<sd_g_mgal>[0-9.]+) (?P<tilt_x_arcsec>-?[0-9.]+) (?P<tilt_y_arcsec>-?[0-9.]+) (?P<sensor_temp_mk>-?[0-9.]+) (?P<corr_tilt_mgal>-?[0-9.]+) (?P<corr_tide_mgal>-?[0-9.]+) (?P<corr_oceanload_mgal>-?[0-9.]+) (?P<corr_temp_mgal>-?[0-9.]+) (?P<corr_drift_mgal>-?[0-9.]+) (?P<gps_lat_deg>-?[0-9.]+) (?P<gps_lon_deg>-?[0-9.]+) +(?P<gps_fix_quality>[0-9]+) +(?P<gps_satellites>[0-9]+) (?P<gps_hdop>[0-9.]+) (?P<gps_h_m>-?[0-9.]+) +(?P<duration>[0-9]+) +(?P<num_rejected>[0-9]+) (?P<instr_height_m>[0-9.]+) (?P<gradient_mgalcm>-?[0-9.]+)'
                 block_count = 0
                 for block in re.finditer(expr, line):
                     block_dict = block.groupdict()
@@ -749,8 +755,7 @@ class CG6Survey:
                                        g_raw_mugal_list,
                                        setup_id_list,
                                        note_list)),
-                              columns=cls._OBS_DF_COLUMN_NAMES)
-        print(obs_df)  # TODO
+                            columns=cls._OBS_DF_COLUMN_NAMES)
 
         return cls(obs_filename=filename,
                    obs_file_type='cg6_obs_file_lynx_v2',
@@ -784,8 +789,8 @@ class CG6Survey:
                    lynxlg_version=lynxlg_version)
 
     @classmethod
-    def from_lynxlg_file_v1(cls, filename: str, dt_s: float = None, verbose: bool = True):
-        """Constractor for LynxLG formatted observation files (version 1).
+    def from_lynxlg_file_v1(cls, filename: str, dt_setup_sec: float, verbose: bool = True):
+        """Constractor for LynxLG formatted observation files (version 1, without notes).
 
         Notes
         -----
@@ -794,21 +799,70 @@ class CG6Survey:
         setup is written to the file header.
 
         Subsequent setups at the same station can be separated based on the time difference between observations. If the
-        separation of the reference time of two observations is larger than the value given by `dt_s` in seconds they
-        are assumed to belong to two consecutive setups.
+        separation of the reference time of two observations is larger than the value given by `dt_setup_sec` in seconds
+        they are assumed to belong to two consecutive setups.
 
         Parameters
         ----------
         filename : str
             Name and path of the observation file.
-        dt_s : float, optional (default = `None`)
-            Minimum separation time between two consecutive setups [sec]. If the value is `None`, only the station name
-            is used to separate setups from one another.
+        dt_setup_sec : float
+            Minimum time gap between two consecutive observations [sec] in order to create separate setups.
         verbose : bool, optional (default = True)
             True indicates that status messages are written to the command line.
         """
-        pass
-        # TODO: Add code here!
+        return cls.from_lynxlg_file(filename, expect_notes=False, dt_setup_sec=dt_setup_sec, verbose=verbose)
+
+    @classmethod
+    def from_lynxlg_file_v2(cls, filename: str, dt_setup_sec: float, verbose: bool = True):
+        """Constractor for LynxLG formatted observation files (version 2, with notes).
+
+        Notes
+        -----
+        The difference to the V1 observation file format is, that the V2 format supports notes taken per setup. Notes
+        are saved in the file right before the block of observations at a station. Be aware that the note for the first
+        setup is written to the file header.
+
+        Subsequent setups are supposed to be separated by note entries in the observation file. Optionally, a time span
+        may be defined that is used to distinguish between consecutive setups. In the latter case observations are
+        divided into different setups, if the time gap between them is larger than the defined value.
+
+        Parameters
+        ----------
+        filename : str
+            Name and path of the observation file.
+        dt_setup_sec : float, optional (default = `numpy.nan`)
+            Minimum time gap between two consecutive observations [sec] in order to create separate setups.
+        verbose : bool, optional (default = True)
+            True indicates that status messages are written to the command line.
+        """
+        return cls.from_lynxlg_file(filename, expect_notes=True, dt_setup_sec=dt_setup_sec, verbose=verbose)
+
+
+    @classmethod
+    def from_lynxlg_file_v2(cls, filename: str, dt_setup_sec: float = np.nan, verbose: bool = True):
+        """Constractor for LynxLG formatted observation files (version 1m without notes).
+
+        Notes
+        -----
+        The difference to the V1 observation file format is, that the V2 format supports notes taken per setup. Notes
+        are saved in the file right before the block of observations at a station. Be aware that the note for the first
+        setup is written to the file header.
+
+        Subsequent setups at the same station can be separated based on the time difference between observations. If the
+        separation of the reference time of two observations is larger than the value given by `dt_setup_sec` in seconds
+        they are assumed to belong to two consecutive setups.
+
+        Parameters
+        ----------
+        filename : str
+            Name and path of the observation file.
+        dt_setup_sec : float
+            Minimum time gap between two consecutive observations [sec] in order to create separate setups.
+        verbose : bool, optional (default = True)
+            True indicates that status messages are written to the command line.
+        """
+        return cls.from_lynxlg_file(filename, expect_notes=False, dt_setup_sec=dt_setup_sec, verbose=verbose)
 
     @classmethod
     def from_cg6solo_file(cls, filename: str, dt_s: float = None, verbose: bool = True):
@@ -942,17 +996,20 @@ class CG6Survey:
 
             # Data cursor:
             fig.canvas.mpl_connect('pick_event', DataCursor(plt.gca()))
-
             plt.show()
 
 
 # Run as standalone program:
 if __name__ == "__main__":
-    # import matplotlib.pyplot as plt
-    s1 = CG6Survey.from_lynxlg_file_v2('../../data/CG6_data/Cieslack/2024-06-19/20240613_S20303_573.DAT',
+    s_v1 = CG6Survey.from_lynxlg_file_v1('../../data/CG6_data/Cieslack/2024-06-19/20240618_S24353_010_Edit.DAT',
+                                         verbose=True, dt_setup_sec=300)
+    print(s_v1)
+    s_v2 = CG6Survey.from_lynxlg_file_v2('../../data/CG6_data/Cieslack/2024-06-19/20240613_S20303_573.DAT',
                                        verbose=True)
+    print(s_v2)
 
-    s1.plot_g_values()
-    print(s1)
+    s_v1.plot_g_values()
+    s_v2.plot_g_values()
+
 else:
     pass
