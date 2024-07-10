@@ -32,6 +32,13 @@ SURVEY_DATA_SOURCE_TYPES = {
     'cg5_obs_file_txt': 'Scintrex CG5 observation file (text format)',
     'bev_obs_file': 'Simple observation file format used by BEV',
 }
+CG6_SURVEY_DATA_SOURCE_TYPES = {
+    'cg6_obs_file_lynx_v1': 'Scintrex CG6 observation file (from Lynx LG, version 1)',
+    'cg6_obs_file_lynx_v2': 'Scintrex CG6 observation file (from Lynx LG, version 2)',
+    'cg6_obs_file_solo': 'Scintrex CG6 observation file (filtered data file from instrument)',
+}
+SURVEY_DATA_SOURCE_TYPES = {**SURVEY_DATA_SOURCE_TYPES, **CG6_SURVEY_DATA_SOURCE_TYPES}
+
 
 STATION_DATA_SOURCE_TYPES = {
     'oesgn_table': 'Austrian gravity base network stations (OESGN).',
