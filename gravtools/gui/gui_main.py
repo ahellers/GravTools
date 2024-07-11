@@ -67,10 +67,12 @@ from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool, resize_table_view_columns
 from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
 from gravtools.gui.dlg_corrections import DialogCorrections
+from gravtools.gui.dialog_load_cg6_obs_files import Ui_DialogLoadCg6ObservationFiles
 from gravtools.gui.survey_table_handler import SurveyTableHandler
 from gravtools.gui.cumstom_widgets import ScrollMessageBox
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
+from gravtools.CG6_utils.cg6_survey import CG6Survey
 from gravtools.models.survey import Survey
 from gravtools.models.campaign import Campaign
 from gravtools.models.misc import time_it, conditional_decorator, unique_ordered_list
@@ -135,6 +137,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_results_delete_all_lsm_runs.pressed.connect(self.on_pushbutton_results_delete_all_lsm_runs)
         self.pushButton_results_export_shapefile.pressed.connect(self.on_pushButton_results_export_shapefile)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
+        self.action_from_CG6_observation_files.triggered.connect(
+            self.on_menu_file_load_survey_from_cg6_observation_files)
         self.action_from_oesgn_table.triggered.connect(self.on_menu_file_load_stations_from_oesgn_table)
         self.action_from_csv_file.triggered.connect(self.on_menu_file_load_stations_from_csv_file)
         self.action_gravimeters_from_json_file.triggered.connect(self.on_menu_file_load_gravimeters_from_json_file)
@@ -203,6 +207,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_about.label_pypi_repo.setText(__pypi_repo__)
         self.dlg_about.label_email.setText(__email__)
         self.dlg_about.label_copyright.setText(__copyright__)
+        self.dlg_load_cg6_observation_files = DialogLoadCg6ObservationFiles(self)
 
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
@@ -1334,11 +1339,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     else:
                         brush_color = self.station_colors_dict_results[row['station_name']]
                 spot_dic = {'pos': (
-                row['epoch_unix'], row['drift_at_obs_epochs_mugal'] - row['v_obs_est_mugal'] - subtr_const_mugal),
-                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
-                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
-                                    'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
-                            'brush': brush_color}
+                    row['epoch_unix'], row['drift_at_obs_epochs_mugal'] - row['v_obs_est_mugal'] - subtr_const_mugal),
+                    'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                    'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                            'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                    'brush': brush_color}
                 spots.append(spot_dic)
                 plotted_stations.append(row['station_name'])
 
@@ -3590,6 +3595,41 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tableView_surveys.setModel(self.survey_model)
             self.tableView_surveys.resizeColumnsToContents()
 
+    def on_menu_file_load_survey_from_cg6_observation_files(self):
+        """Launch dialog for loading CG6 observation files."""
+        return_value = self.dlg_load_cg6_observation_files.exec()
+        if return_value == QDialog.Rejected:
+            self.statusBar().showMessage(f"No surveys loaded.")
+            return
+
+        filenames = self.dlg_load_cg6_observation_files.file_list
+        if not filenames:
+            self.statusBar().showMessage(f"No surveys loaded.")
+            return
+        file_format = self.dlg_load_cg6_observation_files.file_format
+        dt_sec = self.dlg_load_cg6_observation_files.spinBox_dt_sec.value()
+
+        # Load CG6 files with the specified format:
+        for filename in filenames:
+            print(filename)  # TODO
+            if file_format == 'cg6_obs_file_lynx_v1':
+                cg6_survey = CG6Survey.from_lynxlg_file_v1(filename, dt_sec, verbose=IS_VERBOSE)
+            elif file_format == 'cg6_obs_file_lynx_v2':
+                if self.dlg_load_cg6_observation_files.checkBox_use_dt.isChecked():
+                    cg6_survey = CG6Survey.from_lynxlg_file_v2(filename, dt_sec, verbose=IS_VERBOSE)
+                else:
+                    cg6_survey = CG6Survey.from_lynxlg_file_v2(filename, verbose=IS_VERBOSE)
+            elif file_format == 'cg6_obs_file_solo':
+                pass
+                # TODO: Not implemented yet!
+            else:
+                raise RuntimeError(f'Unknown CG6 obs file format: {file_format}')
+
+            print(cg6_survey)  # TODO
+            # Convert CG6Survey survey into Survey:
+
+            # Add Survey to the Campaign
+
     @pyqtSlot()
     def on_menu_file_load_survey_from_cg5_observation_file(self):
         """Launch file selection dialog to select a CG5 observation file and load the data to the campaign."""
@@ -4033,6 +4073,73 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
                 self.checkBox_save_vg_plot_png.setEnabled(True)
             else:
                 raise AssertionError(f'Invalid LSM method: {lsm_method}!')
+
+
+class DialogLoadCg6ObservationFiles(QDialog, Ui_DialogLoadCg6ObservationFiles):
+    """Dialog for loading CG6 observation files in different formats"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        # Run the .setupUi() method to show the GUI
+        self.setupUi(self)
+        for key, item in settings.CG6_SURVEY_DATA_SOURCE_TYPES_SHORT.items():
+            self.comboBox_format_selection.addItem(item, userData=key)
+            current_idx = self.comboBox_format_selection.currentIndex()
+            tooltip = settings.CG6_SURVEY_DATA_SOURCE_TYPES[key]
+            self.comboBox_format_selection.setItemData(current_idx, tooltip, Qt.ToolTipRole)
+
+        # Connect signals and slots:
+        self.comboBox_format_selection.currentIndexChanged.connect(self.on_combobox_current_index_changed)
+        self.pushButton_select_files.pressed.connect(self.select_files)
+        self.pushButton_clear_list.pressed.connect(self.listWidget_open_files.clear)
+
+        # Set default item based on user data:
+        idx = self.comboBox_format_selection.findData(settings.CG6_SURVEY_DATA_SOURCE_TYPE_DEFAULT)
+        self.comboBox_format_selection.setCurrentIndex(idx)
+
+    def on_combobox_current_index_changed(self, idx):
+        """On combobox index change."""
+        if idx == -1:  # Invalid index
+            return
+        format_key = self.comboBox_format_selection.itemData(idx)
+        # Update format description label
+        description = settings.CG6_SURVEY_DATA_SOURCE_TYPES[format_key]
+        self.label_format_description.setText(description)
+        # Enable/disable items based on format selection:
+        if format_key == 'cg6_obs_file_solo':
+            self.checkBox_use_dt.setCheckState(Qt.Checked)
+            self.checkBox_use_dt.setEnabled(False)
+        elif format_key == 'cg6_obs_file_lynx_v1':
+            self.checkBox_use_dt.setCheckState(Qt.Checked)
+            self.checkBox_use_dt.setEnabled(False)
+        else:
+            self.checkBox_use_dt.setEnabled(True)
+
+    def select_files(self):
+        """Select observation files using a file selection dialog"""
+        options = QFileDialog.Options()
+        options |= QFileDialog.DontUseNativeDialog
+        obs_file_filenames, _ = QFileDialog.getOpenFileNames(self,
+                                                             'Select CG6 observation file(s)',
+                                                             self.parent().campaign.output_directory,
+                                                             "CG6 observation file (*.DAT *.TXT)",
+                                                             options=options)
+        if not obs_file_filenames:
+            return
+        self.listWidget_open_files.clear()
+        self.listWidget_open_files.addItems(obs_file_filenames)
+
+    @property
+    def file_list(self) -> list:
+        """Return a list of all files in the list widget."""
+        # self.listWidget_open_file.
+        return [self.listWidget_open_files.item(idx).text() for idx in range(self.listWidget_open_files.count())]
+
+    @property
+    def file_format(self) -> str:
+        """Returns the file format identifier string."""
+        return self.comboBox_format_selection.currentData()
 
 
 def debugger_is_active() -> bool:

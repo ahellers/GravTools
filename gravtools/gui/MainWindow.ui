@@ -1606,13 +1606,14 @@
     </property>
     <widget class="QMenu" name="menuAdd_Survey">
      <property name="enabled">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <property name="title">
       <string>Add Survey</string>
      </property>
      <addaction name="action_from_CG5_observation_file"/>
      <addaction name="action_from_BEV_observation_file"/>
+     <addaction name="action_from_CG6_observation_files"/>
     </widget>
     <widget class="QMenu" name="menu_Add_Stations">
      <property name="enabled">
@@ -1771,7 +1772,7 @@
   </action>
   <action name="action_from_CG5_observation_file">
    <property name="text">
-    <string>from CG5 observation file</string>
+    <string>from CG5 observation files</string>
    </property>
   </action>
   <action name="action_from_BEV_observation_file">
@@ -1890,6 +1891,11 @@
   <action name="action_gravimeters_from_json_file">
    <property name="text">
     <string>From json file</string>
+   </property>
+  </action>
+  <action name="action_from_CG6_observation_files">
+   <property name="text">
+    <string>from CG6 observation files</string>
    </property>
   </action>
  </widget>

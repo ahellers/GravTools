@@ -33,11 +33,17 @@ SURVEY_DATA_SOURCE_TYPES = {
     'bev_obs_file': 'Simple observation file format used by BEV',
 }
 CG6_SURVEY_DATA_SOURCE_TYPES = {
-    'cg6_obs_file_lynx_v1': 'Scintrex CG6 observation file (from Lynx LG, version 1)',
-    'cg6_obs_file_lynx_v2': 'Scintrex CG6 observation file (from Lynx LG, version 2)',
+    'cg6_obs_file_lynx_v1': 'Scintrex CG6 observation file (from Lynx LG, version 1, no notes)',
+    'cg6_obs_file_lynx_v2': 'Scintrex CG6 observation file (from Lynx LG, version 2, with notes)',
     'cg6_obs_file_solo': 'Scintrex CG6 observation file (filtered data file from instrument)',
 }
+CG6_SURVEY_DATA_SOURCE_TYPES_SHORT = {
+    'cg6_obs_file_lynx_v1': 'LynxLG, v1, no notes',
+    'cg6_obs_file_lynx_v2': 'LynxLG, v2, with notes',
+    'cg6_obs_file_solo': 'CG6 solo',
+}
 SURVEY_DATA_SOURCE_TYPES = {**SURVEY_DATA_SOURCE_TYPES, **CG6_SURVEY_DATA_SOURCE_TYPES}
+CG6_SURVEY_DATA_SOURCE_TYPE_DEFAULT = 'cg6_obs_file_lynx_v2'
 
 
 STATION_DATA_SOURCE_TYPES = {
