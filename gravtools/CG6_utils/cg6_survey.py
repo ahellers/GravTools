@@ -18,8 +18,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Tuple, List
-
 import pandas as pd
 import numpy as np
 import re
@@ -471,7 +469,7 @@ class CG6Survey:
         return str_obs_file, lines
 
     @classmethod
-    def from_lynxlg_file(cls, filename: str, expect_notes: bool,
+    def from_lynxlg_file(cls, filename: str, obs_file_type: str, expect_notes: bool,
                          dt_setup_sec: float = None, verbose: bool = True):
         """Constractor for LynxLG formatted observation files (version 1 and version 2).
 
@@ -489,13 +487,16 @@ class CG6Survey:
         ----------
         filename : str
             Name and path of the observation file.
+        obs_file_type : str
+            Type of observation file format. All valid identifiers are listed as keys in
+            `settings.CG6_SURVEY_DATA_SOURCE_TYPES`.
         expect_notes : bool
             `True` implies that notes are mandatory in the observation file. Notes are only available in the LYnxLG
             format version 2.
-        dt_setup_sec : float, optional (default = None)
+        dt_setup_sec : float, optional (default = `None`)
             Observations are split up into separate setups, if the time gap between them is larger than the provided
             value (in seconds).
-        verbose : bool, optional (default = True)
+        verbose : bool, optional (default = `True`)
             True indicates that status messages are written to the command line.
         """
 
@@ -552,7 +553,6 @@ class CG6Survey:
         for block in re.finditer(expr, file_str):
             block_dict = block.groupdict()
             lynxlg_version_list.append(block_dict['lynxlg_version'])
-        num_lynxlg_version_entries = len(lynxlg_version_list)
         if len(set(lynxlg_version_list)) > 1:
             raise InvaliFileContentError(f'The file {filename} contains non-unique software version numbers!')
         lynxlg_version = lynxlg_version_list[0]
@@ -650,7 +650,7 @@ class CG6Survey:
                 flag_first_note = True
                 note = line.split('/ Notes:')[1].strip()
             elif not line.startswith('/') and line and flag_first_note:  # obs. line
-                expr = r'(?P<year>[0-9]{4}) (?P<month>[ 0-9][0-9]) (?P<day>[ 0-9][0-9]) (?P<hour>[ 0-9][0-9]) (?P<minute>[ 0-9][0-9]) (?P<second>[ 0-9][0-9]) (?P<millisecond>[ 0-9][ 0-9][0-9]) (?P<survey>\S+) (?P<station>\S+) (?P<occupation>\S*) (?P<line>\S*) (?P<user_lat_deg>-?[0-9.]+) (?P<user_lon_deg>-?[0-9.]+) (?P<user_height_m>-?[0-9.]+) (?P<corr_g_mgal>[0-9.]+) (?P<se_g_mgal>[0-9.]+) (?P<sd_g_mgal>[0-9.]+) (?P<tilt_x_arcsec>-?[0-9.]+) (?P<tilt_y_arcsec>-?[0-9.]+) (?P<sensor_temp_mk>-?[0-9.]+) (?P<corr_tilt_mgal>-?[0-9.]+) (?P<corr_tide_mgal>-?[0-9.]+) (?P<corr_oceanload_mgal>-?[0-9.]+) (?P<corr_temp_mgal>-?[0-9.]+) (?P<corr_drift_mgal>-?[0-9.]+) (?P<gps_lat_deg>-?[0-9.]+) (?P<gps_lon_deg>-?[0-9.]+) +(?P<gps_fix_quality>[0-9]+) +(?P<gps_satellites>[0-9]+) (?P<gps_hdop>[0-9.]+) (?P<gps_h_m>-?[0-9.]+) +(?P<duration>[0-9]+) +(?P<num_rejected>[0-9]+) (?P<instr_height_m>[0-9.]+) (?P<gradient_mgalcm>-?[0-9.]+)'
+                expr = r'(?P<year>[0-9]{4}) (?P<month>[ 0-9][0-9]) (?P<day>[ 0-9][0-9]) (?P<hour>[ 0-9][0-9]) (?P<minute>[ 0-9][0-9]) (?P<second>[ 0-9][0-9]) (?P<millisecond>[ 0-9][ 0-9][0-9]) (?P<survey>\S+) (?P<station>\S+) (?P<occupation>\S*) (?P<line>\S*) (?P<user_lat_deg>-?[0-9.]+) (?P<user_lon_deg>-?[0-9.]+) (?P<user_height_m>-?[0-9.]+) (?P<corr_g_mgal>[0-9.]+) (?P<se_g_mgal>[0-9.]+) (?P<sd_g_mgal>[0-9.]+) (?P<tilt_x_arcsec>-?[0-9.]+) (?P<tilt_y_arcsec>-?[0-9.]+) (?P<sensor_temp_mk>-?[0-9.]+) (?P<corr_tilt_mgal>-?[0-9.]+) (?P<corr_tide_mgal>-?[0-9.]+) (?P<corr_oceanload_mgal>-?[0-9.]+) (?P<corr_temp_mgal>-?[0-9.]+) (?P<corr_drift_mgal>-?[0-9.]+) (?P<gps_lat_deg>-?[0-9.]+) (?P<gps_lon_deg>-?[0-9.]+) +(?P<gps_fix_quality>[0-9]+) +(?P<gps_satellites>[0-9]+) (?P<gps_hdop>-?[0-9.]+) (?P<gps_h_m>-?[0-9.]+) +(?P<duration>[0-9]+) +(?P<num_rejected>[0-9]+) (?P<instr_height_m>[0-9.]+) (?P<gradient_mgalcm>-?[0-9.]+)'
                 block_count = 0
                 for block in re.finditer(expr, line):
                     block_dict = block.groupdict()
@@ -718,9 +718,14 @@ class CG6Survey:
                 setup_id_list.append(setup_id)
                 note_list.append(note)
 
+        # Check, whether data was loaded from file:
+        if num_obs == 0:
+            raise RuntimeError(f'No observations loaded from CG6 file ({filename}). Check, whether the correct file '
+                               f'format was selected!')
+
         # Get survey name from observation lines:
         if len(set(survey_name_list)) > 1:
-            raise RuntimeError(f'The survey name is not uniqie in the observation file {filename}!')
+            raise RuntimeError(f'The survey name is not unique in the observation file {filename}!')
         survey_name = set(survey_name_list).pop()
 
         # Create pandas dataframe:
@@ -758,7 +763,7 @@ class CG6Survey:
                             columns=cls._OBS_DF_COLUMN_NAMES)
 
         return cls(obs_filename=filename,
-                   obs_file_type='cg6_obs_file_lynx_v2',
+                   obs_file_type=obs_file_type,
                    survey_name=survey_name,  # From observation block. Check for equality!
                    serial_number=_HEADER_LINES['meter'][3],
                    created_datetime=created_datetime,
@@ -811,10 +816,11 @@ class CG6Survey:
         verbose : bool, optional (default = True)
             True indicates that status messages are written to the command line.
         """
-        return cls.from_lynxlg_file(filename, expect_notes=False, dt_setup_sec=dt_setup_sec, verbose=verbose)
+        return cls.from_lynxlg_file(filename, expect_notes=False, obs_file_type='cg6_obs_file_lynx_v1',
+                                    dt_setup_sec=dt_setup_sec, verbose=verbose)
 
     @classmethod
-    def from_lynxlg_file_v2(cls, filename: str, dt_setup_sec: float, verbose: bool = True):
+    def from_lynxlg_file_v2(cls, filename: str, dt_setup_sec: float = None, verbose: bool = True):
         """Constractor for LynxLG formatted observation files (version 2, with notes).
 
         Notes
@@ -831,38 +837,13 @@ class CG6Survey:
         ----------
         filename : str
             Name and path of the observation file.
-        dt_setup_sec : float, optional (default = `numpy.nan`)
+        dt_setup_sec : float, optional (default = `None`)
             Minimum time gap between two consecutive observations [sec] in order to create separate setups.
-        verbose : bool, optional (default = True)
+        verbose : bool, optional (default = `True`)
             True indicates that status messages are written to the command line.
         """
-        return cls.from_lynxlg_file(filename, expect_notes=True, dt_setup_sec=dt_setup_sec, verbose=verbose)
-
-
-    @classmethod
-    def from_lynxlg_file_v2(cls, filename: str, dt_setup_sec: float = np.nan, verbose: bool = True):
-        """Constractor for LynxLG formatted observation files (version 1m without notes).
-
-        Notes
-        -----
-        The difference to the V1 observation file format is, that the V2 format supports notes taken per setup. Notes
-        are saved in the file right before the block of observations at a station. Be aware that the note for the first
-        setup is written to the file header.
-
-        Subsequent setups at the same station can be separated based on the time difference between observations. If the
-        separation of the reference time of two observations is larger than the value given by `dt_setup_sec` in seconds
-        they are assumed to belong to two consecutive setups.
-
-        Parameters
-        ----------
-        filename : str
-            Name and path of the observation file.
-        dt_setup_sec : float
-            Minimum time gap between two consecutive observations [sec] in order to create separate setups.
-        verbose : bool, optional (default = True)
-            True indicates that status messages are written to the command line.
-        """
-        return cls.from_lynxlg_file(filename, expect_notes=False, dt_setup_sec=dt_setup_sec, verbose=verbose)
+        return cls.from_lynxlg_file(filename, obs_file_type='cg6_obs_file_lynx_v2', expect_notes=True,
+                                    dt_setup_sec=dt_setup_sec, verbose=verbose)
 
     @classmethod
     def from_cg6solo_file(cls, filename: str, dt_s: float = None, verbose: bool = True):
@@ -1001,11 +982,11 @@ class CG6Survey:
 
 # Run as standalone program:
 if __name__ == "__main__":
-    s_v1 = CG6Survey.from_lynxlg_file_v1('../../data/CG6_data/Cieslack/2024-06-19/20240618_S24353_010_Edit.DAT',
+    s_v1 = CG6Survey.from_lynxlg_file_v1('../../data/CG6_data/Cieslack/2024-06-19/20240618_S24353_010_Edit_v1.DAT',
                                          verbose=True, dt_setup_sec=300)
     print(s_v1)
-    s_v2 = CG6Survey.from_lynxlg_file_v2('../../data/CG6_data/Cieslack/2024-06-19/20240613_S20303_573.DAT',
-                                       verbose=True)
+    s_v2 = CG6Survey.from_lynxlg_file_v2('../../data/CG6_data/Cieslack/2024-06-19/20240613_S20303_573_v2.DAT',
+                                         verbose=True)
     print(s_v2)
 
     s_v1.plot_g_values()

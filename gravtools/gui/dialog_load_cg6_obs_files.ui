@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>699</width>
-    <height>547</height>
+    <width>679</width>
+    <height>529</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,18 +15,28 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <widget class="QGroupBox" name="groupBox">
+    <widget class="QGroupBox" name="groupBox_format_options">
+     <property name="toolTip">
+      <string>File format options.</string>
+     </property>
      <property name="title">
-      <string>Options</string>
+      <string>Format options</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
        <layout class="QFormLayout" name="formLayout">
         <item row="0" column="0">
-         <widget class="QComboBox" name="comboBox_format_selection"/>
+         <widget class="QComboBox" name="comboBox_format_selection">
+          <property name="toolTip">
+           <string>Select the CG6 observation file format.</string>
+          </property>
+         </widget>
         </item>
         <item row="0" column="1">
          <widget class="QLabel" name="label_format_selection">
+          <property name="toolTip">
+           <string>Select the CG6 observation file format.</string>
+          </property>
           <property name="text">
            <string>CG-6 observation file format</string>
           </property>
@@ -35,7 +45,10 @@
         <item row="3" column="0">
          <widget class="QSpinBox" name="spinBox_dt_sec">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string>Time gap that is used to divide observations into differnt setups.</string>
           </property>
           <property name="maximum">
            <number>9999</number>
@@ -48,7 +61,10 @@
         <item row="3" column="1">
          <widget class="QLabel" name="label_dt_sec">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string>Time gap that is used to divide observations into differnt setups.</string>
           </property>
           <property name="text">
            <string>Minimum time gap to between setups [sec]</string>
@@ -57,6 +73,9 @@
         </item>
         <item row="2" column="0">
          <widget class="QCheckBox" name="checkBox_use_dt">
+          <property name="toolTip">
+           <string>If the time gap between consecutive observations is larger than the value defined below, these observationsare assignet to different instrumet setups.</string>
+          </property>
           <property name="text">
            <string/>
           </property>
@@ -64,13 +83,19 @@
         </item>
         <item row="2" column="1">
          <widget class="QLabel" name="label_use_dt">
+          <property name="toolTip">
+           <string>If the time gap between consecutive observations is larger than the value defined below, these observationsare assignet to different instrumet setups.</string>
+          </property>
           <property name="text">
-           <string>Separate consecutive observations into different setups based an a time gap</string>
+           <string>Divide observations into different setups based on the specified time gap</string>
           </property>
          </widget>
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="label">
+          <property name="toolTip">
+           <string/>
+          </property>
           <property name="text">
            <string>Format description</string>
           </property>
@@ -92,38 +117,101 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QPushButton" name="pushButton_select_files">
-       <property name="text">
-        <string>Open files</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
+    <widget class="QGroupBox" name="groupBox_content_options">
+     <property name="toolTip">
+      <string>File content options. </string>
+     </property>
+     <property name="title">
+      <string>Content options</string>
+     </property>
+     <layout class="QFormLayout" name="formLayout_2">
+      <item row="0" column="0">
+       <widget class="QLabel" name="label_location_type">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the type of location data (i.e. the location source) that is used for georeferencing the observations. The CG6 observation file format contains location data based on user input (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;user&lt;/span&gt;&amp;quot;) and based on measurements with the GPS module (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;GPS&lt;/span&gt;&amp;quot;). Have a look at the instrument's manual for more details.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Location data source</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="comboBox_location_type">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the type of location data (i.e. the location source) that is used for georeferencing the observations. The CG6 observation file format contains location data based on user input (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;user&lt;/span&gt;&amp;quot;) and based on measurements with the GPS module (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;GPS&lt;/span&gt;&amp;quot;). Have a look at the instrument's manual for more details.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_obs_uncertainty_type">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the type of observation uncertainty that is loaded from the observation files. The CG6 provides two types of uncertainties: &lt;span style=&quot; font-weight:600;&quot;&gt;standard deviations&lt;/span&gt; and &lt;span style=&quot; font-weight:600;&quot;&gt;standard errors&lt;/span&gt;. Have a look at the instrument's manual for more details.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Obs. uncertainty type</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QComboBox" name="comboBox_uncertainty_type">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the type of observation uncertainty that is loaded from the observation files. The CG6 provides two types of uncertainties: &lt;span style=&quot; font-weight:600;&quot;&gt;standard deviations&lt;/span&gt; and &lt;span style=&quot; font-weight:600;&quot;&gt;standard errors&lt;/span&gt;. Have a look at the instrument's manual for more details.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_pres_in_column">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the observation file colum containing in-situ measurements of the atmospheric pressure [hPa]. &lt;/p&gt;&lt;p&gt;Since the CG6 observation file formats do not provide a native data column for this kind of information, another column with user input can be used instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>Pressure [hPa] in column</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QComboBox" name="comboBox_pres_in_column">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the observation file colum containing in-situ measurements of the atmospheric pressure [hPa]. &lt;/p&gt;&lt;p&gt;Since the CG6 observation file formats do not provide a native data column for this kind of information, another column with user input can be used instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_dhb_in_column">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the observation file colum containing height differences [m] between the instrument's top surface and the ground.&lt;/p&gt;&lt;p&gt;Since the CG6 observation file formats do not provide a native data column for this kind of information, another column with user input can be used instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+        <property name="text">
+         <string>dh to ground [m] in column</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QComboBox" name="comboBox_dhb_in_column">
+        <property name="toolTip">
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the observation file colum containing height differences [m] between the instrument's top surface and the ground.&lt;/p&gt;&lt;p&gt;Since the CG6 observation file formats do not provide a native data column for this kind of information, another column with user input can be used instead.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
    <item>
-    <widget class="QListWidget" name="listWidget_open_files"/>
+    <widget class="QListWidget" name="listWidget_open_files">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;List of observation files that will be loaded. Please be aware that all files need to have the same format (matching the selection above.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+    </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QPushButton" name="pushButton_clear_list">
+      <widget class="QPushButton" name="pushButton_select_files">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press to open file selection dialog for observation files. Please be aware that all selectd files need to have have the same format (matching the selection above.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>Clear list</string>
+        <string>Select observation files</string>
        </property>
       </widget>
      </item>
@@ -140,10 +228,23 @@
        </property>
       </spacer>
      </item>
+     <item>
+      <widget class="QPushButton" name="pushButton_clear_list">
+       <property name="toolTip">
+        <string>Press to clear the observation file list.</string>
+       </property>
+       <property name="text">
+        <string>Clear list</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="toolTip">
+      <string>Press OK to load the observation files in the list above.</string>
+     </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
@@ -185,38 +286,6 @@
     <hint type="destinationlabel">
      <x>286</x>
      <y>274</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBox_use_dt</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>spinBox_dt_sec</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>28</x>
-     <y>80</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>52</x>
-     <y>108</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkBox_use_dt</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>label_use_dt</receiver>
-   <slot>setEnabled(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>28</x>
-     <y>80</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>392</x>
-     <y>81</y>
     </hint>
    </hints>
   </connection>

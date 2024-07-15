@@ -45,6 +45,47 @@ CG6_SURVEY_DATA_SOURCE_TYPES_SHORT = {
 SURVEY_DATA_SOURCE_TYPES = {**SURVEY_DATA_SOURCE_TYPES, **CG6_SURVEY_DATA_SOURCE_TYPES}
 CG6_SURVEY_DATA_SOURCE_TYPE_DEFAULT = 'cg6_obs_file_lynx_v2'
 
+# Options, in which data column of the observation file pressure may be provided::
+CG6_PRESSURE_IN_COLUMN = {
+    'line': {'tooltip': 'Use the Line column to provide in-situ pressure data.',
+             'label': 'Line',
+             'formats': ['cg6_obs_file_lynx_v1', 'cg6_obs_file_lynx_v2', 'cg6_obs_file_solo']},
+    'no_data': {'tooltip': 'No in-situ pressure data provided.',
+                'label': ' ',
+                'formats': ['cg6_obs_file_lynx_v1', 'cg6_obs_file_lynx_v2', 'cg6_obs_file_solo']},
+}
+CG6_PRESSURE_IN_COLUMN_DEFAULT = 'line'
+
+# Options, in which data column of the observation file height differences to the ground (dhb) may be provided:
+# items tooltips:
+CG6_DHB_IN_COLUMN = {
+    'occupation': {'tooltip': 'Use the Occupation column to provide height differences dhb.',
+                   'label': 'Occupation (LynxLG only)',
+                   'formats': ['cg6_obs_file_lynx_v1', 'cg6_obs_file_lynx_v2']},
+    'line': {'tooltip': 'Use the Line column to provide height differences dhb.',
+             'label': 'Line',
+             'formats': ['cg6_obs_file_lynx_v1', 'cg6_obs_file_lynx_v2', 'cg6_obs_file_solo']},
+    'no_data': {'tooltip': 'No height differences between the CG6 and the ground provided.',
+                'label': ' ',
+                'formats': ['cg6_obs_file_lynx_v1', 'cg6_obs_file_lynx_v2', 'cg6_obs_file_solo']},
+}
+CG6_DHB_IN_COLUMN_DEFAULT = 'no_data'
+
+# Available options for location and error information provided in the CG6 observation files:
+CG6_OBS_FILE_LOCATION_TYPES = {
+    'gps': {'label': 'GPS',
+            'tooltip': 'Coordinates determined with the build-in GPS module.'},
+    'user': {'label': 'User',
+             'tooltip': 'User defined coordinates.'},
+}
+CG6_OBS_FILE_LOCATION_TYPES_DEFAULT = 'user'
+CG6_OBS_FILE_ERROR_TYPES = {
+    'sd': {'label': 'Standard deviation',
+           'tooltip': 'Standard deviation'},
+    'se': {'label': 'Standard error',
+           'tooltip': 'Standard error'},
+}
+CG6_OBS_FILE_ERROR_TYPES_DEFAULT = 'sd'
 
 STATION_DATA_SOURCE_TYPES = {
     'oesgn_table': 'Austrian gravity base network stations (OESGN).',
@@ -58,6 +99,11 @@ TIDE_CORRECTION_TYPES = {
     'no_tide_corr': 'No tide correction applied',
     'from_time_series': 'Interpolated from correction time series',
     'unknown': 'Unknown whether a tide correction was applied',
+}
+
+OCEANLOAD_CORRECTION_TYPES = {
+    'no_oceanload_corr': 'No ocean-loading correction applied',
+    'instrumental_corr': 'Instrument-implemented ocean-loading correction',
 }
 
 ATM_PRES_CORRECTION_TYPES = {
@@ -124,6 +170,9 @@ DEFAULT_GRAVIMETER_SERIAL_NUMBER = 'n/a'
 # Default Gravimeter Type when loading data from an CG5 observation file
 DEFAULT_GRAVIMETER_TYPE_CG5_SURVEY = 'CG5'
 
+# Default Gravimeter Type when loading data from an CG6 observation file
+DEFAULT_GRAVIMETER_TYPE_CG6_SURVEY = 'CG6'
+
 # Default gravimeter description string:
 DEFAULT_GRAVIMETER_DESCRIPTION = 'Default gravimeter settings'
 
@@ -186,7 +235,8 @@ ADJUSTMENT_METHODS = {
     'LSM_non_diff': 'LSM (non-differential observations)',  # Least-squares adjustment of non-differential observations
     'LSM_diff': 'LSM (differential observations)',  # Least-squares adjustment of differential observations
     'MLR_BEV': 'MLR (BEV legacy processing)',  # Least-squares adjustment of differential observations
-    'VG_LSM_nondiff': 'VG LSM (non-differential observations)',  # Vertical Gravity Gradient estimation based on Least-squares adjustment of non-differential observations
+    'VG_LSM_nondiff': 'VG LSM (non-differential observations)',
+    # Vertical Gravity Gradient estimation based on Least-squares adjustment of non-differential observations
 }
 
 # List of LSM methods where export of nsb files is allowed:
@@ -229,7 +279,6 @@ R_POPE_TEST_THRESHOLD = 1e-6
 CALCULATE_REDUCED_OBS_WHEN_LOADING_DATA = True  # Calculate reduced observations when loading observation data.
 INIT_OESGN_STATION_AS_DATUM = False  # Initialize OESGN stations as datum stations when loading rom an OESGN file?
 
-
 # ----- GUI appearance and plot settings -----
 
 # Methods for the determination of histogram bin edges:
@@ -249,7 +298,6 @@ HIST_MAX_BIN_NUM = 100
 
 # Backup binning method if more than HIST_MAX_BIN_NUM bins are created:
 HIST_BACKUP_BIN_METHOD = 'doane'
-
 
 # Time label format for y-ticks in time-series plots:
 # - Format string for datetime.strftime()
@@ -271,7 +319,8 @@ DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR = 'k'
 # - Get HEX colors from here: https://colorbrewer2.org/
 # - https://www.pythonguis.com/tutorials/qtableview-modelviews-numpy-pandas/
 # green (low correlation) => red (high correlation)
-CORRELATION_COEF_COLORS = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43', '#d73027', '#a50026']
+CORRELATION_COEF_COLORS = ['#006837', '#1a9850', '#66bd63', '#a6d96a', '#d9ef8b', '#fee08b', '#fdae61', '#f46d43',
+                           '#d73027', '#a50026']
 # Background color for diagonal elements (=1):
 CORRELATION_COEF_DIAG_ELEMENTS = '#bababa'  # light grey
 
@@ -315,14 +364,12 @@ WRITE_COMMENT_TO_NSB = 'gravtools_version'
 # - 999 => Use the highest version available at the installation (pickle.HIGHEST_VERSION)
 PICKLE_PROTOCOL_VERSION = 4
 
-
 # ----- GIS data export settings: -----
 # DEFAULT_EPSG_CODE = 4312  # 4312: MGI, lat/lon, Greenwich
 DEFAULT_EPSG_CODE = 4326  # 4326: WGS84h
 # Default filenames for shapefile export from the results tab:
 DEFAULT_FILENAME_OBSERVATION_RESULTS_SHP = 'obs_results_'  # + <LSM run method>.shp
 DEFAULT_FILENAME_STATION_RESULTS_SHP = 'stat_results_'  # + <LSM run method>.shp
-
 
 # ----- SCHWAUS and DRIFT settings (legacy code) -----
 

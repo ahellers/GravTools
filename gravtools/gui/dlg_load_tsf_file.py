@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import QDialog, QFileDialog
 
 from gravtools.gui.dialog_load_tsf_file import Ui_DialogLoadTsfFile
 
+
 class DialogLoadTsfFile(QDialog, Ui_DialogLoadTsfFile):
     """Dialog for loading time series data from TSF files."""
 
@@ -45,10 +46,10 @@ class DialogLoadTsfFile(QDialog, Ui_DialogLoadTsfFile):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         tsf_filename, _ = QFileDialog.getOpenFileName(self,
-                                                           'Select TSF file with campaign data',
-                                                           initial_path,
-                                                           "TSF file (*.TSF)",
-                                                           options=options)
+                                                      'Select TSF file with campaign data',
+                                                      initial_path,
+                                                      "TSF file (*.TSF)",
+                                                      options=options)
         if not tsf_filename:
             return
 
@@ -59,4 +60,3 @@ class DialogLoadTsfFile(QDialog, Ui_DialogLoadTsfFile):
             self.lineEdit_survey_name.setText(survey_name)
         except:
             pass
-
