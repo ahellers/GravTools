@@ -2255,11 +2255,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     f'{self.setup_model.get_scale_corr_type} ({settings.SCALE_CORRECTION_TYPES[self.setup_model.get_scale_corr_type]})')
             else:
                 self.label_obs_setups_scale_corr.setText(f'{self.setup_model.get_scale_corr_type}')
+            if self.setup_model.get_oceanload_corr_type in settings.OCEANLOAD_CORRECTION_TYPES.keys():
+                self.label_obs_setups_oceanload_corr.setText(
+                    f'{self.setup_model.get_oceanload_corr_type} ({settings.OCEANLOAD_CORRECTION_TYPES[self.setup_model.get_oceanload_corr_type]})')
+            else:
+                self.label_obs_setups_oceanload_corr.setText(f'{self.setup_model.get_oceanload_corr_type}')
         except KeyError:
             self.label_obs_setups_ref_height.setText('')
             self.label_obs_setups_tidal_corr.setText('')
             self.label_obs_setups_atm_pres_corr.setText('')
             self.label_obs_setups_scale_corr.setText('')
+            self.label_obs_setups_oceanload_corr.setText('')
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
@@ -2841,6 +2847,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if flag_show_reduced_observations:
                 g_mugal = obs_df['g_red_mugal'].astype(float).values
                 sd_g_mugal = obs_df['sd_g_red_mugal'].values
+                ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
                 corr_tide = obs_df['corr_tide_red_mugal'].values
                 corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
 
@@ -2861,7 +2868,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 else:
                     if corr_description_str:
                         corr_tide_name = corr_tide_name + ': ' + corr_description_str
-                ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
+
+                # Try-except for downward compatibility < version 0.2.9
+                try:
+                    corr_oceanload_name = self.campaign.surveys[survey_name].red_oceanload_correction_type
+                except AttributeError:
+                    corr_oceanload_name = ''
+                corr_oceanload = obs_df['corr_oceanload_red_mugal'].values
             else:
                 g_mugal = obs_df['g_obs_mugal'].values
                 sd_g_mugal = obs_df['sd_g_obs_mugal'].values
@@ -2869,6 +2882,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
                 ref_height_name = self.campaign.surveys[survey_name].obs_reference_height_type
                 corr_atm_pres_name = ''  # ... won't be plotted in GUI.
+                corr_oceanload_name = self.campaign.surveys[survey_name].obs_oceanload_correction_type
+                corr_oceanload = obs_df['corr_oceanload_instrument_mugal'].values
 
             # Gravity g [µGal]
             # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
@@ -2936,6 +2951,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if corr_atm_pres_name != '' and corr_atm_pres_name != 'no_atm_pres_corr':
                 self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_atm_pres,
                                   plot_name=f'atm. pres ({corr_atm_pres_name})', color='r', symbol='o', symbol_size=10)
+
+            # - Ocean-loading corrections:
+            if corr_oceanload_name != '' and corr_oceanload_name != 'no_oceanload_corr':
+                if not ((corr_oceanload == None).all() or np.isnan(corr_oceanload).all()):  # Valid data available?
+                    self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_oceanload,
+                                      plot_name=f'oceanload ({corr_oceanload_name})', color='g', symbol='o', symbol_size=10)
 
             self.plot_obs_corrections.showGrid(x=True, y=True)
             self.plot_obs_corrections.autoRange()
@@ -3321,6 +3342,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             target_scale_corr = 'no_scale'
 
+        if self.dlg_corrections.checkBox_apply_ocean_loading_lynxlg.isChecked():
+            target_oceanload_corr = 'instrumental_corr'
+        else:
+            target_oceanload_corr = 'no_oceanload_corr'
+
         if flag_selection_ok:
             try:
                 self.campaign.reduce_observations_in_all_surveys(
@@ -3328,6 +3354,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     target_tide_corr=target_tide_corr,
                     target_atm_pres_corr=target_atm_pres_corr,
                     target_scale_corr=target_scale_corr,
+                    target_oceanload_corr=target_oceanload_corr,
                     atm_pres_admittance=atm_pres_admittance,
                     tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                     verbose=IS_VERBOSE)

@@ -374,12 +374,12 @@ class CG6Survey:
             raise RuntimeError('"drift_corr" needs to be a bool type variable.')
         self.drift_corr = drift_corr
 
-        # obs_df
+        # check obs_df:
         if not isinstance(obs_df, pd.DataFrame):
             raise RuntimeError('"obs_df" needs to be a pandas DataFrame.')
-        # TODO: Check columns!
-        # TODO: Order columns!
-        # here...
+        self._check_obs_df_columns(obs_df)
+        obs_df = self._obs_df_reorder_columns(obs_df)
+
         self.obs_df = obs_df
 
         # Optional parameters:
@@ -868,10 +868,20 @@ class CG6Survey:
         pass
         # TODO: Add code here!
 
-    def check_obs_df_columns(self):
+    @classmethod
+    def _check_obs_df_columns(cls, obs_df):
         """Check the columns of the `obs_df` DataFrame."""
-        pass
-        # TODO: Add code here! Raise RunTime error if required.
+        # Check for missing columns:
+        missing_columns = set(cls._OBS_DF_COLUMN_NAMES) - set(obs_df.columns)
+        if len(missing_columns):
+            col_names = ', '.join(i for i in missing_columns)
+            raise RuntimeError(f'Missing columns in CG6Survey.obs_df: {col_names}')
+
+    @classmethod
+    def _obs_df_reorder_columns(cls, obs_df):
+        """Change order of columns of obs_df to the order specified in cls._OBS_DF_COLUMN_NAMES."""
+        obs_df = obs_df[list(cls._OBS_DF_COLUMNS)]
+        return obs_df
 
     @staticmethod
     def resolve_station_name(station_name_in):

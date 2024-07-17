@@ -156,6 +156,11 @@ class Survey:
         the`setup_df` dataframe. Valid entries have to be listed in
         :py:obj:`gravtools.settings.SCALE_CORRECTION_TYPES`.`Empty string`, if corrected setup data has not been
         calculated so far (`setup_df` = None).
+    setup_oceanload_correction_type : str, (default='')
+        Type of oceanload correction applied on the observations that are used to calculate the setup data in
+        the`setup_df` dataframe. Valid entries have to be listed in
+        :py:obj:`gravtools.settings.OCEANLOAD_CORRECTION_TYPES`.`Empty string`, if corrected setup data has not been
+        calculated so far (`setup_df` = None).
     setup_calc_method : str, optional (default='')
         Method for the calculation of setup data. `variance_weighted_mean` implies that setup observations
         (observed gravity, standard deviations and reference time) are calculated by variance weighted mean of the
@@ -315,7 +320,8 @@ class Survey:
         'lon_deg': float,  # Longitude [deg], optional (float)
         'lat_deg': float,  # Latitude [deg], optional (float)
         'alt_m': float,  # Altitude [m], optional (float)
-        'obs_epoch': np.datetime64,  # Observation epoch (datetime object, TZ=<UTC>), start of instrument reading!# TODO: dt.datetime?
+        'obs_epoch': np.datetime64,
+        # Observation epoch (datetime object, TZ=<UTC>), start of instrument reading!# TODO: dt.datetime?
         'g_obs_mugal': float,  # observed g from obs file [µGal] (float)
         'sd_g_obs_mugal': float,  # Standard deviation of g observed from obs file (float) [µGal]
         'g_red_mugal': float,  # Reduced gravity observation at station (float) [µGal]
@@ -413,6 +419,7 @@ class Survey:
                  setup_reference_height_type='',
                  setup_atm_pres_correction_type='',
                  setup_scale_correction_type='',
+                 setup_oceanload_correction_type='',
                  setup_calc_method='',
                  setup_sd_method='',
                  keep_survey=True,  # Flag
@@ -645,7 +652,7 @@ class Survey:
         else:
             raise TypeError('"obs_oceanload_correction_type" needs to be a string')
 
-        # red_scale_correction_type
+        # red_oceanload_correction_type
         if isinstance(red_oceanload_correction_type, str):
             if red_oceanload_correction_type:
                 if red_oceanload_correction_type in OCEANLOAD_CORRECTION_TYPES.keys():
@@ -712,6 +719,20 @@ class Survey:
         else:
             raise TypeError('"setup_scale_correction_type" needs to be a string')
 
+        # setup_oceanload_correction_type:
+        if isinstance(setup_oceanload_correction_type, str):
+            if setup_oceanload_correction_type:
+                if setup_oceanload_correction_type in OCEANLOAD_CORRECTION_TYPES.keys():
+                    self.setup_oceanload_correction_type = setup_oceanload_correction_type
+                else:
+                    raise ValueError(
+                        '"setup_oceanload_correction_type" needs to be a key in OCEANLOAD_CORRECTION_TYPES '
+                        '({})'.format(', '.join(OCEANLOAD_CORRECTION_TYPES.keys())))
+            else:
+                self.setup_oceanload_correction_type = setup_oceanload_correction_type  # ''
+        else:
+            raise TypeError('"setup_oceanload_correction_type" needs to be a string')
+
         # setup_calc_method:
         if isinstance(setup_calc_method, str):
             if setup_calc_method:
@@ -773,7 +794,8 @@ class Survey:
                     self.setup_obs_list_df = setup_obs_list_df
                 else:
                     raise ValueError(
-                        '"setup_obs_list_df" needs the following columns:{}'.format(', '.join(self._SETUP_OBS_LIST_DF_COLUMNS)))
+                        '"setup_obs_list_df" needs the following columns:{}'.format(
+                            ', '.join(self._SETUP_OBS_LIST_DF_COLUMNS)))
             else:
                 raise TypeError('"setup_obs_list_df" needs to be a pandas DataFrame.')
         else:
@@ -1023,6 +1045,7 @@ class Survey:
                    obs_reference_height_type='sensor_height',
                    obs_atm_pres_correction_type='no_atm_pres_corr',
                    obs_scale_correction_type='no_scale',
+                   obs_oceanload_correction_type='no_oceanload_corr',
                    red_tide_correction_type='',  # Not specified
                    red_reference_height_type='',  # Not specified
                    red_atm_pres_correction_type='',  # Not specified
@@ -1332,7 +1355,8 @@ class Survey:
             if attribute not in attributes:
                 setattr(self, attribute, init_value)
                 if verbose:
-                    print(f'Added attribute "{attribute}" (init. value: "{init_value}") to Survey object of survey "{self.name}".')
+                    print(
+                        f'Added attribute "{attribute}" (init. value: "{init_value}") to Survey object of survey "{self.name}".')
 
     def obs_df_drop_redundant_columns(self):
         """Drop all columns of obs_df that are not listed in self._OBS_DF_COLUMNS"""
@@ -1455,10 +1479,13 @@ class Survey:
             return
 
         # Merge stations Dataframe and observations DataFrame  by the station names:
-        tmp_stat_df = stations.stat_df.loc[tmp_filter, ['station_name', 'long_deg', 'lat_deg', 'height_m']].copy(deep=True)
-        tmp_stat_df = tmp_stat_df.rename(columns={'long_deg': 'tmp_lon_deg', 'lat_deg': 'tmp_lat_deg', 'height_m': 'tmp_alt_m'})
+        tmp_stat_df = stations.stat_df.loc[tmp_filter, ['station_name', 'long_deg', 'lat_deg', 'height_m']].copy(
+            deep=True)
+        tmp_stat_df = tmp_stat_df.rename(
+            columns={'long_deg': 'tmp_lon_deg', 'lat_deg': 'tmp_lat_deg', 'height_m': 'tmp_alt_m'})
         self.obs_df = self.obs_df.merge(tmp_stat_df, on='station_name', how='left')
-        tmp_filter = ~self.obs_df['tmp_lat_deg'].isna() & ~self.obs_df['tmp_lat_deg'].isna() & ~self.obs_df['tmp_alt_m'].isna()
+        tmp_filter = ~self.obs_df['tmp_lat_deg'].isna() & ~self.obs_df['tmp_lat_deg'].isna() & ~self.obs_df[
+            'tmp_alt_m'].isna()
         self.obs_df.loc[tmp_filter, 'lon_deg'] = self.obs_df.loc[tmp_filter, 'tmp_lon_deg']
         self.obs_df.loc[tmp_filter, 'lat_deg'] = self.obs_df.loc[tmp_filter, 'tmp_lat_deg']
         self.obs_df.loc[tmp_filter, 'alt_m'] = self.obs_df.loc[tmp_filter, 'tmp_alt_m']
@@ -1475,6 +1502,7 @@ class Survey:
                             target_tide_corr: str = None,
                             target_atm_pres_corr: str = None,
                             target_scale_corr: str = None,
+                            target_oceanload_corr: str = None,
                             atm_pres_admittance: float = ATM_PRES_CORRECTION_ADMITTANCE_DEFAULT,
                             tide_corr_timeseries_interpol_method='',
                             correction_time_series=None,
@@ -1517,6 +1545,10 @@ class Survey:
             Specifying the atmospheric pressure correction type to be applied to all surveys. Valid types to be listed
             in :py:obj:`gravtools.settings.ATM_PRES_CORRECTION_TYPES`. Default is `None` indicating that the respective
             corrections of the input data are not changed.
+        target_oceanload_corr : str, optional (default = `None`)
+            Specifying the ocean-loading correction type to be applied to all surveys (if available). Valid types to be
+            listed in :py:obj:`gravtools.settings.OCEANLOAD_CORRECTION_TYPES`. Default is `None` indicating that the
+            respective corrections of the input data are not changed.
         target_scale_corr : str, optional (default = `None`)
             Specifies the scale correction type to be applied on all observations of this survey. Vali types are listed
             in :py:obj:`gravtools.settings.SCALE_CORRECTION_TYPES`. The default value `None` indicates that the
@@ -1584,7 +1616,7 @@ class Survey:
             else:
                 raise RuntimeError(f'Not able to remove tidal corrections for the calculation of uncorrected '
                                    f'observations in survey {self.name}. Tidal corrections '
-                                   f'{self.obs_tide_correction_type } cannot be removed properly.')
+                                   f'{self.obs_tide_correction_type} cannot be removed properly.')
 
             # Apply scaling:
             tmp_g_df = pd.DataFrame({'epoch_dt': obs_df['obs_epoch'], 'g': g_red_mugal})
@@ -1738,7 +1770,8 @@ class Survey:
                         tide_corr_timeseries_interpol_method_out = tide_corr_timeseries_interpol_method
 
                 elif self.obs_tide_correction_type == 'instrumental_corr':
-                    g_red_mugal = g_red_mugal - obs_df['corr_tide_mugal']  # Undo instrumental corrections => No tide corr!
+                    g_red_mugal = g_red_mugal - obs_df[
+                        'corr_tide_mugal']  # Undo instrumental corrections => No tide corr!
                     if target_tide_corr == 'no_tide_corr':
                         corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
                         corr_tide_red_mugal.values[:] = 0
@@ -1763,8 +1796,9 @@ class Survey:
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
                     elif target_tide_corr == 'from_time_series':
-                        corr_tide_red_mugal = self.get_tidal_corrections_from_timeseries(correction_time_series=correction_time_series,
-                                                                                         interpolation_method=tide_corr_timeseries_interpol_method)
+                        corr_tide_red_mugal = self.get_tidal_corrections_from_timeseries(
+                            correction_time_series=correction_time_series,
+                            interpolation_method=tide_corr_timeseries_interpol_method)
                         g_red_mugal = g_red_mugal + corr_tide_red_mugal
                         tide_corr_timeseries_interpol_method_out = tide_corr_timeseries_interpol_method
                 else:
@@ -1783,7 +1817,8 @@ class Survey:
                 error_msg = f'"{target_atm_pres_corr}" is invalid!'
                 raise RuntimeError(f'Survey "{self.name}":' + error_msg)
             if verbose:
-                print(f'Atmospheric pressure corrections "{target_atm_pres_corr}" ({ATM_PRES_CORRECTION_TYPES[target_atm_pres_corr]}):')
+                print(
+                    f'Atmospheric pressure corrections "{target_atm_pres_corr}" ({ATM_PRES_CORRECTION_TYPES[target_atm_pres_corr]}):')
 
             # Check, if an admittance factor is available:
             if atm_pres_admittance is None:
@@ -1798,9 +1833,10 @@ class Survey:
                 if target_atm_pres_corr == 'iso_2533_1975':
                     height_m = obs_df['alt_m']
                     atm_pres_hpa = obs_df['atm_pres_hpa']
-                    corr_atm_pres_red_mugal, norm_atm_pres_hpa = atmosphere_correction.pressure_correction_iso_pandas_series(height_m,
-                                                                                                                             atm_pres_hpa,
-                                                                                                                             admittance=atm_pres_admittance)
+                    corr_atm_pres_red_mugal, norm_atm_pres_hpa = atmosphere_correction.pressure_correction_iso_pandas_series(
+                        height_m,
+                        atm_pres_hpa,
+                        admittance=atm_pres_admittance)
                     # Apply non-NaN values only:
                     tmp_filter = ~corr_atm_pres_red_mugal.isna()
                     g_red_mugal.loc[tmp_filter] = g_red_mugal.loc[tmp_filter] - corr_atm_pres_red_mugal.loc[tmp_filter]
@@ -1808,7 +1844,8 @@ class Survey:
                         num_with_p_corr = len(tmp_filter.loc[tmp_filter])
                         number_of_obs = len(tmp_filter)
                         if num_with_p_corr != number_of_obs:
-                            print(f'WARNING: Pressure corrections are available for {num_with_p_corr} of {number_of_obs} observations in survey {self.name} only, probably due to missing pressure observations.')
+                            print(
+                                f'WARNING: Pressure corrections are available for {num_with_p_corr} of {number_of_obs} observations in survey {self.name} only, probably due to missing pressure observations.')
 
             # This case should not be possible wit the current instruments since they are not capable to calculate
             # atmospheric corrections and provide them along with the observation data in the input files!
@@ -1823,10 +1860,51 @@ class Survey:
             if verbose:
                 print('...done!')
 
-        # 4.) Apply changes, if no exceptions were raised:
+        # 4.) Check ocean-loading corrections:
+        if target_oceanload_corr is None:  # Do nothing
+            if verbose:
+                print(f'Ocean loading corrections are not changed!')
+        else:
+            # Check if the target correction type is valid:
+            if target_oceanload_corr not in OCEANLOAD_CORRECTION_TYPES:
+                error_msg = f'"{target_oceanload_corr}" is invalid!'
+                raise RuntimeError(f'Survey "{self.name}":' + error_msg)
+            if verbose:
+                print(
+                    f'Ocean-loading corrections "{target_oceanload_corr}" ({OCEANLOAD_CORRECTION_TYPES[target_oceanload_corr]}):')
+
+            if self.obs_oceanload_correction_type == 'no_oceanload_corr':
+                if target_oceanload_corr == 'no_oceanload_corr':
+                    if verbose:
+                        print(f' - Observations are already reduced by: {target_oceanload_corr}')
+                    corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal'].copy(deep=True)
+                    corr_oceanload_red_mugal.values[:] = 0  # Set to zero
+                if target_oceanload_corr == 'instrumental_corr':
+                    # Check correction data availability:
+                    if np.isnan(obs_df['corr_oceanload_instrument_mugal']).all():
+                        corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal'].copy(deep=True)
+                        corr_oceanload_red_mugal.values[:] = 0  # Set to zero
+                    else:  # corrections available
+                        corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal']
+                        g_red_mugal = g_red_mugal + corr_oceanload_red_mugal  # TODO: correct sign?
+            elif self.obs_oceanload_correction_type == 'instrumental_corr':
+                if target_oceanload_corr == 'no_oceanload_corr':
+                    corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal'].copy(deep=True)
+                    corr_oceanload_red_mugal.values[:] = 0  # Set to zero
+                    g_red_mugal = g_red_mugal - obs_df['corr_oceanload_instrument_mugal']  # TODO: correct sign?
+                if target_oceanload_corr == 'instrumental_corr':
+                    if verbose:
+                        print(f' - Observations are already reduced by: {target_oceanload_corr}')
+                    corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal']
+            else:
+                raise RuntimeError(f'Ocean-loading corrections of observation data '
+                                   f'("{self.obs_oceanload_correction_type}") not supported!')
+
+        # 5.) Apply changes, if no exceptions were raised:
         self.red_tide_correction_type = target_tide_corr
         self.red_reference_height_type = target_ref_height
         self.red_atm_pres_correction_type = target_atm_pres_corr
+        self.red_oceanload_correction_type = target_oceanload_corr
         self.red_tide_correction_description = tide_correction_description
         self.red_tide_corr_timeseries_interpol_method = tide_corr_timeseries_interpol_method_out
         self.obs_df['g_red_mugal'] = g_red_mugal
@@ -1836,6 +1914,8 @@ class Survey:
         if target_atm_pres_corr is not None:
             self.obs_df['corr_atm_pres_red_mugal'] = corr_atm_pres_red_mugal
             self.obs_df['norm_atm_pres_hpa'] = norm_atm_pres_hpa
+        if target_oceanload_corr is not None:
+            self.obs_df['corr_oceanload_red_mugal'] = corr_oceanload_red_mugal
         self.red_scale_correction_type = target_scale_corr
         if target_scale_corr == 'linear_scale':
             self.obs_df['linear_scale'] = linear_scale
@@ -1868,9 +1948,11 @@ class Survey:
         if self.name not in correction_time_series.surveys:
             raise RuntimeError(f'No correction time series data available for survey "{self.name}".')
         # - Stations in Survey:
-        missing_stations = list(set(correction_time_series.surveys[self.name].station_names) - set(self.observed_stations))
+        missing_stations = list(
+            set(correction_time_series.surveys[self.name].station_names) - set(self.observed_stations))
         if len(missing_stations) > 0:
-            raise RuntimeError(f'No correction time series data available for the stations: ' + ', '.join(missing_stations))
+            raise RuntimeError(
+                f'No correction time series data available for the stations: ' + ', '.join(missing_stations))
 
         # Prep. input observation dataframe: Keep required columns only:
         tmp_df = self.obs_df[['station_name', 'obs_epoch', 'duration_sec']].copy(deep=True)
@@ -1888,11 +1970,13 @@ class Survey:
         for station in self.observed_stations:
             tmp_filter = tmp_df['station_name'] == station
             obs_epochs_dt64 = tmp_df.loc[tmp_filter, 'obs_epoch'].to_numpy()
-            interp = correction_time_series.surveys[self.name].stations[station].tidal_correction.interpolate(interp_times=obs_epochs_dt64,
-                                                                                                              kind=interpolation_method,
-                                                                                                              return_correction=True)
+            interp = correction_time_series.surveys[self.name].stations[station].tidal_correction.interpolate(
+                interp_times=obs_epochs_dt64,
+                kind=interpolation_method,
+                return_correction=True)
             interp_mugal = convert_to_mugal(interp,
-                                      correction_time_series.surveys[self.name].stations[station].tidal_correction.unit)
+                                            correction_time_series.surveys[self.name].stations[
+                                                station].tidal_correction.unit)
             tmp_df.loc[tmp_filter, 'ts_tide_corr_mugal'] = interp_mugal
         tide_corr_timeseries_mugal = tmp_df['ts_tide_corr_mugal'].to_numpy()
         return tide_corr_timeseries_mugal
@@ -1944,7 +2028,8 @@ class Survey:
             filter_tilt = filter_tilt & (self.obs_df['setup_id'] == setup_id)
         self.obs_df.loc[filter_tilt, 'keep_obs'] = False
         if verbose:
-            print(f'Removed observations due to tilt threshold ({threshold_arcsec} asec): {filter_tilt[filter_tilt].count()}')
+            print(
+                f'Removed observations due to tilt threshold ({threshold_arcsec} asec): {filter_tilt[filter_tilt].count()}')
 
     def autselect_duration(self, threshold_sec: int, setup_id: int = None, verbose: bool = False):
         """Detect and deactivate all observations with a measurement duration smaller than the threshold.
@@ -1964,7 +2049,8 @@ class Survey:
             filter_duration = filter_duration & (self.obs_df['setup_id'] == setup_id)
         self.obs_df.loc[filter_duration, 'keep_obs'] = False
         if verbose:
-            print(f'Removed observations due to duration threshold ({threshold_sec} sec): {filter_duration[filter_duration].count()}')
+            print(
+                f'Removed observations due to duration threshold ({threshold_sec} sec): {filter_duration[filter_duration].count()}')
 
     def autselect_g_sd(self, threshold_mugal: int, obs_type: str = 'reduced', setup_id: int = None,
                        verbose: bool = False):
@@ -2116,6 +2202,7 @@ class Survey:
             self.setup_tide_correction_type = ''
             self.setup_atm_pres_correction_type = '',
             self.setup_scale_correction_type = '',
+            self.setup_oceanload_correction_type = '',
             self.setup_calc_method = ''
             self.setup_obs_list_df = None
 
@@ -2281,7 +2368,8 @@ class Survey:
                     else:
                         linear_scale_list.append(np.nan)
                         if verbose:
-                            print(f'WARNING: In setup {setup_id} of survey {self.name} the linear scale factor is not unique!')
+                            print(
+                                f'WARNING: In setup {setup_id} of survey {self.name} the linear scale factor is not unique!')
 
                     # observation epoch (UNIX timestamps in full seconds):
                     obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
@@ -2300,7 +2388,8 @@ class Survey:
                     obs_epoch_list_dt.append(dt_setup_epoch)
                     delta_t_h_list.append((unix_setup_epoch - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
                     if flag_calculate_delta_t_campaign_h:
-                        delta_t_campaign_h_list.append((unix_setup_epoch - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
+                        delta_t_campaign_h_list.append(
+                            (unix_setup_epoch - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
                     else:
                         delta_t_campaign_h_list.append(None)
             elif method == 'individual_obs':
@@ -2319,7 +2408,8 @@ class Survey:
 
                 delta_t_h_list = list((obs_epoch_unix_array - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
                 if flag_calculate_delta_t_campaign_h:
-                    delta_t_campaign_h_list = list((obs_epoch_unix_array - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
+                    delta_t_campaign_h_list = list(
+                        (obs_epoch_unix_array - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
                 else:
                     delta_t_campaign_h_list = [None] * len(g_mugal_list)
                 sd_setup_mugal_list = [np.nan] * len(g_mugal_list)
@@ -2331,11 +2421,13 @@ class Survey:
                 self.setup_reference_height_type = self.obs_reference_height_type
                 self.setup_atm_pres_correction_type = self.obs_atm_pres_correction_type
                 self.setup_scale_correction_type = self.obs_scale_correction_type
+                self.setup_oceanload_correction_type = self.obs_oceanload_correction_type
             elif obs_type == 'reduced':
                 self.setup_tide_correction_type = self.red_tide_correction_type
                 self.setup_reference_height_type = self.red_reference_height_type
                 self.setup_atm_pres_correction_type = self.red_atm_pres_correction_type
                 self.setup_scale_correction_type = self.red_scale_correction_type
+                self.setup_oceanload_correction_type = self.red_oceanload_correction_type
             self.setup_calc_method = method
             self.setup_sd_method = method_sd
             self.create_setup_obs_list()
