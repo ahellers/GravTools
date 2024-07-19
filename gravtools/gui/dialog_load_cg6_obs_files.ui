@@ -208,7 +208,7 @@
      <item>
       <widget class="QPushButton" name="pushButton_select_files">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press to open file selection dialog for observation files. Please be aware that all selectd files need to have have the same format (matching the selection above.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Press to open file selection dialog for observation files. Please be aware that all selectd files need to have have the same format (matching the selection above).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Select observation files</string>

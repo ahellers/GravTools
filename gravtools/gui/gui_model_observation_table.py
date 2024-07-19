@@ -66,6 +66,7 @@ class ObservationTableModel(QAbstractTableModel):
         'linear_scale': 5,
         'corr_oceanload_instrument_mugal': 1,
         'corr_oceanload_red_mugal': 1,
+        'duration_sec': 0,
     }
 
     # Columns that will be shown in the table view, if available in the data (Also defines the order of columns):

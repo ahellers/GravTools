@@ -2552,8 +2552,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 parent = item.parent()
                 survey_name = parent.text(0)  # Column 0 = Survey name
                 setup_id = int(item.text(0))
-            # self.update_obs_table_view(survey_name, setup_id)  # TODO: Why here? Needed?
-            # self.plot_observations(survey_name)  # TODO: Why here? Needed?
         else:
             if IS_VERBOSE:
                 print('No item or multiple items selected!')
@@ -3634,7 +3632,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.statusBar().showMessage(f"No surveys loaded.")
             return
         file_format = self.dlg_load_cg6_observation_files.file_format
-        dt_sec = self.dlg_load_cg6_observation_files.spinBox_dt_sec.value()
+        if self.dlg_load_cg6_observation_files.checkBox_use_dt.isChecked():
+            dt_sec = self.dlg_load_cg6_observation_files.spinBox_dt_sec.value()
+        else:
+            dt_sec = None  # Do not consider time gaps
         location_type = self.dlg_load_cg6_observation_files.location_type
         error_type = self.dlg_load_cg6_observation_files.error_type
         pres_in_column = self.dlg_load_cg6_observation_files.pres_in_column
@@ -3647,12 +3648,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if file_format == 'cg6_obs_file_lynx_v1':
                     cg6_survey = CG6Survey.from_lynxlg_file_v1(filename, dt_sec, verbose=IS_VERBOSE)
                 elif file_format == 'cg6_obs_file_lynx_v2':
-                    if self.dlg_load_cg6_observation_files.checkBox_use_dt.isChecked():
-                        cg6_survey = CG6Survey.from_lynxlg_file_v2(filename, dt_sec, verbose=IS_VERBOSE)
-                    else:
-                        cg6_survey = CG6Survey.from_lynxlg_file_v2(filename, verbose=IS_VERBOSE)
+                    cg6_survey = CG6Survey.from_lynxlg_file_v2(filename, dt_sec, verbose=IS_VERBOSE)
                 elif file_format == 'cg6_obs_file_solo':
-                    raise RuntimeError('The CG6 solo format is not supported yet!')  # TODO: Not implemented yet!
+                    cg6_survey = CG6Survey.from_cg6solo_file(filename, dt_sec, verbose=IS_VERBOSE)
                 else:
                     raise RuntimeError(f'Unknown CG6 obs file format: {file_format}')
                 # Convert CG6Survey survey into Survey:

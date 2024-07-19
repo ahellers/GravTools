@@ -133,7 +133,7 @@ class CG6Survey:
     """
     # Column names of the dataframe containing tha actual observation data:
     _OBS_DF_COLUMNS = {
-        'ref_time': np.datetime64,  # TODO: Passt das?
+        'ref_time': np.datetime64,
         'station': str,
         'occupation': str,
         'line': str,
@@ -163,7 +163,7 @@ class CG6Survey:
         'gradient_mugalm': float,
         'g_raw_mugal': float,
         'setup_id': float,
-        'note': float,
+        'note': str,
     }
     _OBS_DF_COLUMN_NAMES = _OBS_DF_COLUMNS.keys()
 
@@ -285,7 +285,7 @@ class CG6Survey:
         self.serial_number = serial_number
 
         # created_datetime
-        if not isinstance(created_datetime, dt.datetime):  # TODO: Correct datetime object?
+        if not isinstance(created_datetime, dt.datetime):
             raise RuntimeError('"created_datetime" needs to be a datetime object.')
         self.created_datetime = created_datetime
 
@@ -345,7 +345,7 @@ class CG6Survey:
         self.drift_rate = drift_rate
 
         # drift_ref_datetime
-        if not isinstance(drift_ref_datetime, dt.datetime):  # TODO: Correct datetime object?
+        if not isinstance(drift_ref_datetime, dt.datetime):
             raise RuntimeError('"drift_ref_datetime" needs to be a datetime object.')
         self.drift_ref_datetime = drift_ref_datetime
 
@@ -479,9 +479,10 @@ class CG6Survey:
         are saved in the file right before the block of observations at a station. Be aware that the note for the first
         setup is written to the file header.
 
-        Subsequent setups are supposed to be separated by note entries in the observation file. Optionally, a time span
-        may be defined that is used to distinguish between consecutive setups. In the latter case observations are
-        divided into different setups, if the time gap between them is larger than the defined value.
+        Subsequent setups are supposed to be separated by note entries in the observation file or by station names.
+        Optionally, a time span may be defined that is used to distinguish between consecutive setups. In the latter
+        case observations are divided into different setups, if the time gap between them is larger than the defined
+        value.
 
         Parameters
         ----------
@@ -544,8 +545,6 @@ class CG6Survey:
         file_str, lines = cls.read_cg6_file(filename)
 
         # Read header items:
-
-        # lynxlg_version:
         # - This item is treated separately, because it can occure more than once in the obs. file.
         expr = r'\/ Software Version: (?P<lynxlg_version>\S+)\s*\n'
         # Read setup parameters blocks from obs file string (only one block allowed!):
@@ -694,21 +693,31 @@ class CG6Survey:
                 gps_satellites_list.append(float(block_dict['gps_satellites']))
                 gps_hdop_list.append(float(block_dict['gps_hdop']))
                 gps_h_m_list.append(float(block_dict['gps_h_m']))
-                duration_list.append(float(block_dict['duration']))  # TODO: [sec]?
+                duration_list.append(float(block_dict['duration']))
                 num_rejected_list.append(float(block_dict['num_rejected']))
-                instr_height_m_list.append(float(block_dict['instr_height_m']))  # TODO: [m] or [cm]?
+                instr_height_m_list.append(float(block_dict['instr_height_m']))
                 gradient_mugalm_list.append(float(block_dict[
-                                                      'gradient_mgalcm']) * 1e5)  # TODO: Einheit mgal/cm mach mit 3 Kommastellen keinen Sinn...?
-                g_raw_mugal_list.append(np.nan)  # TODO: Calculate?
+                                                      'gradient_mgalcm']) * 1e5)  # TODO: Unit mgal/cm makes no sense...
+                g_raw_mugal_list.append(np.nan)
                 survey_name_list.append(block_dict['survey'])
 
-                # Check time gap:
-                if dt_setup_sec is not None:
-                    if not flag_new_setup:  # At least one obs. after a "/ Notes" line
-                        if num_obs > 0:
-                            if (ref_time_list[num_obs - 1] - ref_time_list[num_obs - 2]).seconds > dt_setup_sec:
-                                flag_new_setup = True
-                                note = ''  # Reset note
+                # Check conditions for new setups:
+                if num_obs > 1:  # Minimum 2nd observation in survey
+                    if station_list[num_obs - 1] != station_list[num_obs - 2]:  # Check station names to create setups
+                        flag_new_setup = True
+                        note = ''  # Reset note
+                    elif dt_setup_sec is not None:  # Check time gap
+                        if (ref_time_list[num_obs - 1] - ref_time_list[num_obs - 2]).seconds > dt_setup_sec:
+                            flag_new_setup = True
+                            note = ''  # Reset note
+
+                # # Check time gap between observations to create setups:
+                # if dt_setup_sec is not None:
+                #     if not flag_new_setup:  # At least one obs. after a "/ Notes" line
+                #         if num_obs > 0:
+                #             if (ref_time_list[num_obs - 1] - ref_time_list[num_obs - 2]).seconds > dt_setup_sec:
+                #                 flag_new_setup = True
+                #                 note = ''  # Reset note
 
                 # New setup id:
                 if flag_new_setup:
@@ -760,7 +769,7 @@ class CG6Survey:
                                        g_raw_mugal_list,
                                        setup_id_list,
                                        note_list)),
-                            columns=cls._OBS_DF_COLUMN_NAMES)
+                              columns=cls._OBS_DF_COLUMN_NAMES)
 
         return cls(obs_filename=filename,
                    obs_file_type=obs_file_type,
@@ -794,7 +803,7 @@ class CG6Survey:
                    lynxlg_version=lynxlg_version)
 
     @classmethod
-    def from_lynxlg_file_v1(cls, filename: str, dt_setup_sec: float, verbose: bool = True):
+    def from_lynxlg_file_v1(cls, filename: str, dt_setup_sec: float = None, verbose: bool = True):
         """Constractor for LynxLG formatted observation files (version 1, without notes).
 
         Notes
@@ -811,8 +820,9 @@ class CG6Survey:
         ----------
         filename : str
             Name and path of the observation file.
-        dt_setup_sec : float
-            Minimum time gap between two consecutive observations [sec] in order to create separate setups.
+        dt_setup_sec : float, optional (default = `None`)
+            Minimum time gap between two consecutive observations [sec] in order to create separate setups. `None`
+            implies that time gaps are not considered in order to create setups.
         verbose : bool, optional (default = True)
             True indicates that status messages are written to the command line.
         """
@@ -829,16 +839,18 @@ class CG6Survey:
         are saved in the file right before the block of observations at a station. Be aware that the note for the first
         setup is written to the file header.
 
-        Subsequent setups are supposed to be separated by note entries in the observation file. Optionally, a time span
-        may be defined that is used to distinguish between consecutive setups. In the latter case observations are
-        divided into different setups, if the time gap between them is larger than the defined value.
+        Subsequent setups are supposed to be separated by note entries in the observation file and by station names.
+        Optionally, a time span may be defined that is used to distinguish between consecutive setups. In the latter
+        case observations are divided into different setups, if the time gap between them is larger than the defined
+        value.
 
         Parameters
         ----------
         filename : str
             Name and path of the observation file.
         dt_setup_sec : float, optional (default = `None`)
-            Minimum time gap between two consecutive observations [sec] in order to create separate setups.
+            Minimum time gap between two consecutive observations [sec] in order to create separate setups. `None`
+            implies that time gaps are not considered in order to create setups.
         verbose : bool, optional (default = `True`)
             True indicates that status messages are written to the command line.
         """
@@ -846,27 +858,262 @@ class CG6Survey:
                                     dt_setup_sec=dt_setup_sec, verbose=verbose)
 
     @classmethod
-    def from_cg6solo_file(cls, filename: str, dt_s: float = None, verbose: bool = True):
+    def from_cg6solo_file(cls, filename: str, dt_setup_sec: float = None, verbose: bool = True):
         """Constractor for CG6-solo formatted observation files (version 2).
 
         Notes
         -----
-        Subsequent setups at the same station can be separated based on the time difference between observations. If the
-        separation of the reference time of two observations is larger than the value given by `dt_s` in seconds they
-        are assumed to belong to two consecutive setups.
+        Optionally, subsequent setups at the same station can be separated based on the time difference between
+        observations. If the separation of the reference time of two observations is larger than the value given by
+        `dt_setup_sec` in seconds they are assumed to belong to two consecutive setups.
 
         Parameters
         ----------
         filename : str
             Name and path of the observation file.
-        dt_s : float, optional (default = `None`)
-            Minimum separation time between two consecutive setups [sec]. If the value is `None`, only the station name
-            is used to separate setups from one another.
+        dt_setup_sec : float, optional (default = `None`)
+            Minimum time gap between two consecutive observations [sec] in order to create separate setups. `None`
+            implies that time gaps are not considered in order to create setups.
         verbose : bool, optional (default = True)
             True indicates that status messages are written to the command line.
         """
-        pass
-        # TODO: Add code here!
+        _HEADER_LINES = {
+            # <variable_name str>: [<regex_expr str>, <field_name str>, <flag_optional bool>, <default var>, <dtype>]
+            'survey_name': [r'\/\t\tSurvey Name:\t(?P<input_str>\S+)\n', 'Survey name', False, '', 'str'],
+            'serial_number': [r'\/\t\tInstrument Serial Number:\t(?P<input_str>\S+)\n', 'Instrument Serial Number',
+                              False, '', 'str'],
+            'created_datetime': [r'\/\t\tCreated:\t(?P<input_str>[0-9 :-]+)\n', 'Created', False, '', 'str'],
+            'operator': [r'\/\t\tOperator:\t(?P<input_str>\S+)\n', 'Operator', False, '', 'str'],
+            'gcal1': [r'\/\t\tGcal1 \[mGal\]:\t(?P<input_str>\S+)\n', 'Gcal1 [mGal]', False, np.nan, 'float'],
+            'goff': [r'\/\t\tGoff \[ADU\]:\t(?P<input_str>\S+)\n', 'Goff [ADU]', False, np.nan, 'float'],
+            'gref': [r'\/\t\tGref \[mGal\]:\t(?P<input_str>\S+)\n', 'Gref [mGal]', False, np.nan, 'float'],
+            'x_scale': [r'\/\t\tX Scale \[arc-sec\/ADU\]:\t(?P<input_str>\S+)\n', 'X Scale [arc-sec/ADU]', False,
+                        np.nan, 'float'],
+            'y_scale': [r'\/\t\tY Scale \[arc-sec\/ADU\]:\t(?P<input_str>\S+)\n', 'Y Scale [arc-sec/ADU]', False,
+                        np.nan, 'float'],
+            'x_offset': [r'\/\t\tX Offset \[ADU\]:\t(?P<input_str>\S+)\n', 'X Offset [ADU]', False, np.nan, 'float'],
+            'y_offset': [r'\/\t\tY Offset \[ADU\]:\t(?P<input_str>\S+)\n', 'Y Offset [ADU]', False, np.nan, 'float'],
+            'temp_corr_coeff': [r'\/\t\tTemperature Coefficient \[mGal\/mK\]:\t(?P<input_str>\S+)\n',
+                                'Temperature Coefficient [mGal/mK]', False, np.nan, 'float'],
+            'temp_sensor_scale': [r'\/\t\tTemperature Scale \[mK\/ADU\]:\t(?P<input_str>\S+)\n',
+                                  'Temperature Scale [mK/ADU]',
+                                  False, np.nan, 'float'],
+            'drift_rate': [r'\/\t\tDrift Rate \[mGal\/day\]:\t(?P<input_str>\S+)\n', 'Drift Rate [mGal/day]', False,
+                           np.nan, 'float'],
+            'drift_ref_datetime': [r'\/\t\tDrift Zero Time:\t(?P<input_str>[0-9 :-]+)\n', 'Drift Zero Time', False, '',
+                                   'str'],
+            'firmware_version': [r'\/\t\tFirmware Version:\t(?P<input_str>\S+)\n', 'Firmware Version', False, '', 'str'],
+        }
+
+        if verbose:
+            print(f'Load CG6 observation file (CG6 solo): {filename}')
+            if dt_setup_sec is not None:
+                print(f' - A time gap of {dt_setup_sec} seconds or more between observations creates a new setup.')
+
+        # Read file:
+        file_str, lines = cls.read_cg6_file(filename)
+
+        # Read header strings:
+        for key, item in _HEADER_LINES.items():
+            expr = item[0]
+            field_name = item[1]
+            flag_optional = item[2]
+            data_type = item[4]
+            block_count = 0
+            for block in re.finditer(expr, file_str):
+                block_dict = block.groupdict()
+                block_count += 1
+            if block_count == 1:
+                if data_type == 'str':
+                    item[3] = block_dict['input_str']
+                elif data_type == 'float':
+                    item[3] = float(block_dict['input_str'])
+                elif data_type == 'int':
+                    item[3] = int(block_dict['input_str'])
+                else:
+                    raise RuntimeError(
+                        f'Unknown data type "{data_type}": Conversion of field "{field_name}" failed '
+                        f'when loading file {filename}.')
+            elif block_count == 0:
+                if not flag_optional:
+                    raise InvaliFileContentError(
+                        f'The file {filename} does not contain a "{field_name}" header line.')
+            if block_count > 1:
+                raise InvaliFileContentError(
+                    f'The file {filename} contains more than one "{field_name}" header line.')
+            # _HEADER_LINES[key] = item  # Not required due to pass by reference
+
+        # Convert strings to datetime:
+        drift_ref_datetime = dt.datetime.strptime(_HEADER_LINES['drift_ref_datetime'][3], '%Y-%m-%d %H:%M:%S')
+        created_datetime = dt.datetime.strptime(_HEADER_LINES['created_datetime'][3], '%Y-%m-%d %H:%M:%S')
+
+        # Read observations:
+        station_list = []
+        ref_time_list = []
+        g_corr_mugal_list = []
+        line_list = []
+        sd_mugal_list = []
+        se_mugal_list = []
+        g_raw_mugal_list = []
+        tilt_x_arcsec_list = []
+        tilt_y_arcsec_list = []
+        sensor_temp_mk_list = []
+        corr_tide_mugal_list = []
+        corr_tilt_mugal_list = []
+        corr_temp_mugal_list = []
+        corr_drift_mugal_list = []
+        duration_list = []
+        instr_height_m_list = []
+        user_lat_deg_list = []
+        user_lon_deg_list = []
+        user_height_m_list = []
+        gps_lat_deg_list = []
+        gps_lon_deg_list = []
+        gps_h_m_list = []
+        correction_flags_list = []
+        occupation_list = []
+        corr_oceanload_mugal_list = []
+        gradient_mugalm_list = []
+        gps_fix_quality_list = []
+        gps_satellites_list = []
+        gps_hdop_list = []
+        num_rejected_list = []
+        note_list = []
+        setup_id_list = []
+
+        expr = r'(?P<station>\S+)\t(?P<date>[0-9-]{10})\t(?P<time>[0-9:]{8})\t(?P<corr_g_mgal>[0-9.]+)\t(?P<line>\S*)\t(?P<sd_g_mgal>[0-9.]+)\t(?P<se_g_mgal>[0-9.]+)\t(?P<raw_g_mgal>[0-9.]+)\t(?P<tilt_x_arcsec>-?[0-9.]+)\t(?P<tilt_y_arcsec>-?[0-9.]+)\t(?P<sensor_temp_mk>-?[0-9.]+)\t(?P<corr_tide_mgal>-?[0-9.]+)\t(?P<corr_tilt_mgal>-?[0-9.]+)\t(?P<corr_temp_mgal>-?[0-9.]+)\t(?P<corr_drift_mgal>-?[0-9.]+)\t(?P<duration>[0-9]+)\t(?P<instr_height_m>-?[0-9.]+)\t(?P<user_lat_deg>-?[0-9.]+)\t(?P<user_lon_deg>-?[0-9.]+)\t(?P<user_height_m>-?[0-9.]+)\t(?P<gps_lat_deg>-?[0-9.]+)\t(?P<gps_lon_deg>-?[0-9.]+)\t(?P<gps_height_m>-?[0-9.]+)\t(?P<correction_flags>[01]{5})\s*'
+        obs_count = 0
+        for block in re.finditer(expr, file_str):
+            block_dict = block.groupdict()
+            station_list.append(block_dict['station'])
+            datetime_str = block_dict['date'] + ' ' + block_dict['time']
+            ref_time_list.append(dt.datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S'))
+            g_corr_mugal_list.append(float(block_dict['corr_g_mgal']) * 1000)
+            line_list.append(block_dict['line'])
+            sd_mugal_list.append(float(block_dict['sd_g_mgal']) * 1000)
+            se_mugal_list.append(float(block_dict['se_g_mgal']) * 1000)
+            g_raw_mugal_list.append(float(block_dict['raw_g_mgal']) * 1000)
+            tilt_x_arcsec_list.append(float(block_dict['tilt_x_arcsec']))
+            tilt_y_arcsec_list.append(float(block_dict['tilt_y_arcsec']))
+            sensor_temp_mk_list.append(float(block_dict['sensor_temp_mk']))
+            corr_tide_mugal_list.append(float(block_dict['corr_tide_mgal']) * 1000)
+            corr_tilt_mugal_list.append(float(block_dict['corr_tilt_mgal']) * 1000)
+            corr_temp_mugal_list.append(float(block_dict['corr_temp_mgal']) * 1000)
+            corr_drift_mugal_list.append(float(block_dict['corr_drift_mgal']) * 1000)
+            duration_list.append(float(block_dict['duration']))  # TODO: [sec]?
+            instr_height_m_list.append(float(block_dict['instr_height_m']))
+            user_lat_deg_list.append(float(block_dict['user_lat_deg']))
+            user_lon_deg_list.append(float(block_dict['user_lon_deg']))
+            user_height_m_list.append(float(block_dict['user_height_m']))
+            gps_lat_deg_list.append(float(block_dict['gps_lat_deg']))
+            gps_lon_deg_list.append(float(block_dict['gps_lon_deg']))
+            gps_h_m_list.append(float(block_dict['gps_height_m']))
+            correction_flags_list.append(block_dict['correction_flags'])
+            # Initialize fields that are not available in the obs. file:
+            occupation_list.append('')
+            corr_oceanload_mugal_list.append(np.nan)
+            gradient_mugalm_list.append(np.nan)
+            gps_fix_quality_list.append(np.nan)
+            gps_satellites_list.append(np.nan)
+            gps_hdop_list.append(np.nan)
+            num_rejected_list.append(np.nan)
+            note_list.append('')
+
+            obs_count += 1
+        if obs_count == 0:
+            raise RuntimeError(f'No observations found in file {filename}.')
+
+        # Separate instrument setups based on the time gaps and station names and determine setup IDs:
+        num_setups = 0
+        flag_new_setup = False
+        for count_idx, ref_time in enumerate(ref_time_list):
+            if count_idx == 0:  # First observation
+                flag_new_setup = True
+            else:
+                if station_list[count_idx] != station_list[count_idx - 1]:  # New station?
+                    flag_new_setup = True
+                elif dt_setup_sec is not None:
+                    if (ref_time_list[count_idx] - ref_time_list[count_idx - 1]).seconds > dt_setup_sec:  # Time gap?
+                        flag_new_setup = True
+            if flag_new_setup:
+                setup_id = int(dt.datetime.timestamp(ref_time))
+                num_setups += 1
+                flag_new_setup = False
+            setup_id_list.append(setup_id)
+
+        # Create pandas dataframe:
+        obs_df = pd.DataFrame(list(zip(ref_time_list,
+                                       station_list,
+                                       occupation_list,
+                                       line_list,
+                                       user_lat_deg_list,
+                                       user_lon_deg_list,
+                                       user_height_m_list,
+                                       g_corr_mugal_list,
+                                       se_mugal_list,
+                                       sd_mugal_list,
+                                       tilt_x_arcsec_list,
+                                       tilt_y_arcsec_list,
+                                       sensor_temp_mk_list,
+                                       corr_tilt_mugal_list,
+                                       corr_tide_mugal_list,
+                                       corr_oceanload_mugal_list,
+                                       corr_temp_mugal_list,
+                                       corr_drift_mugal_list,
+                                       gps_lat_deg_list,
+                                       gps_lon_deg_list,
+                                       gps_fix_quality_list,
+                                       gps_satellites_list,
+                                       gps_hdop_list,
+                                       gps_h_m_list,
+                                       duration_list,
+                                       num_rejected_list,
+                                       instr_height_m_list,
+                                       gradient_mugalm_list,
+                                       g_raw_mugal_list,
+                                       setup_id_list,
+                                       note_list)),
+                              columns=cls._OBS_DF_COLUMN_NAMES)
+
+        # Handle correction flags:
+        if not all(item == correction_flags_list[0] for item in correction_flags_list):
+            raise RuntimeError(f'The correction flags in the file {filename} are not equal for all observations!')
+        drift_corr = correction_flags_list[0][0] == '1'
+        temp_corr = correction_flags_list[0][1] == '1'
+        tidal_corr = correction_flags_list[0][3] == '1'
+        tilt_corr = correction_flags_list[0][4] == '1'
+
+        return cls(obs_filename=filename,
+                   obs_file_type='cg6_obs_file_solo',
+                   survey_name=_HEADER_LINES['survey_name'][3],
+                   serial_number=_HEADER_LINES['survey_name'][3],
+                   created_datetime=created_datetime,
+                   operator=_HEADER_LINES['operator'][3],
+                   gcal1=_HEADER_LINES['gcal1'][3],
+                   goff=_HEADER_LINES['goff'][3],
+                   gref=_HEADER_LINES['gref'][3],
+                   x_scale=_HEADER_LINES['x_scale'][3],
+                   y_scale=_HEADER_LINES['y_scale'][3],
+                   x_offset=_HEADER_LINES['x_offset'][3],
+                   y_offset=_HEADER_LINES['y_offset'][3],
+                   temp_corr_coeff=_HEADER_LINES['temp_corr_coeff'][3],
+                   temp_sensor_scale=_HEADER_LINES['temp_sensor_scale'][3],
+                   drift_rate=_HEADER_LINES['drift_rate'][3],
+                   drift_ref_datetime=drift_ref_datetime,
+                   tilt_corr=tilt_corr,
+                   tidal_corr=tidal_corr,
+                   ocean_loading_corr=False,
+                   temp_corr=temp_corr,
+                   drift_corr=drift_corr,
+                   obs_df=obs_df,
+                   # temp_sensor_offset=_HEADER_LINES['temp_sensor_offset'][3],  # Not available
+                   firmware_version=_HEADER_LINES['firmware_version'][3]
+                   # gravity_filter_type=_HEADER_LINES['gravity_filter_type'][3],  # Not available
+                   # gravity_filter_period=_HEADER_LINES['gravity_filter_period'][3],  # Not available
+                   # date_time_source=_HEADER_LINES['date_time_source'][3],  # Not available
+                   # tidal_corr_model=_HEADER_LINES['tidal_corr_model'][3],  # Not available
+                   # lynxlg_version=lynxlg_version  # Not available
+                   )
 
     @classmethod
     def _check_obs_df_columns(cls, obs_df):
@@ -992,15 +1239,10 @@ class CG6Survey:
 
 # Run as standalone program:
 if __name__ == "__main__":
-    s_v1 = CG6Survey.from_lynxlg_file_v1('../../data/CG6_data/Cieslack/2024-06-19/20240618_S24353_010_Edit_v1.DAT',
-                                         verbose=True, dt_setup_sec=300)
-    print(s_v1)
-    s_v2 = CG6Survey.from_lynxlg_file_v2('../../data/CG6_data/Cieslack/2024-06-19/20240613_S20303_573_v2.DAT',
+    s_solo = CG6Survey.from_cg6solo_file('../../data/CG6_data/Heligrav_2023/CG-6_0265_HELIGRAV_2023-09-11.dat',
+                                         300,
                                          verbose=True)
-    print(s_v2)
-
-    s_v1.plot_g_values()
-    s_v2.plot_g_values()
-
+    print(s_solo)
+    s_solo.plot_g_values()
 else:
     pass

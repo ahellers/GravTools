@@ -337,7 +337,7 @@ class Survey:
         'keep_obs': bool,  # Remove observation, if false (bool)
         'vg_mugalm': float,  # vertical gradient [µGal/m]
         'corr_tide_red_mugal': float,  # Alternative tidal correction [µGal], optional
-        'duration_sec': float,  # Duration [sec]  # TODO: int or float?
+        'duration_sec': float,  # Duration [sec]
         'atm_pres_hpa': float,  # Measured atmospheric pressure [hPa]
         'norm_atm_pres_hpa': float,  # Normal atmospheric pressure [hPa]
         'corr_atm_pres_red_mugal': float,  # Normal atmospheric pressure correction [µGal]

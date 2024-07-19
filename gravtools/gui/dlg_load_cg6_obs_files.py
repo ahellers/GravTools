@@ -95,15 +95,6 @@ class DialogLoadCg6ObservationFiles(QDialog, Ui_DialogLoadCg6ObservationFiles):
         # Update format description label
         description = settings.CG6_SURVEY_DATA_SOURCE_TYPES[format_key]
         self.label_format_description.setText(description)
-        # Enable/disable items based on format selection:
-        if format_key == 'cg6_obs_file_solo':
-            self.checkBox_use_dt.setCheckState(Qt.Checked)
-            self.checkBox_use_dt.setEnabled(False)
-        elif format_key == 'cg6_obs_file_lynx_v1':
-            self.checkBox_use_dt.setCheckState(Qt.Checked)
-            self.checkBox_use_dt.setEnabled(False)
-        else:
-            self.checkBox_use_dt.setEnabled(True)
 
     def select_files(self):
         """Select observation files using a file selection dialog"""
