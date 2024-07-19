@@ -465,7 +465,7 @@ class CG5Survey:
             "options is not an instance of CG5OptionsParameters"
         self.options = options
 
-        # Read observation file, if a valid filename is available and valid. Otherwise initialize obs_df as None.
+        # Read observation file, if a valid filename is available and valid. Otherwise, initialize obs_df as None.
         if self.obs_filename:
             self.read_obs_file(obs_filename)
         else:

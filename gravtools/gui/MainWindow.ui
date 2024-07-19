@@ -768,6 +768,20 @@
                   </property>
                  </widget>
                 </item>
+                <item row="4" column="0">
+                 <widget class="QLabel" name="label_29">
+                  <property name="text">
+                   <string>Ocean-loading correction:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QLabel" name="label_obs_setups_oceanload_corr">
+                  <property name="text">
+                   <string/>
+                  </property>
+                 </widget>
+                </item>
                </layout>
               </widget>
              </item>
@@ -1612,6 +1626,7 @@
       <string>Add Survey</string>
      </property>
      <addaction name="action_from_CG5_observation_file"/>
+     <addaction name="action_from_CG6_observation_files"/>
      <addaction name="action_from_BEV_observation_file"/>
     </widget>
     <widget class="QMenu" name="menu_Add_Stations">
@@ -1771,7 +1786,7 @@
   </action>
   <action name="action_from_CG5_observation_file">
    <property name="text">
-    <string>from CG5 observation file</string>
+    <string>from CG5 observation files</string>
    </property>
   </action>
   <action name="action_from_BEV_observation_file">
@@ -1890,6 +1905,11 @@
   <action name="action_gravimeters_from_json_file">
    <property name="text">
     <string>From json file</string>
+   </property>
+  </action>
+  <action name="action_from_CG6_observation_files">
+   <property name="text">
+    <string>from CG6 observation files</string>
    </property>
   </action>
  </widget>

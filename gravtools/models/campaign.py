@@ -394,6 +394,7 @@ class Campaign:
                                            target_tide_corr=None,
                                            target_atm_pres_corr=None,
                                            target_scale_corr=None,
+                                           target_oceanload_corr=None,
                                            atm_pres_admittance=None,
                                            tide_corr_timeseries_interpol_method='',
                                            verbose=False):
@@ -423,6 +424,10 @@ class Campaign:
             Specifies the scale correction type to be applied on all observations of this survey. Vali types are listed
             in :py:obj:`gravtools.settings.SCALE_CORRECTION_TYPES`. The default value `None` indicates that the
             respective corrections of the input data will not be changed.
+        target_oceanload_corr : str, optional (default = `None`)
+            Specifying the ocean-loading correction type to be applied to all surveys (if available). Valid types to be
+            listed in :py:obj:`gravtools.settings.OCEANLOAD_CORRECTION_TYPES`. Default is `None` indicating that the
+            respective corrections of the input data are not changed.
         atm_pres_admittance : float, optional (default = `None`)
             Admittance factor for the determination of pressure corrections based on the difference between measured and
             normal air pressure. If `target_atm_pres_corr` is not None (i.e. atmospheric pressure corrections will be
@@ -449,6 +454,7 @@ class Campaign:
                 target_atm_pres_corr=target_atm_pres_corr,
                 target_scale_corr=target_scale_corr,
                 atm_pres_admittance=atm_pres_admittance,
+                target_oceanload_corr=target_oceanload_corr,
                 tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                 correction_time_series=self.correction_time_series,
                 gravimeters=self.gravimeters,
