@@ -67,10 +67,11 @@ from gravtools.gui.gui_model_survey_table import SurveyTableModel
 from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool, resize_table_view_columns
 from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
 from gravtools.gui.dlg_corrections import DialogCorrections
-from gravtools.gui.survey_table_handler import SurveyTableHandler
+from gravtools.gui.dlg_load_cg6_obs_files import DialogLoadCg6ObservationFiles
 from gravtools.gui.cumstom_widgets import ScrollMessageBox
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
+from gravtools.CG6_utils.cg6_survey import CG6Survey
 from gravtools.models.survey import Survey
 from gravtools.models.campaign import Campaign
 from gravtools.models.misc import time_it, conditional_decorator, unique_ordered_list
@@ -135,6 +136,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.pushButton_results_delete_all_lsm_runs.pressed.connect(self.on_pushbutton_results_delete_all_lsm_runs)
         self.pushButton_results_export_shapefile.pressed.connect(self.on_pushButton_results_export_shapefile)
         self.action_from_CG5_observation_file.triggered.connect(self.on_menu_file_load_survey_from_cg5_observation_file)
+        self.action_from_CG6_observation_files.triggered.connect(
+            self.on_menu_file_load_survey_from_cg6_observation_files)
         self.action_from_oesgn_table.triggered.connect(self.on_menu_file_load_stations_from_oesgn_table)
         self.action_from_csv_file.triggered.connect(self.on_menu_file_load_stations_from_csv_file)
         self.action_gravimeters_from_json_file.triggered.connect(self.on_menu_file_load_gravimeters_from_json_file)
@@ -203,6 +206,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_about.label_pypi_repo.setText(__pypi_repo__)
         self.dlg_about.label_email.setText(__email__)
         self.dlg_about.label_copyright.setText(__copyright__)
+        self.dlg_load_cg6_observation_files = DialogLoadCg6ObservationFiles(self)
 
         # Estimation settings GUI:
         self.dlg_estimation_settings.comboBox_adjustment_method.currentIndexChanged.connect(
@@ -1334,11 +1338,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     else:
                         brush_color = self.station_colors_dict_results[row['station_name']]
                 spot_dic = {'pos': (
-                row['epoch_unix'], row['drift_at_obs_epochs_mugal'] - row['v_obs_est_mugal'] - subtr_const_mugal),
-                            'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
-                            'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
-                                    'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
-                            'brush': brush_color}
+                    row['epoch_unix'], row['drift_at_obs_epochs_mugal'] - row['v_obs_est_mugal'] - subtr_const_mugal),
+                    'size': settings.DRIFT_PLOT_SCATTER_PLOT_SYMBOL_SIZE,
+                    'pen': {'color': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_COLOR,
+                            'width': settings.DRIFT_PLOT_SCATTER_PLOT_PEN_WIDTH},
+                    'brush': brush_color}
                 spots.append(spot_dic)
                 plotted_stations.append(row['station_name'])
 
@@ -2251,11 +2255,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     f'{self.setup_model.get_scale_corr_type} ({settings.SCALE_CORRECTION_TYPES[self.setup_model.get_scale_corr_type]})')
             else:
                 self.label_obs_setups_scale_corr.setText(f'{self.setup_model.get_scale_corr_type}')
+            if self.setup_model.get_oceanload_corr_type in settings.OCEANLOAD_CORRECTION_TYPES.keys():
+                self.label_obs_setups_oceanload_corr.setText(
+                    f'{self.setup_model.get_oceanload_corr_type} ({settings.OCEANLOAD_CORRECTION_TYPES[self.setup_model.get_oceanload_corr_type]})')
+            else:
+                self.label_obs_setups_oceanload_corr.setText(f'{self.setup_model.get_oceanload_corr_type}')
         except KeyError:
             self.label_obs_setups_ref_height.setText('')
             self.label_obs_setups_tidal_corr.setText('')
             self.label_obs_setups_atm_pres_corr.setText('')
             self.label_obs_setups_scale_corr.setText('')
+            self.label_obs_setups_oceanload_corr.setText('')
 
     def compute_setup_data_for_campaign(self):
         """Compute setup data for the campaign."""
@@ -2542,8 +2552,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 parent = item.parent()
                 survey_name = parent.text(0)  # Column 0 = Survey name
                 setup_id = int(item.text(0))
-            # self.update_obs_table_view(survey_name, setup_id)  # TODO: Why here? Needed?
-            # self.plot_observations(survey_name)  # TODO: Why here? Needed?
         else:
             if IS_VERBOSE:
                 print('No item or multiple items selected!')
@@ -2837,6 +2845,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if flag_show_reduced_observations:
                 g_mugal = obs_df['g_red_mugal'].astype(float).values
                 sd_g_mugal = obs_df['sd_g_red_mugal'].values
+                ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
                 corr_tide = obs_df['corr_tide_red_mugal'].values
                 corr_tide_name = self.campaign.surveys[survey_name].red_tide_correction_type
 
@@ -2857,7 +2866,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 else:
                     if corr_description_str:
                         corr_tide_name = corr_tide_name + ': ' + corr_description_str
-                ref_height_name = self.campaign.surveys[survey_name].red_reference_height_type
+
+                # Try-except for downward compatibility < version 0.2.9
+                try:
+                    corr_oceanload_name = self.campaign.surveys[survey_name].red_oceanload_correction_type
+                except AttributeError:
+                    corr_oceanload_name = ''
+                corr_oceanload = obs_df['corr_oceanload_red_mugal'].values
             else:
                 g_mugal = obs_df['g_obs_mugal'].values
                 sd_g_mugal = obs_df['sd_g_obs_mugal'].values
@@ -2865,6 +2880,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 corr_tide_name = self.campaign.surveys[survey_name].obs_tide_correction_type
                 ref_height_name = self.campaign.surveys[survey_name].obs_reference_height_type
                 corr_atm_pres_name = ''  # ... won't be plotted in GUI.
+                corr_oceanload_name = self.campaign.surveys[survey_name].obs_oceanload_correction_type
+                corr_oceanload = obs_df['corr_oceanload_instrument_mugal'].values
 
             # Gravity g [µGal]
             # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
@@ -2932,6 +2949,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if corr_atm_pres_name != '' and corr_atm_pres_name != 'no_atm_pres_corr':
                 self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_atm_pres,
                                   plot_name=f'atm. pres ({corr_atm_pres_name})', color='r', symbol='o', symbol_size=10)
+
+            # - Ocean-loading corrections:
+            if corr_oceanload_name != '' and corr_oceanload_name != 'no_oceanload_corr':
+                if not ((corr_oceanload == None).all() or np.isnan(corr_oceanload).all()):  # Valid data available?
+                    self.plot_xy_data(self.plot_obs_corrections, obs_epoch_timestamps, corr_oceanload,
+                                      plot_name=f'oceanload ({corr_oceanload_name})', color='g', symbol='o', symbol_size=10)
 
             self.plot_obs_corrections.showGrid(x=True, y=True)
             self.plot_obs_corrections.autoRange()
@@ -3317,6 +3340,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             target_scale_corr = 'no_scale'
 
+        if self.dlg_corrections.checkBox_apply_ocean_loading_lynxlg.isChecked():
+            target_oceanload_corr = 'instrumental_corr'
+        else:
+            target_oceanload_corr = 'no_oceanload_corr'
+
         if flag_selection_ok:
             try:
                 self.campaign.reduce_observations_in_all_surveys(
@@ -3324,6 +3352,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     target_tide_corr=target_tide_corr,
                     target_atm_pres_corr=target_atm_pres_corr,
                     target_scale_corr=target_scale_corr,
+                    target_oceanload_corr=target_oceanload_corr,
                     atm_pres_admittance=atm_pres_admittance,
                     tide_corr_timeseries_interpol_method=tide_corr_timeseries_interpol_method,
                     verbose=IS_VERBOSE)
@@ -3590,6 +3619,65 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.tableView_surveys.setModel(self.survey_model)
             self.tableView_surveys.resizeColumnsToContents()
 
+    def on_menu_file_load_survey_from_cg6_observation_files(self):
+        """Launch dialog for loading CG6 observation files."""
+        return_value = self.dlg_load_cg6_observation_files.exec()
+        if return_value == QDialog.Rejected:
+            self.statusBar().showMessage(f"No surveys loaded.")
+            return
+
+        # Get parameters from GUI:
+        filenames = self.dlg_load_cg6_observation_files.file_list
+        if not filenames:
+            self.statusBar().showMessage(f"No surveys loaded.")
+            return
+        file_format = self.dlg_load_cg6_observation_files.file_format
+        if self.dlg_load_cg6_observation_files.checkBox_use_dt.isChecked():
+            dt_sec = self.dlg_load_cg6_observation_files.spinBox_dt_sec.value()
+        else:
+            dt_sec = None  # Do not consider time gaps
+        location_type = self.dlg_load_cg6_observation_files.location_type
+        error_type = self.dlg_load_cg6_observation_files.error_type
+        pres_in_column = self.dlg_load_cg6_observation_files.pres_in_column
+        dhb_in_column = self.dlg_load_cg6_observation_files.dhb_in_column
+
+        # Load CG6 files with the specified format:
+        added_surveys_list = []
+        for filename in filenames:
+            try:
+                if file_format == 'cg6_obs_file_lynx_v1':
+                    cg6_survey = CG6Survey.from_lynxlg_file_v1(filename, dt_sec, verbose=IS_VERBOSE)
+                elif file_format == 'cg6_obs_file_lynx_v2':
+                    cg6_survey = CG6Survey.from_lynxlg_file_v2(filename, dt_sec, verbose=IS_VERBOSE)
+                elif file_format == 'cg6_obs_file_solo':
+                    cg6_survey = CG6Survey.from_cg6solo_file(filename, dt_sec, verbose=IS_VERBOSE)
+                else:
+                    raise RuntimeError(f'Unknown CG6 obs file format: {file_format}')
+                # Convert CG6Survey survey into Survey:
+                survey = Survey.from_cg6_survey(cg6_survey,
+                                                error_type=error_type,
+                                                location_type=location_type,
+                                                pres_in_column=pres_in_column,
+                                                dhb_in_column=dhb_in_column,
+                                                keep_survey=True)
+                self.campaign.add_survey(survey_add=survey, verbose=IS_VERBOSE)
+                self.campaign.gravimeters.add_from_survey(survey)
+            except Exception as e:
+                tmp_str = f'Error while loading file {filename}:\n\n'
+                QMessageBox.critical(self, 'Error!', tmp_str + str(e))
+                continue
+            else:
+                added_surveys_list.append(
+                    survey.name + f' ({survey.get_number_of_observations()} obs.)')
+        if not added_surveys_list:
+            self.statusBar().showMessage(f"No survey data added.")
+            return
+
+        # Carry out calculations and update GUI:
+        self.post_loading_survey_actions(survey.name)
+        self.statusBar().showMessage(
+            f'{len(added_surveys_list)} survey added to campaign: ' + ','.join(added_surveys_list))
+
     @pyqtSlot()
     def on_menu_file_load_survey_from_cg5_observation_file(self):
         """Launch file selection dialog to select a CG5 observation file and load the data to the campaign."""
@@ -3620,7 +3708,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.campaign.gravimeters.add_from_survey(new_cg5_survey)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', f'Error while loading {cg5_obs_file_filename}: ' + str(e))
-                # self.statusBar().showMessage(f"No survey data added.")
                 continue
             else:
                 added_surveys_list.append(
@@ -3629,7 +3716,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not added_surveys_list:
             self.statusBar().showMessage(f"No survey data added.")
             return
+        self.post_loading_survey_actions(new_cg5_survey.name)
+        self.statusBar().showMessage(
+            f'{len(added_surveys_list)} survey added to campaign: ' + ','.join(added_surveys_list))
 
+    def post_loading_survey_actions(self, selected_survey_tree_widget: str):
+        """All actions that are required after loading one or more new surveys."""
         self.update_comboBox_stations_selection_survey(survey_names=self.campaign.survey_names)
 
         self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
@@ -3650,7 +3742,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.populate_survey_tree_widget()
         # Select the added survey in the tree view:
         for tree_item_idx in range(self.treeWidget_observations.topLevelItemCount()):
-            if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == new_cg5_survey.name:
+            if self.treeWidget_observations.topLevelItem(tree_item_idx).text(0) == selected_survey_tree_widget:
                 self.treeWidget_observations.topLevelItem(tree_item_idx).setSelected(True)
         self.enable_menu_observations_based_on_campaign_data()
 
@@ -3666,8 +3758,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Show observed stations only based on Checkbox state:
         self.on_checkBox_filter_observed_stat_only_toggled(self.checkBox_filter_observed_stat_only.checkState(),
                                                            auto_range_stations_plot=True)
-        self.statusBar().showMessage(
-            f'{len(added_surveys_list)} survey added to campaign: ' + ','.join(added_surveys_list))
 
     @pyqtSlot()
     def on_manu_observations_flag_observations(self):

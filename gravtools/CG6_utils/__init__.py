@@ -2,12 +2,14 @@
 GravTools - A software toolbox for processing relative gravity surveys
 ======================================================================
 
+Utility programs for handling the observation data of Scrintrex CG-6 gravity meters.
+
 License, contact and authorship
 -------------------------------
 
-Copyright (C) 2021  Andreas Hellerschmied
+Copyright (C) 2024  Andreas Hellerschmied
 
-GravTools was developed at Austria's *Federal Office of Metrology and Surveying (BEV)*.
+GravTools was developed at Austria's the *Federal Office of Metrology and Surveying (BEV)*.
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,10 +27,3 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 :Authors:
     Andreas Hellerschmied (andreas.hellerschmied@bev.gv.at)
 """
-
-__version__ = '0.3.0'
-__author__ = 'Andreas Hellerschmied'
-__git_repo__ = 'https://github.com/ahellers/GravTools'
-__pypi_repo__ = 'https://pypi.org/project/grav-toolbox/'
-__email__ = 'andreas.hellerschmied@bev.gv.at'
-__copyright__ = '(c) 2022 Andreas Hellerschmied'

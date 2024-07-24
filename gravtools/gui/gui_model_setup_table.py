@@ -95,6 +95,7 @@ class SetupTableModel(QAbstractTableModel):
         self._tide_correction_type = ''
         self._atm_pres_correction_type = ''
         self._scale_correction_type = ''
+        self._oceanload_correction_type = ''
 
     def reset_model(self):
         """Reset the model to a state without selected data to display."""
@@ -105,6 +106,7 @@ class SetupTableModel(QAbstractTableModel):
         self._tide_correction_type = ''
         self._atm_pres_correction_type = ''
         self._scale_correction_type = ''
+        self._oceanload_correction_type = ''
 
     def load_surveys(self, surveys):
         """Load observation data (dict of survey objects in the campaign object) to the observation model.
@@ -141,6 +143,10 @@ class SetupTableModel(QAbstractTableModel):
                     self._scale_correction_type = self._surveys[survey_name].setup_scale_correction_type
                 except AttributeError:
                     self._scale_correction_type = ''
+                try:
+                    self._oceanload_correction_type = self._surveys[survey_name].setup_oceanload_correction_type
+                except AttributeError:
+                    self._oceanload_correction_type = ''
                 self.flag_gui_simple_mode = gui_simple_mode
 
                 # Get list of columns to be depicted via the table model:
@@ -245,3 +251,8 @@ class SetupTableModel(QAbstractTableModel):
     def get_scale_corr_type(self):
         """Returns the scale corrections applied on the setup observations."""
         return self._scale_correction_type
+
+    @property
+    def get_oceanload_corr_type(self):
+        """Returns the ocean-loading correction applied on the setup observations."""
+        return self._oceanload_correction_type

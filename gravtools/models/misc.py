@@ -127,9 +127,9 @@ def conditional_decorator(dec, condition):
     Parameters
     ----------
     dec : decorator
-        Decorator that is executed if `condition` is `True`
+        Decorator that is executed if `condition` is `True`.
     condition: bool
-        If `True`, `dec`is used as decorator.
+        If `True`, `dec` is used as decorator.
     """
     def decorator(func):
         if not condition:
