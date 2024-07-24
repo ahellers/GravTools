@@ -113,8 +113,8 @@ class Gravimeters:
         Notes
         -----
         If there is already an entry for a gravimeter loaded from an external source, e.g. from a json file, the
-        existing content will NOT be overwritten by default values! In this case `self.data_source_type' is set to
-        'file'.
+        existing content will NOT be overwritten by default values! In this case `self.data_source_type` is set to
+        `file`.
 
         The default linear scale factor is defined in `settings.DEFAULT_GRAVIMETER_LINEAR_SCALE_FACTOR`
         """

@@ -23,6 +23,8 @@ import numpy as np
 import re
 import datetime as dt
 
+from numpy import datetime64
+
 from gravtools.models.exceptions import InvaliFileContentError
 from gravtools import settings
 
@@ -64,9 +66,6 @@ class CG6Survey:
 
     Beside the actual observations class instances contain alls the header information provided in the CG-6 observation
     files.
-
-    If the class is initialized without setting the observations file attribute (`obs_filename`), no observation file
-    is load and the object is initialized empty.
 
     Attributes
     ----------
@@ -262,7 +261,6 @@ class CG6Survey:
             Name of the tidal correction model. LynxLG only.
         lynxlg_version : str, optional (default = '')
             LynxLG software version. LynxLG only.
-
         """
         # obs_filename
         if not isinstance(obs_filename, str):
@@ -425,7 +423,7 @@ class CG6Survey:
 
         Notes
         -----
-        Each line of the input file is returned with exactly one EOL symbol (`\n`) in the return string.
+        Each line of the input file is returned with exactly one EOL symbol in the return string.
 
         Parameters
         ----------
@@ -440,8 +438,7 @@ class CG6Survey:
         """
         # Read in file and ignore comment lines:
         file_handle = open(filename, 'r')
-        lines = []
-        lines.append(file_handle.readline().strip())
+        lines = [file_handle.readline().strip()]
         if lines[0].startswith('\ufeff'):
             # Check byte order mark and change codec. Reopen file if required with the correct codec.
             file_handle.close()

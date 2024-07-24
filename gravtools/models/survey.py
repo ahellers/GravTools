@@ -298,19 +298,20 @@ class Survey:
         - delta_t_h : float
             Time span since reference time :py:obj:`Survey.ref_delta_t_dt` in hours.
         - sd_setup_mugal : float
-             Standard deviation of active observations in this setup [µGal].
+            Standard deviation of active observations in this setup [µGal].
         - number_obs : int
             Number of observations in a setup.
+
     setup_obs_list_df : :py:obj:`pandas.core.frame.DataFrame`, optional (default=None)
         List of observations in the `obs_df` dataframe that were used to calculate the setup observations in the
         `setup_df` dataframe.
 
         - station_name : str
             Name of the station.
-        - obs_epoch : :py:obj:`datetime.datetime`; timezone aware, if possible
-            Reference epoch of the observation
+        - obs_epoch : :py:obj:`datetime.datetime`
+            Reference epoch of the observation (timezone aware, if possible).
         - keep_obs : bool (default=True)
-
+            `False` implies that the observation is not used for calculating setup observations.
 
     """
     _OBS_DF_COLUMNS_DTYPES = {
@@ -1437,8 +1438,9 @@ class Survey:
 
         Notes
         -----
-        - If an observed station is not present in the station object, or the station has no vertical gradient in the
-          station object, the default vertical gradient is assigned to the observation.
+        If an observed station is not present in the station object, or the station has no vertical gradient in the
+        station object, the default vertical gradient is assigned to the observation.
+
         """
         # Merge stations Dataframe (`stat_df`) and observations DataFrame (`obs_df`) by the station names:
         self.obs_df = self.obs_df.merge(stations.stat_df[['station_name', 'vg_mugalm']], on='station_name',
@@ -1468,7 +1470,7 @@ class Survey:
         Notes
         -----
         - Only update data for stations with data available from sources other than the gravimeter observation file!
-        The data from the observation file has been added anyway.
+          The data from the observation file has been added anyway.
         """
         if verbose:
             print(f'Survey "{self.name}": Get locations for observation and heights from station data')
