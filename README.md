@@ -1,9 +1,9 @@
 # GravTools
-GravTools is an open source software toolbox for processing relative gravity surveys. 
+GravTools is an open source software toolbox for the analysis of relative gravity surveys. 
 GravTools is developed at Austria's Federal Office of Metrology and Surveying (BEV).  
 
  - The source code is hosted on github.com: https://github.com/ahellers/GravTools
- - The python package is hosted at pypi.org: https://pypi.org/project/grav-toolbox/
+ - The python package is published on pypi.org: https://pypi.org/project/grav-toolbox/
 
 
 # Installation
@@ -13,7 +13,7 @@ The python 3 package is available on the Python package index website (pypi.org)
 ## Install python package with pip:
 `pip install grav-toolbox`
 
-### Optional dependency for GIS data export
+## Optional dependency for GIS data export
 GravTools allows users to export adjustment results to shapefiles for data visualization in external GIS programs (e.g. QGIS).
 To enable these features the optional package "geopandas" needs to be installed by executing:
 `pip install grav-toolbox[gis]`
