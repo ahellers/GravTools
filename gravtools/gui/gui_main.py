@@ -1709,10 +1709,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 style2 = pg.PlotDataItem(pen='w')
                 style3 = pg.PlotDataItem(pen='w')
                 style4 = pg.PlotDataItem(pen='w')
+                style5 = pg.PlotDataItem(pen='w')
+                style6 = pg.PlotDataItem(pen='w')
+                style7 = pg.PlotDataItem(pen='w')
                 legend.addItem(style1, f'Mean = {mean:0.3f}')
                 legend.addItem(style2, f'Std. = {std:0.3f}')
                 legend.addItem(style3, f'Median = {median:0.3f}')
                 legend.addItem(style4, f'IQR = {iqr:0.3f}')
+                legend.addItem(style5, f'n = {len(data)}')
+                legend.addItem(style6, f'min = {min(data):0.3f}')
+                legend.addItem(style7, f'max = {max(data):0.3f}')
 
                 self.plot_obs_results.autoRange()
         else:
@@ -2731,7 +2737,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 filename_png = filename + '_vg_plot.png'
                                 # The linAlg error is raised in the following line of code:
                                 exporter = pg.exporters.ImageExporter(
-                                    self.graphicsLayoutWidget_results_drift_plot.scene())
+                                    self.graphicsLayoutWidget_results_vg_plot.scene())
                                 flag_export_successful = exporter.export(os.path.join(output_path, filename_png))
                         except Exception as e:
                             QMessageBox.critical(self, 'Error!', str(e))
@@ -4078,7 +4084,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
 
     def write_lsm_run_comment_to_gui(self, lsm_run_idx):
         """Writes the lsm run comment of the selected lsm run to the GUI line edit."""
-        if lsm_run_idx > 1:
+        if lsm_run_idx > -1:
             self.label_export_comment_show.setText(self.get_lsm_run_comment(lsm_run_idx))
         else:
             self.label_export_comment_show.setText('')
