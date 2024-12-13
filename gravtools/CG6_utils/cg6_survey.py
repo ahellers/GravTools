@@ -978,7 +978,8 @@ class CG6Survey:
         note_list = []
         setup_id_list = []
 
-        expr = r'(?P<station>\S+)\t(?P<date>[0-9-]{10})\t(?P<time>[0-9:]{8})\t(?P<corr_g_mgal>[0-9.]+)\t(?P<line>\S*)\t(?P<sd_g_mgal>[0-9.]+)\t(?P<se_g_mgal>[0-9.]+)\t(?P<raw_g_mgal>[0-9.]+)\t(?P<tilt_x_arcsec>-?[0-9.]+)\t(?P<tilt_y_arcsec>-?[0-9.]+)\t(?P<sensor_temp_mk>-?[0-9.]+)\t(?P<corr_tide_mgal>-?[0-9.]+)\t(?P<corr_tilt_mgal>-?[0-9.]+)\t(?P<corr_temp_mgal>-?[0-9.]+)\t(?P<corr_drift_mgal>-?[0-9.]+)\t(?P<duration>[0-9]+)\t(?P<instr_height_m>-?[0-9.]+)\t(?P<user_lat_deg>-?[0-9.]+)\t(?P<user_lon_deg>-?[0-9.]+)\t(?P<user_height_m>-?[0-9.]+)\t(?P<gps_lat_deg>-?[0-9.]+)\t(?P<gps_lon_deg>-?[0-9.]+)\t(?P<gps_height_m>-?[0-9.]+)\t(?P<correction_flags>[01]{5})\s*'
+        # expr = r'(?P<station>\S+)\t(?P<date>[0-9-]{10})\t(?P<time>[0-9:]{8})\t(?P<corr_g_mgal>[0-9.]+)\t(?P<line>\S*)\t(?P<sd_g_mgal>[0-9.]+)\t(?P<se_g_mgal>[0-9.]+)\t(?P<raw_g_mgal>[0-9.]+)\t(?P<tilt_x_arcsec>-?[0-9.]+)\t(?P<tilt_y_arcsec>-?[0-9.]+)\t(?P<sensor_temp_mk>-?[0-9.]+)\t(?P<corr_tide_mgal>-?[0-9.]+)\t(?P<corr_tilt_mgal>-?[0-9.]+)\t(?P<corr_temp_mgal>-?[0-9.]+)\t(?P<corr_drift_mgal>-?[0-9.]+)\t(?P<duration>[0-9]+)\t(?P<instr_height_m>-?[0-9.]+)\t(?P<user_lat_deg>-?[0-9.]+)\t(?P<user_lon_deg>-?[0-9.]+)\t(?P<user_height_m>-?[0-9.]+)\t(?P<gps_lat_deg>-?[0-9.]+)\t(?P<gps_lon_deg>-?[0-9.]+)\t(?P<gps_height_m>-?[0-9.]+)\t(?P<correction_flags>[01]{5})\s*'
+        expr = r'(?P<station>\S+)\t(?P<date>[0-9-]{10})\t(?P<time>[0-9:]{8})\t(?P<corr_g_mgal>[0-9.]+)\t(?P<line>\S*)\t(?P<sd_g_mgal>[0-9.]+)\t(?P<se_g_mgal>[0-9.]+)\t(?P<raw_g_mgal>[0-9.]+)\t(?P<tilt_x_arcsec>-?[0-9.]+)\t(?P<tilt_y_arcsec>-?[0-9.]+)\t(?P<sensor_temp_mk>-?[0-9.]+)\t(?P<corr_tide_mgal>-?[0-9.]+)\t(?P<corr_tilt_mgal>-?[0-9.]+)\t(?P<corr_temp_mgal>-?[0-9.]+)\t(?P<corr_drift_mgal>-?[0-9.]+)\t(?P<duration>[0-9]+)\t(?P<instr_height_m>-?[0-9.]+)\t(?P<user_lat_deg>-?[0-9.]+)\t(?P<user_lon_deg>-?[0-9.]+)\t(?P<user_height_m>-?[0-9.]+)\t(?P<gps_lat_deg>-?[0-9.-]+)\t(?P<gps_lon_deg>-?[0-9.-]+)\t(?P<gps_height_m>-?[0-9.-]+)\t(?P<correction_flags>[01]{5})\s*'
         obs_count = 0
         for block in re.finditer(expr, file_str):
             block_dict = block.groupdict()
@@ -1002,9 +1003,14 @@ class CG6Survey:
             user_lat_deg_list.append(float(block_dict['user_lat_deg']))
             user_lon_deg_list.append(float(block_dict['user_lon_deg']))
             user_height_m_list.append(float(block_dict['user_height_m']))
-            gps_lat_deg_list.append(float(block_dict['gps_lat_deg']))
-            gps_lon_deg_list.append(float(block_dict['gps_lon_deg']))
-            gps_h_m_list.append(float(block_dict['gps_height_m']))
+            try:
+                gps_lat_deg_list.append(float(block_dict['gps_lat_deg']))
+                gps_lon_deg_list.append(float(block_dict['gps_lon_deg']))
+                gps_h_m_list.append(float(block_dict['gps_height_m']))
+            except ValueError:  # In case no GPS signal was available/recorded, e.g. at indoor use
+                gps_lat_deg_list.append(float('nan'))
+                gps_lon_deg_list.append(float('nan'))
+                gps_h_m_list.append(float('nan'))
             correction_flags_list.append(block_dict['correction_flags'])
             # Initialize fields that are not available in the obs. file:
             occupation_list.append('')

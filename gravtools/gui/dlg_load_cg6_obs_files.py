@@ -82,7 +82,7 @@ class DialogLoadCg6ObservationFiles(QDialog, Ui_DialogLoadCg6ObservationFiles):
         """Check selection in comboboxes for alternative data in columns and raise a warning."""
         dhb_data = self.comboBox_dhb_in_column.currentData()
         pres_data = self.comboBox_pres_in_column.currentData()
-        if dhb_data == pres_data:
+        if (dhb_data == pres_data) and not (dhb_data == 'no_data' and pres_data == 'no_data'):
             QMessageBox.warning(self, 'Warning!', f'Non-unique assignment of alternative data in observation file '
                                                   f'columns: {settings.CG6_DHB_IN_COLUMN[dhb_data]["label"]}.\n\n'
                                                   f'Please change the column selection!')

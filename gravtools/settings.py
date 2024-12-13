@@ -54,7 +54,7 @@ CG6_PRESSURE_IN_COLUMN = {
                 'label': ' ',
                 'formats': ['cg6_obs_file_lynx_v1', 'cg6_obs_file_lynx_v2', 'cg6_obs_file_solo']},
 }
-CG6_PRESSURE_IN_COLUMN_DEFAULT = 'line'
+CG6_PRESSURE_IN_COLUMN_DEFAULT = 'no_data'
 
 # Options, in which data column of the observation file height differences to the ground (dhb) may be provided:
 # items tooltips:
