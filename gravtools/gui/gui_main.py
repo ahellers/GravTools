@@ -50,7 +50,6 @@ from gravtools.gui.dialog_load_stations import Ui_Dialog_load_stations
 from gravtools.gui.dialog_autoselection_settings import Ui_Dialog_autoselection_settings
 from gravtools.gui.dialog_estimation_settings import Ui_Dialog_estimation_settings
 from gravtools.gui.dialog_setup_data import Ui_Dialog_setup_data
-from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 from gravtools.gui.dialog_options import Ui_Dialog_options
 from gravtools.gui.dialog_about import Ui_Dialog_about
 from gravtools.gui.dialog_gis_export_settings import Ui_Dialog_gis_settings
@@ -68,6 +67,8 @@ from gravtools.gui.gui_misc import get_station_color_dict, checked_state_to_bool
 from gravtools.gui.dlg_correction_time_series import DialogCorrectionTimeSeries
 from gravtools.gui.dlg_corrections import DialogCorrections
 from gravtools.gui.dlg_load_cg6_obs_files import DialogLoadCg6ObservationFiles
+from gravtools.gui.dlg_export_results import DialogExportResults
+from gravtools.gui.dlg_calc_drift import DialogCalcDrift
 from gravtools.gui.cumstom_widgets import ScrollMessageBox
 from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
@@ -142,6 +143,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_from_csv_file.triggered.connect(self.on_menu_file_load_stations_from_csv_file)
         self.action_gravimeters_from_json_file.triggered.connect(self.on_menu_file_load_gravimeters_from_json_file)
         self.action_Correction_time_series.triggered.connect(self.action_correction_time_series_triggered)
+        self.action_Calculate_drift.triggered.connect(self.action_calculate_drift_triggered)
         self.lineEdit_filter_stat_name.textChanged.connect(self.on_lineEdit_filter_stat_name_textChanged)
         self.checkBox_filter_observed_stat_only.stateChanged.connect(self.on_checkBox_filter_observed_stat_only_toggled)
         self.checkBox_obs_plot_setup_data.stateChanged.connect(self.on_checkBox_obs_plot_setup_data_state_changed)
@@ -214,6 +216,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.set_up_vg_plot_widget()
 
         # Initialize dialogs if necessary at the start of the application:
+        self.dlg_calc_drift = DialogCalcDrift(self)
         self.dlg_corrections = DialogCorrections(self)
         self.dlg_autoselect_settings = DialogAutoselectSettings(self)
         self.dlg_estimation_settings = DialogEstimationSettings(self)
@@ -488,6 +491,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def action_correction_time_series_triggered(self):
         """Launch dialog for managing correction time series data."""
         _ = self.dlg_correction_time_series.exec()
+
+    def action_calculate_drift_triggered(self):
+        """Launch dialog for dift calculation."""
+        _ = self.dlg_calc_drift.invoke()
 
     @pyqtSlot()
     def on_pushButton_results_export_shapefile(self):
@@ -4101,105 +4108,6 @@ class DialogOptions(QDialog, Ui_Dialog_options):
             return False
         else:
             raise AssertionError('Invalid GUI mode selected!')
-
-
-class DialogExportResults(QDialog, Ui_Dialog_export_results):
-    """Dialog to define the estimation settings."""
-
-    def __init__(self, campaign, parent=None):
-        super().__init__(parent)
-        # Get data:
-        self._lsm_runs = campaign.lsm_runs
-        self.flag_observation_data_available = len(campaign.surveys) > 0
-        self.flag_lsm_runs_available = len(campaign.lsm_run_times) > 0
-        # Run the .setupUi() method to show the GUI
-        self.setupUi(self)
-        # Populate the combo box to select an LSM run (enable/disable groupBoxes accordingly):
-        self.comboBox_select_lsm_run.clear()
-        self.comboBox_select_lsm_run.addItems(['Current observation selection (no LSM run)'] + campaign.lsm_run_times)
-
-        # Set the lineEdit with the export path:
-        self.label_export_path_show.setText(campaign.output_directory)
-
-        # Set initial item in comboBox (last entry/LSM run):
-        idx = self.comboBox_select_lsm_run.count() - 1  # Index of last lsm run
-        self.comboBox_select_lsm_run.setCurrentIndex(idx)
-
-        # Select LSM run, etc.
-        if self.flag_lsm_runs_available:
-            lsm_run_idx = idx - 1
-        else:
-            lsm_run_idx = -1
-
-        # Enable/disable GUI items and add lsm run comment:
-        self.write_lsm_run_comment_to_gui(lsm_run_idx)
-        self.enable_gui_widgets_based_on_lsm_run_selection(lsm_run_idx)
-
-        # connect signals and slots:
-        self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
-
-        # Optional dependency for GIS data export:
-        if _has_geopandas:
-            self.groupBox_gis.setEnabled(True)
-        else:
-            self.groupBox_gis.setEnabled(False)
-            self.checkBox_gis_write_shapefile.setChecked(Qt.Unchecked)
-
-    @pyqtSlot(int)
-    def on_comboBox_select_lsm_run_current_index_changed(self, index: int):
-        """Invoked whenever the index of the selected item in the combobox changed."""
-        lsm_run_idx = index - 1
-        self.write_lsm_run_comment_to_gui(lsm_run_idx)
-        self.enable_gui_widgets_based_on_lsm_run_selection(lsm_run_idx)
-
-    def write_lsm_run_comment_to_gui(self, lsm_run_idx):
-        """Writes the lsm run comment of the selected lsm run to the GUI line edit."""
-        if lsm_run_idx > -1:
-            self.label_export_comment_show.setText(self.get_lsm_run_comment(lsm_run_idx))
-        else:
-            self.label_export_comment_show.setText('')
-
-    def get_lsm_run_comment(self, lsm_run_idx: int):
-        """Returns the lsm run comment of the run with the specified index."""
-        try:
-            return self._lsm_runs[lsm_run_idx].comment
-        except:
-            return ''
-
-    def enable_gui_widgets_based_on_lsm_run_selection(self, lsm_run_idx: int):
-        """Enable or disable GUI elements based on the lsm run selection."""
-
-        flag_lsm_run_selected = self.flag_lsm_runs_available and (lsm_run_idx > -1)
-
-        if flag_lsm_run_selected:
-            self.groupBox_other_files.setEnabled(True)
-            self.groupBox_nsb_file.setEnabled(True)
-            self.groupBox_observation_list.setEnabled(True)
-            if _has_geopandas:
-                self.groupBox_gis.setEnabled(True)
-        else:
-            self.groupBox_gis.setEnabled(False)
-            self.groupBox_other_files.setEnabled(False)
-            self.groupBox_nsb_file.setEnabled(False)
-            self.groupBox_observation_list.setEnabled(False)
-            if self.flag_observation_data_available:
-                self.groupBox_observation_list.setEnabled(True)
-        if flag_lsm_run_selected or self.flag_observation_data_available:
-            self.buttonBox.buttons()[0].setEnabled(True)  # OK button in buttonBox
-        else:
-            self.buttonBox.buttons()[0].setEnabled(False)  # OK button in buttonBox
-
-        if flag_lsm_run_selected:  # => lsm_run_idx >= 0
-            lsm_method = self._lsm_runs[lsm_run_idx].lsm_method
-            if lsm_method == 'LSM_diff' or lsm_method == 'LSM_non_diff' or lsm_method == 'MLR_BEV':  # network adjust.
-                self.groupBox_nsb_file.setEnabled(True)
-                self.checkBox_save_vg_plot_png.setEnabled(False)
-            elif lsm_method == 'VG_LSM_nondiff':  # VG estimation
-                self.groupBox_nsb_file.setEnabled(False)
-                self.checkBox_save_vg_plot_png.setEnabled(True)
-            else:
-                raise AssertionError(f'Invalid LSM method: {lsm_method}!')
-
 
 def debugger_is_active() -> bool:
     """Return if the debugger is currently active"""

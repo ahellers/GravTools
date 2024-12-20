@@ -854,6 +854,8 @@ class Ui_MainWindow(object):
         self.action_gravimeters_from_json_file.setObjectName("action_gravimeters_from_json_file")
         self.action_from_CG6_observation_files = QtWidgets.QAction(MainWindow)
         self.action_from_CG6_observation_files.setObjectName("action_from_CG6_observation_files")
+        self.action_Calculate_drift = QtWidgets.QAction(MainWindow)
+        self.action_Calculate_drift.setObjectName("action_Calculate_drift")
         self.menuAdd_Survey.addAction(self.action_from_CG5_observation_file)
         self.menuAdd_Survey.addAction(self.action_from_CG6_observation_files)
         self.menuAdd_Survey.addAction(self.action_from_BEV_observation_file)
@@ -879,6 +881,7 @@ class Ui_MainWindow(object):
         self.menu_Observations.addAction(self.action_Autoselection_settings)
         self.menu_Observations.addAction(self.action_Setup_data_options)
         self.menu_Observations.addAction(self.action_Flag_observations)
+        self.menu_Observations.addAction(self.action_Calculate_drift)
         self.menuEstimation_settings.addAction(self.action_Estimation_settings)
         self.menuEstimation_settings.addAction(self.action_Gis_Export_settings)
         self.menuHelp.addAction(self.action_About)
@@ -1114,4 +1117,5 @@ class Ui_MainWindow(object):
         self.action_Correction_time_series.setToolTip(_translate("MainWindow", "Manage correction time series data"))
         self.action_gravimeters_from_json_file.setText(_translate("MainWindow", "From json file"))
         self.action_from_CG6_observation_files.setText(_translate("MainWindow", "from CG6 observation files"))
+        self.action_Calculate_drift.setText(_translate("MainWindow", "Calculate drift"))
 from pyqtgraph import GraphicsLayoutWidget
