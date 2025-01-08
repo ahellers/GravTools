@@ -1678,6 +1678,7 @@
     <addaction name="action_Autoselection_settings"/>
     <addaction name="action_Setup_data_options"/>
     <addaction name="action_Flag_observations"/>
+    <addaction name="action_Calculate_drift"/>
    </widget>
    <widget class="QMenu" name="menuEstimation_settings">
     <property name="enabled">
@@ -1801,6 +1802,9 @@
    <property name="text">
     <string>Autoselection settings</string>
    </property>
+   <property name="toolTip">
+    <string>Autoselection settings.</string>
+   </property>
   </action>
   <action name="action_Estimation_settings">
    <property name="enabled">
@@ -1848,6 +1852,9 @@
    </property>
    <property name="text">
     <string>Setup data options</string>
+   </property>
+   <property name="toolTip">
+    <string>Options for the determination of setup data/observations.</string>
    </property>
   </action>
   <action name="action_Flag_observations">
@@ -1910,6 +1917,14 @@
   <action name="action_from_CG6_observation_files">
    <property name="text">
     <string>from CG6 observation files</string>
+   </property>
+  </action>
+  <action name="action_Calculate_drift">
+   <property name="text">
+    <string>Calculate drift</string>
+   </property>
+   <property name="toolTip">
+    <string>Drift determination based on the reduced observations. Usefull for calibrating instrumental drift parameters.</string>
    </property>
   </action>
  </widget>

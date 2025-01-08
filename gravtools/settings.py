@@ -143,6 +143,13 @@ SCIPY_INTERP1_INTERPOLATION_METHODS = {
 # Default interpolation method:
 SCIPY_INTERP1_INTERPOLATION_DEFAULT_METHOD = 'quadratic'
 
+# Drift calculation methods (dialog observations/drift )
+DRIFT_CALC_METHODS = {
+    'numpy.polyfit': 'Least squares polynomial fit with numpy.polyfit().'
+}
+
+DRIFT_CALC_DEFAULT_METHOD = 'numpy_polyfit'
+
 REFERENCE_HEIGHT_TYPE = {
     'sensor_height': 'The gravity values refer to the sensor height',
     'instrument_top': 'The gravity values refers to the instrument top',

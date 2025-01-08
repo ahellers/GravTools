@@ -32,3 +32,4 @@ py_gui:
 	pyuic5 -o gravtools/gui/dialog_correction_time_series.py gravtools/gui/dialog_correction_time_series.ui
 	pyuic5 -o gravtools/gui/dialog_load_tsf_file.py gravtools/gui/dialog_load_tsf_file.ui
 	pyuic5 -o gravtools/gui/dialog_load_cg6_obs_files.py gravtools/gui/dialog_load_cg6_obs_files.ui
+	pyuic5 -o gravtools/gui/dialog_calc_drift.py gravtools/gui/dialog_calc_drift.ui
