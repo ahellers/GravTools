@@ -2478,7 +2478,7 @@ class Survey:
 
         Returns
         -------
-        numpy.ndarray : Polynomial coefficients as determined by `numpy.polyfit`, highest power first.
+        numpy.ndarray : Polynomial coefficients as determined by `numpy.polyfit`, highest power first
         """
         tmp_filter = self.obs_df['station_name'] == station_name
         if active_only:

@@ -1098,6 +1098,7 @@ class Ui_MainWindow(object):
         self.action_from_CG5_observation_file.setText(_translate("MainWindow", "from CG5 observation files"))
         self.action_from_BEV_observation_file.setText(_translate("MainWindow", "from BEV observation file"))
         self.action_Autoselection_settings.setText(_translate("MainWindow", "Autoselection settings"))
+        self.action_Autoselection_settings.setToolTip(_translate("MainWindow", "Autoselection settings."))
         self.action_Estimation_settings.setText(_translate("MainWindow", "Estimation settings"))
         self.actionEstimate_long_term_drift.setText(_translate("MainWindow", "Estimate long-term drift"))
         self.action_Export_Results.setText(_translate("MainWindow", "Export Data"))
@@ -1105,6 +1106,7 @@ class Ui_MainWindow(object):
         self.action_Change_output_directory.setText(_translate("MainWindow", "Change output directory"))
         self.action_Options.setText(_translate("MainWindow", "Options"))
         self.action_Setup_data_options.setText(_translate("MainWindow", "Setup data options"))
+        self.action_Setup_data_options.setToolTip(_translate("MainWindow", "Options for the determination of setup data/observations."))
         self.action_Flag_observations.setText(_translate("MainWindow", "Load flags from obs. list file"))
         self.action_Flag_observations.setToolTip(_translate("MainWindow", "Flag observations based ob observations file"))
         self.action_Change_Campaign_name.setText(_translate("MainWindow", "Change Campaign name"))
@@ -1118,4 +1120,5 @@ class Ui_MainWindow(object):
         self.action_gravimeters_from_json_file.setText(_translate("MainWindow", "From json file"))
         self.action_from_CG6_observation_files.setText(_translate("MainWindow", "from CG6 observation files"))
         self.action_Calculate_drift.setText(_translate("MainWindow", "Calculate drift"))
+        self.action_Calculate_drift.setToolTip(_translate("MainWindow", "Drift determination based on the reduced observations. Usefull for calibrating instrumental drift parameters."))
 from pyqtgraph import GraphicsLayoutWidget

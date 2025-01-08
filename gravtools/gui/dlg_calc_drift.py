@@ -15,20 +15,21 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import os
 import pytz
 import datetime as dt
+import os
 
 
 from PyQt5.QtWidgets import QDialog, QMessageBox
 from PyQt5 import QtCore
 import pyqtgraph as pg
 import numpy as np
+import pandas as pd
 
 from gravtools.gui.dialog_calc_drift import Ui_Dialog_calculate_drift
 from gravtools import settings
 from gravtools.gui.gui_misc import get_station_color_dict
-from gravtools.models.misc import unique_ordered_list
+from gravtools import __version__
 
 class TimeAxisItem(pg.AxisItem):
     """"Needed to handle the x-axes tags representing date and time.
@@ -60,6 +61,7 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
         self.checkBox_multiple_setups_only.stateChanged.connect(self.update_station_combobox)
         self.checkBox_active_obs_only.stateChanged.connect(self.calc_and_plot)
         self.spinBox_min_no_obs.valueChanged.connect(self.calc_and_plot)
+        self.checkBox_remove_g_offset.stateChanged.connect(self.calc_and_plot)
 
         # Set up combo box for selecting the drift calculation method:
         for idx, (method_name, tooltip) in enumerate(settings.DRIFT_CALC_METHODS.items()):
@@ -68,7 +70,10 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
             if method_name == settings.DRIFT_CALC_DEFAULT_METHOD:
                 self.comboBox_method.setCurrentIndex(idx)
 
+        # Init. attributes:
         self.station_color_dict = {}
+        self.drift_poly_coeff = {}
+        self.drift_start_time = None
 
     def invoke(self):
         """Invoke dialog."""
@@ -85,7 +90,6 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
         """Update GUI items based on the current campaign data."""
         # Invoke only when executing the dialog.
         # - Silence the related signals meanwhile.
-
         if self.parent().campaign is None:
             self.reset_gui()
             return
@@ -108,6 +112,8 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
     def update_station_combobox(self):
         """Update the station selection combo box based on the currently selected survey."""
         current_survey_name = self.comboBox_survey.currentText()
+        # if not current_survey_name:
+        #     return
         current_survey = self.parent().campaign.surveys[current_survey_name]
 
         station_names = current_survey.observed_stations
@@ -116,6 +122,8 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
             station_names_filtered = []
             for station in station_names:
                 tmp_filter = current_survey.obs_df['station_name'] == station
+                if self.checkBox_active_obs_only.isChecked():
+                    tmp_filter = tmp_filter & current_survey.obs_df['keep_obs']
                 if len(current_survey.obs_df.loc[tmp_filter, 'setup_id'].unique()) > 1:
                     station_names_filtered.append(station)
             station_names = station_names_filtered
@@ -138,20 +146,26 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
 
     def reset_gui(self):
         """Reset the GUI dialog and empty all items and plots."""
-        # print('Reset')
+        # Gui items:
+        self.comboBox_survey.blockSignals(True)
         self.comboBox_survey.clear()
+        self.comboBox_survey.blockSignals(False)
+        self.comboBox_station.blockSignals(True)
         self.comboBox_station.clear()
+        self.comboBox_station.blockSignals(False)
         # Plot:
         self.drift_calib_plot.clear()
         self.drift_calib_plot.legend.clear()
         self.drift_calib_plot.setTitle('')
+        # Attributes:
+        self.drift_poly_coeff = {}
+        self.drift_start_time = None
 
     def calc_and_plot(self):
         """Calculate drift parameters and plot the current data."""
         # Invoke via signal whenever a relevant selection in the GUI dialog changed (send signal!)
         # - Make sure that this method is not executed several times in a row... block signals if required!
 
-        print('Update drift plot')
         # Reset:
         self.drift_calib_plot.clear()
         self.drift_calib_plot.legend.clear()
@@ -173,10 +187,11 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
 
         # Calc. drift:
         method = self.comboBox_method.currentText()
-        poly_coefficients ={}
+        self.drift_poly_coeff = {}
+        self.drift_start_time = None
         if method == 'numpy.polyfit':
             for station in stations:
-                poly_coefficients[station] = survey.calc_drift_at_station_polyfit(station,
+                self.drift_poly_coeff[station] = survey.calc_drift_at_station_polyfit(station,
                                                                                   degree=self.spinBox_degree.value(),
                                                                                   obs_type='reduced',
                                                                                   active_only=self.checkBox_active_obs_only.isChecked(),
@@ -209,7 +224,10 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
                                      settings.DRIFT_PLOT_NUM_ITEMS_IN_DRIFT_FUNCTION)
 
         # Get gravity offset for plotting:
-        tmp_filter = obs_df['station_name'].isin(stations)
+        if self.checkBox_remove_g_offset.isChecked():
+            tmp_filter = obs_df['station_name'] == stations[0]
+        else:
+            tmp_filter = obs_df['station_name'].isin(stations)
         g_offset_mugal = round(obs_df.loc[tmp_filter, 'g_red_mugal'].mean() / 1000) * 1000  # integer mGal
 
         for station in stations:
@@ -220,6 +238,17 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
             if self.checkBox_active_obs_only.isChecked():
                 tmp_filter = tmp_filter & obs_df['keep_obs']
             obs_df_short = obs_df.loc[tmp_filter].copy(deep=True)
+            # - Remove g offset w.r.t. the first station in the list:
+            if self.checkBox_remove_g_offset.isChecked():
+                if station != stations[0]:  # Apply offset w.r.t. the first station
+                    g_mean_stat = obs_df_short['g_red_mugal'].mean()
+                    g_offset_stat_mugal = g_mean_first_stat - g_mean_stat
+                    # obs_df_short['g_red_mugal'] = obs_df_short['g_red_mugal'] + g_offset_stat
+                elif station == stations[0]:
+                    g_mean_first_stat = obs_df_short['g_red_mugal'].mean()
+                    g_offset_stat_mugal = 0.0
+            else:
+                g_offset_stat_mugal = 0.0
             obs_df_short['t_ref_unix'] = (obs_df_short['obs_epoch'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
             scatter = pg.ScatterPlotItem()
             spots = []
@@ -231,7 +260,7 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
                 else:
                     brush_color_scatter = brush_color
                     symbol_scatter = 'x'
-                spot_dic = {'pos': (row['t_ref_unix'], row['g_red_mugal'] - g_offset_mugal),
+                spot_dic = {'pos': (row['t_ref_unix'], row['g_red_mugal'] - g_offset_mugal + g_offset_stat_mugal),
                     'size': 10,
                     'pen': {'color': 'k',
                             'width': 1},
@@ -242,24 +271,23 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
             self.drift_calib_plot.addItem(scatter)
 
             # Plot drift function:
-            coeff_list = poly_coefficients[station]
+            coeff_list = self.drift_poly_coeff[station]
             if coeff_list is None:  # Not enough ob. available to fit a polynomial
                 legend_str = station
             else:
                 yy_mugal = np.polyval(coeff_list, delta_t_h)
                 pen = pg.mkPen(color='k', width=3)
-                self.drift_calib_plot.plot(delta_t_unix, yy_mugal - g_offset_mugal,
+                self.drift_calib_plot.plot(delta_t_unix, yy_mugal - g_offset_mugal + g_offset_stat_mugal,
                                            # name=f'{station}',
                                            pen=pen, symbol='d', symbolSize=4, symbolBrush=brush_color)
                 if len(coeff_list) == 2:  # deg=1
                     legend_str = f'{station}: {coeff_list[0]/1000*24:0.4f} mGal/d'
                 elif len(coeff_list) == 3:  # deg=2
-                    legend_str = f'{station}: {coeff_list[0]/1000*24:0.4f} mGal/d², {coeff_list[1]/1000*24:0.4f} mGal/d'
+                    legend_str = f'{station}: {coeff_list[0]/1000*(24**2):0.4f} mGal/d², {coeff_list[1]/1000*24:0.4f} mGal/d'
                 elif len(coeff_list) == 4:  # deg=3
-                    legend_str = f'{station}: {coeff_list[0]/1000*24:0.4f} mGal/d³, {coeff_list[1]/1000*24:0.4f} mGal/d², {coeff_list[2]/1000*24:0.4f} mGal/d'
+                    legend_str = f'{station}: {coeff_list[0]/1000*(24**3):0.4f} mGal/d³, {coeff_list[1]/1000*(24**2):0.4f} mGal/d², {coeff_list[2]/1000*24:0.4f} mGal/d'
                 else:
                     legend_str = station
-
 
             # Add item to legend
             s_item_tmp = pg.ScatterPlotItem()
@@ -268,26 +296,10 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
             s_item_tmp.setSize(10)
             self.drift_calib_plot.legend.addItem(s_item_tmp, legend_str)
 
-
-
         # Adjust plot window:
         self.drift_calib_plot.setLabel(axis='left', text=f'g [µGal] + {g_offset_mugal / 1000:.1f} mGal')
         # self.drift_calib_plot.setTitle(f'Drift function w.r.t. setup observations')
         self.drift_calib_plot.autoRange()
-
-            # legend
-            # # Add residuals to legend:
-            # # - https://pyqtgraph.readthedocs.io/en/latest/graphicsItems/legenditem.html
-            # for station, color in self.station_colors_dict_results.items():
-            #     if (stations is None) or (station in stations):
-            #         s_item_tmp = pg.ScatterPlotItem()
-            #         s_item_tmp.setBrush(color)
-            #         s_item_tmp.setPen({'color': settings.VG_PLOT_SCATTER_PLOT_PEN_COLOR,
-            #                            'width': settings.VG_PLOT_SCATTER_PLOT_PEN_WIDTH})
-            #         s_item_tmp.setSize(settings.VG_PLOT_SCATTER_PLOT_SYMBOL_SIZE)
-            #         self.vg_plot.legend.addItem(s_item_tmp, res_plot_legend_str + f' ({station})')
-
-
 
     def set_up_drift_plot_widget(self):
         """Set up `self.graphicsLayoutWidget_drift_plot` widget."""
@@ -298,3 +310,80 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
         # self.drift_calib_plot.setLabel(axis='bottom', text='Time')  # Takes too much space
         self.drift_calib_plot.addLegend()
         self.drift_calib_plot.showGrid(x=True, y=True)
+
+    def save(self):
+        """Save the drift results as log file and plot."""
+        campaign_dir = self.parent().campaign.output_directory
+        filename = self.comboBox_survey.currentText() + '_drift.txt'
+        filename = os.path.join(self.parent().campaign.output_directory, filename)
+        self.save_drift_file(filename)
+        filename = self.comboBox_survey.currentText() + '_drift.png'
+        filename = os.path.join(self.parent().campaign.output_directory, filename)
+        self.save_drift_plot(filename)
+
+    def save_drift_file(self, filename, verbose=True):
+        """Save the drift calculation results to a file."""
+        if verbose:
+            print(f'Save drift results as {filename}')
+
+        # Remove None entries from dict:
+        poly_ceoffs = {}
+        for key, value in self.drift_poly_coeff.items():
+            if value is not None:
+                poly_ceoffs[key] = value
+        if len(poly_ceoffs) == 0:
+            raise RuntimeError('No valid drift polynomials available for export to file.')
+
+        poly_function_str = f'f(t) = a0(t0)'
+        colnames = ['a0 [mGal]']
+        for i in range(self.spinBox_degree.value()):
+            poly_function_str = poly_function_str + f' + a{i + 1}*(t-t0)^{i + 1}'
+            colnames.append(f'a{i + 1} [mGal/d^{i + 1}]')
+        poly_df = pd.DataFrame.from_dict(poly_ceoffs, orient='index')
+        poly_df = poly_df[poly_df.columns[::-1]]
+        for colnum in range(poly_df.shape[1]):  # muGal/h => mGal/day
+            poly_df.iloc[:, colnum] = poly_df.iloc[:, colnum] / 1000 * (24**colnum)
+        poly_df.columns = colnames
+        poly_df.loc[:, 'Station'] = poly_df.index
+        colnames = ['Station'] + colnames
+        poly_df = poly_df[colnames]
+        poly_df_str = poly_df.to_string(index=False, float_format=lambda x: '{:.4f}'.format(x))
+        start_time = self.parent().campaign.surveys[self.comboBox_survey.currentText()].start_time
+        try:
+            start_time_tz = start_time.tzname()
+        except:
+            start_time_tz = ''
+
+        tmp_str = f'### Drift results for survey {self.comboBox_survey.currentText()} ###\n'
+        tmp_str = tmp_str + f'Calculated by GravTools {__version__}\n'
+        tmp_str = tmp_str + f'File created: {dt.datetime.now().strftime("%Y-%m-%d, %H:%M:%S")}\n'
+        tmp_str = tmp_str + f'Method: {settings.DRIFT_CALC_METHODS[self.comboBox_method.currentText()]}\n'
+        tmp_str = tmp_str + f'Polynomial degree: {self.spinBox_degree.value()}\n'
+        tmp_str = tmp_str + f'Min. number of obs.: {self.spinBox_min_no_obs.value()}\n'
+        tmp_str = tmp_str + f'Active obs. only: {self.checkBox_active_obs_only.isChecked()}\n'
+        tmp_str = tmp_str + f'Multiple setups only: {self.checkBox_multiple_setups_only.isChecked()}\n'
+        tmp_str = tmp_str + '\n'
+        tmp_str = tmp_str + poly_function_str + '\n'
+        tmp_str = tmp_str + f'... with [t]=days and [g]=mGal\n'
+        if start_time_tz:
+            tmp_str = tmp_str + f'... with t0 = {start_time.isoformat()} ({start_time_tz})\n'
+        else:
+            tmp_str = tmp_str + f'... with t0 = {start_time.isoformat()}\n'
+        tmp_str = tmp_str + f'\n'
+        tmp_str = tmp_str + poly_df_str + '\n'
+        tmp_str = tmp_str + f'\n'
+
+        if verbose:
+            print(tmp_str)
+
+        with open(filename, 'w') as f:
+            f.write(tmp_str)
+
+    def save_drift_plot(self, filename, verbose=True):
+        """Save the current drift plot as png file."""
+        # exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_results_drift_plot.scene())
+        exporter = pg.exporters.ImageExporter(self.graphicsLayoutWidget_drift_plot.scene())
+        flag_export_successful = exporter.export(filename)
+        if verbose and flag_export_successful:
+            print(f'Save drift plot as {filename}')
+

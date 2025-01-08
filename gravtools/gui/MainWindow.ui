@@ -1802,6 +1802,9 @@
    <property name="text">
     <string>Autoselection settings</string>
    </property>
+   <property name="toolTip">
+    <string>Autoselection settings.</string>
+   </property>
   </action>
   <action name="action_Estimation_settings">
    <property name="enabled">
@@ -1849,6 +1852,9 @@
    </property>
    <property name="text">
     <string>Setup data options</string>
+   </property>
+   <property name="toolTip">
+    <string>Options for the determination of setup data/observations.</string>
    </property>
   </action>
   <action name="action_Flag_observations">
@@ -1916,6 +1922,9 @@
   <action name="action_Calculate_drift">
    <property name="text">
     <string>Calculate drift</string>
+   </property>
+   <property name="toolTip">
+    <string>Drift determination based on the reduced observations. Usefull for calibrating instrumental drift parameters.</string>
    </property>
   </action>
  </widget>

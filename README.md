@@ -18,6 +18,12 @@ GravTools allows users to export adjustment results to shapefiles for data visua
 To enable these features the optional package "geopandas" needs to be installed by executing:
 `pip install grav-toolbox[gis]`
 
+# Release notes
+
+## 0.3.3 (2025-01-08)
+  - New dialog for drift determination based on the reduced observations as shown in the observations plot. One drift 
+polynomial is fitted per station. This feature is useful for calculating the drift correction coefficient for Scintrex 
+CG5 and CG6 meters based on stationary observations. 
 
 # License and copyright
 

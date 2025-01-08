@@ -490,11 +490,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def action_correction_time_series_triggered(self):
         """Launch dialog for managing correction time series data."""
-        _ = self.dlg_correction_time_series.exec()
+        return_value = self.dlg_correction_time_series.exec()
 
     def action_calculate_drift_triggered(self):
         """Launch dialog for dift calculation."""
-        _ = self.dlg_calc_drift.invoke()
+        return_value = self.dlg_calc_drift.invoke()
+        if return_value == QDialog.Accepted:
+            try:
+                self.dlg_calc_drift.save()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error!', str(e))
+            else:
+                self.statusBar().showMessage(f'Saved drift data.')
+        else:
+            pass
 
     @pyqtSlot()
     def on_pushButton_results_export_shapefile(self):
