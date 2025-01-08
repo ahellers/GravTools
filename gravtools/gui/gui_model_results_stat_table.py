@@ -165,7 +165,7 @@ class ResultsStationModel(QAbstractTableModel):
             value = self._data.iloc[index.row(), index.column()]
             column_name = self._data_column_names[index.column()]
 
-            if role == Qt.DisplayRole:
+            if role == Qt.DisplayRole or role == Qt.UserRole:
                 # Custom formatter (string is expected as return type):
                 if value is None:  #
                     return NONE_REPRESENTATION_IN_TABLE_VIEW

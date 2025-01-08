@@ -178,6 +178,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.comboBox_results_stations_statistics_select_col.currentIndexChanged.connect(
             self.display_station_results_statistics)
         self.tableView_surveys.customContextMenuRequested.connect(self.tableView_surveys_right_click)
+        self.tableView_surveys.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_surveys.horizontalHeader().customContextMenuRequested.connect(self.tableView_header_context_menu)
+        self.tableView_observations.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_observations.horizontalHeader().customContextMenuRequested.connect(self.tableView_header_context_menu)
+        self.tableView_observations_setups.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_observations_setups.horizontalHeader().customContextMenuRequested.connect(self.tableView_header_context_menu)
+        self.tableView_Stations.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_Stations.horizontalHeader().customContextMenuRequested.connect(self.tableView_header_context_menu)
+        self.tableView_gravimeters_scale.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_gravimeters_scale.horizontalHeader().customContextMenuRequested.connect(self.tableView_header_context_menu)
+        self.tableView_results_stations.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_results_stations.horizontalHeader().customContextMenuRequested.connect(
+            self.tableView_header_context_menu)
+        self.tableView_results_observations.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_results_observations.horizontalHeader().customContextMenuRequested.connect(
+            self.tableView_header_context_menu)
+        self.tableView_results_drift.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_results_drift.horizontalHeader().customContextMenuRequested.connect(
+            self.tableView_header_context_menu)
+        self.tableView_results_vg_table.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tableView_results_vg_table.horizontalHeader().customContextMenuRequested.connect(
+            self.tableView_header_context_menu)
         self.treeWidget_gravimeters.itemSelectionChanged.connect(self.gravimeters_tree_widget_item_selection_changed)
         self.pushButton_surveys_disable_all.pressed.connect(self.pushbutton_surveys_disable_all_pressed)
         self.pushButton_surveys_enable_all.pressed.connect(self.pushbutton_surveys_enable_all_pressed)
@@ -352,6 +374,54 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.gravimeter_scale_factor_model.update_view_model(gravimeter_type, serial_number)
         self.gravimeter_scale_factor_model.layoutChanged.emit()  # Show changes in table view
         self.tableView_gravimeters_scale.resizeColumnsToContents()
+
+    @pyqtSlot(QPoint)
+    def tableView_header_context_menu(self, position):
+        """Show context menu ta right click on table view header."""
+        ctx_menu = QMenu()
+        ctx_menu.setToolTip('Export current table content to CSV file.')
+        export_csv = ctx_menu.addAction(f'Export to CSV file')
+        action = ctx_menu.exec_(QtGui.QCursor.pos())
+        if action == export_csv:
+            model = self.sender().parent().model()
+            options = QFileDialog.Options()
+            options |= QFileDialog.DontUseNativeDialog
+            csv_filename, _ = QFileDialog.getSaveFileName(self,
+                                                          'Export table content to CSV file',
+                                                          os.path.join(self.campaign.output_directory, self.sender().parent().objectName() + '.csv'),
+                                                          "CSV file (*.csv)",
+                                                          options=options)
+            if csv_filename:
+                if not csv_filename.endswith('.csv'):
+                    csv_filename = csv_filename + '.csv'
+                # Returns pathName with the '/' separators converted to separators that are appropriate for the underlying
+                # operating system.
+                # On Windows, toNativeSeparators("c:/winnt/system32") returns "c:\winnt\system32".
+                csv_filename = QDir.toNativeSeparators(csv_filename)
+                self.table_model_to_csv(model, csv_filename)
+
+    def table_model_to_csv(self, model, filename_csv, verbose=IS_VERBOSE):
+        """Export current table model data to a csv file."""
+        rows = model.rowCount()
+        cols = model.columnCount()
+        # col_names = [model.headerData(i, orientation=Qt.Horizontal, role=Qt.DisplayRole) for i in range(cols)]
+        col_names = [model.headerData(i, Qt.Horizontal, role=Qt.DisplayRole) for i in range(cols)]  # QSortFilterProxyModel has no keyword orientation?!
+        tmp_dict = {}
+        for i_col, col_name in enumerate(col_names):
+            col_list = []
+            for i_row in range(rows):
+                col_list.append(model.index(i_row, i_col).data(role=Qt.UserRole))
+            tmp_dict[col_name] = col_list
+        tmp_df = pd.DataFrame.from_dict(tmp_dict)
+        try:
+            tmp_df.to_csv(filename_csv, index=False)
+        except Exception as e:
+            QMessageBox.critical(self, 'Error!', str(e))
+        else:
+            self.statusBar().showMessage(f'Table data saved as "{filename_csv}"')
+            if verbose:
+                print(f'Exported table data to {filename_csv}')
+            QMessageBox.information(self, 'Export to CSV file', f'Table saved as "{filename_csv}".')
 
     @pyqtSlot(QPoint)
     def tableView_surveys_right_click(self, position):

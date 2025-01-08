@@ -224,12 +224,13 @@ class ObservationTableModel(QAbstractTableModel):
     def data(self, index, role=Qt.DisplayRole):
         if self._data is not None:
             if index.isValid():
-                if role == Qt.DisplayRole:
+                if role == Qt.DisplayRole or role == Qt.UserRole:
                     value = self._data.iloc[index.row(), index.column()]
 
                     # Only checkboxes in the "keep_obs" flag column:
-                    if index.column() == self._data_column_names.index('keep_obs'):
-                        return ''
+                    if role == Qt.DisplayRole:
+                        if index.column() == self._data_column_names.index('keep_obs'):
+                            return ''
 
                     # Custom formatter (string is expected as return type):
                     if value is None:  #
@@ -364,3 +365,7 @@ class ObservationTableModel(QAbstractTableModel):
             return [value for value in self._SHOW_COLUMNS_IN_TABLE if value in self._SHOW_COLUMNS_IN_TABLE_SIMPLE_GUI]
         else:
             return self._SHOW_COLUMNS_IN_TABLE
+
+    def get_data_df(self):
+        """Returns the model data as pandas DataFrame."""
+        print('test')

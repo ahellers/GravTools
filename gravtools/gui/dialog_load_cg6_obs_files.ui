@@ -128,7 +128,7 @@
       <item row="0" column="0">
        <widget class="QLabel" name="label_location_type">
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the type of location data (i.e. the location source) that is used for georeferencing the observations. The CG6 observation file format contains location data based on user input (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;user&lt;/span&gt;&amp;quot;) and based on measurements with the GPS module (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;GPS&lt;/span&gt;&amp;quot;). Have a look at the instrument's manual for more details.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the type of location data (i.e. the location source) that is used for georeferencing the observations. The CG6 observation file format contains location data based on user input (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;user&lt;/span&gt;&amp;quot;) and based on GPS measurements (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;GPS&lt;/span&gt;&amp;quot;). Please note, that GPS locations might not be available in the observation files, e.g. at stations without GPS signal availability.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
         <property name="text">
          <string>Location data source</string>
@@ -138,7 +138,7 @@
       <item row="0" column="1">
        <widget class="QComboBox" name="comboBox_location_type">
         <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the type of location data (i.e. the location source) that is used for georeferencing the observations. The CG6 observation file format contains location data based on user input (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;user&lt;/span&gt;&amp;quot;) and based on measurements with the GPS module (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;GPS&lt;/span&gt;&amp;quot;). Have a look at the instrument's manual for more details.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the type of location data (i.e. the location source) that is used for georeferencing the observations. The CG6 observation file format contains location data based on user input (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;user&lt;/span&gt;&amp;quot;) and based on GPS measurements (&amp;quot;&lt;span style=&quot; font-weight:600;&quot;&gt;GPS&lt;/span&gt;&amp;quot;). Please note, that GPS locations might not be available in the observation files, e.g. at stations without GPS signal availability.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>

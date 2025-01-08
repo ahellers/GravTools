@@ -103,11 +103,12 @@ class StationTableModel(QAbstractTableModel):
             value = self._data.iloc[index.row(), index.column()]
             column_name = self._data_column_names[index.column()]
 
-            if role == Qt.DisplayRole:
+            if role == Qt.DisplayRole or role == Qt.UserRole:
 
                 # Draw checkboxes only in the "is_datum" column:
-                if column_name == 'is_datum':
-                    return ''
+                if role == Qt.DisplayRole:
+                    if column_name == 'is_datum':
+                        return ''
 
                 # Custom formatter (string is expected as return type):
                 if value is None:  #

@@ -1999,6 +1999,9 @@ class Survey:
         """
         tmp_df = self.obs_df[['obs_epoch', 'duration_sec', 'lon_deg', 'lat_deg', 'alt_m']].copy(
             deep=True)
+        # Check availability of input data:
+        if tmp_df['lon_deg'].isna().any() or tmp_df['lat_deg'].isna().any() or tmp_df['alt_m'].isna().any():
+            raise RuntimeError(f'Failed to calculate tidal corrections according to Longman (1959) due to missing station coordinates!')
         # Shift obs reference epoch from start to the middle of the gravity reading
         # (= evaluation time for the tide model):
         tmp_df['obs_epoch'] = tmp_df['obs_epoch'] + pd.to_timedelta(tmp_df['duration_sec'], 'sec') / 2

@@ -198,7 +198,7 @@ class SetupTableModel(QAbstractTableModel):
     def data(self, index, role=Qt.DisplayRole):
         if self._data is not None:
             if index.isValid():
-                if role == Qt.DisplayRole:
+                if role == Qt.DisplayRole or role == Qt.UserRole:
                     value = self._data.iloc[index.row(), index.column()]
                     # Custom formatter (string is expected as return type):
                     if value is None:  #

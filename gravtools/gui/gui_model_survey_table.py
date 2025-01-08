@@ -123,11 +123,13 @@ class SurveyTableModel(QAbstractTableModel):
             except AttributeError:
                 value = 'n.a.'  # Not available
 
-            if role == Qt.DisplayRole:
+            # if role == Qt.DisplayRole:
+            if role == Qt.DisplayRole or role == Qt.UserRole:
 
                 # Draw checkboxes only in the "is_datum" column:
-                if attribute_name == 'keep_survey':
-                    return ''
+                if role == Qt.DisplayRole:
+                    if attribute_name == 'keep_survey':
+                        return ''
 
                 # Custom formatter (string is expected as return type):
                 if value is None:  #
