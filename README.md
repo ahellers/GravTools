@@ -19,6 +19,7 @@ To enable these features the optional package "geopandas" needs to be installed 
 `pip install grav-toolbox[gis]`
 
 # Release notes
+More details are provided along with version tags on github.
 
 ## 0.3.3 (2025-01-08)
   - New dialog for drift determination based on the reduced observations as shown in the observations plot. One drift 
