@@ -2458,6 +2458,44 @@ class Survey:
                                          columns=self._SETUP_DF_COLUMNS)
             self.set_reference_time(ref_delta_t_dt)  # Save reference time for `delta_t_h`, i.e. for the survey.
 
+    def calc_drift_at_station_polyfit(self, station_name: str, degree: int = 1, obs_type: str = 'reduced', active_only: bool = True, min_number_obs: int = 1):
+        """Calculate the instrumental drift based on observations at a given station using `numpy.polyfit`.
+
+        Parameters
+        ----------
+        station_name : str
+            Name of the station.
+        degree : int, optional (default=1)
+            Degree of the drift polynomial to be fitted to the observations. The degree has to be in the range between 1
+             and 3.
+        obs_type : str, optional, `reduced` or `observed` (default=`reduced`)
+            Either used reduced observations of the originals values as observed for fitting the drfit polynomial.
+        active_only : bool, optional (default=`True`)
+            `True` implies that only active observations are considered.
+        min_number_obs : int, optional (default=1)
+            Minimum number of observations. If less observations are available, no polynomial is fitted and None is
+            returned.
+
+        Returns
+        -------
+        numpy.ndarray : Polynomial coefficients as determined by `numpy.polyfit`, highest power first
+        """
+        tmp_filter = self.obs_df['station_name'] == station_name
+        if active_only:
+            tmp_filter = tmp_filter & self.obs_df['keep_obs']
+        obs_df_stat = self.obs_df.loc[tmp_filter].copy(deep=True)
+        if len(obs_df_stat) < min_number_obs:
+            return None
+        obs_df_stat['hours_since_start'] = (obs_df_stat['obs_epoch'] - self.start_time) / np.timedelta64(1, 's') / 3600
+        if obs_type == 'reduced':
+            g_mugal = obs_df_stat['g_red_mugal'].astype(float).values
+        elif obs_type == 'observed':
+            g_mugal = obs_df_stat['g_obs_mugal'].astype(float).values
+        else:
+            raise RuntimeError(f'Unknown observation type: {obs_type}')
+        t_h = obs_df_stat['hours_since_start'].values
+        return np.polyfit(t_h, g_mugal, degree)
+
     def create_setup_obs_list(self):
         """Create list of all observations that contribute to the calculation of setup data in this Survey object.
 
