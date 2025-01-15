@@ -62,8 +62,8 @@ class StationTableModel(QAbstractTableModel):
 
     # Number of decimal pla
     _DECIMAL_PLACES_PER_FLOAT_COLUMN = {
-        'long_deg': 3,
-        'lat_deg': 3,
+        'long_deg': 8,
+        'lat_deg': 8,
         'height_m': 3,
         'g_mugal': 1,
         'sd_g_mugal': 1,
