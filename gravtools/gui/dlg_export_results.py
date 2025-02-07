@@ -22,10 +22,13 @@ from PyQt5.QtCore import Qt, pyqtSlot
 from gravtools.gui.dialog_export_results import Ui_Dialog_export_results
 
 class DialogExportResults(QDialog, Ui_Dialog_export_results):
-    """Dialog to define the estimation settings."""
+    """Dialog for data export."""
 
-    def __init__(self, campaign, _has_geopandas=False, parent=None):
+    def __init__(self, campaign, has_geopandas=False, parent=None):
         super().__init__(parent)
+
+        self._has_geopandas = has_geopandas
+
         # Get data:
         self._lsm_runs = campaign.lsm_runs
         self.flag_observation_data_available = len(campaign.surveys) > 0
@@ -57,7 +60,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         self.comboBox_select_lsm_run.currentIndexChanged.connect(self.on_comboBox_select_lsm_run_current_index_changed)
 
         # Optional dependency for GIS data export:
-        if _has_geopandas:
+        if self._has_geopandas:
             self.groupBox_gis.setEnabled(True)
         else:
             self.groupBox_gis.setEnabled(False)
@@ -93,7 +96,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
             self.groupBox_other_files.setEnabled(True)
             self.groupBox_nsb_file.setEnabled(True)
             self.groupBox_observation_list.setEnabled(True)
-            if _has_geopandas:
+            if self._has_geopandas:
                 self.groupBox_gis.setEnabled(True)
         else:
             self.groupBox_gis.setEnabled(False)

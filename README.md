@@ -26,6 +26,9 @@ More details are provided along with version tags on github.
 polynomial is fitted per station. This feature is useful for calculating the drift correction coefficient for Scintrex 
 CG5 and CG6 meters based on stationary observations. 
 
+## 0.3.4 (2025-02-07)
+  - Fixed bug in the data export dialog.
+
 # License and copyright
 
 Copyright (C) 2021  Andreas Hellerschmied (<andreas.hellerschmied@bev.gv.at>)
