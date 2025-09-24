@@ -2673,7 +2673,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         _OBS_FILE_EXPORT_TYPES = {'all observations': 'all_obs',
                                   'only active observations': 'active_only',
                                   'only inactive observations': 'inactive_only'}
-        dlg = DialogExportResults(campaign=self.campaign)
+        dlg = DialogExportResults(campaign=self.campaign, has_geopandas=_has_geopandas)
         return_value = dlg.exec()
         flag_export_successful = True
         if return_value == QDialog.Accepted:

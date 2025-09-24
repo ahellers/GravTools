@@ -1089,7 +1089,7 @@ class CG6Survey:
         return cls(obs_filename=filename,
                    obs_file_type='cg6_obs_file_solo',
                    survey_name=_HEADER_LINES['survey_name'][3],
-                   serial_number=_HEADER_LINES['survey_name'][3],
+                   serial_number=_HEADER_LINES['serial_number'][3],
                    created_datetime=created_datetime,
                    operator=_HEADER_LINES['operator'][3],
                    gcal1=_HEADER_LINES['gcal1'][3],
