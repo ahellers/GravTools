@@ -29,6 +29,9 @@ CG5 and CG6 meters based on stationary observations.
 ## 0.3.4 (2025-02-07)
   - Fixed bug in the data export dialog.
 
+## 0.3.5 (2025-09-24)
+  - Fixed bug: The survey name was recognized as instrument S/N when loading CG6 solo observation files.
+
 # License and copyright
 
 Copyright (C) 2021  Andreas Hellerschmied (<andreas.hellerschmied@bev.gv.at>)
