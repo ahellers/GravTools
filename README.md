@@ -31,6 +31,12 @@ CG5 and CG6 meters based on stationary observations.
 
 ## 0.3.5 (2025-09-24)
   - Fixed bug: The survey name was recognized as instrument S/N when loading CG6 solo observation files.
+  - 
+## 0.3.6 (2026-01-02)
+  - Loading a new json gravimeter file now triggers the calculation of updated gravity reductions.
+  - Future pandas warning concerning timezone aware datetime64 types fixed.
+  - Bugfix: Problem when loading stations with integer-type statio names from CSV files fixed (resulted in duplicated entries in the station list).
+  - Handling of station filters in the GUI (stations tab) improved. 
 
 # License and copyright
 

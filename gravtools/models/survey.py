@@ -855,9 +855,11 @@ class Survey:
 
         # Check timezone of observation epoch and convert it to UTC, if necessary:
         if obs_df_cg6['ref_time'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
-            obs_df_cg6.loc[:, 'ref_time'] = obs_df_cg6['ref_time'].dt.tz_localize('UTC')
+            # obs_df_cg6.loc[:, 'ref_time'] = obs_df_cg6['ref_time'].dt.tz_localize('UTC')  # Causes a FutureWarning: https://github.com/pandas-dev/pandas/issues/55317
+            obs_df_cg6['ref_time'] = obs_df_cg6['ref_time'].dt.tz_localize('UTC')
         elif obs_df_cg6['ref_time'].dt.tz != dt.timezone.utc:  # Change TZ to <UTC>
-            obs_df_cg6.loc[:, 'ref_time'] = obs_df_cg6['ref_time'].dt.tz_convert('UTC')
+            # obs_df_cg6.loc[:, 'ref_time'] = obs_df_cg6['ref_time'].dt.tz_convert('UTC')  # Causes a FutureWarning: https://github.com/pandas-dev/pandas/issues/55317
+            obs_df_cg6['ref_time'] = obs_df_cg6['ref_time'].dt.tz_convert('UTC')
 
         obs_df = pd.DataFrame()
         obs_df['station_name'] = obs_df_cg6['station']
@@ -987,7 +989,7 @@ class Survey:
         # obs_df:
         if cg5_survey.obs_df is not None:
             # Refactor observation dataframe:
-            obs_df: object = cg5_survey.obs_df.sort_values('obs_epoch').copy(
+            obs_df = cg5_survey.obs_df.sort_values('obs_epoch').copy(
                 deep=True)  # deep copy => No struggles with references
 
             # Add missing columns (initialized with default values):
@@ -999,9 +1001,9 @@ class Survey:
 
             # Check timezone of observation epoch and convert it to UTC, if necessary:
             if obs_df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
-                obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_localize('UTC')
+                obs_df['obs_epoch'] = obs_df['obs_epoch'].dt.tz_localize('UTC')  # dtype: datetime64[ns, UTC]
             elif obs_df['obs_epoch'].dt.tz != dt.timezone.utc:  # Change TZ to <UTC>
-                obs_df.loc[:, 'obs_epoch'] = obs_df['obs_epoch'].dt.tz_convert('UTC')
+                obs_df['obs_epoch'] = obs_df['obs_epoch'].dt.tz_convert('UTC')  # dtype: datetime64[ns, UTC]
 
             # Rename columns:
             obs_df.rename(columns={'terrain': 'corr_terrain',
@@ -1148,10 +1150,10 @@ class Survey:
 
         # Check timezone of observation epoch and convert it to UTC, if necessary:
         if df['obs_epoch'].dt.tz is None:  # TZ unaware => set TZ to <UTC>
-            df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_localize('UTC')
+            df['obs_epoch'] = df['obs_epoch'].dt.tz_localize('UTC')
         else:
             if df['obs_epoch'].dt.tz != dt.timezone.utc:  # Change TZ to <UTC>
-                df.loc[:, 'obs_epoch'] = df['obs_epoch'].dt.tz_convert('UTC')
+                df['obs_epoch'] = df['obs_epoch'].dt.tz_convert('UTC')
 
         # Timestamp: https://stackoverflow.com/questions/40881876/python-pandas-convert-datetime-to-timestamp-effectively-through-dt-accessor
         df['setup_id'] = df['obs_epoch'].values.astype(np.int64) // 10 ** 9
