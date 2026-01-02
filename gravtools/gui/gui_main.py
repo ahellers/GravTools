@@ -3312,6 +3312,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     @pyqtSlot(str)
     def on_lineEdit_filter_stat_name_textChanged(self, text):
         """Only display the observed stations."""
+
+        # Disable observed-stations-only filter when using regex:
+        if text:
+            self.checkBox_filter_observed_stat_only.blockSignals(True)
+            self.checkBox_filter_observed_stat_only.setChecked(False)
+            self.checkBox_filter_observed_stat_only.blockSignals(False)
+
         search = QRegExp(text, Qt.CaseInsensitive, QRegExp.RegExp)
         try:
             self.proxy_station_model.setFilterKeyColumn(self.campaign.stations._STAT_DF_COLUMNS.index('station_name'))
@@ -3326,6 +3333,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Event handler for the filter observed stations only checkbox."""
         self.proxy_station_model.setFilterKeyColumn(self.campaign.stations._STAT_DF_COLUMNS.index('is_observed'))
         if state == Qt.Checked:
+
+            # Disable regex search:
+            if self.lineEdit_filter_stat_name.text():
+                self.lineEdit_filter_stat_name.blockSignals(True)
+                self.lineEdit_filter_stat_name.setText('')
+                self.lineEdit_filter_stat_name.blockSignals(False)
+
             self.proxy_station_model.setFilterFixedString('True')
         else:
             self.proxy_station_model.setFilterFixedString('')

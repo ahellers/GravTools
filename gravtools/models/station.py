@@ -222,6 +222,7 @@ class Station:
         stat_df_new = self._read_oesgn_table(filename, is_datum=is_datum)
         stat_df_new = self._stat_df_add_columns(stat_df_new)
         stat_df_new = self._stat_df_reorder_columns(stat_df_new)
+        stat_df_new = stat_df_new.astype(self._STAT_DF_COLUMNS_DTYPES)
         self.add_stations(stat_df_new, data_source_type='oesgn_table', verbose=verbose)
 
     def delete_station(self, station_names: list, verbose=False):
@@ -453,6 +454,7 @@ class Station:
         stat_df_new['is_datum'] = False
         stat_df_new['source_type'] = 'csv_stat_file'
         stat_df_new['source_name'] = os.path.basename(filename)
+        stat_df_new = stat_df_new.astype(self._STAT_DF_COLUMNS_DTYPES)
         self.add_stations(stat_df_new, data_source_type='csv_stat_file', verbose=verbose)
 
     def set_datum_stations(self, station_names: list, is_datum: bool, verbose=False):
