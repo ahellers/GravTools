@@ -3560,6 +3560,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.populate_gravimeters_tree_widget()
                 self.statusBar().showMessage(f"Gravimeter data added from file: {gravimeter_filename}")
 
+            # Re-calculate observation corrections, based on the new gravimeter data
+            try:
+                self.apply_observation_corrections()
+            except Exception as e:
+                QMessageBox.critical(self, 'Error while updating observation corrections!', str(e))
+                self.statusBar().showMessage(f"Error: updating observation corrections based on new gravimeter data failed.")
+            else:
+                # Update the observations table and plot (in case the reduced obs. changed):
+                survey_name, setup_id = self.get_obs_tree_widget_selected_item()
+                self.update_obs_table_view(survey_name, setup_id)
+                self.plot_observations(survey_name)
+
+
     def on_menu_file_load_stations_from_oesgn_table(self):
         """Load stations from OESGN table file."""
         options = QFileDialog.Options()
