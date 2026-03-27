@@ -1163,24 +1163,6 @@ class CG6Survey:
             station_name_out = station_name_in.replace('.', '-')
         return station_name_out.upper()
 
-    @staticmethod
-    def get_dhb_dhf(dh_str):
-        """Convert dhb and dhf from notes in the CG-5 observation file
-        to an actual number. In the notes '.' is used instead of '-'.
-
-        Parameters
-        ----------
-        dh_str : str
-            Height difference [m] with '.' instead of '-'.
-
-        Returns
-        -------
-        Height difference [m] : float
-        """
-        if dh_str.startswith('.'):
-            dh_str = '-' + dh_str[1:]
-        return float(dh_str)
-
     @property
     def number_of_observations(self):
         """Return the number of observations in the survey."""
