@@ -38,6 +38,11 @@ CG5 and CG6 meters based on stationary observations.
   - Bugfix: Problem when loading stations with integer-type statio names from CSV files fixed (resulted in duplicated entries in the station list).
   - Handling of station filters in the GUI (stations tab) improved. 
 
+## 0.3.7 (2026-03-27)
+  - Fixed syntaxWarning that was caused by regex expressions in the CG5 observation file loading method.
+  - The setup IDs are now created based on the observation reference time and the survey name (combined hash). This allows multiple observations at the same time in different surveys within one campaign. Now it is possible to analyze campaigns with two ore more gravimeters being used in parallel. 
+  - Fixed a bug that caused an error when reading negative dhf values from the instrument height column in LynxLG CG6 observation files.
+
 # License and copyright
 
 Copyright (C) 2021  Andreas Hellerschmied (<andreas.hellerschmied@bev.gv.at>)
