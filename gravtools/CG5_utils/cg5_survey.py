@@ -588,7 +588,8 @@ class CG5Survey:
         obs_list = []  # Collect all obs data in this list and then convert to pd dataframe.
 
         # 1.) Station name & dbh=dhf
-        expr = '\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dh_cm>-?[.0-9]+)\s*[\r?\n](?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r?\n])+)'
+        expr = r'\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dh_cm>-?[.0-9]+)\s*\r?\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*\r?\n)+)'
+
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
             station_name = self.resolve_station_name(obs_dict['station_name'])
@@ -612,7 +613,7 @@ class CG5Survey:
                 obs_list.append(line_items)
 
         # 2.) Station name & dbh=dhf & pressure
-        expr = '\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dh_cm>-?[.0-9]+)\s*[\r?\n](?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r?\n])+)\/\tNote:   \t(?P<pres>[0-9]{3,4}[.]{0,1}[0-9]*)'
+        expr = r'\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dh_cm>-?[.0-9]+)\s*\r?\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*\r?\n)+)\/\tNote:   \t(?P<pres>[0-9]{3,4}[.]{0,1}[0-9]*)'
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
             station_name = self.resolve_station_name(obs_dict['station_name'])
@@ -636,7 +637,7 @@ class CG5Survey:
                 obs_list.append(line_items)
 
         # 3.) Station name & dhb & dhf
-        expr = '\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dhb_cm>-?[.0-9]+)\s+(?P<dhf_cm>-?[.0-9]+)\s*[\r?\n](?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r?\n])+)'
+        expr = r'\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dhb_cm>-?[.0-9]+)\s+(?P<dhf_cm>-?[.0-9]+)\s*\r?\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*\r?\n)+)'
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
 
@@ -662,7 +663,7 @@ class CG5Survey:
 
         # 4.) Station name & dhb & dhf & pressure
         # expr = "\/\s+Note:\s+(?P<station_name>\S+)\s+(?P<dhb_cm>\S+)\s+(?P<dhf_cm>\S+)\s*\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r\n])+)"
-        expr = '\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dhb_cm>-?[.0-9]+)\s+(?P<dhf_cm>-?[.0-9]+)\s*[\r?\n](?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*[\r?\n])+)\/\tNote:   \t(?P<pres>[0-9]{3,4}[.]{0,1}[0-9]*)'
+        expr = r'\/\tNote:   \t(?P<station_name>\S+)\s+(?P<dhb_cm>-?[.0-9]+)\s+(?P<dhf_cm>-?[.0-9]+)\s*\r?\n(?P<obs_data>(?:\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s*\r?\n)+)\/\tNote:   \t(?P<pres>[0-9]{3,4}[.]{0,1}[0-9]*)'
         for obs_block in re.finditer(expr, str_obs_file):
             obs_dict = obs_block.groupdict()
 
