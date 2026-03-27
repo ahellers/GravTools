@@ -30,7 +30,7 @@ from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, 
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.CG6_utils.cg6_survey import CG6Survey
-from gravtools.models.misc import format_seconds_to_hhmmss
+from gravtools.models.misc import format_seconds_to_hhmmss, make_setup_id
 from gravtools.tides.correction_time_series import convert_to_mugal
 from gravtools.models import atmosphere_correction
 
@@ -182,9 +182,10 @@ class Survey:
 
         - station_name : str
             Name of observed station
-        - setup_id : int (UNIX timestamp of the first observation reference epoch of this setup)
+        - setup_id : int
             Each setup (one or more observations at a station without moving the instrument) gets a unique ID in order
-            to distinguish between independent groups of observations at a station.
+            to distinguish between independent groups of observations at a station. The setup_id is created based on
+            the reference time of the first observation of a setup and the survey name.
         - loop_id: int, optional (default=None)
             Unique ID of a line. A survey can be split up into multiple lines. A line needs to have at least one station
             that was observed at least twice for drift control (preferably at the beginning and end of the line). If
@@ -1109,6 +1110,7 @@ class Survey:
         """
 
         data_file_name = os.path.split(filename)[1]
+        survey_name = os.path.split(filename)[1]
 
         if verbose:
             print(f'Read observations from file: {filename}.')
@@ -1156,7 +1158,9 @@ class Survey:
                 df['obs_epoch'] = df['obs_epoch'].dt.tz_convert('UTC')
 
         # Timestamp: https://stackoverflow.com/questions/40881876/python-pandas-convert-datetime-to-timestamp-effectively-through-dt-accessor
-        df['setup_id'] = df['obs_epoch'].values.astype(np.int64) // 10 ** 9
+        # df['setup_id'] = df['obs_epoch'].values.astype(np.int64) // 10 ** 9
+        # Use make_setup_id() to crate setup_id column for all rows based on the observation epoch in column "obs_epoch" and the survey name (survey_name):
+        df['setup_id'] = df.apply(lambda row: make_setup_id(row['obs_epoch'], survey_name), axis=1)
 
         df['g_obs_mugal'] = df['g_mgal'] * 1e3
         df['dhb_m'] = df['dhb_cm'] * 1e-2
@@ -1187,7 +1191,7 @@ class Survey:
         gravimeter_serial_number = DEFAULT_GRAVIMETER_SERIAL_NUMBER
         gravimeter_type = DEFAULT_GRAVIMETER_TYPE
 
-        return cls(name=os.path.split(filename)[1],
+        return cls(name=survey_name,
                    date=survey_date,
                    operator='',
                    institution=institution,

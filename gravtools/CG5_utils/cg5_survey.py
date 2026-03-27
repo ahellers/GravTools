@@ -26,6 +26,7 @@ import datetime as dt
 
 from gravtools.models.exceptions import InvaliFileContentError
 from gravtools import settings
+from gravtools.models.misc import make_setup_id
 
 
 class DataCursor:
@@ -598,7 +599,8 @@ class CG5Survey:
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
             time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
-            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
+            setup_id = make_setup_id(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"),
+                                     self.survey_parameters.survey_name)
 
             for line in lines:
                 line_items = line.split()
@@ -621,7 +623,8 @@ class CG5Survey:
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
             time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
-            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
+            setup_id = make_setup_id(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"),
+                                     self.survey_parameters.survey_name)
 
             for line in lines:
                 line_items = line.split()
@@ -645,7 +648,8 @@ class CG5Survey:
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
             time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
-            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
+            setup_id = make_setup_id(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"),
+                                     self.survey_parameters.survey_name)
 
             for line in lines:
                 line_items = line.split()
@@ -670,7 +674,8 @@ class CG5Survey:
             # Create unique ID (= UNIX timestamp of first observation) for each setup on a station:
             #  - To distinguish multiple setups (with multiple observations each) on multiple stations
             time_str = lines[0].split()[-1] + ' ' + lines[0].split()[11]
-            setup_id = int(dt.datetime.timestamp(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S")))
+            setup_id = make_setup_id(dt.datetime.strptime(time_str, "%Y/%m/%d %H:%M:%S"),
+                                     self.survey_parameters.survey_name)
 
             for line in lines:
                 line_items = line.split()

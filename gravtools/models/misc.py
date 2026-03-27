@@ -22,6 +22,8 @@ import sys
 from functools import wraps
 from time import time
 from collections import Counter
+import datetime as dt
+import hashlib
 
 
 def get_nonunique_items(lst: list) -> list:
@@ -155,3 +157,21 @@ def numpy_array_set_zero(input_array, atol=np.nan):
         input_array[np.isclose(input_array, 0.0, atol=atol)] = 0.0
     return input_array
 
+
+def make_setup_id(ref_time: dt.datetime, survey_name: str = '') -> int:
+    """Creates unique setup id based on the reference time and survey name.
+
+    Parameters
+    ----------
+    ref_time : dt.datetime
+        Reference time of the survey (e.g. start time).
+    survey_name : str, optional (default='')
+        Name of the survey (e.g. 'My Survey').
+    """
+    ts = int(dt.datetime.timestamp(ref_time))  # ~32 bit (bis 2038+)
+
+    # Deterministic 16-bit Hash of the survey name
+    survey_name_hash = int(hashlib.sha256(survey_name.encode()).hexdigest(), 16) & 0xFFFF
+
+    # Timestamp in the upper bits, sdurvey_name-hash in the lower 16 Bits
+    return (ts << 16) | survey_name_hash

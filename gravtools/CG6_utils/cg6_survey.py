@@ -23,9 +23,8 @@ import numpy as np
 import re
 import datetime as dt
 
-from numpy import datetime64
-
 from gravtools.models.exceptions import InvaliFileContentError
+from gravtools.models.misc import make_setup_id
 from gravtools import settings
 
 
@@ -646,7 +645,7 @@ class CG6Survey:
                 flag_first_note = True
                 note = line.split('/ Notes:')[1].strip()
             elif not line.startswith('/') and line and flag_first_note:  # obs. line
-                expr = r'(?P<year>[0-9]{4}) (?P<month>[ 0-9][0-9]) (?P<day>[ 0-9][0-9]) (?P<hour>[ 0-9][0-9]) (?P<minute>[ 0-9][0-9]) (?P<second>[ 0-9][0-9]) (?P<millisecond>[ 0-9][ 0-9][0-9]) (?P<survey>\S+) (?P<station>\S+) (?P<occupation>\S*) (?P<line>\S*) (?P<user_lat_deg>-?[0-9.]+) (?P<user_lon_deg>-?[0-9.]+) (?P<user_height_m>-?[0-9.]+) (?P<corr_g_mgal>[0-9.]+) (?P<se_g_mgal>[0-9.]+) (?P<sd_g_mgal>[0-9.]+) (?P<tilt_x_arcsec>-?[0-9.]+) (?P<tilt_y_arcsec>-?[0-9.]+) (?P<sensor_temp_mk>-?[0-9.]+) (?P<corr_tilt_mgal>-?[0-9.]+) (?P<corr_tide_mgal>-?[0-9.]+) (?P<corr_oceanload_mgal>-?[0-9.]+) (?P<corr_temp_mgal>-?[0-9.]+) (?P<corr_drift_mgal>-?[0-9.]+) (?P<gps_lat_deg>-?[0-9.]+) (?P<gps_lon_deg>-?[0-9.]+) +(?P<gps_fix_quality>[0-9]+) +(?P<gps_satellites>[0-9]+) (?P<gps_hdop>-?[0-9.]+) (?P<gps_h_m>-?[0-9.]+) +(?P<duration>[0-9]+) +(?P<num_rejected>[0-9]+) (?P<instr_height_m>[0-9.]+) (?P<gradient_mgalcm>-?[0-9.]+)'
+                expr = r'(?P<year>[0-9]{4}) (?P<month>[ 0-9][0-9]) (?P<day>[ 0-9][0-9]) (?P<hour>[ 0-9][0-9]) (?P<minute>[ 0-9][0-9]) (?P<second>[ 0-9][0-9]) (?P<millisecond>[ 0-9][ 0-9][0-9]) (?P<survey>\S+) (?P<station>\S+) (?P<occupation>\S*) (?P<line>\S*) (?P<user_lat_deg>-?[0-9.]+) (?P<user_lon_deg>-?[0-9.]+) (?P<user_height_m>-?[0-9.]+) (?P<corr_g_mgal>[0-9.]+) (?P<se_g_mgal>[0-9.]+) (?P<sd_g_mgal>[0-9.]+) (?P<tilt_x_arcsec>-?[0-9.]+) (?P<tilt_y_arcsec>-?[0-9.]+) (?P<sensor_temp_mk>-?[0-9.]+) (?P<corr_tilt_mgal>-?[0-9.]+) (?P<corr_tide_mgal>-?[0-9.]+) (?P<corr_oceanload_mgal>-?[0-9.]+) (?P<corr_temp_mgal>-?[0-9.]+) (?P<corr_drift_mgal>-?[0-9.]+) (?P<gps_lat_deg>-?[0-9.]+) (?P<gps_lon_deg>-?[0-9.]+) +(?P<gps_fix_quality>[0-9]+) +(?P<gps_satellites>[0-9]+) (?P<gps_hdop>-?[0-9.]+) (?P<gps_h_m>-?[0-9.]+) +(?P<duration>[0-9]+) +(?P<num_rejected>[0-9]+) (?P<instr_height_m>-?[0-9.]+) (?P<gradient_mgalcm>-?[0-9.]+)'
                 block_count = 0
                 for block in re.finditer(expr, line):
                     block_dict = block.groupdict()
@@ -719,7 +718,7 @@ class CG6Survey:
                 # New setup id:
                 if flag_new_setup:
                     flag_new_setup = False
-                    setup_id = int(dt.datetime.timestamp(t_ref))
+                    setup_id = make_setup_id(t_ref, survey_name=survey_name_list[-1])  # int(dt.datetime.timestamp(t_ref))
                     num_setups += 1
                 setup_id_list.append(setup_id)
                 note_list.append(note)
@@ -1039,7 +1038,7 @@ class CG6Survey:
                     if (ref_time_list[count_idx] - ref_time_list[count_idx - 1]).seconds > dt_setup_sec:  # Time gap?
                         flag_new_setup = True
             if flag_new_setup:
-                setup_id = int(dt.datetime.timestamp(ref_time))
+                setup_id = make_setup_id(ref_time, survey_name=_HEADER_LINES['survey_name'][3])
                 num_setups += 1
                 flag_new_setup = False
             setup_id_list.append(setup_id)
