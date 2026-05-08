@@ -28,6 +28,7 @@ import numpy as np
 import gravtools.tides.correction_time_series
 from gravtools.tides.tide_data_tfs import TSF
 from gravtools import settings
+from gravtools.models.misc import to_unix_seconds
 
 class CorrectionTimeSeries:
     """Class for correction data provided as time series per station and survey.
@@ -285,7 +286,7 @@ class TimeSeries:
     @property
     def ref_time_unix(self):
         """Returns the reference times as UNIX timestamps (seconds since Jan 1, 1970)."""
-        return self.ref_time_dt.astype('int64')/1e9
+        return to_unix_seconds(self.ref_time_dt)
 
 
 @dataclass

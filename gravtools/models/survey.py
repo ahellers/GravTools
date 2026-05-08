@@ -30,7 +30,7 @@ from gravtools.settings import SURVEY_DATA_SOURCE_TYPES, TIDE_CORRECTION_TYPES, 
 from gravtools.const import VG_DEFAULT
 from gravtools.CG5_utils.cg5_survey import CG5Survey
 from gravtools.CG6_utils.cg6_survey import CG6Survey
-from gravtools.models.misc import format_seconds_to_hhmmss, make_setup_id
+from gravtools.models.misc import format_seconds_to_hhmmss, make_setup_id, to_unix_seconds
 from gravtools.tides.correction_time_series import convert_to_mugal
 from gravtools.models import atmosphere_correction
 
@@ -1755,7 +1755,7 @@ class Survey:
                     print(f' - Observations are already reduced by: {target_tide_corr}')
                 if target_tide_corr == 'no_tide_corr':
                     corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
-                    corr_tide_red_mugal.values[:] = 0
+                    corr_tide_red_mugal[:] = 0
                 else:
                     corr_tide_red_mugal = obs_df['corr_tide_mugal']
 
@@ -1782,7 +1782,7 @@ class Survey:
                         'corr_tide_mugal']  # Undo instrumental corrections => No tide corr!
                     if target_tide_corr == 'no_tide_corr':
                         corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
-                        corr_tide_red_mugal.values[:] = 0
+                        corr_tide_red_mugal[:] = 0
                     elif target_tide_corr == 'longman1959':
                         corr_tide_red_mugal = self.get_tidal_corrections_from_longman1959()
                         g_red_mugal = g_red_mugal + corr_tide_red_mugal
@@ -1799,7 +1799,7 @@ class Survey:
                         'corr_tide_red_mugal']  # Undo corrections => No tide corr!
                     if target_tide_corr == 'no_tide_corr':
                         corr_tide_red_mugal = obs_df['corr_tide_mugal'].copy(deep=True)
-                        corr_tide_red_mugal.values[:] = 0
+                        corr_tide_red_mugal[:] = 0
                     elif target_tide_corr == 'instrumental_corr':
                         g_red_mugal = g_red_mugal + obs_df['corr_tide_mugal']
                         corr_tide_red_mugal = obs_df['corr_tide_mugal']
@@ -1886,19 +1886,19 @@ class Survey:
                     if verbose:
                         print(f' - Observations are already reduced by: {target_oceanload_corr}')
                     corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal'].copy(deep=True)
-                    corr_oceanload_red_mugal.values[:] = 0  # Set to zero
+                    corr_oceanload_red_mugal[:] = 0  # Set to zero
                 if target_oceanload_corr == 'instrumental_corr':
                     # Check correction data availability:
                     if np.isnan(obs_df['corr_oceanload_instrument_mugal']).all():
                         corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal'].copy(deep=True)
-                        corr_oceanload_red_mugal.values[:] = 0  # Set to zero
+                        corr_oceanload_red_mugal[:] = 0  # Set to zero
                     else:  # corrections available
                         corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal']
                         g_red_mugal = g_red_mugal + corr_oceanload_red_mugal  # TODO: correct sign?
             elif self.obs_oceanload_correction_type == 'instrumental_corr':
                 if target_oceanload_corr == 'no_oceanload_corr':
                     corr_oceanload_red_mugal = obs_df['corr_oceanload_instrument_mugal'].copy(deep=True)
-                    corr_oceanload_red_mugal.values[:] = 0  # Set to zero
+                    corr_oceanload_red_mugal[:] = 0  # Set to zero
                     g_red_mugal = g_red_mugal - obs_df['corr_oceanload_instrument_mugal']  # TODO: correct sign?
                 if target_oceanload_corr == 'instrumental_corr':
                     if verbose:
@@ -2384,7 +2384,7 @@ class Survey:
 
                     # observation epoch (UNIX timestamps in full seconds):
                     obs_epochs_series = active_obs_df.loc[tmp_filter, 'obs_epoch']
-                    unix_obs_epochs = obs_epochs_series.values.astype(np.int64) / 10 ** 9
+                    unix_obs_epochs = to_unix_seconds(obs_epochs_series)
                     unix_setup_epoch = np.sum(unix_obs_epochs * weights) / np.sum(weights)
 
                     # Reference epoch as datetime object (TZ=<UTC>):
@@ -2397,10 +2397,10 @@ class Survey:
                     sd_g_red_mugal_list.append(sd_g_setup_mugal)
                     obs_epoch_list_unix.append(unix_setup_epoch)
                     obs_epoch_list_dt.append(dt_setup_epoch)
-                    delta_t_h_list.append((unix_setup_epoch - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
+                    delta_t_h_list.append((unix_setup_epoch - ref_delta_t_dt.timestamp()) / 3600.0)
                     if flag_calculate_delta_t_campaign_h:
                         delta_t_campaign_h_list.append(
-                            (unix_setup_epoch - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
+                            (unix_setup_epoch - ref_delta_t_campaign_dt.timestamp()) / 3600.0)
                     else:
                         delta_t_campaign_h_list.append(None)
             elif method == 'individual_obs':
@@ -2413,14 +2413,14 @@ class Survey:
                     g_mugal_list = active_obs_df['g_red_mugal'].to_list()
                     sd_g_red_mugal_list = active_obs_df['sd_g_red_mugal'].to_list()
 
-                obs_epoch_unix_array = active_obs_df['obs_epoch'].values.astype(np.int64) / 10 ** 9
+                obs_epoch_unix_array = to_unix_seconds(active_obs_df['obs_epoch'])
                 obs_epoch_list_unix = list(obs_epoch_unix_array)
                 obs_epoch_list_dt = pd.to_datetime(obs_epoch_unix_array, unit='s').tz_localize('utc').to_list()
 
-                delta_t_h_list = list((obs_epoch_unix_array - (ref_delta_t_dt.value / 10 ** 9)) / 3600.0)
+                delta_t_h_list = list((obs_epoch_unix_array - ref_delta_t_dt.timestamp()) / 3600.0)
                 if flag_calculate_delta_t_campaign_h:
                     delta_t_campaign_h_list = list(
-                        (obs_epoch_unix_array - (ref_delta_t_campaign_dt.value / 10 ** 9)) / 3600.0)
+                        (obs_epoch_unix_array - ref_delta_t_campaign_dt.timestamp()) / 3600.0)
                 else:
                     delta_t_campaign_h_list = [None] * len(g_mugal_list)
                 sd_setup_mugal_list = [np.nan] * len(g_mugal_list)
