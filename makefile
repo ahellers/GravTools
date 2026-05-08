@@ -1,5 +1,9 @@
 # Makefile for project GravTools
 
+# Run automated tests:
+test:
+	python -m pytest tests/ -v
+
 # Package test (editable install in current virtual environment)
 test_pack:
 	pip install -e .
