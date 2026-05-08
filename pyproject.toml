@@ -1,3 +1,49 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "grav-toolbox"
+dynamic = ["version"]
+description = "Gravity survey utility tools"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Andreas Hellerschmied", email = "andreas.hellerschmied@bev.gv.at"},
+]
+keywords = ["gravity", "gravimeter", "least squares adjustment", "geodesy", "geophysics"]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "PyQt5>=5.15",
+    "numpy>=1.22",
+    "pandas>=1.4",
+    "pyqtgraph>=0.13",
+    "scipy>=1.7",
+    "scikit-learn>=1.0",
+]
+
+[project.optional-dependencies]
+gis = ["geopandas>=1.0"]
+dev = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/ahellers/GravTools"
+
+[project.scripts]
+gt = "gravtools.scripts.run_gui:run_gui"
+
+[tool.setuptools.dynamic]
+version = {attr = "gravtools.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["gravtools*"]
+
+[tool.setuptools]
+include-package-data = true
