@@ -123,7 +123,7 @@ def calculate_julian_century(dates: Union[np.ndarray, pd.DatetimeIndex]):
         delta = dates - origin_date
         days = delta.days + delta.seconds / 3600. / 24.
         t0 = dates.hour + dates.minute / 60. + dates.second / 3600.
-        return days / 36525, t0.values
+        return days / 36525, np.array(t0, dtype=float)
 
 
 def solve_longman_tide(lat: np.ndarray, lon: np.ndarray, alt: np.ndarray, time: np.ndarray):

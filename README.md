@@ -43,6 +43,12 @@ CG5 and CG6 meters based on stationary observations.
   - The setup IDs are now created based on the observation reference time and the survey name (combined hash). This allows multiple observations at the same time in different surveys within one campaign. Now it is possible to analyze campaigns with two ore more gravimeters being used in parallel. 
   - Fixed a bug that caused an error when reading negative dhf values from the instrument height column in LynxLG CG6 observation files.
 
+## 0.3.8 (2026-05-20)
+  - Fixed compatibility with pandas >= 3.0: replaced in-place `.values[:] = 0` writes with direct Series assignment to comply with Copy-on-Write semantics (survey.py); fixed `ValueError: assignment destination is read-only` in Longman (1959) tidal correction caused by `.values` returning a read-only array from a pandas Index (longman1959.py).
+  - Fixed compatibility with NumPy >= 2.0: replaced deprecated `np.NAN` with `np.nan` (mlr_bev_legacy.py) and replaced broken `.values.astype(np.int64) / 10**9` datetime conversion with a resolution-independent `to_unix_seconds()` helper (survey.py, correction_time_series.py).
+  - Packaging migrated from setup.cfg to pyproject.toml (PEP 621); explicit minimum version requirements added for all dependencies.
+  - Code quality refactoring: file renames, unused imports/variables removed, bare `except` clauses narrowed, optional geopandas import centralised, f-string modernisation, context managers for file I/O.
+
 # License and copyright
 
 Copyright (C) 2021  Andreas Hellerschmied (<andreas.hellerschmied@bev.gv.at>)
