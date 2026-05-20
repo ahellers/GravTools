@@ -34,15 +34,11 @@ import numpy as np
 import pandas as pd
 import pytz
 
-# optional imports:
-try:
-    import geopandas
-except ImportError:
-    _has_geopandas = False
+# optional imports: geopandas availability is determined centrally in misc
+from gravtools.models.misc import geopandas, _has_geopandas
+if not _has_geopandas:
     warnings.warn('The optional dependency "geopandas" is not installed. Some features, e.g. GIS file export,'
                   ' will not be available.', UserWarning)
-else:
-    _has_geopandas = True
 
 from gravtools.gui.MainWindow import Ui_MainWindow
 from gravtools.gui.dialog_new_campaign import Ui_Dialog_new_Campaign
@@ -59,7 +55,7 @@ from gravtools.gui.gui_model_observation_table import ObservationTableModel
 from gravtools.gui.gui_model_results_stat_table import ResultsStationModel
 from gravtools.gui.gui_model_results_obs_table import ResultsObservationModel
 from gravtools.gui.gui_model_results_drift_table import ResultsDriftModel
-from gravtools.gui.gui_models_gravimeters_scale_table import GravimeterScaleFactorTableModel
+from gravtools.gui.gui_model_gravimeters_scale_table import GravimeterScaleFactorTableModel
 from gravtools.gui.gui_model_results_correlation_matrix_table import ResultsCorrelationMatrixModel
 from gravtools.gui.gui_model_results_vg_table import ResultsVGModel
 from gravtools.gui.gui_model_survey_table import SurveyTableModel
@@ -69,8 +65,8 @@ from gravtools.gui.dlg_corrections import DialogCorrections
 from gravtools.gui.dlg_load_cg6_obs_files import DialogLoadCg6ObservationFiles
 from gravtools.gui.dlg_export_results import DialogExportResults
 from gravtools.gui.dlg_calc_drift import DialogCalcDrift
-from gravtools.gui.cumstom_widgets import ScrollMessageBox
-from gravtools import __version__, __author__, __git_repo__, __email__, __copyright__, __pypi_repo__
+from gravtools.gui.custom_widgets import ScrollMessageBox
+from gravtools import __version__, __git_repo__, __email__, __copyright__, __pypi_repo__
 
 from gravtools.CG6_utils.cg6_survey import CG6Survey
 from gravtools.models.survey import Survey
@@ -225,7 +221,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.dlg_setup_data = DialogSetupData(self)
         self.dlg_about = DialogAbout(self)
         self.dlg_correction_time_series = DialogCorrectionTimeSeries(self)
-        # self.dlg_about.label_author.setText(__author__)
         self.dlg_about.label_version.setText(__version__)
         self.dlg_about.label_git_repo.setText(__git_repo__)
         self.dlg_about.label_pypi_repo.setText(__pypi_repo__)
@@ -363,7 +358,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.gravimeter_scale_factor_model = GravimeterScaleFactorTableModel(self.campaign.gravimeters)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No gravimeter scale factors available!')
-            self.statusBar().showMessage(f"No gravimeter scale factors available.")
+            self.statusBar().showMessage("No gravimeter scale factors available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -383,7 +378,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Show context menu ta right click on table view header."""
         ctx_menu = QMenu()
         ctx_menu.setToolTip('Export current table content to CSV file.')
-        export_csv = ctx_menu.addAction(f'Export to CSV file')
+        export_csv = ctx_menu.addAction('Export to CSV file')
         action = ctx_menu.exec_(QtGui.QCursor.pos())
         if action == export_csv:
             model = self.sender().parent().model()
@@ -501,7 +496,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
             else:
-                self.statusBar().showMessage(f'Saved drift data.')
+                self.statusBar().showMessage('Saved drift data.')
         else:
             pass
 
@@ -511,7 +506,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Get the currently selected lsm run object:
         idx, time_str = self.get_selected_lsm_run()
         if idx == -1:  # invalid index
-            self.statusBar().showMessage(f'No data selected for export to shapefiles...')
+            self.statusBar().showMessage('No data selected for export to shapefiles...')
             return
         lsm_run = self.campaign.lsm_runs[idx]
         try:
@@ -550,8 +545,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 try:
                     lsm_run.export_stat_results_shapefile(filename=filename, epsg_code=epsg_code)
                 except AttributeError:
-                    QMessageBox.warning(self, f'Export not available!',
-                                        f'Export of station results to a shapefile is not '
+                    QMessageBox.warning(self, 'Export not available!',
+                                        'Export of station results to a shapefile is not '
                                         f'supported by the lsm method {lsm_run.lsm_method}.')
                 except Exception as e:
                     QMessageBox.critical(self, 'Error!', str(e))
@@ -568,8 +563,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 try:
                     lsm_run.export_obs_results_shapefile(filename=filename, epsg_code=epsg_code)
                 except AttributeError:
-                    QMessageBox.warning(self, f'Export not available!',
-                                        f'Export of observation results to a shapefile is not '
+                    QMessageBox.warning(self, 'Export not available!',
+                                        'Export of observation results to a shapefile is not '
                                         f'supported by the lsm method {lsm_run.lsm_method}.')
                 except Exception as e:
                     QMessageBox.critical(self, 'Error!', str(e))
@@ -588,13 +583,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.campaign.change_campaign_name(new_campaign_name)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f'No new campaign name set.')
+                self.statusBar().showMessage('No new campaign name set.')
             else:  # Valid input
                 # Set new window title:
                 self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
                 self.statusBar().showMessage(f'New campaign name set to: {self.campaign.campaign_name}.')
         else:
-            self.statusBar().showMessage(f'No new campaign name set.')
+            self.statusBar().showMessage('No new campaign name set.')
 
     @pyqtSlot()
     def on_action_Change_output_directory_triggered(self):
@@ -617,7 +612,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     self.campaign.set_output_directory(output_dir_name)
                 except Exception as e:
                     QMessageBox.critical(self, 'Error!', str(e))
-                    self.statusBar().showMessage(f"No valid output directory selected.")
+                    self.statusBar().showMessage("No valid output directory selected.")
                 else:
                     if IS_VERBOSE:
                         print(f'New output directory: {output_dir_name}')
@@ -626,7 +621,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.statusBar().showMessage(f'Output directory "{output_dir_name}" does not exist!')
                 QMessageBox.critical(self, 'Error!', f'Directory "{output_dir_name}" does not exist!')
         else:
-            self.statusBar().showMessage(f'No output directory selected.')
+            self.statusBar().showMessage('No output directory selected.')
 
     @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_iteration_approach_current_index_changed(self, index: int):
@@ -642,7 +637,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.groupBox_iterative_scaling_additive.setEnabled(False)
             self.dlg_estimation_settings.groupBox_iterative_scaling_multiplicative.setEnabled(False)
             QMessageBox.warning(self, 'Warning!', 'Unknown iteration approach selected!')
-            self.statusBar().showMessage(f"Unknown iteration approach selected!")
+            self.statusBar().showMessage("Unknown iteration approach selected!")
 
     @pyqtSlot(int)
     def on_dlg_estimation_settings_comboBox_adjustment_method_current_index_changed(self, index: int):
@@ -706,7 +701,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dlg_estimation_settings.checkBox_iterative_s0_scaling.setEnabled(True)
             self.dlg_estimation_settings.groupBox_se_determination.setEnabled(True)
             QMessageBox.warning(self, 'Warning!', 'Unknown estimation method selected!')
-            self.statusBar().showMessage(f"Unknown estimation method selected!")
+            self.statusBar().showMessage("Unknown estimation method selected!")
 
     @pyqtSlot()
     def on_action_Load_Campaign_triggered(self):
@@ -732,7 +727,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.load_campaign_from_pickle(pkl_file_filename, verbose=IS_VERBOSE)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"No campaign data loaded.")
+                self.statusBar().showMessage("No campaign data loaded.")
             else:
                 # Update GUI:
 
@@ -782,7 +777,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     f"output directory: {self.campaign.output_directory})")
                 self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
         else:
-            self.statusBar().showMessage(f"No campaign data loaded.")
+            self.statusBar().showMessage("No campaign data loaded.")
 
     def load_campaign_from_pickle(self, filename, verbose):
         """Load campaign data from pickle file."""
@@ -991,7 +986,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 elif not self.radioButton_results_vg_plot_details.isChecked() and self.radioButton_results_vg_plot_full_polynomial.isChecked():
                     plot_type = 'full'
                 else:
-                    raise AssertionError(f'Invalid VG plot settings!')
+                    raise AssertionError('Invalid VG plot settings!')
                 self.plot_vg_lsm_nondiff(lsm_run,
                                          plot_type=plot_type,
                                          plot_residuals=plot_residuals,
@@ -1027,7 +1022,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         if len(lsm_run.setups) != 1:  # Only one survey allowed!
             raise AssertionError(f'The current LSM run contains {len(lsm_run.setups)}. Only one survey allowed at '
-                                 f'estimation of vertical gravity gradients!')
+                                 'estimation of vertical gravity gradients!')
 
         # Get and prep. required data:
         vg_pol_df = lsm_run.vg_pol_df
@@ -1076,7 +1071,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Plot VG polynomial
             pen = pg.mkPen(color='k', width=2)
             self.vg_plot.plot(h_m, vg_polynomial_full_mugal,
-                              name=f'VG polynomial',
+                              name='VG polynomial',
                               pen=pen)
 
         elif plot_type == 'detail':
@@ -1111,7 +1106,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             elif vg_polynomial_degree > 1:
                 pen = pg.mkPen(color='b', width=2)
                 self.vg_plot.plot(h_m, vg_polynomial_nonlinear_mugal,
-                                  name=f'Non-linear component',
+                                  name='Non-linear component',
                                   pen=pen)
 
                 # Residuals w.r.t. estimated linear component of the VG (grouped by setup height):
@@ -1203,7 +1198,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 s_item_tmp.setSize(20)
                 s_item_tmp.setPen({'color': 'k',
                                    'width': 2})
-                self.vg_plot.legend.addItem(s_item_tmp, f'Mean Residuals + Errorbars')
+                self.vg_plot.legend.addItem(s_item_tmp, 'Mean Residuals + Errorbars')
 
         else:
             raise AssertionError(f'Unknown VG plot type: {plot_type}!')
@@ -1449,7 +1444,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Adjust plot window:
         self.drift_plot.showGrid(x=True, y=True)
         self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal / 1000:.1f} mGal')
-        self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
+        self.drift_plot.setTitle('Drift function w.r.t. setup observations')
         self.drift_plot.autoRange()
 
     @conditional_decorator(time_it, settings.DEBUG_TIME_IT)
@@ -1565,7 +1560,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Adjust plot window:
             self.drift_plot.showGrid(x=True, y=True)
             self.drift_plot.setLabel(axis='left', text=f'g [µGal] + {subtr_const_mugal / 1000:.1f} mGal')
-            self.drift_plot.setTitle(f'Drift function w.r.t. setup observations (with arbitrary offset!)')
+            self.drift_plot.setTitle('Drift function w.r.t. setup observations (with arbitrary offset!)')
             self.drift_plot.autoRange()
 
     def plot_drift_mlr_bev_legacy(self, lsm_run, surveys=None, stations=None):
@@ -1627,7 +1622,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Plot drift function:
         pen = pg.mkPen(color='k', width=2)
         self.drift_plot.plot(delta_t_epoch_unix, drift_polynomial_mugal,
-                             name=f'drift polynomial',
+                             name='drift polynomial',
                              pen=pen, symbol='o', symbolSize=4, symbolBrush='k')
 
         # plot observation data (setup observations):
@@ -1668,8 +1663,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Adjust plot window:
         self.drift_plot.showGrid(x=True, y=True)
-        self.drift_plot.setLabel(axis='left', text=f'g [µGal]')
-        self.drift_plot.setTitle(f'Drift function w.r.t. setup observations')
+        self.drift_plot.setLabel(axis='left', text='g [µGal]')
+        self.drift_plot.setTitle('Drift function w.r.t. setup observations')
         self.drift_plot.autoRange()
 
     def set_up_observation_results_plots_hist_method_comboBox(self):
@@ -1773,7 +1768,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                         QMessageBox.warning(self, 'Warning!', f'More the binning method ({bins}) is '
                                                               f'creating {len(x)} bins. Whenever more than '
                                                               f'{settings.HIST_MAX_BIN_NUM:} bins are created the '
-                                                              f'backup binning method '
+                                                              'backup binning method '
                                                               f'({settings.HIST_BACKUP_BIN_METHOD}) is used instead.')
                         bins = settings.HIST_BACKUP_BIN_METHOD
                         y, x = np.histogram(data, bins=bins)
@@ -1836,7 +1831,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.results_vg_model = ResultsVGModel(self.campaign.lsm_runs)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No LSM-adjustment results available!')
-            self.statusBar().showMessage(f"No LSM-adjustment results available.")
+            self.statusBar().showMessage("No LSM-adjustment results available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -1857,7 +1852,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.results_drift_model = ResultsDriftModel(self.campaign.lsm_runs)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No LSM-adjustment results available!')
-            self.statusBar().showMessage(f"No LSM-adjustment results available.")
+            self.statusBar().showMessage("No LSM-adjustment results available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -1881,7 +1876,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.results_observation_model = ResultsObservationModel(self.campaign.lsm_runs)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No LSM-adjustment results available!')
-            self.statusBar().showMessage(f"No LSM-adjustment results available.")
+            self.statusBar().showMessage("No LSM-adjustment results available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -1909,7 +1904,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.results_station_model = ResultsStationModel(self.campaign.lsm_runs)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No LSM-adjustment results available!')
-            self.statusBar().showMessage(f"No LSM-adjustment results available.")
+            self.statusBar().showMessage("No LSM-adjustment results available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -1990,7 +1985,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.results_correlation_matrix_model = ResultsCorrelationMatrixModel(self.campaign.lsm_runs)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No LSM-adjustment results available!')
-            self.statusBar().showMessage(f"No LSM-adjustment results available.")
+            self.statusBar().showMessage("No LSM-adjustment results available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -2247,7 +2242,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
         number_of_lsm_runs = self.campaign.number_of_lsm_runs
         if number_of_lsm_runs == 0:
-            self.statusBar().showMessage(f'No LSM runs available to delete.')
+            self.statusBar().showMessage('No LSM runs available to delete.')
             return
         msg_text = f'Do you really want to delete all {number_of_lsm_runs} LSM runs?'
         reply = QMessageBox.question(self,
@@ -2259,12 +2254,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.campaign.delete_all_lsm_runs()
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f'No LSM runs deleted.')
+                self.statusBar().showMessage('No LSM runs deleted.')
             else:
                 self.statusBar().showMessage(f'{number_of_lsm_runs} LSM runs deleted.')
                 self.update_results_tab()
         else:
-            self.statusBar().showMessage(f'No LSM runs deleted.')
+            self.statusBar().showMessage('No LSM runs deleted.')
 
     def get_selected_lsm_run(self):
         """Get the selected lsm run in the results tab."""
@@ -2389,13 +2384,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                verbose=IS_VERBOSE)
         except AssertionError as e:
             QMessageBox.critical(self, 'Error!', str(e))
-            self.statusBar().showMessage(f"Error! No setup data computed")
+            self.statusBar().showMessage("Error! No setup data computed")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
-            self.statusBar().showMessage(f"Error! No setup data computed")
+            self.statusBar().showMessage("Error! No setup data computed")
         else:
             # No errors when computing the setup data:
-            self.statusBar().showMessage(f"Setup data computed successfully!")
+            self.statusBar().showMessage("Setup data computed successfully!")
 
     def on_pushbutton_obs_run_estimation(self):
         """Invoked when pushing the button 'on_pushbutton_obs_run_estimation'."""
@@ -2542,15 +2537,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             QMessageBox.critical(self, 'Error!', str(e))
             # Delete failed lsm run object
             self.campaign.lsm_runs = self.campaign.lsm_runs[0:num_of_lsm_runs_in_campaign_before_adjustment]
-            self.statusBar().showMessage(f"Error! No parameters estimated.")
+            self.statusBar().showMessage("Error! No parameters estimated.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
             # Delete failed lsm run object
             self.campaign.lsm_runs = self.campaign.lsm_runs[0:num_of_lsm_runs_in_campaign_before_adjustment]
-            self.statusBar().showMessage(f"Error! No parameters estimated.")
+            self.statusBar().showMessage("Error! No parameters estimated.")
         else:
             # No errors when computing the setup data:
-            self.statusBar().showMessage(f"Parameters estimated successfully!")
+            self.statusBar().showMessage("Parameters estimated successfully!")
             # Update list of lsm runs in results tab of the GUI:
             self.update_results_tab(select_latest_item=True)
         pass
@@ -2745,17 +2740,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 elif dlg.radioButton_first_dhb_dhf.isChecked():
                                     vertical_offset_mode = 'first'
                                 else:
-                                    raise AssertionError(f'Undefined vertical offset mode!')
+                                    raise AssertionError('Undefined vertical offset mode!')
                                 if dlg.radioButton_export_se.isChecked():
                                     formal_error_type = 'se'
                                     if IS_VERBOSE:
-                                        print(f' - Write gravity standard errors (SE) to the nsb file.')
+                                        print(' - Write gravity standard errors (SE) to the nsb file.')
                                 elif dlg.radioButton_export_sd.isChecked():
                                     if IS_VERBOSE:
-                                        print(f' - Write gravity standard deviations (SD) to the nsb file.')
+                                        print(' - Write gravity standard deviations (SD) to the nsb file.')
                                     formal_error_type = 'sd'
                                 else:
-                                    raise AssertionError(f'Invalid formal error type! Valid: "sd" or "se".')
+                                    raise AssertionError('Invalid formal error type! Valid: "sd" or "se".')
 
                                 if dlg.checkBox_nsb_remove_datum_stations.checkState() == Qt.Checked:
                                     exclude_datum_stations = True
@@ -2862,9 +2857,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if flag_export_successful:
                 self.statusBar().showMessage(f"Export to {output_path} successful!")
             else:
-                self.statusBar().showMessage(f"Problems at data export!")
+                self.statusBar().showMessage("Problems at data export!")
         else:
-            self.statusBar().showMessage(f"No exports.")
+            self.statusBar().showMessage("No exports.")
 
     def set_up_observation_plots_widget(self):
         """Set up `self.GraphicsLayoutWidget_observations`."""
@@ -2978,8 +2973,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # Gravity g [µGal]
             # - Plot with marker symbols according to their 'keep_obs' states and connect the 'sigPointsClicked' event.
             self.plot_obs_g.clear()
-            self.plot_obs_g.setLabel(axis='left', text=f'g [µGal]')
-            self.plot_obs_g.setTitle(f'Observed gravity [µGal]')
+            self.plot_obs_g.setLabel(axis='left', text='g [µGal]')
+            self.plot_obs_g.setTitle('Observed gravity [µGal]')
             pen = pg.mkPen(color='b')
             flags_keep_obs = obs_df['keep_obs'].values
             symbol_brushes = []
@@ -3226,7 +3221,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.setup_model = SetupTableModel(self.campaign.surveys)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No surveys available!')
-            self.statusBar().showMessage(f"No surveys available.")
+            self.statusBar().showMessage("No surveys available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -3241,7 +3236,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.observation_model = ObservationTableModel(self.campaign.surveys)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No surveys available!')
-            self.statusBar().showMessage(f"No surveys available.")
+            self.statusBar().showMessage("No surveys available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -3362,7 +3357,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 pass
         else:
             pass  # Do nothing
-            # self.statusBar().showMessage(f"Changes in options not applied.")
+            # self.statusBar().showMessage("Changes in options not applied.")
 
     def apply_options(self):
         """Apply options that are set in the options' dialog."""
@@ -3393,14 +3388,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.apply_observation_corrections()
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"Error: No observation corrections applied.")
+                self.statusBar().showMessage("Error: No observation corrections applied.")
             else:
                 # Load survey from campaign data to observations vie model:
                 self.observation_model.load_surveys(self.campaign.surveys)
                 self.on_obs_tree_widget_item_selected()
-                self.statusBar().showMessage(f"Observation corrections applied.")
+                self.statusBar().showMessage("Observation corrections applied.")
         else:
-            self.statusBar().showMessage(f"No observation corrections applied.")
+            self.statusBar().showMessage("No observation corrections applied.")
 
     def apply_observation_corrections(self):
         """Apply observation corrections according to the selected settings."""
@@ -3417,7 +3412,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             target_ref_height = 'instrument_top'
         else:
             flag_selection_ok = False
-            error_msg = f'Invalid selection of reference height in GUI (observation corrections dialog).'
+            error_msg = 'Invalid selection of reference height in GUI (observation corrections dialog).'
             QMessageBox.critical('Error!', error_msg)
 
         if self.dlg_corrections.radioButton_corr_tides_no_correction.isChecked():
@@ -3431,7 +3426,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             tide_corr_timeseries_interpol_method = self.dlg_corrections.comboBox_tides_interpolation_method.currentText()
         else:
             flag_selection_ok = False
-            error_msg = f'Invalid selection of tidal correction in GUI (observation corrections dialog).'
+            error_msg = 'Invalid selection of tidal correction in GUI (observation corrections dialog).'
             QMessageBox.critical('Error!', error_msg)
 
         if self.dlg_corrections.checkBox_corrections_atm_pressure.isChecked():
@@ -3520,7 +3515,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.setWindowTitle('GravTools - Campaign: ' + self.campaign.campaign_name)
 
         elif return_value == QDialog.Rejected:
-            self.statusBar().showMessage(f"Canceled creating new campaign.")
+            self.statusBar().showMessage("Canceled creating new campaign.")
 
     def enable_menu_observations_based_on_campaign_data(self):
         """Enable the main menu item `observations` is the campaign contains at least one survey."""
@@ -3551,10 +3546,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.campaign.gravimeters.add_from_json(gravimeter_filename, verbose=IS_VERBOSE)
             except FileNotFoundError:
                 QMessageBox.critical(self, 'File not found error', f'"{gravimeter_filename}" not found.')
-                self.statusBar().showMessage(f"No gravimeters added.")
+                self.statusBar().showMessage("No gravimeters added.")
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"No gravimeters added.")
+                self.statusBar().showMessage("No gravimeters added.")
             else:
                 # Update GUI:
                 self.populate_gravimeters_tree_widget()
@@ -3565,7 +3560,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.apply_observation_corrections()
             except Exception as e:
                 QMessageBox.critical(self, 'Error while updating observation corrections!', str(e))
-                self.statusBar().showMessage(f"Error: updating observation corrections based on new gravimeter data failed.")
+                self.statusBar().showMessage("Error: updating observation corrections based on new gravimeter data failed.")
             else:
                 # Update the observations table and plot (in case the reduced obs. changed):
                 survey_name, setup_id = self.get_obs_tree_widget_selected_item()
@@ -3639,10 +3634,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 state=self.checkBox_filter_observed_stat_only.checkState())
         except FileNotFoundError:
             QMessageBox.critical(self, 'File not found error', f'"{filename}" not found.')
-            self.statusBar().showMessage(f"No stations added.")
+            self.statusBar().showMessage("No stations added.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
-            self.statusBar().showMessage(f"No stations added.")
+            self.statusBar().showMessage("No stations added.")
         else:
             self.enable_station_view_options_based_on_model()
             # Show observed stations only based on Checkbox state:
@@ -3657,9 +3652,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.apply_observation_corrections()
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"Error: No observation corrections applied.")
+                self.statusBar().showMessage("Error: No observation corrections applied.")
             else:
-                self.statusBar().showMessage(f"Observation corrections applied.")
+                self.statusBar().showMessage("Observation corrections applied.")
             finally:
                 # Update the observations table and plot (in case the reduced obs. changed):
                 survey_name, setup_id = self.get_obs_tree_widget_selected_item()
@@ -3692,7 +3687,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.station_model.dataChanged.connect(self.on_station_model_data_changed)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No stations available!')
-            self.statusBar().showMessage(f"No stations available.")
+            self.statusBar().showMessage("No stations available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -3731,7 +3726,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                  gui_simple_mode=self.dlg_options.gui_simple_mode)
         except AttributeError:
             QMessageBox.warning(self, 'Warning!', 'No surveys available!')
-            self.statusBar().showMessage(f"No surveys available.")
+            self.statusBar().showMessage("No surveys available.")
         except Exception as e:
             QMessageBox.critical(self, 'Error!', str(e))
         else:
@@ -3742,13 +3737,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """Launch dialog for loading CG6 observation files."""
         return_value = self.dlg_load_cg6_observation_files.exec()
         if return_value == QDialog.Rejected:
-            self.statusBar().showMessage(f"No surveys loaded.")
+            self.statusBar().showMessage("No surveys loaded.")
             return
 
         # Get parameters from GUI:
         filenames = self.dlg_load_cg6_observation_files.file_list
         if not filenames:
-            self.statusBar().showMessage(f"No surveys loaded.")
+            self.statusBar().showMessage("No surveys loaded.")
             return
         file_format = self.dlg_load_cg6_observation_files.file_format
         if self.dlg_load_cg6_observation_files.checkBox_use_dt.isChecked():
@@ -3789,7 +3784,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 added_surveys_list.append(
                     survey.name + f' ({survey.get_number_of_observations()} obs.)')
         if not added_surveys_list:
-            self.statusBar().showMessage(f"No survey data added.")
+            self.statusBar().showMessage("No survey data added.")
             return
 
         # Carry out calculations and update GUI:
@@ -3808,7 +3803,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                                  "CG5 observation file (*.TXT)",
                                                                  options=options)
         if not cg5_obs_file_filenames:
-            self.statusBar().showMessage(f"No survey data added.")
+            self.statusBar().showMessage("No survey data added.")
             return
 
         added_surveys_list = []
@@ -3833,7 +3828,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     new_cg5_survey.name + f' ({new_cg5_survey.get_number_of_observations()} obs.)')
 
         if not added_surveys_list:
-            self.statusBar().showMessage(f"No survey data added.")
+            self.statusBar().showMessage("No survey data added.")
             return
         self.post_loading_survey_actions(new_cg5_survey.name)
         self.statusBar().showMessage(
@@ -3851,9 +3846,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.apply_observation_corrections()
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"Error: No observation corrections applied.")
+                self.statusBar().showMessage("Error: No observation corrections applied.")
             else:
-                self.statusBar().showMessage(f"Observation corrections applied.")
+                self.statusBar().showMessage("Observation corrections applied.")
 
         self.connect_station_model_to_table_view()
         # self.campaign.synchronize_stations_and_surveys(verbose=IS_VERBOSE)
@@ -3912,7 +3907,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     verbose=IS_VERBOSE)
             except Exception as e:
                 QMessageBox.critical(self, 'Error!', str(e))
-                self.statusBar().showMessage(f"Error while flagging observations.")
+                self.statusBar().showMessage("Error while flagging observations.")
             else:
                 # Update data visualization in GUI:
                 for tree_idx in range(0, self.treeWidget_observations.topLevelItemCount()):

@@ -93,7 +93,7 @@ class DialogCorrectionTimeSeries(QDialog, Ui_DialogCorrectionTimeSeries):
         filter_data_type = self.dlg_load_tsf_file.lineEdit_filter_data_type.text()
         overwrite_channel = self.dlg_load_tsf_file.checkBox_overwrite_channel.isChecked()
 
-        is_effect = self.dlg_load_tsf_file.radioButton_effect.isChecked()
+        # is_effect = self.dlg_load_tsf_file.radioButton_effect.isChecked()  # Kept for documentation
         is_correction = self.dlg_load_tsf_file.radioButton_correction.isChecked()
 
         if not os.path.exists(filename_tsf):

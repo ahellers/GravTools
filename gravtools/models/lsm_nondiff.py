@@ -25,14 +25,7 @@ from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, global_model_test, tau_test
 from gravtools.models import misc
 from gravtools import __version__ as GRAVTOOLS_VERSION
-
-# optional imports:
-try:
-    import geopandas
-except ImportError:
-    _has_geopandas = False
-else:
-    _has_geopandas = True
+from gravtools.models.misc import geopandas, _has_geopandas
 
 
 class LSMNonDiff(LSM):

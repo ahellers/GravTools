@@ -23,6 +23,17 @@ import sys
 from functools import wraps
 from time import time
 from collections import Counter
+
+# Optional dependency: geopandas (and shapely, which is bundled with it)
+try:
+    import geopandas
+    from shapely.geometry import Point, LineString
+    _has_geopandas = True
+except ImportError:
+    geopandas = None
+    Point = None
+    LineString = None
+    _has_geopandas = False
 import datetime as dt
 import hashlib
 

@@ -23,15 +23,7 @@ import pytz
 import copy
 import pandas as pd
 
-from gravtools.models.misc import time_it, get_nonunique_items
-
-# optional imports:
-try:
-    import geopandas
-except ImportError:
-    _has_geopandas = False
-else:
-    _has_geopandas = True
+from gravtools.models.misc import get_nonunique_items, geopandas, _has_geopandas
 
 from gravtools import settings
 
@@ -542,7 +534,6 @@ class LSM:
         return self.log_str
 
     @property
-    # @time_it
     def get_correlation_matrix(self):
         """Calculates und returns the correlation matrix based on the Co-Variance matrix of the LSM run.
 
@@ -665,21 +656,6 @@ class LSM:
     #     info_str = ''
     #     return info_str
 
-
-def bin_redundancy_components(mat_r):
-    """Bin redundancy components for easier interpretatzion.
-
-    See: Skriptum AG2 (Navratil, TU Wien), p. 70.
-    """
-    number_obs_r_equal_0 = 0  # No error control: Errors cannot be detected
-    number_obs_r_0_to_03 = 0  # Bad error control
-    number_obs_r_03_to_07 = 0  # Good error control
-    number_obs_r_07_1 = 0  # Very good error control, but observation may be redundant
-    number_obs_r_equal_1 = 0  # Observation is redundant
-
-    results_dict = {}  # '': ''
-
-    return number_obs_r_equal_0, number_obs_r_0_to_03
 
 
 def tau_test(mat_w, dof, alpha, mat_r):

@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-from typing import Tuple, Any
+from typing import Any
 
 def normal_air_pressure_iso(height_m: float) -> float:
     """Returns the normal air pressure according to ISO 2533:1975.

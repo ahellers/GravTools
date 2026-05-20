@@ -84,7 +84,7 @@ class DialogExportResults(QDialog, Ui_Dialog_export_results):
         """Returns the lsm run comment of the run with the specified index."""
         try:
             return self._lsm_runs[lsm_run_idx].comment
-        except:
+        except Exception:
             return ''
 
     def enable_gui_widgets_based_on_lsm_run_selection(self, lsm_run_idx: int):

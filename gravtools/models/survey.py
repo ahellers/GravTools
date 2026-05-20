@@ -1108,8 +1108,6 @@ class Survey:
         :py:obj:`.Survey`
             Contains all information of a specific survey independent of the data source.
         """
-
-        data_file_name = os.path.split(filename)[1]
         survey_name = os.path.split(filename)[1]
 
         if verbose:
@@ -1119,10 +1117,10 @@ class Survey:
         num_of_header_lines = 5
         with open(filename) as myfile:
             head = [next(myfile) for x in range(num_of_header_lines)]
-        scaling = head[0][:-1] == 'Y'
+        # scaling = head[0][:-1] == 'Y'  # Keep for documentation
         gravimeter_id = head[1].split()[0]
         institution = head[1].split()[1]
-        polynomial_degree = int(head[2][:-1])
+        # polynomial_degree = int(head[2][:-1])  # Keep for documentation
         date_str = head[3][:-1]
         timezone_str = head[4][:-1]
 
@@ -1157,9 +1155,6 @@ class Survey:
             if df['obs_epoch'].dt.tz != dt.timezone.utc:  # Change TZ to <UTC>
                 df['obs_epoch'] = df['obs_epoch'].dt.tz_convert('UTC')
 
-        # Timestamp: https://stackoverflow.com/questions/40881876/python-pandas-convert-datetime-to-timestamp-effectively-through-dt-accessor
-        # df['setup_id'] = df['obs_epoch'].values.astype(np.int64) // 10 ** 9
-        # Use make_setup_id() to crate setup_id column for all rows based on the observation epoch in column "obs_epoch" and the survey name (survey_name):
         df['setup_id'] = df.apply(lambda row: make_setup_id(row['obs_epoch'], survey_name), axis=1)
 
         df['g_obs_mugal'] = df['g_mgal'] * 1e3
