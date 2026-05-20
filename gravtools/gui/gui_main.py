@@ -23,8 +23,10 @@ The graphical layout of the GUI was created by using the Qt Designer (<https://w
 import sys
 import os
 import warnings
-from PyQt5.QtWidgets import QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, QTreeWidgetItem, \
-    QHeaderView, QInputDialog, QMenu
+import webbrowser
+from pathlib import Path
+from PyQt5.QtWidgets import QAction, QApplication, QDialog, QMainWindow, QFileDialog, QMessageBox, \
+    QTreeWidgetItem, QHeaderView, QInputDialog, QMenu
 from PyQt5.QtCore import QDir, Qt, QSortFilterProxyModel, pyqtSlot, QRegExp, QPoint
 from PyQt5 import QtGui
 import datetime as dt
@@ -126,6 +128,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.action_Export_Results.triggered.connect(self.on_menu_file_export_results)
         self.action_Options.triggered.connect(self.on_menu_file_options)
         self.action_About.triggered.connect(self.on_menu_help_about)
+        self.action_manual = QAction("Manual and API Reference", self)
+        self.menuHelp.addAction(self.action_manual)
+        self.action_manual.triggered.connect(self.on_menu_help_manual)
         self.pushButton_obs_apply_autoselect_current_data.pressed.connect(self.on_apply_autoselection)
         self.pushButton_obs_comp_setup_data.pressed.connect(self.on_pushbutton_obs_comp_setup_data)
         self.pushButton_obs_run_estimation.pressed.connect(self.on_pushbutton_obs_run_estimation)
@@ -3379,6 +3384,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def on_menu_help_about(self):
         """Launch the about dialog."""
         _ = self.dlg_about.exec()
+
+    def on_menu_help_manual(self):
+        """Open the bundled HTML manual and API reference in the system browser."""
+        import gravtools
+        pkg_root = Path(gravtools.__file__).parent
+        dev_docs = pkg_root.parent / "site" / "index.html"
+        installed_docs = pkg_root / "docs" / "index.html"
+        docs_path = dev_docs if dev_docs.exists() else installed_docs
+        if docs_path.exists():
+            webbrowser.open(docs_path.as_uri())
+        else:
+            QMessageBox.warning(
+                self,
+                "Documentation not found",
+                "Documentation not found. Run 'make docs' to build it first.",
+            )
 
     def on_menu_observations_corrections(self):
         """Launch dialog to select and apply observation corrections."""

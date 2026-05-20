@@ -1,0 +1,47 @@
+site_name: GravTools
+site_description: Python toolbox for processing relative gravity surveys
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - toc.integrate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: numpy
+            show_source: true
+            show_root_heading: true
+
+use_directory_urls: false
+
+nav:
+  - Home: index.md
+  - User Manual:
+      - Getting Started: manual/getting_started.md
+      - Loading Data: manual/loading_data.md
+      - Corrections: manual/corrections.md
+      - LSM Adjustment: manual/lsm_adjustment.md
+  - API Reference:
+      - Overview: api/index.md
+      - Models:
+          - Campaign: api/campaign.md
+          - Survey: api/survey.md
+          - Station: api/station.md
+          - Gravimeters: api/gravimeters.md
+      - Parameter Estimation:
+          - LSM (Differential): api/lsm_diff.md
+          - LSM (Non-Differential): api/lsm_nondiff.md
+          - VG LSM: api/vg_lsm.md
+          - BEV Legacy Processing: api/mlr_bev_legacy.md
+      - Corrections:
+          - Tides: api/tides.md
+          - Atmosphere: api/atmosphere.md
+      - Settings: api/settings.md

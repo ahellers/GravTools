@@ -55,12 +55,8 @@ def prep_polyval_coef(pol_coef_dict):
 class BEVLegacyProcessing(LSM):
     """Legacy processing scheme for relative gravimeter observations at BEV.
 
-    First, the instrumental drift is estimated by multiple linear regression. Afterwards, the drift-corrected
+    First, the instrumental drift is estimated by multiple linear regression. Afterward, the drift-corrected
     gravimeter readings per station are referred to absolute gravity values at the datum stations.
-
-    Attributes
-    ----------
-
     """
 
     # Column names of self.drift_pol_df:

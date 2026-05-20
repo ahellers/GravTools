@@ -27,7 +27,7 @@ import os
 import pandas as pd
 from typing import Dict, Literal
 
-from gravtools.tides.tide_data import AbstractTideData
+from gravtools.tides.abstract_tide_data import AbstractTideData
 
 
 @dataclass
