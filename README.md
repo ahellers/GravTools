@@ -48,6 +48,7 @@ CG5 and CG6 meters based on stationary observations.
   - Fixed compatibility with NumPy >= 2.0: replaced deprecated `np.NAN` with `np.nan` (mlr_bev_legacy.py) and replaced broken `.values.astype(np.int64) / 10**9` datetime conversion with a resolution-independent `to_unix_seconds()` helper (survey.py, correction_time_series.py).
   - Packaging migrated from setup.cfg to pyproject.toml (PEP 621); explicit minimum version requirements added for all dependencies.
   - Code quality refactoring: file renames, unused imports/variables removed, bare `except` clauses narrowed, optional geopandas import centralised, f-string modernisation, context managers for file I/O.
+  - Added an API reference, changelog and a landing page for documentation build with mkdocs (html). The documentation is accessible via the about menu in the GUI.
 
 # License and copyright
 

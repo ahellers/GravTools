@@ -24,11 +24,11 @@ use_directory_urls: false
 
 nav:
   - Home: index.md
-  - User Manual:
-      - Getting Started: manual/getting_started.md
-      - Loading Data: manual/loading_data.md
-      - Corrections: manual/corrections.md
-      - LSM Adjustment: manual/lsm_adjustment.md
+#  - User Manual:
+#      - Getting Started: manual/getting_started.md
+#      - Loading Data: manual/loading_data.md
+#      - Corrections: manual/corrections.md
+#      - LSM Adjustment: manual/lsm_adjustment.md
   - API Reference:
       - Overview: api/index.md
       - Models:
@@ -45,3 +45,4 @@ nav:
           - Tides: api/tides.md
           - Atmosphere: api/atmosphere.md
       - Settings: api/settings.md
+  - Changelog: changelog/changelog.md

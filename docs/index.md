@@ -24,13 +24,14 @@ With optional GIS support:
 pip install "grav-toolbox[gis]"
 ```
 
-## Quick Start
-
-See the [Getting Started](manual/getting_started.md) guide.
-
 ## Source Code
 
 [https://github.com/ahellers/GravTools](https://github.com/ahellers/GravTools)
+
+
+## Python Package
+
+[https://pypi.org/project/grav-toolbox/](https://pypi.org/project/grav-toolbox/)
 
 
 ## Citing GravTools
