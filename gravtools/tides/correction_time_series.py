@@ -150,27 +150,44 @@ class CorrectionTimeSeries:
 
 @dataclass
 class TimeSeries:
-    """Time series data.
+    """Uniformly or irregularly sampled correction or effect time series for a single channel.
 
-    Parameters
+    This dataclass stores a paired array of reference epochs and scalar values together with
+    metadata describing the source and physical meaning of the data.  It is the lowest-level
+    building block used by :class:`StationCorrections` and :class:`SurveyCorrections` to hold,
+    e.g., tidal corrections or atmospheric loading effects that are later interpolated onto
+    individual gravity observations.
+
+    The sign convention follows the TSoft convention (see TSoft manual v2.2.4, p. 15):
+
+    * **Correction** (``is_correction=True``): the value is *added* to the raw gravity
+      observation (e.g. the tidal loading correction as exported by TSoft).
+    * **Effect** (``is_correction=False``): the value represents the *gravitational effect*
+      of a phenomenon and must be *subtracted* from the observation to reduce it.
+
+    Attributes
     ----------
-    ref_time_dt: `numpy.array` of `datetime` objects
-        Reference times for the time series.
-    data: `numpy.array`
-        Data series. Has to have the same length as `ref_times_dt`
-    unit: str
-        Unit of the data.
-    data_source: str
-        Description of the data source, e.g. file name and/or file type, etc.
-    description: str, optional (default='')
-        Optional description of the time series.
-    is_correction: bool, optional (default=`False`)
-        `True` implies that the channel data loaded from the TSF file model the gravity effect of phenomena, rather
-        than corrections for gravity observations. Both options have the opposite sign: while corrections have to be
-        added to gravity observations, effects have to be subtracted, in order to reduce observations.
-    created_utc_dt: `datetime` object
-        Date and time in UTC of creating this time series, e.g. loading it from a file.
-
+    ref_time_dt : numpy.ndarray of datetime64
+        Reference epochs of the time series, in UTC.
+    data : numpy.ndarray of float
+        Scalar values associated with each epoch.  Must have the same length as
+        ``ref_time_dt``.
+    unit : str
+        Physical unit of ``data`` (e.g. ``'nm/s^2'``, ``'µGal'``).  Used for unit
+        conversion via :data:`gravtools.settings.UNIT_CONVERSION_TO_MUGAL`.
+    data_source : str
+        Human-readable identification of the data origin, e.g. the file name and
+        file type from which the series was loaded.
+    description : str, optional
+        Short free-text label for the time series (e.g. the TSF channel name).
+        Defaults to ``''``.
+    is_correction : bool, optional
+        ``True`` if ``data`` contains *corrections* (to be added to observations);
+        ``False`` if ``data`` contains *effects* (to be subtracted).
+        Defaults to ``True``.
+    created_utc_dt : datetime
+        UTC timestamp set automatically in :meth:`__post_init__` when the object is
+        created.  Not a constructor argument.
     """
     ref_time_dt: np.array  # np.array of DateTime objects
     data: np.array

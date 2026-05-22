@@ -1984,19 +1984,34 @@ class Survey:
         tide_corr_timeseries_mugal = tmp_df['ts_tide_corr_mugal'].to_numpy()
         return tide_corr_timeseries_mugal
 
-    def get_tidal_corrections_from_longman1959(self) -> np.ndarray:
-        """Derives tidal corrections for observations from the Longman (1959) model.
+    def get_tidal_corrections_from_longman1959(self) -> pd.Series:
+        """Derive tidal corrections for all observations in this survey using the Longman (1959) model.
+
+        Evaluates the Longman (1959) tidal model at the geographic position and UTC epoch of each
+        observation in :py:obj:`.Survey.obs_df`. The tidal effect is evaluated at the **middle** of
+        each gravity reading (``obs_epoch + duration_sec / 2``) rather than at the start epoch, which
+        is the convention adopted throughout GravTools.
+
+        The following columns of :py:obj:`.Survey.obs_df` are required and must not contain ``NaN``
+        values: ``obs_epoch``, ``duration_sec``, ``lon_deg``, ``lat_deg``, ``alt_m``.
 
         Notes
         -----
-        The derived corrections have to be ADDED to the observations in order to reduce tidal effects!
-
-        Parameters
-        ----------
+        The returned corrections must be **added** to the raw gravity readings in order to remove
+        (reduce) the tidal signal.
 
         Returns
         -------
-        `pandas.Series`: Tidal corrections.
+        pandas.Series
+            Tidal corrections [µGal] indexed by the integer row index of :py:obj:`.Survey.obs_df`.
+            Positive values indicate that the Earth tide increases the measured gravity at that epoch;
+            adding the correction removes the tidal contribution from the reading.
+
+        Raises
+        ------
+        RuntimeError
+            If any of the required coordinate or duration columns (``lon_deg``, ``lat_deg``,
+            ``alt_m``) contain ``NaN`` values, indicating that station coordinates are missing.
         """
         tmp_df = self.obs_df[['obs_epoch', 'duration_sec', 'lon_deg', 'lat_deg', 'alt_m']].copy(
             deep=True)
@@ -2025,7 +2040,7 @@ class Survey:
             (columns `tiltx` and `tilty` in :py:obj:`.Survey.obs_df`) exceeds the given threshold [arcsec].
         setup_id : int (default=None)
             `None` implies that this autoselection function is applied on all observations of this survey. Otherwise,
-            the autoselection function is only applied on observations of the setup wirth the provided ID (`setup_id`)
+            the autoselection function is only applied on observations of the setup with the provided ID (`setup_id`)
         verbose : bool, optional (default=False)
             If `True`, status messages are printed to the command line.
         """

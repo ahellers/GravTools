@@ -1,6 +1,10 @@
-### Output files of gravtools  
+### Output files of gravtools
 *.pdf
 *.nsb
+
+### Documentation build artifacts
+site/
+gravtools/docs/
 
 
 ### Python template

@@ -1,19 +1,7 @@
 # -*- coding: utf-8 -*-
-
-from datetime import datetime
-from math import radians
-from typing import Union
-import numpy as np
-import pandas as pd
-
-
-__all__ = ['calculate_julian_century', 'solve_longman_tide', 'solve_longman_tide_scalar',
-           'solve_tide_df', 'solve_point_corr']
-
-
 """
-Longman Earth Tide Calculator - Adapted from John Leeman's implementation of 
-I. M. Longman's earth tide calculations (see references below) 
+Longman Earth Tide Calculator - Adapted from John Leeman's implementation of
+I. M. Longman's earth tide calculations (see references below)
 
 Parts of this program (c) 2017 John Leeman
 Any other modifications from the base LongmanTide (c) 2018 Zachery Brady
@@ -22,7 +10,7 @@ Licensed under the MIT License, see LICENSE text below
 
 References
 ----------
-I.M. Longman "Formulas for Computing the Tidal Accelerations Due to the Moon 
+I.M. Longman "Formulas for Computing the Tidal Accelerations Due to the Moon
 and the Sun" Journal of Geophysical Research, vol. 64, no. 12, 1959, pp. 2351-2355
 P. Schureman "Manual of harmonic analysis and prediction of tides" U.S. Coast and Geodetic Survey, 1958
 John Leeman's GitHub page for the original implementation of this library: https://github.com/jrleeman/LongmanTide
@@ -31,7 +19,7 @@ Notes
 -----
 Unicode greek symbols are used to more clearly name variables based on the equations in Longman's paper.
 This is simply a style decision and may not reflect Python best practices.
-Pythons Datetime.datetime objects are TimeZone naive - e.g. when creating a datetime of
+Python's Datetime.datetime objects are timezone-naive - e.g. when creating a datetime of
 >>> datetime(1899, 12, 31, 12, 0, 0)
 The object refers to exactly the time specified, with no knowledge of the time-zone - when doing calculations against
 such an object we need to make sure that whatever datetime being used is specified in the same time zone.
@@ -60,8 +48,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
 """
+
+from datetime import datetime
+from math import radians
+from typing import Union
+import numpy as np
+import pandas as pd
+
+__all__ = ['calculate_julian_century', 'solve_longman_tide', 'solve_longman_tide_scalar',
+           'solve_tide_df', 'solve_point_corr']
 
 # Constants Definitions #
 μ = 6.673e-8  # Newton's gravitational constant in cgs units (Verify this, should be 6.674e-8?)
@@ -123,7 +119,7 @@ def calculate_julian_century(dates: Union[np.ndarray, pd.DatetimeIndex]):
         delta = dates - origin_date
         days = delta.days + delta.seconds / 3600. / 24.
         t0 = dates.hour + dates.minute / 60. + dates.second / 3600.
-        return days / 36525, t0.values
+        return days / 36525, np.array(t0, dtype=float)
 
 
 def solve_longman_tide(lat: np.ndarray, lon: np.ndarray, alt: np.ndarray, time: np.ndarray):

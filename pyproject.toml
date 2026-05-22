@@ -27,11 +27,17 @@ dependencies = [
     "pyqtgraph>=0.13",
     "scipy>=1.7",
     "scikit-learn>=1.0",
+    "pytz",
 ]
 
 [project.optional-dependencies]
 gis = ["geopandas>=1.0"]
 dev = ["pytest"]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+]
 
 [project.urls]
 Homepage = "https://github.com/ahellers/GravTools"
@@ -47,6 +53,9 @@ include = ["gravtools*"]
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools.package-data]
+gravtools = ["docs/**/*"]
 
 [tool.ruff]
 line-length = 120
