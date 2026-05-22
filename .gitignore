@@ -1,6 +1,10 @@
-### Output files of gravtools  
+### Output files of gravtools
 *.pdf
 *.nsb
+
+### Documentation build artifacts
+site/
+gravtools/docs/
 
 
 ### Python template
@@ -66,3 +70,8 @@ env310/
 
 .idea/
 
+
+# agents
+.claude
+plans
+CLAUDE.md

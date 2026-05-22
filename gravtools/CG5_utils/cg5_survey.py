@@ -105,7 +105,7 @@ class CG5SurveyParameters:
         self.long_deg = kwargs.get('long_deg', np.nan)  # float
         self.lat_deg = kwargs.get('lat_deg', np.nan)  # float
         self.zone = kwargs.get('zone', '')  # string
-        self.date_time = kwargs.get('date_time', None)  # datetime object (timezone aware)
+        self.date_time = kwargs.get('date_time')  # datetime object (timezone aware)
 
     @classmethod
     def create_from_obs_file_string(cls, str_obs_file):
@@ -170,8 +170,8 @@ class CG5SurveyParameters:
         elif survey_count == 0:  # Not available
             return cls()  # Initialize with default values
         else:  # More than 1 block found => Error!
-            raise InvaliFileContentError('{} "CG-5 SURVEY" blocks found in observation file, '
-                                         'but only one expected.'.format(survey_count))
+            raise InvaliFileContentError(f'{survey_count} "CG-5 SURVEY" blocks found in observation file, '
+                                         f'but only one expected.')
 
         # Error Msg, wenn der Block mehr als einmal gefunden wird.
 
@@ -222,7 +222,7 @@ class CG5SetupParameters:
         self.tiltyo = kwargs.get('tiltyo', np.nan)  # float
         self.tempco = kwargs.get('tempco', np.nan)  # float
         self.drift = kwargs.get('drift', np.nan)  # float
-        self.drift_date_time_start = kwargs.get('drift_date_time_start', None)  # datetime object (timezone aware)
+        self.drift_date_time_start = kwargs.get('drift_date_time_start')  # datetime object (timezone aware)
 
     @classmethod
     def create_from_obs_file_string(cls, str_obs_file):
@@ -271,8 +271,8 @@ class CG5SetupParameters:
         elif block_count == 0:  # Not available
             return cls()  # Initialize with default values
         else:  # More than 1 block found => Error!
-            raise InvaliFileContentError('{} "CG-5 SETUP PARAMETERS" in observation file found, but maximum one '
-                                         'expected.'.format(block_count))
+            raise InvaliFileContentError(f'{block_count} "CG-5 SETUP PARAMETERS" in observation file found, but maximum one '
+                                         f'expected.')
 
     # def is_valid(self) -> bool:
     #     """???"""
@@ -315,10 +315,10 @@ class CG5OptionsParameters:
         **kwargs : dict
             Keyword arguments that are parsed to class attributes.
         """
-        self.tide_correction = kwargs.get('tide_correction', None)  # bool
-        self.cont_tilt = kwargs.get('cont_tilt', None)  # bool
-        self.auto_rejection = kwargs.get('auto_rejection', None)  # bool
-        self.terrain_correction = kwargs.get('terrain_correction', None)  # bool
+        self.tide_correction = kwargs.get('tide_correction')  # bool
+        self.cont_tilt = kwargs.get('cont_tilt')  # bool
+        self.auto_rejection = kwargs.get('auto_rejection')  # bool
+        self.terrain_correction = kwargs.get('terrain_correction')  # bool
         self.seismic_filter = kwargs.get('seismic_filter', None)  # bool
         self.raw_data = kwargs.get('raw_data', None)  # bool
         #
@@ -370,8 +370,8 @@ class CG5OptionsParameters:
         elif block_count == 0:  # Not available
             return cls()  # Initialize with default values
         else:  # More than 1 block found => Error!
-            raise InvaliFileContentError('{} "CG-5 OPTIONS" in observation file found, but maximum one '
-                                         'expected.'.format(block_count))
+            raise InvaliFileContentError(f'{block_count} "CG-5 OPTIONS" in observation file found, but maximum one '
+                                         f'expected.')
 
     # def is_valid(self) -> bool:
     #     """???"""
@@ -477,12 +477,9 @@ class CG5Survey:
             return 'Empty CG-5 Survey.'
         else:
             if not self.survey_parameters.survey_name:
-                return 'Unnamed CG-5 Survey with {} observations (file: {}).'.format(len(self.obs_df),
-                                                                                     self.obs_filename.split('/')[-1])
+                return f'Unnamed CG-5 Survey with {len(self.obs_df)} observations (file: {self.obs_filename.split("/")[-1]}).'
             else:
-                return 'CG-5 Survey "{}" with {} observations (file: {}).'.format(self.survey_parameters.survey_name,
-                                                                                  len(self.obs_df),
-                                                                                  self.obs_filename.split('/')[-1])
+                return f'CG-5 Survey "{self.survey_parameters.survey_name}" with {len(self.obs_df)} observations (file: {self.obs_filename.split("/")[-1]}).'
 
     @staticmethod
     def resolve_station_name(station_name_in):
@@ -508,7 +505,7 @@ class CG5Survey:
             station_name_out = 'P  ' + station_name_in[1:]
         elif station_name_in[0] == 'T' and '.' in station_name_in:
             [str1_tmp, str2_tmp] = station_name_in.split('.')
-            station_name_out = 'T{0:>4} {1:>3}'.format(str1_tmp[1:], str2_tmp)
+            station_name_out = f'T{str1_tmp[1:]:>4} {str2_tmp:>3}'
         elif station_name_in[0] == 'N':
             station_name_out = station_name_in
         else:
@@ -552,13 +549,12 @@ class CG5Survey:
         #     str_obs_file = content_file.read()
 
         # Read in file and ignore comment lines:
-        file_handle = open(self.obs_filename, 'r')
         lines = []
-        for line in file_handle:
-            line_tmp = line.strip()
-            if not line_tmp.startswith(COMMENT_MARKER):
-                lines.append(line_tmp)
-        file_handle.close()
+        with open(self.obs_filename, 'r') as file_handle:
+            for line in file_handle:
+                line_tmp = line.strip()
+                if not line_tmp.startswith(COMMENT_MARKER):
+                    lines.append(line_tmp)
         str_obs_file = '\n'.join(lines)
 
         # Remove all or add one end-of-line symbols from end of string:

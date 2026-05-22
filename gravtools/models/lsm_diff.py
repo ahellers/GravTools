@@ -23,18 +23,11 @@ import pytz
 
 # from matplotlib import pyplot as plt
 
-# optional imports:
-try:
-    import geopandas
-except ImportError:
-    _has_geopandas = False
-else:
-    _has_geopandas = True
-    from shapely.geometry import Point, LineString  # Comes with geopandas
-
+# optional imports: geopandas and shapely are centralised in misc
 from gravtools import settings
 from gravtools.models.lsm import LSM, create_hist, global_model_test, tau_test
 from gravtools.models import misc
+from gravtools.models.misc import geopandas, Point, LineString, _has_geopandas
 from gravtools import __version__ as GRAVTOOLS_VERSION
 
 

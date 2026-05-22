@@ -298,7 +298,7 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
 
         # Adjust plot window:
         self.drift_calib_plot.setLabel(axis='left', text=f'g [µGal] + {g_offset_mugal / 1000:.1f} mGal')
-        # self.drift_calib_plot.setTitle(f'Drift function w.r.t. setup observations')
+        # self.drift_calib_plot.setTitle('Drift function w.r.t. setup observations')
         self.drift_calib_plot.autoRange()
 
     def set_up_drift_plot_widget(self):
@@ -313,7 +313,6 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
 
     def save(self):
         """Save the drift results as log file and plot."""
-        campaign_dir = self.parent().campaign.output_directory
         filename = self.comboBox_survey.currentText() + '_drift.txt'
         filename = os.path.join(self.parent().campaign.output_directory, filename)
         self.save_drift_file(filename)
@@ -334,7 +333,7 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
         if len(poly_ceoffs) == 0:
             raise RuntimeError('No valid drift polynomials available for export to file.')
 
-        poly_function_str = f'f(t) = a0(t0)'
+        poly_function_str = 'f(t) = a0(t0)'
         colnames = ['a0 [mGal]']
         for i in range(self.spinBox_degree.value()):
             poly_function_str = poly_function_str + f' + a{i + 1}*(t-t0)^{i + 1}'
@@ -351,7 +350,7 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
         start_time = self.parent().campaign.surveys[self.comboBox_survey.currentText()].start_time
         try:
             start_time_tz = start_time.tzname()
-        except:
+        except Exception:
             start_time_tz = ''
 
         tmp_str = f'### Drift results for survey {self.comboBox_survey.currentText()} ###\n'
@@ -364,14 +363,14 @@ class DialogCalcDrift(QDialog, Ui_Dialog_calculate_drift):
         tmp_str = tmp_str + f'Multiple setups only: {self.checkBox_multiple_setups_only.isChecked()}\n'
         tmp_str = tmp_str + '\n'
         tmp_str = tmp_str + poly_function_str + '\n'
-        tmp_str = tmp_str + f'... with [t]=days and [g]=mGal\n'
+        tmp_str = tmp_str + '... with [t]=days and [g]=mGal\n'
         if start_time_tz:
             tmp_str = tmp_str + f'... with t0 = {start_time.isoformat()} ({start_time_tz})\n'
         else:
             tmp_str = tmp_str + f'... with t0 = {start_time.isoformat()}\n'
-        tmp_str = tmp_str + f'\n'
+        tmp_str = tmp_str + '\n'
         tmp_str = tmp_str + poly_df_str + '\n'
-        tmp_str = tmp_str + f'\n'
+        tmp_str = tmp_str + '\n'
 
         if verbose:
             print(tmp_str)

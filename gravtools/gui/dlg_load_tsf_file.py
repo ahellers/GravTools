@@ -40,7 +40,7 @@ class DialogLoadTsfFile(QDialog, Ui_DialogLoadTsfFile):
         else:
             try:
                 initial_path = self.parent().parent().campaign.output_directory
-            except:
+            except Exception:
                 initial_path = os.getcwd()
 
         options = QFileDialog.Options()
@@ -58,5 +58,5 @@ class DialogLoadTsfFile(QDialog, Ui_DialogLoadTsfFile):
         try:
             survey_name = os.path.basename(tsf_filename).split('.')[0]
             self.lineEdit_survey_name.setText(survey_name)
-        except:
+        except Exception:
             pass

@@ -19,7 +19,6 @@ from datetime import datetime
 
 import numpy as np
 
-from gravtools.tides.tide_data_tfs import TSF
 from gravtools.tides.correction_time_series import CorrectionTimeSeries
 
 def main():

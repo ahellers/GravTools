@@ -18,10 +18,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 from typing import Tuple
 import numpy as np
+import pandas as pd
 import sys
 from functools import wraps
 from time import time
 from collections import Counter
+
+# Optional dependency: geopandas (and shapely, which is bundled with it)
+try:
+    import geopandas
+    from shapely.geometry import Point, LineString
+    _has_geopandas = True
+except ImportError:
+    geopandas = None
+    Point = None
+    LineString = None
+    _has_geopandas = False
 import datetime as dt
 import hashlib
 
@@ -156,6 +168,32 @@ def numpy_array_set_zero(input_array, atol=np.nan):
     else:
         input_array[np.isclose(input_array, 0.0, atol=atol)] = 0.0
     return input_array
+
+
+def to_unix_seconds(dt_like) -> np.ndarray:
+    """Convert datetime-like objects to Unix timestamps in seconds.
+
+    Parameters
+    ----------
+    dt_like : pd.Series or np.ndarray
+        tz-aware pandas datetime Series or numpy array of datetime64 objects.
+
+    Returns
+    -------
+    np.ndarray
+        Float64 array of Unix timestamps (seconds since 1970-01-01 00:00:00 UTC).
+
+    Notes
+    -----
+    For pd.Series: uses pandas timedelta arithmetic, independent of the internal
+    datetime64 resolution (ns, us, etc.). Compatible with pandas >= 0.14.
+    For np.ndarray: casts to datetime64[s] before converting to int64. Compatible
+    with NumPy >= 1.7. NumPy discards timezone info on cast, so dt_like must
+    already represent UTC time.
+    """
+    if isinstance(dt_like, pd.Series):
+        return ((dt_like - pd.Timestamp('1970-01-01', tz='UTC')) / pd.Timedelta(seconds=1)).to_numpy(dtype=float)
+    return np.asarray(dt_like, dtype='datetime64[s]').astype(np.int64).astype(float)
 
 
 def make_setup_id(ref_time: dt.datetime, survey_name: str = '') -> int:

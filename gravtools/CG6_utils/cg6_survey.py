@@ -436,18 +436,15 @@ class CG6Survey:
             tuple[str, list[str]] : Content of the input file as one string and as list of line strings.
         """
         # Read in file and ignore comment lines:
-        file_handle = open(filename, 'r')
-        lines = [file_handle.readline().strip()]
-        if lines[0].startswith('\ufeff'):
-            # Check byte order mark and change codec. Reopen file if required with the correct codec.
-            file_handle.close()
-            file_handle = open(filename, 'r', encoding='utf-8-sig')
-            lines = []
-        for line in file_handle:
-            line_tmp = line.strip()
-            if not line_tmp.startswith(comment_marker):
-                lines.append(line_tmp)
-        file_handle.close()
+        # Detect encoding by checking for a UTF-8 BOM in the first bytes:
+        with open(filename, 'rb') as f:
+            encoding = 'utf-8-sig' if f.read(3) == b'\xef\xbb\xbf' else 'utf-8'
+        lines = []
+        with open(filename, 'r', encoding=encoding) as file_handle:
+            for line in file_handle:
+                line_tmp = line.strip()
+                if not line_tmp.startswith(comment_marker):
+                    lines.append(line_tmp)
         str_obs_file = '\n'.join(lines)
 
         # Remove all or add one end-of-line symbols from end of string:
@@ -587,7 +584,7 @@ class CG6Survey:
             try:
                 _HEADER_LINES[item][3] = bool_lookup_dict[header_str]
             except KeyError:
-                raise RuntimeError(f'Invalid value in header field "{_HEADER_LINES[item][1]}": {header_str}.')
+                raise RuntimeError(f'Invalid value in header field "{_HEADER_LINES[item][1]}": {header_str}.') from None
 
         # Convert strings to datetime:
         datetime_str = _HEADER_LINES['drift_ref_date'][3] + ' ' + _HEADER_LINES['drift_ref_time'][3]
@@ -1156,7 +1153,7 @@ class CG6Survey:
             station_name_out = 'P  ' + station_name_in[1:]
         elif station_name_in[0] == 'T' and '.' in station_name_in:
             [str1_tmp, str2_tmp] = station_name_in.split('.')
-            station_name_out = 'T{0:>4} {1:>3}'.format(str1_tmp[1:], str2_tmp)
+            station_name_out = f'T{str1_tmp[1:]:>4} {str2_tmp:>3}'
         elif station_name_in[0] == 'N':
             station_name_out = station_name_in
         else:

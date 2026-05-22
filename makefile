@@ -1,5 +1,9 @@
 # Makefile for project GravTools
 
+# Run automated tests:
+test:
+	python -m pytest tests/ -v
+
 # Package test (editable install in current virtual environment)
 test_pack:
 	pip install -e .
@@ -8,8 +12,20 @@ test_pack:
 test_pack_uninstall:
 	pip uninstall gravtools
 
+.PHONY: docs docs-serve
+
+# Build HTML documentation and bundle into package:
+docs:
+	mkdocs build
+	rm -rf gravtools/docs
+	cp -r site gravtools/docs
+
+# Live-preview documentation in browser:
+docs-serve:
+	mkdocs serve
+
 # Build package with setuptools (new version):
-build:
+build: docs
 	python -m build
 
 # Upload package to pypi.org

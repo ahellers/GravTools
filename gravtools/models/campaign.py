@@ -213,7 +213,7 @@ class Campaign:
         """
         # Check if a survey with the dame name ("survey_add.name") already exists in this campaign:
         # - Raise warning:
-        if survey_add.name in self.surveys.keys():
+        if survey_add.name in self.surveys:
             raise RuntimeError(f'The campaign already contains a survey named {survey_add.name}. Survey names need to '
                                f'be unique within a campaign!')
         else:
